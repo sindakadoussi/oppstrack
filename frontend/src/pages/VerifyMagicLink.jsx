@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 const PAYLOAD_URL = 'http://localhost:3000'
 
+// Décoder JWT sans librairie (pour le cas où Payload envoie un JWT)
 function decodeJWT(token) {
   try {
     const payload = token.split('.')[1]
@@ -11,7 +12,7 @@ function decodeJWT(token) {
   } catch { return null }
 }
 
-export default function VerifyMagicLink() {
+export default function VerifyMagicLink({ setUser }) {
   const [status,  setStatus]  = useState('loading')
   const [message, setMessage] = useState('')
   const navigate = useNavigate()
@@ -19,6 +20,8 @@ export default function VerifyMagicLink() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token  = params.get('token')
+    // Cas 1 : notre endpoint → email dans l'URL
+    let email    = params.get('email')
 
     if (!token) {
       setStatus('error')
@@ -26,28 +29,35 @@ export default function VerifyMagicLink() {
       return
     }
 
-    const decoded = decodeJWT(token)
-    if (!decoded?.email) {
+    // Cas 2 : Payload natif → email dans le JWT
+    if (!email) {
+      const decoded = decodeJWT(token)
+      email = decoded?.email || null
+    }
+
+    if (!email) {
       setStatus('error')
-      setMessage('Token invalide.')
+      setMessage('Email introuvable dans le lien.')
       return
     }
 
-    const email = decoded.email
-
+    // Appel vers notre endpoint /magic-login
     fetch(`${PAYLOAD_URL}/api/users/magic-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, token }),
+      body: JSON.stringify({ email: email.toLowerCase(), token }),
     })
       .then(r => r.json())
       .then(data => {
         if (data.user) {
-          localStorage.setItem('oppstrack_user',    JSON.stringify(data.user))
-          localStorage.setItem('oppstrack_user_id', data.user.id)
+          // Stocker l'user — même clé que App.jsx utilise
+          localStorage.setItem('opps_user',    JSON.stringify(data.user))
+          localStorage.setItem('opps_user_id', data.user.id)
+          // Mettre à jour l'état React si setUser est passé
+          if (setUser) setUser(data.user)
           setStatus('success')
           setMessage(`Bienvenue ${data.user.name || data.user.email} !`)
-          setTimeout(() => navigate('/chat'), 1500)
+          setTimeout(() => navigate('/'), 1500)
         } else {
           setStatus('error')
           setMessage(data.message || 'Lien invalide ou expiré.')

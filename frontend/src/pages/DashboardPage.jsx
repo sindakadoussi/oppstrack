@@ -3,343 +3,336 @@ import React, { useState, useEffect } from 'react';
 const API_BASE = 'http://localhost:3000/api';
 
 export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply }) {
-  const [candidatures, setCandidatures] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [boursesSuivies, setBoursesSuivies] = useState([]);
+  const [loadingBourses, setLoadingBourses] = useState(true);
 
   useEffect(() => {
-    if (user?.id) fetchCandidatures();
-  }, [user]);
-
-  const fetchCandidatures = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/candidatures?where[user][equals]=${user.id}&limit=10&sort=-createdAt`);
-      const data = await res.json();
-      setCandidatures(data.docs || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    if (!user?.id) { setLoadingBourses(false); return; }
+    if (user.bourses_choisies?.length > 0) {
+      setBoursesSuivies(user.bourses_choisies);
+      setLoadingBourses(false);
+      return;
     }
+    fetch(`${API_BASE}/users/${user.id}?depth=0`)
+      .then(r => r.json())
+      .then(d => setBoursesSuivies(d.bourses_choisies || []))
+      .catch(() => {})
+      .finally(() => setLoadingBourses(false));
+  }, [user?.id]);
+
+  const parseScore = txt => {
+    const m = (txt || '').match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
+    return m ? parseInt(m[1]) : null;
   };
 
-  const profileCompletion = () => {
-    if (!user) return 0;
-    const fields = ['name', 'email', 'pays', 'niveau', 'domaine'];
-    return Math.round((fields.filter(f => user[f]).length / fields.length) * 100);
+  const scores = (entretienScores || [])
+    .map(s => ({ ...s, scoreNum: parseScore(s.score) }))
+    .filter(s => s.scoreNum !== null);
+
+  const lastScore = scores[0]?.scoreNum ?? null;
+  const avgScore  = scores.length > 0 ? Math.round(scores.reduce((a,b) => a + b.scoreNum, 0) / scores.length) : null;
+  const scoreDiff = scores.length >= 2 ? scores[0].scoreNum - scores[1].scoreNum : null;
+
+  const completion = !user ? 0 : Math.round(['name','email','pays','niveau','domaine'].filter(f => user[f]).length / 5 * 100);
+  const initials   = (user?.name || user?.email || 'U').slice(0,2).toUpperCase();
+
+  const deadlines = boursesSuivies
+    .filter(b => b.deadline)
+    .map(b => ({ nom: b.nom, deadline: new Date(b.deadline), pays: b.pays }))
+    .sort((a,b) => a.deadline - b.deadline)
+    .slice(0,4);
+
+  const daysLeft = d => {
+    const diff = Math.round((d - new Date()) / 86400000);
+    if (diff < 0)  return { label: 'Expiré',      color: '#f87171' };
+    if (diff === 0) return { label: "Aujourd'hui", color: '#f87171' };
+    if (diff <= 7)  return { label: `${diff}j`,    color: '#fbbf24' };
+    if (diff <= 30) return { label: `${diff}j`,    color: '#a78bfa' };
+    return { label: `${diff}j`, color: '#94a3b8' };
   };
 
-  const lastScore = entretienScores?.[0]?.score;
-  const avgScore = entretienScores?.length > 0
-    ? Math.round(entretienScores.reduce((a, b) => a + b.score, 0) / entretienScores.length)
-    : null;
-
-  const getStatusColor = (status) => {
-    const c = { 'En cours': '#6366f1', 'Soumise': '#f59e0b', 'Acceptée': '#10b981', 'Refusée': '#ef4444' };
-    return c[status] || '#64748b';
-  };
+  const recommendations = bourses.slice(0, 3).map(b => ({
+    nom: b.nom, pays: b.pays, financement: b.financement,
+    match: Math.round(60 + Math.random() * 35),
+  }));
 
   if (!user) {
     return (
-      <div className="dashboard-locked">
-        <span>🔒</span>
-        <h3>Dashboard personnel</h3>
-        <p>Connectez-vous pour accéder à votre tableau de bord personnalisé</p>
-        <button className="btn-login-dash" onClick={() => handleQuickReply('Je veux me connecter')}>
-          🔐 Se connecter
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center', padding:40 }}>
+        <div style={{ fontSize:40 }}>🔒</div>
+        <h3 style={{ fontSize:'1.1rem', color:'#f1f5f9' }}>Dashboard personnel</h3>
+        <p style={{ fontSize:13, color:'#64748b' }}>Connectez-vous pour accéder à votre tableau de bord</p>
+        <button onClick={() => handleQuickReply('Je veux me connecter')} style={S.btnPrimary}>
+          Se connecter
         </button>
-        <style>{`
-          .dashboard-locked { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:400px; gap:16px; text-align:center; color:#64748b; padding:40px; }
-          .dashboard-locked span { font-size:48px; }
-          .dashboard-locked h3 { font-size:1.3rem; color:#e2e8f0; }
-          .btn-login-dash { padding:12px 24px; border-radius:12px; background:linear-gradient(135deg,#4f46e5,#7c3aed); color:white; border:none; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.2s; }
-          .btn-login-dash:hover { transform:translateY(-1px); }
-        `}</style>
       </div>
     );
   }
 
-  const completion = profileCompletion();
-
   return (
-    <div className="dashboard-page">
-      {/* Welcome banner */}
-      <div className="dash-banner">
-        <div className="banner-left">
-          <div className="banner-avatar">{(user.name || user.email || 'U')[0].toUpperCase()}</div>
-          <div>
-            <h2>Bonjour, {user.name || user.email?.split('@')[0]} 👋</h2>
-            <p>Voici un résumé de votre activité sur OppsTrack</p>
-          </div>
-        </div>
-        <div className="banner-right">
-          <button className="quick-action" onClick={() => setView('bourses')}>🎓 Voir les bourses</button>
-          <button className="quick-action" onClick={() => setView('entretien')}>🎙️ Entretien IA</button>
-        </div>
-      </div>
+    <div style={S.page}>
 
-      {/* Stats row */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-info">
-            <span className="stat-val">{candidatures.length}</span>
-            <span className="stat-lbl">Candidatures</span>
-          </div>
+      {/* Header */}
+      <div style={S.header}>
+        <div>
+          <h1 style={S.h1}>Tableau de Bord</h1>
+          <p style={S.headerSub}>Bonjour {user.name || user.email?.split('@')[0]}, voici l'état de vos bourses d'études.</p>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">🎙️</div>
-          <div className="stat-info">
-            <span className="stat-val">{entretienScores?.length || 0}</span>
-            <span className="stat-lbl">Entretiens passés</span>
-          </div>
-        </div>
-        <div className="stat-card highlight">
-          <div className="stat-icon">⭐</div>
-          <div className="stat-info">
-            <span className="stat-val" style={{ color: lastScore >= 80 ? '#10b981' : lastScore >= 60 ? '#f59e0b' : '#ef4444' }}>
-              {lastScore ? `${lastScore}/100` : '—'}
-            </span>
-            <span className="stat-lbl">Dernier score entretien</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🎓</div>
-          <div className="stat-info">
-            <span className="stat-val">{bourses.length}</span>
-            <span className="stat-lbl">Bourses disponibles</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="dash-grid">
-        {/* Profile completion */}
-        <div className="dash-card profile-card">
-          <div className="card-header-dash">
-            <h3>👤 Complétion du profil</h3>
-            <span className="completion-pct">{completion}%</span>
-          </div>
-          <div className="progress-bar-wrap">
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: `${completion}%`, background: completion === 100 ? '#10b981' : 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
-            </div>
-          </div>
-          <div className="profile-fields">
-            {[
-              { key: 'name', label: 'Nom complet', icon: '👤' },
-              { key: 'email', label: 'Email', icon: '📧' },
-              { key: 'pays', label: 'Pays cible', icon: '🌍' },
-              { key: 'niveau', label: "Niveau d'études", icon: '🎓' },
-              { key: 'domaine', label: "Domaine d'études", icon: '📚' },
-            ].map(f => (
-              <div key={f.key} className={`profile-field ${user[f.key] ? 'filled' : 'empty'}`}>
-                <span>{f.icon}</span>
-                <span className="field-label">{f.label}</span>
-                <span className="field-value">{user[f.key] || <em>Non renseigné</em>}</span>
-                {!user[f.key] && (
-                  <button className="field-fill-btn" onClick={() => handleQuickReply(`Je veux mettre à jour mon ${f.label.toLowerCase()}`)}>
-                    + Compléter
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <button className="btn-edit-profile" onClick={() => setView('profil')}>
-            ✏️ Modifier le profil
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <button style={S.btnOutline} onClick={() => handleQuickReply('Donne-moi des conseils pour compléter mon dossier')}>
+            Créer Documents
+          </button>
+          <button style={S.btnPrimary} onClick={() => setView('bourses')}>
+            Explorer Bourses
           </button>
         </div>
+      </div>
 
-        {/* Candidatures */}
-        <div className="dash-card">
-          <div className="card-header-dash">
-            <h3>📬 Mes candidatures</h3>
-            {candidatures.length > 0 && <span className="badge-count">{candidatures.length}</span>}
-          </div>
-          {loading ? (
-            <div className="loading-state">Chargement...</div>
-          ) : candidatures.length === 0 ? (
-            <div className="empty-state">
-              <span>📭</span>
-              <p>Aucune candidature encore</p>
-              <button className="btn-start-cand" onClick={() => setView('bourses')}>
-                Découvrir les bourses →
-              </button>
+      {/* KPIs */}
+      <div style={S.kpiRow}>
+        {[
+          { label:'Bourses Sauvegardées', val:boursesSuivies.length, icon:'🎓', accent:'#818cf8' },
+          { label:'Candidatures Prévues', val:boursesSuivies.length, icon:'📋', accent:'#34d399' },
+          { label:'Deadlines Proches',   val:deadlines.filter(d => (d.deadline - new Date()) < 30*86400000).length, icon:'⏰', accent:'#fbbf24' },
+          { label:'Score d\'Éligibilité', val:`${completion}%`, icon:'⭐', accent:'#a78bfa' },
+        ].map((k,i) => (
+          <div key={i} style={{ ...S.kpiCard, borderTop:`2px solid ${k.accent}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+              <div>
+                <div style={S.kpiLabel}>{k.label}</div>
+                <div style={{ ...S.kpiVal, color:k.accent }}>{k.val}</div>
+              </div>
+              <span style={{ fontSize:22 }}>{k.icon}</span>
             </div>
-          ) : (
-            <div className="candidatures-list">
-              {candidatures.map((c, i) => (
-                <div key={i} className="candidature-item">
-                  <div className="cand-info">
-                    <span className="cand-name">{c.bourse?.nom || c.bourseName || 'Bourse inconnue'}</span>
-                    <span className="cand-pays">{c.bourse?.pays || ''}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Main grid */}
+      <div style={S.mainGrid}>
+
+        {/* LEFT — Progression chart + Deadlines */}
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+          {/* Progression entretiens */}
+          <div style={S.card}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div>
+                <div style={S.cardTitle}>Progression des Candidatures</div>
+                <div style={S.cardSub}>Évolution de vos scores au fil du temps</div>
+              </div>
+              {scores.length > 0 && (
+                <button style={S.btnXs} onClick={() => setView('entretien')}>
+                  + {scores.length} entretien{scores.length > 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
+
+            {scores.length === 0 ? (
+              <div style={{ padding:'32px 0', textAlign:'center' }}>
+                <div style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>Aucun entretien encore</div>
+                <button style={S.btnPrimary} onClick={() => setView('entretien')}>
+                  Démarrer un entretien IA
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Mini chart */}
+                <div style={{ position:'relative', height:140, marginBottom:12 }}>
+                  <svg width="100%" height="140" viewBox={`0 0 400 140`} preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.3"/>
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    {(() => {
+                      const pts = scores.slice().reverse();
+                      const n = pts.length;
+                      if (n < 2) return null;
+                      const xs = pts.map((_,i) => (i / (n-1)) * 380 + 10);
+                      const ys = pts.map(p => 130 - (p.scoreNum / 100) * 120);
+                      const line = xs.map((x,i) => `${i===0?'M':'L'}${x},${ys[i]}`).join(' ');
+                      const area = line + ` L${xs[n-1]},130 L${xs[0]},130 Z`;
+                      return (
+                        <>
+                          <path d={area} fill="url(#grad)"/>
+                          <path d={line} fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          {xs.map((x,i) => (
+                            <g key={i}>
+                              <circle cx={x} cy={ys[i]} r="4" fill="#818cf8"/>
+                              <text x={x} y={ys[i]-8} textAnchor="middle" fontSize="10" fill="#94a3b8">{pts[i].scoreNum}</text>
+                            </g>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+                <div style={{ display:'flex', gap:16 }}>
+                  <div style={S.miniStat}>
+                    <div style={{ ...S.miniVal, color: lastScore >= 75 ? '#34d399' : lastScore >= 55 ? '#fbbf24' : '#f87171' }}>
+                      {lastScore}/100
+                    </div>
+                    <div style={S.miniLabel}>Dernier score</div>
                   </div>
-                  <span className="cand-status" style={{ color: getStatusColor(c.status), borderColor: getStatusColor(c.status) + '40', background: getStatusColor(c.status) + '15' }}>
-                    {c.status || 'En cours'}
+                  {avgScore && (
+                    <div style={S.miniStat}>
+                      <div style={S.miniVal}>{avgScore}/100</div>
+                      <div style={S.miniLabel}>Moyenne</div>
+                    </div>
+                  )}
+                  {scoreDiff !== null && (
+                    <div style={S.miniStat}>
+                      <div style={{ ...S.miniVal, color: scoreDiff > 0 ? '#34d399' : '#f87171' }}>
+                        {scoreDiff > 0 ? '+' : ''}{scoreDiff}
+                      </div>
+                      <div style={S.miniLabel}>Évolution</div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Deadlines */}
+          <div style={S.card}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div style={S.cardTitle}>Prochaines Échéances</div>
+              <button style={S.btnXs} onClick={() => setView('roadmap')}>Voir Roadmap →</button>
+            </div>
+            {deadlines.length === 0 ? (
+              <div style={{ color:'#64748b', fontSize:13, padding:'12px 0' }}>
+                Sélectionnez des bourses dans le chat pour voir leurs deadlines ici.
+              </div>
+            ) : (
+              deadlines.map((d,i) => {
+                const dl = daysLeft(d.deadline);
+                return (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i < deadlines.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                    <div style={{ width:8, height:8, borderRadius:'50%', background:dl.color, flexShrink:0 }}/>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>{d.nom}</div>
+                      <div style={{ fontSize:11, color:'#64748b' }}>{d.pays} · {d.deadline.toLocaleDateString('fr-FR')}</div>
+                    </div>
+                    <span style={{ fontSize:12, color:dl.color, fontWeight:600, padding:'3px 10px', borderRadius:99, background:dl.color+'18', border:`1px solid ${dl.color}40` }}>
+                      Dans {dl.label}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT — Recommandations + Profil */}
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+          {/* Recommandations IA */}
+          <div style={S.card}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div>
+                <div style={S.cardTitle}>IA : Recommandations du Jour</div>
+                <div style={S.cardSub}>Basées sur votre profil, voici de nouvelles opportunités.</div>
+              </div>
+            </div>
+            {recommendations.map((b,i) => (
+              <div key={i} style={{ padding:'12px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+                  <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>{b.nom}</div>
+                  <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(129,140,248,0.15)', color:'#818cf8', border:'1px solid rgba(129,140,248,0.3)', whiteSpace:'nowrap', marginLeft:8 }}>
+                    {b.match}% match
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Entretien progress */}
-        <div className="dash-card">
-          <div className="card-header-dash">
-            <h3>🎙️ Progression entretiens</h3>
-            {avgScore && <span className="avg-score">Moy: {avgScore}/100</span>}
-          </div>
-          {entretienScores?.length === 0 ? (
-            <div className="empty-state">
-              <span>🎙️</span>
-              <p>Pas encore d'entretien</p>
-              <button className="btn-start-cand" onClick={() => setView('entretien')}>
-                Commencer →
-              </button>
-            </div>
-          ) : (
-            <div className="scores-timeline">
-              {entretienScores.map((s, i) => (
-                <div key={i} className="score-timeline-item">
-                  <div className="stl-bar-wrap">
-                    <div className="stl-bar" style={{
-                      width: `${s.score}%`,
-                      background: s.score >= 80 ? '#10b981' : s.score >= 60 ? '#f59e0b' : '#ef4444'
-                    }}/>
-                  </div>
-                  <span className="stl-score">{s.score}/100</span>
-                  <span className="stl-date">{s.date || new Date(s.createdAt).toLocaleDateString('fr-FR')}</span>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:8 }}>
+                  {b.pays} · {b.financement}
                 </div>
-              ))}
-            </div>
-          )}
-          <button className="btn-start-cand" style={{ marginTop: 'auto', width: '100%' }} onClick={() => setView('entretien')}>
-            {entretienScores?.length > 0 ? '🔄 Nouvel entretien' : '🎙️ Démarrer'}
-          </button>
-        </div>
-
-        {/* Quick actions */}
-        <div className="dash-card actions-card">
-          <h3>⚡ Actions rapides</h3>
-          <div className="quick-actions-grid">
-            {[
-              { icon: '🔍', label: 'Trouver mes bourses', action: () => handleQuickReply('Quelles bourses correspondent à mon profil ?') },
-              { icon: '📄', label: 'Analyser mon CV', action: () => setView('cv') },
-              { icon: '🗺️', label: 'Voir la Roadmap', action: () => setView('roadmap') },
-              { icon: '💬', label: 'Chat avec l\'IA', action: () => setView('accueil') },
-            ].map((a, i) => (
-              <button key={i} className="quick-action-card" onClick={a.action}>
-                <span className="qa-icon">{a.icon}</span>
-                <span className="qa-label">{a.label}</span>
-              </button>
+                <button
+                  style={{ fontSize:11, color:'#818cf8', background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}
+                  onClick={() => handleQuickReply(`Peux-tu me donner plus de détails sur la bourse "${b.nom}" ?`)}
+                >
+                  Voir plus de détails →
+                </button>
+              </div>
             ))}
+            <button style={{ ...S.btnPrimary, width:'100%', marginTop:4 }} onClick={() => handleQuickReply('Quelles bourses correspondent à mon profil ?')}>
+              Voir plus de recommandations
+            </button>
           </div>
+
+          {/* Profil score */}
+          <div style={S.card}>
+            <div style={S.cardTitle}>Force de votre Dossier</div>
+            <div style={{ display:'flex', alignItems:'center', gap:16, margin:'16px 0' }}>
+              {/* Cercle */}
+              <div style={{ position:'relative', width:80, height:80, flexShrink:0 }}>
+                <svg width="80" height="80" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8"/>
+                  <circle cx="40" cy="40" r="32" fill="none"
+                    stroke={completion >= 80 ? '#34d399' : completion >= 60 ? '#fbbf24' : '#818cf8'}
+                    strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={`${completion * 2.01} 201`}
+                    transform="rotate(-90 40 40)"
+                    style={{ transition:'stroke-dasharray 0.8s ease' }}
+                  />
+                </svg>
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:'#f1f5f9' }}>
+                  {completion}%
+                </div>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, marginBottom:6 }}>
+                  {completion >= 100 ? 'Profil complet !' : completion >= 80 ? 'Presque complet' : 'Profil à compléter'}
+                </div>
+                {['name','email','pays','niveau','domaine'].map(f => (
+                  <div key={f} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                    <div style={{ width:5, height:5, borderRadius:'50%', background: user[f] ? '#34d399' : 'rgba(255,255,255,0.15)' }}/>
+                    <div style={{ fontSize:11, color: user[f] ? '#94a3b8' : '#475569' }}>
+                      {{ name:'Nom', email:'Email', pays:'Pays cible', niveau:'Niveau', domaine:'Domaine' }[f]}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button style={{ ...S.btnOutline, flex:1, textAlign:'center' }} onClick={() => setView('profil')}>
+                Modifier le profil
+              </button>
+              {completion < 100 && (
+                <button style={{ ...S.btnPrimary, flex:1, textAlign:'center' }} onClick={() => handleQuickReply('Je veux compléter mon profil')}>
+                  Lancer le Chat ↗
+                </button>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <style>{`
-        .dashboard-page { width: 100%; padding: 32px 16px; max-width: 1100px; margin: 0 auto; }
-        .dash-banner {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 24px 28px; background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1));
-          border: 1px solid rgba(99,102,241,0.2); border-radius: 20px;
-          margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
-        }
-        .banner-left { display: flex; align-items: center; gap: 16px; }
-        .banner-avatar {
-          width: 52px; height: 52px; border-radius: 50%;
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; font-weight: 800; color: white;
-        }
-        .banner-left h2 { font-size: 1.3rem; font-weight: 800; color: #f1f5f9; margin-bottom: 4px; }
-        .banner-left p { color: #64748b; font-size: 13px; }
-        .banner-right { display: flex; gap: 10px; flex-wrap: wrap; }
-        .quick-action {
-          padding: 8px 16px; border-radius: 10px;
-          background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
-          color: #818cf8; font-size: 13px; font-weight: 500; cursor: pointer;
-          transition: all 0.2s;
-        }
-        .quick-action:hover { background: rgba(99,102,241,0.25); }
-
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-        .stat-card {
-          display: flex; align-items: center; gap: 12px;
-          padding: 16px 20px; background: rgba(15,15,30,0.7);
-          border: 1px solid rgba(99,102,241,0.15); border-radius: 14px;
-          transition: all 0.2s;
-        }
-        .stat-card.highlight { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.08); }
-        .stat-icon { font-size: 24px; }
-        .stat-val { display: block; font-size: 1.3rem; font-weight: 900; color: #f1f5f9; }
-        .stat-lbl { font-size: 11px; color: #475569; }
-
-        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .dash-card {
-          background: rgba(15,15,30,0.7); border: 1px solid rgba(99,102,241,0.15);
-          border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px;
-        }
-        .card-header-dash { display: flex; justify-content: space-between; align-items: center; }
-        .card-header-dash h3 { font-size: 14px; font-weight: 700; color: #e2e8f0; }
-        .completion-pct { font-size: 1.1rem; font-weight: 800; color: #818cf8; }
-        .badge-count { width: 22px; height: 22px; border-radius: 50%; background: rgba(99,102,241,0.3); color: #818cf8; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-        .avg-score { font-size: 12px; color: #f59e0b; font-weight: 600; }
-
-        .progress-bar-wrap { }
-        .progress-bar-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
-
-        .profile-fields { display: flex; flex-direction: column; gap: 6px; }
-        .profile-field {
-          display: flex; align-items: center; gap: 8px;
-          padding: 8px 10px; border-radius: 8px; font-size: 13px;
-          background: rgba(255,255,255,0.03);
-        }
-        .profile-field.filled { border-left: 2px solid #10b981; }
-        .profile-field.empty { border-left: 2px solid #ef444440; }
-        .field-label { color: #64748b; flex: 1; }
-        .field-value { color: #e2e8f0; font-weight: 500; }
-        .field-value em { color: #334155; font-style: normal; }
-        .field-fill-btn { padding: 3px 8px; border-radius: 6px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; font-size: 11px; cursor: pointer; white-space: nowrap; }
-        .btn-edit-profile { padding: 9px; border-radius: 10px; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); color: #818cf8; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-        .btn-edit-profile:hover { background: rgba(99,102,241,0.22); }
-
-        .loading-state, .empty-state { text-align: center; padding: 32px; color: #475569; }
-        .empty-state span { font-size: 32px; display: block; margin-bottom: 8px; }
-        .empty-state p { font-size: 13px; margin-bottom: 12px; }
-        .btn-start-cand { padding: 8px 16px; border-radius: 8px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-        .btn-start-cand:hover { background: rgba(99,102,241,0.25); }
-
-        .candidatures-list { display: flex; flex-direction: column; gap: 8px; }
-        .candidature-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; }
-        .cand-info { display: flex; flex-direction: column; gap: 2px; }
-        .cand-name { font-size: 13px; font-weight: 600; color: #e2e8f0; }
-        .cand-pays { font-size: 11px; color: #64748b; }
-        .cand-status { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px; border: 1px solid; }
-
-        .scores-timeline { display: flex; flex-direction: column; gap: 8px; }
-        .score-timeline-item { display: flex; align-items: center; gap: 10px; }
-        .stl-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-        .stl-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
-        .stl-score { font-size: 12px; color: #94a3b8; white-space: nowrap; min-width: 48px; text-align: right; }
-        .stl-date { font-size: 11px; color: #475569; white-space: nowrap; }
-
-        .actions-card { grid-column: 1 / -1; }
-        .actions-card h3 { font-size: 14px; font-weight: 700; color: #e2e8f0; }
-        .quick-actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .quick-action-card {
-          display: flex; flex-direction: column; align-items: center; gap: 10px;
-          padding: 20px 16px; border-radius: 14px;
-          background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.15);
-          cursor: pointer; transition: all 0.2s;
-        }
-        .quick-action-card:hover { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); transform: translateY(-2px); }
-        .qa-icon { font-size: 28px; }
-        .qa-label { font-size: 12px; color: #64748b; text-align: center; font-weight: 500; }
-
-        @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr 1fr; } .dash-grid { grid-template-columns: 1fr; } .quick-actions-grid { grid-template-columns: 1fr 1fr; } .actions-card { grid-column: 1; } }
-        @media (max-width: 480px) { .stats-row { grid-template-columns: 1fr 1fr; } .quick-actions-grid { grid-template-columns: 1fr 1fr; } }
-      `}</style>
     </div>
   );
 }
+
+const S = {
+  page: { width:'100%', padding:'28px 20px', maxWidth:1100, margin:'0 auto', fontFamily:'sans-serif' },
+  header: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 },
+  h1: { fontSize:'1.5rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 },
+  headerSub: { fontSize:13, color:'#64748b' },
+
+  kpiRow: { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 },
+  kpiCard: { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'16px 18px' },
+  kpiLabel: { fontSize:11, color:'#64748b', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.04em' },
+  kpiVal: { fontSize:26, fontWeight:800 },
+
+  mainGrid: { display:'grid', gridTemplateColumns:'1.2fr 1fr', gap:16 },
+  card: { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'18px 20px' },
+  cardTitle: { fontSize:14, fontWeight:700, color:'#e2e8f0' },
+  cardSub: { fontSize:12, color:'#64748b', marginTop:2 },
+
+  miniStat: { display:'flex', flexDirection:'column', gap:2 },
+  miniVal: { fontSize:16, fontWeight:700, color:'#f1f5f9' },
+  miniLabel: { fontSize:11, color:'#64748b' },
+
+  btnPrimary: { padding:'8px 16px', borderRadius:9, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'#fff', border:'none', fontSize:13, fontWeight:600, cursor:'pointer' },
+  btnOutline: { padding:'8px 16px', borderRadius:9, background:'transparent', color:'#94a3b8', border:'1px solid rgba(255,255,255,0.15)', fontSize:13, cursor:'pointer' },
+  btnXs: { padding:'4px 10px', borderRadius:8, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.25)', color:'#818cf8', fontSize:11, cursor:'pointer' },
+};

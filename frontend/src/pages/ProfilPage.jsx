@@ -2,309 +2,381 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE = 'http://localhost:3000/api';
 
-export default function ProfilPage({ user, setUser, handleLogout, handleQuickReply }) {
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    name:    user?.name    || '',
-    pays:    user?.pays    || '',
-    niveau:  user?.niveau  || '',
-    domaine: user?.domaine || '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+const emptyProfile = {
+  name: '', email: '', phone: '', dateOfBirth: '',
+  nationality: '', countryOfResidence: '',
+  currentLevel: '', fieldOfStudy: '', institution: '',
+  gpa: '', graduationYear: '',
+  academicHistory: [], workExperience: [],
+  languages: [], skills: [],
+  targetDegree: '', targetCountries: [], targetFields: [],
+  motivationSummary: '',
+};
 
-  // Sync form when user prop changes (after AI updates profile)
+export default function ProfilPage({ user, setUser, handleLogout, handleQuickReply }) {
+  const [tab, setTab]         = useState('personal');
+  const [profile, setProfile] = useState(emptyProfile);
+  const [saving, setSaving]   = useState(false);
+  const [saved,  setSaved]    = useState(false);
+
   useEffect(() => {
     if (user) {
-      setForm({
-        name:    user.name    || '',
-        pays:    user.pays    || '',
-        niveau:  user.niveau  || '',
-        domaine: user.domaine || '',
+      setProfile({
+        ...emptyProfile,
+        name:              user.name             || '',
+        email:             user.email            || '',
+        phone:             user.phone            || '',
+        nationality:       user.nationality      || '',
+        countryOfResidence:user.countryOfResidence || '',
+        currentLevel:      user.currentLevel     || user.niveau  || '',
+        fieldOfStudy:      user.fieldOfStudy     || user.domaine || '',
+        institution:       user.institution      || '',
+        gpa:               user.gpa?.toString()  || '',
+        graduationYear:    user.graduationYear?.toString() || '',
+        academicHistory:   user.academicHistory  || [],
+        workExperience:    user.workExperience   || [],
+        languages:         user.languages        || [],
+        skills:            user.skills           || [],
+        targetDegree:      user.targetDegree     || '',
+        targetCountries:   user.targetCountries  || (user.pays ? [{ country: user.pays }] : []),
+        targetFields:      user.targetFields     || [],
+        motivationSummary: user.motivationSummary|| '',
       });
     }
   }, [user]);
-
-  const niveaux  = ['Licence', 'Master 1', 'Master 2', 'Doctorat', 'Post-doc', 'Ingénieur'];
-  const paysList = ['France', 'USA', 'UK', 'Canada', 'Allemagne', 'Belgique', 'Suisse', 'Japon', 'Australie', 'Autre'];
-  const domaines = ['Informatique', 'Médecine', 'Droit', 'Sciences', 'Arts', 'Business', 'Ingénierie', 'Lettres', 'Sciences sociales', 'Autre'];
-
-  const profileComplete = !!(user?.pays && user?.niveau && user?.domaine);
-  const missingFields   = ['pays', 'niveau', 'domaine'].filter(f => !user?.[f]);
 
   const handleSave = async () => {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/users/${user.id}`, {
+      const body = {
+        name:              profile.name,
+        pays:              profile.targetCountries[0]?.country || '',
+        niveau:            profile.currentLevel,
+        domaine:           profile.fieldOfStudy,
+        phone:             profile.phone,
+        nationality:       profile.nationality,
+        countryOfResidence:profile.countryOfResidence,
+        currentLevel:      profile.currentLevel,
+        fieldOfStudy:      profile.fieldOfStudy,
+        institution:       profile.institution,
+        gpa:               profile.gpa,
+        graduationYear:    profile.graduationYear,
+        academicHistory:   profile.academicHistory,
+        workExperience:    profile.workExperience,
+        languages:         profile.languages,
+        skills:            profile.skills,
+        targetDegree:      profile.targetDegree,
+        targetCountries:   profile.targetCountries,
+        targetFields:      profile.targetFields,
+        motivationSummary: profile.motivationSummary,
+      };
+
+      console.log('[ProfilPage] Sauvegarde →', user.id, body);
+
+      // ← /update-profile (endpoint non protégé) au lieu de /users/:id directement
+      const res = await fetch(`${API_BASE}/users/${user.id}/update-profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Save failed');
-      const updated = { ...user, ...form };
+
+      const result = await res.json();
+      console.log('[ProfilPage] Réponse:', res.status, result);
+
+      if (!res.ok) throw new Error(result.error || `Erreur ${res.status}`);
+
+      // Mettre à jour localStorage avec la réponse complète du serveur
+      const updated = { ...user, ...(result.user || body) };
       localStorage.setItem('opps_user', JSON.stringify(updated));
       setUser(updated);
-      setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error(err);
+      console.error('[ProfilPage] Erreur:', err);
     } finally {
       setSaving(false);
     }
   };
 
-  if (!user) {
-    return (
-      <div className="profil-locked">
-        <span>👤</span>
-        <h3>Profil non disponible</h3>
-        <p>Connectez-vous pour accéder à votre profil</p>
-        <button onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
-        <style>{`
-          .profil-locked { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:16px;text-align:center;color:#64748b; }
-          .profil-locked span { font-size:48px; }
-          .profil-locked h3 { font-size:1.3rem;color:#e2e8f0; }
-          .profil-locked button { padding:12px 24px;border-radius:12px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border:none;font-size:14px;font-weight:600;cursor:pointer; }
-        `}</style>
-      </div>
-    );
-  }
+  const score = [
+    !!profile.name, !!profile.nationality, !!profile.currentLevel,
+    !!profile.fieldOfStudy, !!profile.institution, !!profile.gpa,
+    profile.languages.length > 0, !!profile.targetDegree,
+    profile.targetCountries.length > 0, !!profile.motivationSummary,
+  ].filter(Boolean).length * 10;
+
+  if (!user) return (
+    <div style={S.locked}>
+      <span style={{ fontSize: 48 }}>👤</span>
+      <h3 style={{ color: '#e2e8f0' }}>Profil non disponible</h3>
+      <p style={{ color: '#64748b' }}>Connectez-vous pour accéder à votre profil</p>
+      <button style={S.lockBtn} onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
+    </div>
+  );
+
+  const tabs = [
+    { id: 'personal',   label: 'Personnel',   icon: '👤' },
+    { id: 'academic',   label: 'Académique',  icon: '🎓' },
+    { id: 'experience', label: 'Expérience',  icon: '💼' },
+    { id: 'skills',     label: 'Compétences', icon: '🛠️' },
+    { id: 'goals',      label: 'Objectifs',   icon: '🎯' },
+  ];
 
   return (
-    <div className="profil-page">
-      <div className="profil-container">
+    <div style={S.page}>
+      {/* Header */}
+      <div style={S.header}>
+        <div style={S.hLeft}>
+          <div style={S.avatar}>{(user.name || user.email || 'U')[0].toUpperCase()}</div>
+          <div>
+            <div style={S.hName}>{user.name || 'Mon Profil'}</div>
+            <div style={S.hEmail}>{user.email}</div>
+          </div>
+        </div>
+        <div>
+          <div style={S.scoreLabel}>Complétude du profil</div>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={S.scoreBarBg}>
+              <div style={{ ...S.scoreBarFill, width:`${score}%`, background: score>=80?'#4ade80':score>=50?'#fbbf24':'#6366f1' }} />
+            </div>
+            <span style={{ color: score>=80?'#4ade80':score>=50?'#fbbf24':'#818cf8', fontWeight:700 }}>{score}%</span>
+          </div>
+        </div>
+      </div>
 
-        {/* ── Hero ─────────────────────────────────────────────────── */}
-        <div className="profil-hero">
-          <div className="profil-avatar">
-            {(user.name || user.email || 'U')[0].toUpperCase()}
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2>{user.name || 'Utilisateur'}</h2>
-            <p>{user.email}</p>
-            {saved && <span className="save-badge">✅ Profil mis à jour !</span>}
-          </div>
-          {!editing && (
-            <button className="btn-edit" onClick={() => setEditing(true)}>✏️ Modifier</button>
-          )}
+      <div style={S.body}>
+        {/* Tabs */}
+        <div style={S.tabBar}>
+          {tabs.map(t => (
+            <button key={t.id} style={{ ...S.tabBtn, ...(tab===t.id ? S.tabOn : {}) }} onClick={() => setTab(t.id)}>
+              <span style={{ marginRight:5 }}>{t.icon}</span>{t.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── Completion banner ────────────────────────────────────── */}
-        {!profileComplete && (
-          <div className="profil-incomplete-banner">
-            <span>⚠️</span>
-            <div>
-              <strong>Profil incomplet</strong>
-              <p>Complétez votre profil pour recevoir des recommandations personnalisées.</p>
-              <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-                Manquant : {missingFields.map(f => ({ pays: '🌍 Pays cible', niveau: '🎓 Niveau', domaine: '📚 Domaine' }[f])).join(', ')}
-              </p>
+        {/* PERSONAL */}
+        {tab === 'personal' && (
+          <div style={S.sec}>
+            <div style={S.secTitle}>Informations Personnelles</div>
+            <div style={S.g2}>
+              <F label="Nom complet"        value={profile.name}              set={v=>setProfile(p=>({...p,name:v}))}              placeholder="Prénom Nom" />
+              <F label="Email"              value={profile.email}             readOnly />
+              <F label="Téléphone"          value={profile.phone}             set={v=>setProfile(p=>({...p,phone:v}))}             placeholder="+216 XX XXX XXX" />
+              <F label="Date de naissance"  value={profile.dateOfBirth}       set={v=>setProfile(p=>({...p,dateOfBirth:v}))}       type="date" />
+              <F label="Nationalité"        value={profile.nationality}       set={v=>setProfile(p=>({...p,nationality:v}))}       placeholder="Ex: Tunisienne" />
+              <F label="Pays de résidence"  value={profile.countryOfResidence}set={v=>setProfile(p=>({...p,countryOfResidence:v}))}placeholder="Ex: Tunisie" />
             </div>
-            <button className="btn-complete" onClick={() => setEditing(true)}>Compléter</button>
           </div>
         )}
 
-        {/* ── Fields / Edit form ───────────────────────────────────── */}
-        <div className="profil-card">
-          <h3>Informations personnelles</h3>
-
-          {editing ? (
-            <div className="edit-form">
-              <div className="form-group">
-                <label>Nom complet</label>
-                <input
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="Votre nom complet"
-                />
-              </div>
-              <div className="form-group">
-                <label>Pays cible 🌍</label>
-                <select value={form.pays} onChange={e => setForm({ ...form, pays: e.target.value })}>
-                  <option value="">Choisir un pays</option>
-                  {paysList.map(p => <option key={p}>{p}</option>)}
+        {/* ACADEMIC */}
+        {tab === 'academic' && (
+          <div style={S.sec}>
+            <div style={S.secTitle}>Parcours Académique Actuel</div>
+            <div style={S.g2}>
+              <div>
+                <div style={S.lbl}>Niveau actuel</div>
+                <select style={S.inp} value={profile.currentLevel} onChange={e=>setProfile(p=>({...p,currentLevel:e.target.value}))}>
+                  <option value="">Sélectionner...</option>
+                  {['Licence','Master 1','Master 2','Doctorat','Ingénieur'].map(v=><option key={v}>{v}</option>)}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Niveau d'études 🎓</label>
-                <select value={form.niveau} onChange={e => setForm({ ...form, niveau: e.target.value })}>
-                  <option value="">Choisir un niveau</option>
-                  {niveaux.map(n => <option key={n}>{n}</option>)}
-                </select>
+              <F label="Domaine d'études"   value={profile.fieldOfStudy}  set={v=>setProfile(p=>({...p,fieldOfStudy:v}))}  placeholder="Ex: Informatique" />
+              <div style={{ gridColumn:'1/-1' }}>
+                <F label="Établissement"    value={profile.institution}   set={v=>setProfile(p=>({...p,institution:v}))}   placeholder="Ex: Faculté des Sciences" />
               </div>
-              <div className="form-group">
-                <label>Domaine d'études 📚</label>
-                <select value={form.domaine} onChange={e => setForm({ ...form, domaine: e.target.value })}>
-                  <option value="">Choisir un domaine</option>
-                  {domaines.map(d => <option key={d}>{d}</option>)}
-                </select>
-              </div>
-              <div className="form-actions">
-                <button className="btn-save" onClick={handleSave} disabled={saving}>
-                  {saving ? '⏳ Sauvegarde...' : '💾 Sauvegarder'}
-                </button>
-                <button className="btn-cancel" onClick={() => setEditing(false)}>Annuler</button>
-              </div>
+              <F label="Moyenne (sur 20)"   value={profile.gpa}           set={v=>setProfile(p=>({...p,gpa:v}))}           type="number" placeholder="Ex: 14.5" />
+              <F label="Année de diplôme"   value={profile.graduationYear}set={v=>setProfile(p=>({...p,graduationYear:v}))}type="number" placeholder="Ex: 2026" />
             </div>
-          ) : (
-            <div className="profil-fields">
-              {[
-                { icon: '👤', label: 'Nom complet',       value: user.name,    field: 'name'    },
-                { icon: '📧', label: 'Email',              value: user.email,   field: 'email'   },
-                { icon: '🌍', label: 'Pays cible',         value: user.pays,    field: 'pays'    },
-                { icon: '🎓', label: "Niveau d'études",    value: user.niveau,  field: 'niveau'  },
-                { icon: '📚', label: 'Domaine',            value: user.domaine, field: 'domaine' },
-              ].map((f, i) => (
-                <div key={i} className={`profil-field-row ${!f.value && f.field !== 'email' ? 'missing' : ''}`}>
-                  <span className="pf-icon">{f.icon}</span>
-                  <div className="pf-info">
-                    <span className="pf-label">{f.label}</span>
-                    <span className={`pf-value ${!f.value ? 'empty' : ''}`}>
-                      {f.value || <em>Non renseigné</em>}
-                    </span>
+            <div style={S.secTitle}>Historique Académique</div>
+            {profile.academicHistory.map((h,i)=>(
+              <div key={i} style={S.card}>
+                <div style={S.g2}>
+                  {['degree','institution','field','year','grade'].map(k=>(
+                    <F key={k} label={{degree:'Diplôme',institution:'Établissement',field:'Domaine',year:'Année',grade:'Mention'}[k]}
+                       value={h[k]} set={v=>{const a=[...profile.academicHistory];a[i][k]=v;setProfile(p=>({...p,academicHistory:a}));}} />
+                  ))}
+                </div>
+                <button style={S.rmBtn} onClick={()=>setProfile(p=>({...p,academicHistory:p.academicHistory.filter((_,j)=>j!==i)}))}>✕ Supprimer</button>
+              </div>
+            ))}
+            <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,academicHistory:[...p.academicHistory,{degree:'',institution:'',field:'',year:'',grade:''}]}))}>+ Ajouter un diplôme</button>
+          </div>
+        )}
+
+        {/* EXPERIENCE */}
+        {tab === 'experience' && (
+          <div style={S.sec}>
+            <div style={S.secTitle}>Expériences & Stages</div>
+            {profile.workExperience.map((w,i)=>(
+              <div key={i} style={S.card}>
+                <div style={S.g2}>
+                  <div>
+                    <div style={S.lbl}>Type</div>
+                    <select style={S.inp} value={w.type||''} onChange={e=>{const a=[...profile.workExperience];a[i].type=e.target.value;setProfile(p=>({...p,workExperience:a}));}}>
+                      <option value="">Sélectionner...</option>
+                      <option value="job">Emploi</option>
+                      <option value="internship">Stage</option>
+                      <option value="volunteer">Bénévolat</option>
+                    </select>
                   </div>
-                  {!f.value && f.field !== 'email' && (
-                    <span className="missing-dot" title="Champ manquant">●</span>
-                  )}
+                  <F label="Poste"      value={w.position}   set={v=>{const a=[...profile.workExperience];a[i].position=v;setProfile(p=>({...p,workExperience:a}));}}    placeholder="Ex: Développeur Web" />
+                  <F label="Entreprise" value={w.company}    set={v=>{const a=[...profile.workExperience];a[i].company=v;setProfile(p=>({...p,workExperience:a}));}} />
+                  <F label="Date début" value={w.startDate}  set={v=>{const a=[...profile.workExperience];a[i].startDate=v;setProfile(p=>({...p,workExperience:a}));}}  type="date" />
+                  <F label="Date fin"   value={w.endDate}    set={v=>{const a=[...profile.workExperience];a[i].endDate=v;setProfile(p=>({...p,workExperience:a}));}}    type="date" />
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={S.lbl}>Description</div>
+                    <textarea style={{ ...S.inp, minHeight:80, resize:'vertical' }} value={w.description}
+                      onChange={e=>{const a=[...profile.workExperience];a[i].description=e.target.value;setProfile(p=>({...p,workExperience:a}));}}
+                      placeholder="Décrivez vos missions..." />
+                  </div>
+                </div>
+                <button style={S.rmBtn} onClick={()=>setProfile(p=>({...p,workExperience:p.workExperience.filter((_,j)=>j!==i)}))}>✕ Supprimer</button>
+              </div>
+            ))}
+            <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,workExperience:[...p.workExperience,{position:'',company:'',startDate:'',endDate:'',description:'',type:'internship'}]}))}>+ Ajouter une expérience</button>
+          </div>
+        )}
+
+        {/* SKILLS */}
+        {tab === 'skills' && (
+          <div style={S.sec}>
+            <div style={S.secTitle}>Langues</div>
+            {profile.languages.map((l,i)=>(
+              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, alignItems:'end' }}>
+                <F label="Langue"     value={l.language}    set={v=>{const a=[...profile.languages];a[i].language=v;setProfile(p=>({...p,languages:a}));}}    placeholder="Ex: Anglais" />
+                <div>
+                  <div style={S.lbl}>Niveau</div>
+                  <select style={S.inp} value={l.level} onChange={e=>{const a=[...profile.languages];a[i].level=e.target.value;setProfile(p=>({...p,languages:a}));}}>
+                    <option value="">Niveau...</option>
+                    {['A1','A2','B1','B2','C1','C2'].map(v=><option key={v}>{v}</option>)}
+                  </select>
+                </div>
+                <F label="Certificat" value={l.certificate} set={v=>{const a=[...profile.languages];a[i].certificate=v;setProfile(p=>({...p,languages:a}));}} placeholder="Ex: IELTS 7.5" />
+                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={()=>setProfile(p=>({...p,languages:p.languages.filter((_,j)=>j!==i)}))}>✕</button>
+              </div>
+            ))}
+            <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,languages:[...p.languages,{language:'',level:'',certificate:''}]}))}>+ Ajouter une langue</button>
+
+            <div style={{ ...S.secTitle, marginTop:24 }}>Compétences Techniques</div>
+            {profile.skills.map((sk,i)=>(
+              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:12, alignItems:'end' }}>
+                <F label="Compétence" value={sk.skill} set={v=>{const a=[...profile.skills];a[i].skill=v;setProfile(p=>({...p,skills:a}));}} placeholder="Ex: Python, React..." />
+                <div>
+                  <div style={S.lbl}>Niveau</div>
+                  <select style={S.inp} value={sk.level} onChange={e=>{const a=[...profile.skills];a[i].level=e.target.value;setProfile(p=>({...p,skills:a}));}}>
+                    <option value="">Niveau...</option>
+                    <option value="beginner">Débutant</option>
+                    <option value="intermediate">Intermédiaire</option>
+                    <option value="advanced">Avancé</option>
+                    <option value="expert">Expert</option>
+                  </select>
+                </div>
+                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={()=>setProfile(p=>({...p,skills:p.skills.filter((_,j)=>j!==i)}))}>✕</button>
+              </div>
+            ))}
+            <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,skills:[...p.skills,{skill:'',level:''}]}))}>+ Ajouter une compétence</button>
+          </div>
+        )}
+
+        {/* GOALS */}
+        {tab === 'goals' && (
+          <div style={S.sec}>
+            <div style={S.secTitle}>Projet d'Études à l'Étranger</div>
+            <div style={{ marginBottom:16 }}>
+              <div style={S.lbl}>Niveau visé</div>
+              <select style={S.inp} value={profile.targetDegree} onChange={e=>setProfile(p=>({...p,targetDegree:e.target.value}))}>
+                <option value="">Sélectionner...</option>
+                <option value="Licence">Licence</option>
+                <option value="Master">Master</option>
+                <option value="Doctorat">Doctorat</option>
+                <option value="short">Formation courte</option>
+              </select>
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={S.lbl}>Pays cibles</div>
+              {profile.targetCountries.map((c,i)=>(
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <input style={{ ...S.inp, flex:1 }} value={c.country}
+                    onChange={e=>{const a=[...profile.targetCountries];a[i].country=e.target.value;setProfile(p=>({...p,targetCountries:a}));}}
+                    placeholder="Ex: France, Canada..." />
+                  <button style={S.rmBtn} onClick={()=>setProfile(p=>({...p,targetCountries:p.targetCountries.filter((_,j)=>j!==i)}))}>✕</button>
                 </div>
               ))}
+              <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,targetCountries:[...p.targetCountries,{country:''}]}))}>+ Ajouter un pays</button>
             </div>
-          )}
-        </div>
-
-        {/* ── Profile completion percentage ────────────────────────── */}
-        <div className="profil-progress-card">
-          <div className="progress-header">
-            <span>Complétude du profil</span>
-            <span className="progress-pct">
-              {Math.round((['name','pays','niveau','domaine'].filter(f => user?.[f]).length / 4) * 100)}%
-            </span>
+            <div style={{ marginBottom:16 }}>
+              <div style={S.lbl}>Domaines visés</div>
+              {profile.targetFields.map((f,i)=>(
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <input style={{ ...S.inp, flex:1 }} value={f.field}
+                    onChange={e=>{const a=[...profile.targetFields];a[i].field=e.target.value;setProfile(p=>({...p,targetFields:a}));}}
+                    placeholder="Ex: IA, Data Science..." />
+                  <button style={S.rmBtn} onClick={()=>setProfile(p=>({...p,targetFields:p.targetFields.filter((_,j)=>j!==i)}))}>✕</button>
+                </div>
+              ))}
+              <button style={S.addBtn} onClick={()=>setProfile(p=>({...p,targetFields:[...p.targetFields,{field:''}]}))}>+ Ajouter un domaine</button>
+            </div>
+            <div>
+              <div style={S.lbl}>Résumé de motivation</div>
+              <textarea style={{ ...S.inp, minHeight:140, resize:'vertical' }} value={profile.motivationSummary}
+                onChange={e=>setProfile(p=>({...p,motivationSummary:e.target.value}))}
+                placeholder="Décrivez vos motivations pour étudier à l'étranger..." />
+              <div style={{ color:'#475569', fontSize:12, textAlign:'right', marginTop:4 }}>{profile.motivationSummary.length} caractères</div>
+            </div>
           </div>
-          <div className="progress-bar-bg">
-            <div
-              className="progress-bar-fill"
-              style={{
-                width: `${Math.round((['name','pays','niveau','domaine'].filter(f => user?.[f]).length / 4) * 100)}%`
-              }}
-            />
-          </div>
-          <p className="progress-hint">
-            {profileComplete
-              ? '✅ Profil complet ! Vous pouvez obtenir des recommandations personnalisées.'
-              : `Complétez votre profil pour débloquer les recommandations IA.`}
-          </p>
-        </div>
+        )}
 
-        {/* ── Actions ─────────────────────────────────────────────── */}
-        <div className="profil-actions">
-          <button
-            className="btn-chat-update"
-            onClick={() => handleQuickReply('Je veux mettre à jour mon profil')}>
-            🤖 Mettre à jour via l'IA
+        {/* Footer */}
+        <div style={S.footer}>
+          <button style={S.chatBtn} onClick={()=>handleQuickReply('Je veux mettre à jour mon profil')}>🤖 Mettre à jour via l'IA</button>
+          <button style={{ ...S.saveBtn, background: saved?'#10b981':'linear-gradient(135deg,#4f46e5,#7c3aed)' }} onClick={handleSave} disabled={saving}>
+            {saving ? '⏳ Sauvegarde...' : saved ? '✅ Sauvegardé !' : '💾 Sauvegarder'}
           </button>
-          <button className="btn-logout" onClick={handleLogout}>
-            ↩ Déconnexion
-          </button>
+          <button style={S.logoutBtn} onClick={handleLogout}>↩ Déconnexion</button>
         </div>
-
       </div>
-
-      <style>{`
-        .profil-page { width:100%;padding:32px 16px;display:flex;justify-content:center; }
-        .profil-container { width:100%;max-width:520px;display:flex;flex-direction:column;gap:20px; }
-
-        .profil-hero {
-          display:flex;align-items:center;gap:20px;
-          padding:24px 28px;
-          background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1));
-          border:1px solid rgba(99,102,241,0.25);border-radius:20px;
-        }
-        .profil-avatar {
-          width:60px;height:60px;border-radius:50%;
-          background:linear-gradient(135deg,#6366f1,#8b5cf6);
-          display:flex;align-items:center;justify-content:center;
-          font-size:26px;font-weight:800;color:white;flex-shrink:0;
-        }
-        .profil-hero h2 { font-size:1.3rem;font-weight:800;color:#f1f5f9;margin-bottom:4px; }
-        .profil-hero p  { color:#64748b;font-size:13px; }
-        .save-badge     { font-size:12px;color:#10b981;display:block;margin-top:4px; }
-        .btn-edit {
-          padding:8px 16px;border-radius:10px;
-          background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);
-          color:#818cf8;font-size:13px;cursor:pointer;white-space:nowrap;
-        }
-
-        .profil-incomplete-banner {
-          display:flex;align-items:center;gap:14px;
-          padding:16px 20px;
-          background:rgba(245,158,11,0.08);
-          border:1px solid rgba(245,158,11,0.25);
-          border-radius:14px;font-size:13px;color:#fbbf24;
-        }
-        .profil-incomplete-banner span { font-size:22px; }
-        .profil-incomplete-banner strong { color:#fde68a;display:block;margin-bottom:4px; }
-        .profil-incomplete-banner p { margin:0;color:#94a3b8; }
-        .btn-complete {
-          margin-left:auto;padding:8px 14px;border-radius:8px;white-space:nowrap;
-          background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
-          color:#fbbf24;font-size:12px;font-weight:600;cursor:pointer;
-        }
-
-        .profil-card {
-          background:rgba(15,15,30,0.8);
-          border:1px solid rgba(99,102,241,0.15);
-          border-radius:16px;padding:24px;
-        }
-        .profil-card h3 { font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:20px; }
-        .profil-fields  { display:flex;flex-direction:column;gap:10px; }
-        .profil-field-row {
-          display:flex;gap:12px;align-items:center;
-          padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;
-          border:1px solid transparent;transition:border-color 0.2s;
-        }
-        .profil-field-row.missing { border-color:rgba(245,158,11,0.15); }
-        .pf-icon  { font-size:18px; }
-        .pf-info  { flex:1; }
-        .pf-label { display:block;font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px; }
-        .pf-value { font-size:14px;color:#e2e8f0;font-weight:500; }
-        .pf-value.empty em { color:#334155;font-style:normal; }
-        .missing-dot { color:#f59e0b;font-size:10px;margin-left:auto; }
-
-        .edit-form   { display:flex;flex-direction:column;gap:16px; }
-        .form-group  { display:flex;flex-direction:column;gap:6px; }
-        .form-group label { font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px; }
-        .form-group input, .form-group select {
-          padding:11px 14px;border-radius:10px;
-          border:1px solid rgba(99,102,241,0.2);
-          background:rgba(255,255,255,0.04);color:#e2e8f0;
-          font-size:14px;outline:none;transition:border-color 0.2s;
-        }
-        .form-group input:focus,.form-group select:focus { border-color:rgba(99,102,241,0.5); }
-        .form-group select option { background:#0f0f1e; }
-        .form-actions  { display:flex;gap:10px; }
-        .btn-save      { flex:1;padding:11px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border:none;font-size:14px;font-weight:600;cursor:pointer; }
-        .btn-save:disabled { opacity:0.6;cursor:wait; }
-        .btn-cancel    { padding:11px 18px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#64748b;font-size:14px;cursor:pointer; }
-
-        .profil-progress-card {
-          background:rgba(15,15,30,0.8);
-          border:1px solid rgba(99,102,241,0.15);
-          border-radius:16px;padding:20px;
-        }
-        .progress-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;color:#94a3b8; }
-        .progress-pct    { font-weight:700;color:#818cf8; }
-        .progress-bar-bg { height:6px;background:rgba(99,102,241,0.1);border-radius:99px;overflow:hidden; }
-        .progress-bar-fill { height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:99px;transition:width 0.5s ease; }
-        .progress-hint   { font-size:12px;color:#64748b;margin-top:10px; }
-
-        .profil-actions     { display:flex;gap:10px; }
-        .btn-chat-update    { flex:1;padding:12px;border-radius:12px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
-        .btn-chat-update:hover { background:rgba(99,102,241,0.25); }
-        .btn-logout         { padding:12px 20px;border-radius:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
-        .btn-logout:hover   { background:rgba(239,68,68,0.2); }
-      `}</style>
     </div>
   );
 }
+
+function F({ label, value, set, placeholder, type='text', readOnly=false }) {
+  return (
+    <div>
+      <div style={S.lbl}>{label}</div>
+      <input style={{ ...S.inp, ...(readOnly?{opacity:0.5}:{}) }} type={type} value={value||''}
+        onChange={e=>set?.(e.target.value)} placeholder={placeholder} readOnly={readOnly} />
+    </div>
+  );
+}
+
+const S = {
+  page:   { width:'100%', fontFamily:'system-ui,sans-serif', color:'#e8e8f0', background:'#0a0a0f', minHeight:'100vh' },
+  locked: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center' },
+  lockBtn:{ padding:'12px 24px', borderRadius:12, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'white', border:'none', fontSize:14, fontWeight:600, cursor:'pointer' },
+  header: { background:'#0d0d18', borderBottom:'1px solid #1e1e30', padding:'18px 32px', display:'flex', alignItems:'center', justifyContent:'space-between' },
+  hLeft:  { display:'flex', alignItems:'center', gap:14 },
+  avatar: { width:46, height:46, borderRadius:'50%', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:800, color:'white', flexShrink:0 },
+  hName:  { fontSize:'1.05rem', fontWeight:700, color:'#e8e8f0' },
+  hEmail: { fontSize:12, color:'#64748b' },
+  scoreLabel: { fontSize:10, color:'#64748b', marginBottom:5, textTransform:'uppercase', letterSpacing:1 },
+  scoreBarBg: { width:110, height:5, background:'#1e1e30', borderRadius:3, overflow:'hidden' },
+  scoreBarFill:{ height:'100%', borderRadius:3, transition:'width 0.5s' },
+  body:   { maxWidth:860, margin:'0 auto', padding:'24px 20px' },
+  tabBar: { display:'flex', gap:3, marginBottom:22, background:'#0d0d18', padding:4, borderRadius:11, border:'1px solid #1e1e30' },
+  tabBtn: { flex:1, padding:'8px 4px', borderRadius:8, border:'none', cursor:'pointer', background:'transparent', color:'rgba(144,144,176,0.55)', fontWeight:500, fontSize:'0.8rem', transition:'all 0.2s' },
+  tabOn:  { background:'linear-gradient(135deg,#7c6af7,#5b4de8)', color:'#fff', fontWeight:700 },
+  sec:    { display:'flex', flexDirection:'column', gap:14 },
+  secTitle:{ color:'#c8c8e8', fontSize:'0.9rem', fontWeight:700, paddingBottom:8, borderBottom:'1px solid #2a2a3d', letterSpacing:'0.02em' },
+  g2:     { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 },
+  lbl:    { color:'#9090b0', fontSize:'0.75rem', fontWeight:600, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' },
+  inp:    { width:'100%', padding:'9px 13px', borderRadius:9, border:'1.5px solid #2a2a3d', background:'#13131f', color:'#e8e8f0', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', fontFamily:'system-ui' },
+  card:   { background:'#13131f', border:'1px solid #2a2a3d', borderRadius:11, padding:14, marginBottom:6 },
+  addBtn: { background:'transparent', border:'1.5px dashed #4a4a6a', color:'#7c6af7', padding:'7px 14px', borderRadius:8, cursor:'pointer', fontSize:'0.8rem', fontWeight:600 },
+  rmBtn:  { background:'rgba(255,80,80,0.1)', border:'none', color:'#ff6060', padding:'4px 10px', borderRadius:6, cursor:'pointer', fontSize:'0.75rem', marginTop:6 },
+  footer: { display:'flex', gap:10, marginTop:24, paddingTop:18, borderTop:'1px solid #1e1e30', flexWrap:'wrap' },
+  saveBtn:{ flex:2, padding:11, borderRadius:11, border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.3s' },
+  chatBtn:{ flex:1, padding:11, borderRadius:11, background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', color:'#818cf8', fontSize:12, fontWeight:600, cursor:'pointer' },
+  logoutBtn:{ padding:'11px 16px', borderRadius:11, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', color:'#f87171', fontSize:12, fontWeight:600, cursor:'pointer' },
+};
