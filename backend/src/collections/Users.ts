@@ -10,6 +10,7 @@ export const Users: CollectionConfig = {
     read:   () => true,
     update: () => true,
     create: () => true,
+    delete: () => true,
   },
   fields: [
     { name: 'name',    type: 'text' },

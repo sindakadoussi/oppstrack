@@ -19,15 +19,21 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   const [saving, setSaving]   = useState(false);
   const [saved,  setSaved]    = useState(false);
 
+  // ✅ Charger depuis localStorage en plus du user prop
   useEffect(() => {
+    const savedProfile = (() => {
+      try { return JSON.parse(localStorage.getItem('opps_profile') || '{}'); } catch { return {}; }
+    })();
+
     if (user) {
       setProfile({
         ...emptyProfile,
-        name:              user.name             || '',
+        ...savedProfile,  // ← données locales en priorité pour les champs non synchro Payload
+        name:              user.name             || savedProfile.name || '',
         email:             user.email            || '',
-        phone:             user.phone            || '',
-        nationality:       user.nationality      || '',
-        countryOfResidence:user.countryOfResidence || '',
+        phone:             user.phone            || savedProfile.phone || '',
+        nationality:       user.nationality      || savedProfile.nationality || '',
+        countryOfResidence:user.countryOfResidence || savedProfile.countryOfResidence || '',
         currentLevel:      user.currentLevel     || user.niveau  || '',
         fieldOfStudy:      user.fieldOfStudy     || user.domaine || '',
         institution:       user.institution      || '',
@@ -89,6 +95,15 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
       // Mettre à jour localStorage avec la réponse complète du serveur
       const updated = { ...user, ...(result.user || body) };
       localStorage.setItem('opps_user', JSON.stringify(updated));
+
+      // ✅ Sauvegarder aussi les champs non-Payload (date de naissance, etc.)
+      const localProfile = {
+        dateOfBirth: profile.dateOfBirth,
+        phone:       profile.phone,
+        nationality: profile.nationality,
+      };
+      localStorage.setItem('opps_profile', JSON.stringify(localProfile));
+
       setUser(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
