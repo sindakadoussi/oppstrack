@@ -28,14 +28,14 @@ export default buildConfig({
   },
   email: nodemailerAdapter({
   defaultFromName: 'OppTrack',
-  defaultFromAddress: 'sindakadoussi@gmail.com',
+  defaultFromAddress: 'opportunitylink32@gmail.com',
   transportOptions: {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false,
     auth: {
-      user: 'sindakadoussi@gmail.com',
-      pass: 'alunrxjzmsjgfwmb',
+      user: 'opportunitylink32@gmail.com',
+      pass: 'jebazrauhwdzswbg',
     },
   },
 }),

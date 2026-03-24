@@ -104,11 +104,15 @@ function buildFallback(bourse) {
 
 // ── BourseTimeline avec persistance de l'étape ────────────────────────────────
 function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) {
-  // ✅ Clé unique par bourse pour persister l'étape
   const stepKey = `roadmap_step_${bourse.nom.replace(/\s+/g, '_')}`;
 
   const [currentStep, setCurrentStep] = useState(() => {
-    // Lire l'étape sauvegardée au montage
+    // 1. Chercher dans la progression du user (Payload)
+    if (user?.progression) {
+      const prog = user.progression.find(p => p.bourseNom === bourse.nom);
+      if (prog) return prog.etape || 0;
+    }
+    // 2. Fallback localStorage
     try {
       const saved = localStorage.getItem(stepKey);
       return saved ? parseInt(saved, 10) : 0;
@@ -117,11 +121,25 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) 
 
   const { roadmap, genLoading } = useRoadmap(bourse);
 
-  // ✅ Sauvegarder l'étape à chaque changement
-  const goToStep = useCallback((step) => {
-    setCurrentStep(step);
-    try { localStorage.setItem(stepKey, String(step)); } catch {}
-  }, [stepKey]);
+  // ✅ Sauvegarder dans localStorage ET Payload
+ const goToStep = useCallback(async (stepIndex) => {
+  setCurrentStep(stepIndex);
+  
+  // 1. Sauvegarde locale pour la rapidité
+  localStorage.setItem(stepKey, String(stepIndex));
+
+  // 2. Mise à jour de la base de données (Payload)
+  if (user?.id) {
+    await fetch(`${API_BASE}/users/${user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_step: stepIndex, // Assure-toi que ce champ existe dans ton schéma User sur Payload
+        last_bourse: bourse.nom
+      }),
+    });
+  }
+}, [user?.id, bourse.nom]);
 
   const etapes = roadmap?.etapes || [];
   const total  = etapes.length || ETAPES_GENERIQUES.length;
@@ -251,7 +269,7 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) 
                       <button style={S.btnAI}
                         onClick={e => {
                           e.stopPropagation();
-                          handleQuickReply(`Comment réussir l'étape "${etape.titre}" pour la bourse ${bourse.nom} ?`);
+                          handleQuickReply(`Pour la bourse ${bourse.nom}, je suis à l'étape ${i+1}/${total} : "${etape.titre}". Comment réussir cette étape ? Quels documents préparer et quels conseils as-tu ?`);
                         }}>
                         🤖 Aide IA
                       </button>
@@ -394,7 +412,18 @@ export default function RoadmapPage({
             )}
           </div>
           <ChatInput input={input} setInput={setInput}
-            onSend={() => handleSend()} loading={loading}
+            onSend={() => {
+              // Enrichir le message avec le contexte de la bourse active
+              const b = bourses[activeBourse];
+              const stepKey = b ? `roadmap_step_${b.nom.replace(/\s+/g, '_')}` : null;
+              const step = stepKey ? parseInt(localStorage.getItem(stepKey) || '0') : 0;
+              if (b && input.trim()) {
+                const ctx = `[Contexte: bourse "${b.nom}", étape ${step+1}/7] `;
+                handleSend(ctx + input);
+              } else {
+                handleSend();
+              }
+            }} loading={loading}
             placeholder="Demandez conseil sur cette étape…" />
         </div>
       </div>

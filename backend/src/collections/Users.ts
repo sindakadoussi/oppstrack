@@ -78,6 +78,15 @@ export const Users: CollectionConfig = {
       type: 'array',
       fields: [{ name: 'field', type: 'text' }],
     },
+    {
+      name: 'progression',
+      type: 'array',
+      fields: [
+        { name: 'bourseNom', type: 'text' },
+        { name: 'etape',     type: 'number' }, // index 0-6
+        { name: 'updatedAt', type: 'date'   },
+      ],
+    },
     { name: 'magicToken',           type: 'text', hidden: true },
     { name: 'magicTokenExpiration', type: 'date', hidden: true },
     {
@@ -189,6 +198,8 @@ export const Users: CollectionConfig = {
               targetCountries:     user.targetCountries     || [],
               targetFields:        user.targetFields        || [],
               bourses_choisies:    user.bourses_choisies    || [],
+              progression:         user.progression         || [],
+              progression:         user.progression         || [],
             },
           })
         } catch (err: any) {
@@ -291,6 +302,116 @@ export const Users: CollectionConfig = {
           })
           return NextResponse.json({ message: `"${nom}" ajoutée`, bourses_choisies: updated.bourses_choisies })
         } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── PATCH /api/users/:id/progression ────────────────────────────────
+    {
+      path: '/:id/progression',
+      method: 'patch',
+      handler: async (req: PayloadRequest) => {
+        const id   = req.routeParams?.id as string
+        const body = await req.json?.() || req.body || {}
+        const { bourseNom, etape } = body
+
+        if (!id || !bourseNom || etape === undefined)
+          return NextResponse.json({ error: 'id, bourseNom et etape requis' }, { status: 400 })
+
+        try {
+          const existing = await req.payload.findByID({ collection: 'users', id, depth: 0 })
+          const progression: any[] = existing.progression || []
+
+          // Mettre à jour ou ajouter
+          const idx = progression.findIndex((p: any) => p.bourseNom === bourseNom)
+          if (idx >= 0) {
+            progression[idx] = { bourseNom, etape, updatedAt: new Date().toISOString() }
+          } else {
+            progression.push({ bourseNom, etape, updatedAt: new Date().toISOString() })
+          }
+
+          const updated = await req.payload.update({
+            collection: 'users', id,
+            data: { progression },
+          })
+
+          console.log(`[PROGRESSION] ${bourseNom} → étape ${etape}`)
+          return NextResponse.json({ message: 'Progression mise à jour', progression: updated.progression })
+        } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── DELETE /api/users/:id ──────────────────────────────────────────
+    {
+      path: '/:id/delete',
+      method: 'delete',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+        try {
+          await req.payload.delete({ collection: 'users', id })
+          console.log('[DELETE USER] ✅', id)
+          return NextResponse.json({ message: 'Utilisateur supprimé', id })
+        } catch (err: any) {
+          console.error('[DELETE USER] ❌', err.message)
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── PATCH /api/users/:id/progression ────────────────────────────────
+    {
+      path: '/:id/progression',
+      method: 'patch',
+      handler: async (req: PayloadRequest) => {
+        const id   = req.routeParams?.id as string
+        const body = await req.json?.() || req.body || {}
+        const { bourseNom, etape } = body
+
+        if (!id || !bourseNom || etape === undefined)
+          return NextResponse.json({ error: 'id, bourseNom et etape requis' }, { status: 400 })
+
+        try {
+          const existing = await req.payload.findByID({ collection: 'users', id, depth: 0 })
+          const progression: any[] = existing.progression || []
+
+          // Mettre à jour ou ajouter
+          const idx = progression.findIndex((p: any) => p.bourseNom === bourseNom)
+          if (idx >= 0) {
+            progression[idx] = { bourseNom, etape, updatedAt: new Date().toISOString() }
+          } else {
+            progression.push({ bourseNom, etape, updatedAt: new Date().toISOString() })
+          }
+
+          const updated = await req.payload.update({
+            collection: 'users', id,
+            data: { progression },
+          })
+
+          console.log(`[PROGRESSION] ${bourseNom} → étape ${etape}`)
+          return NextResponse.json({ message: 'Progression mise à jour', progression: updated.progression })
+        } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── DELETE /api/users/:id ──────────────────────────────────────────
+    {
+      path: '/:id',
+      method: 'delete',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+        try {
+          await req.payload.delete({ collection: 'users', id })
+          console.log('[DELETE-USER] ✅ User supprimé:', id)
+          return NextResponse.json({ message: 'Utilisateur supprimé', id })
+        } catch (err: any) {
+          console.error('[DELETE-USER] ❌', err.message)
           return NextResponse.json({ error: err.message }, { status: 500 })
         }
       },

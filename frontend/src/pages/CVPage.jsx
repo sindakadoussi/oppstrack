@@ -53,6 +53,7 @@ function CheckItem({ item }) {
 
 // ── Sélecteur de bourse ───────────────────────────────────────────────────────
 function BourseSelector({ bourses, selected, onSelect }) {
+  const selectedBourse = bourses.find(b => b.nom === selected);
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       <label style={{ fontSize:11,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:600 }}>
@@ -66,13 +67,21 @@ function BourseSelector({ bourses, selected, onSelect }) {
           fontSize:13, outline:'none', cursor:'pointer' }}>
         <option value="">-- Aucune bourse (CV générique) --</option>
         {bourses.map((b,i) => (
-          <option key={i} value={b.nom}>{b.nom} · {b.pays}</option>
+          <option key={i} value={b.nom}>{b.nom}{b.pays ? ` · ${b.pays}` : ''}</option>
         ))}
       </select>
       {selected && (
-        <div style={{ fontSize:12, color:'#818cf8', display:'flex', alignItems:'center', gap:6 }}>
-          <span>✨</span>
-          <span>L'IA va personnaliser votre document pour <strong>{selected}</strong></span>
+        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          <div style={{ fontSize:12, color:'#818cf8', display:'flex', alignItems:'center', gap:6 }}>
+            <span>✨</span>
+            <span>L'IA va scraper le site officiel de <strong>{selected}</strong> pour personnaliser votre document</span>
+          </div>
+          {selectedBourse?.url && (
+            <div style={{ fontSize:11, color:'#475569', display:'flex', alignItems:'center', gap:4 }}>
+              <span>🔗</span>
+              <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:300 }}>{selectedBourse.url}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -80,9 +89,9 @@ function BourseSelector({ bourses, selected, onSelect }) {
 }
 
 // ── Générateur IA ─────────────────────────────────────────────────────────────
-async function generateWithAI(type, bourseName, user, extraContext) {
+async function generateWithAI(type, bourseName, user, extraContext, bourseUrl) {
   const bourseInfo = bourseName
-    ? `La bourse cible est "${bourseName}". Personnalise spécifiquement pour cette bourse.`
+    ? `La bourse cible est "${bourseName}"${bourseUrl ? `. Lien officiel à scraper : ${bourseUrl}` : ''}. Personnalise spécifiquement pour cette bourse.`
     : 'Génère un document générique de qualité professionnelle.';
 
   const profil = user ? `
@@ -144,9 +153,9 @@ Retourne la lettre complète et bien formatée.`;
   return data.output || data.text || data.message || '';
 }
 
-async function analyzeDocument(text, type, bourseName) {
+async function analyzeDocument(text, type, bourseName, bourseUrl) {
   const context = bourseName
-    ? `Ce document est destiné à la bourse "${bourseName}". Analyse-le en tenant compte des exigences spécifiques de cette bourse.`
+    ? `Ce document est destiné à la bourse "${bourseName}"${bourseUrl ? `. Scrape le site officiel : ${bourseUrl} pour vérifier les exigences exactes.` : ''}. Analyse-le en tenant compte des exigences spécifiques de cette bourse.`
     : '';
 
   const res = await fetch(WEBHOOK_URL, {
@@ -205,7 +214,8 @@ export default function CVPage({ user }) {
     try {
       setTimeout(() => setGenStep('Rédaction personnalisée en cours…'), 2000);
       setTimeout(() => setGenStep('Finalisation et mise en forme…'), 5000);
-      const result = await generateWithAI(tab === 'cv' ? 'CV' : 'LM', bourse, user, extraCtx);
+      const selectedBourse = bourses.find(b => b.nom === bourse);
+      const result = await generateWithAI(tab === 'cv' ? 'CV' : 'LM', bourse, user, extraCtx, selectedBourse?.url || '');
       setContent(result || '');
       setGenStep('');
       setMode('edit');
@@ -221,7 +231,8 @@ export default function CVPage({ user }) {
     setAnalyzing(true);
     setMode('analyze');
     try {
-      const result = await analyzeDocument(content, docType, bourse);
+      const selectedBourse2 = bourses.find(b => b.nom === bourse);
+      const result = await analyzeDocument(content, docType, bourse, selectedBourse2?.url || '');
       setAnalysis(result);
       setMode('result');
     } catch {}

@@ -68,18 +68,26 @@ function AppContent() {
       .catch(() => setServerStatus(s => ({ ...s, payload: false })));
   }, []);
 
-  // ── Fetch messages depuis Payload ────────────────────────────────────────
-  const fetchMessages = useCallback(async () => {
+  // ── Fetch messages depuis Payload ──────────────────────────────────────────
+  const fetchMessages = useCallback(async (retry = 2) => {
     try {
-      const res = await fetch(
-        `${API_BASE}/messages?where[conversationId][equals]=${conversationId.current}&limit=100&sort=createdAt`,
-        { signal: AbortSignal.timeout(5000) }
-      );
+      // ✅ limit=200 + sort par createdAt pour avoir tous les messages
+      const url = `${API_BASE}/messages?where[conversationId][equals]=${conversationId.current}&limit=2000000&sort=createdAt&depth=0`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) return;
       const data = await res.json();
-      const history = (data.docs || []).map(m => ({
+      const docs = data.docs || [];
+
+      // ✅ Retry si 0 résultats mais conversationId existe (race condition Payload)
+      if (docs.length === 0 && retry > 0) {
+        setTimeout(() => fetchMessages(retry - 1), 800);
+        return;
+      }
+
+      const history = docs.map(m => ({
         sender: m.role === 'user' ? 'user' : 'ai',
-        text:   m.text || m.value || ''
+        text:   m.text || m.value || '',
+        id:     m.id,
       }));
       setMessages(history);
     } catch { /* silencieux */ }
@@ -118,7 +126,7 @@ function AppContent() {
 
   useEffect(() => { fetchEntretienScores(); }, [fetchEntretienScores]);
 
-  // ── Envoi principal ───────────────────────────────────────────────────────
+  // ── Envoi principal ────────────────────────────────────────────────────────
   const handleSend = async (messageText, options = {}) => {
     const textToSend = (messageText || input).trim();
     if (!textToSend || loading) return;
@@ -151,7 +159,7 @@ function AppContent() {
           id:             user?.id    || null,
           email:          user?.email || null,
           context:        options.context || null,
-          // Envoyer profil à la fois à la racine ET dans user_profile
+          // Profil à la racine ET dans user_profile
           pays:           user?.pays    || '',
           niveau:         user?.niveau  || '',
           domaine:        user?.domaine || '',
@@ -202,13 +210,11 @@ function AppContent() {
         conversationId.current = `chat-${u.id}`;
       }
 
-      // ── Afficher + sauvegarder le message IA ──────────────────────────
+      // ── Afficher + sauvegarder le message IA ────────────────────────────
       const aiText = data.output || data.message || data.text || '';
       if (aiText) {
-        // 1. Afficher localement immédiatement
         setMessages(prev => [...prev, { sender: 'ai', text: aiText }]);
 
-        // 2. Sauvegarder dans Payload → persistance au refresh
         fetch(`${API_BASE}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -217,7 +223,12 @@ function AppContent() {
             role:           'assistant',
             conversationId: conversationId.current
           })
-        }).catch(e => console.warn('Save AI msg:', e.message));
+        })
+        .then(() => {
+          // ✅ Re-sync depuis Payload après 1.5s pour éviter messages manquants au refresh
+          setTimeout(() => fetchMessages(), 1500);
+        })
+        .catch(e => console.warn('Save AI msg:', e.message));
       }
 
     } catch (err) {
@@ -227,7 +238,7 @@ function AppContent() {
       let msg = '';
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
         msg = '⏳ **Temps dépassé.** L\'IA est occupée, réessaie dans quelques secondes.';
-      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('fetch')) {
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
         msg = `🔌 **Serveur n8n inaccessible.**\n\nVérifie que :\n- n8n tourne sur \`localhost:5678\`\n- Le workflow est **activé** (bouton ON dans n8n)\n- L'URL du webhook est \`/webhook/payload-webhook\``;
       } else {
         msg = `⚠️ Erreur : ${err.message}`;
@@ -276,7 +287,13 @@ function AppContent() {
 
   return (
     <div className="app-root">
-      <Navbar view={view} setView={setView} user={user} onLogout={handleLogout} serverStatus={serverStatus} />
+      <Navbar
+        view={view}
+        setView={setView}
+        user={user}
+        onLogout={handleLogout}
+        serverStatus={serverStatus}
+      />
 
       {serverStatus.payload === false && (
         <div className="server-alert">
@@ -284,7 +301,7 @@ function AppContent() {
           &nbsp;·&nbsp;
           <button
             onClick={() => window.location.reload()}
-            style={{background:'none',border:'none',color:'#fca5a5',cursor:'pointer',textDecoration:'underline'}}
+            style={{ background:'none', border:'none', color:'#fca5a5', cursor:'pointer', textDecoration:'underline' }}
           >
             Réessayer
           </button>
@@ -312,6 +329,7 @@ function AppContent() {
     </div>
   );
 }
+
 
 export default function App() {
   return (
