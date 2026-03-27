@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3001/api';
 const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
 
 const navItems = [
-  { id: 'accueil',   icon: '💬', label: 'IA Chat'    },
-  { id: 'bourses',   icon: '🎓', label: 'Bourses'    },
-  { id: 'roadmap',   icon: '🗺️', label: 'Roadmap'   },
-  { id: 'entretien', icon: '🎙️', label: 'Entretien' },
-  { id: 'cv',        icon: '📄', label: 'CV & LM'   },
-  { id: 'dashboard', icon: '📊', label: 'Dashboard'  },
-  { id: 'profil',    icon: '👤', label: 'Profil'    },
+  { id: 'accueil',          icon: '💬', label: 'IA Chat'         },
+  { id: 'bourses',          icon: '🎓', label: 'Bourses'         },
+  { id: 'recommandations',  icon: '🎯', label: 'Recommandations' },
+  { id: 'roadmap',          icon: '🗺️', label: 'Roadmap'        },
+  { id: 'entretien',        icon: '🎙️', label: 'Entretien'      },
+  { id: 'cv',               icon: '📄', label: 'CV & LM'        },
+  { id: 'dashboard',        icon: '📊', label: 'Dashboard'       },
+  { id: 'profil',           icon: '👤', label: 'Profil'         },
 ];
 
-// ── Hook : deadlines urgentes ─────────────────────────────────────────────────
 function useDeadlineAlerts(user) {
   const [alerts, setAlerts] = useState([]);
   const [emailSent, setEmailSent] = useState(false);
@@ -23,18 +23,15 @@ function useDeadlineAlerts(user) {
 
     const checkDeadlines = async () => {
       try {
-        // 1. Charger les bourses choisies par l'user
         const resUser = await fetch(`${API_BASE}/users/${user.id}?depth=0`);
         const dataUser = await resUser.json();
         const boursesSuivies = dataUser.bourses_choisies || [];
         const nomsChoisis = boursesSuivies.map(b => b.nom?.toLowerCase().trim());
 
-        // 2. Charger TOUTES les bourses de la collection (avec les vraies deadlines)
         const resBourses = await fetch(`${API_BASE}/bourses?limit=100&depth=0`);
         const dataBourses = await resBourses.json();
         const toutesLesBourses = dataBourses.docs || [];
 
-        // 3. Croiser : trouver les deadlines réelles des bourses choisies
         const now = new Date();
         const parseDeadline = (val) => {
           if (!val) return null;
@@ -61,7 +58,6 @@ function useDeadlineAlerts(user) {
 
         setAlerts(urgent);
 
-        // Envoyer alerte email via n8n si deadline ≤ 7 jours et pas encore envoyé
         const critical = urgent.filter(a => a.days <= 7);
         if (critical.length > 0 && !emailSent && user.email) {
           setEmailSent(true);
@@ -81,7 +77,6 @@ function useDeadlineAlerts(user) {
     };
 
     checkDeadlines();
-    // Re-vérifier toutes les heures
     const interval = setInterval(checkDeadlines, 3600000);
     return () => clearInterval(interval);
   }, [user?.id]);
@@ -89,7 +84,6 @@ function useDeadlineAlerts(user) {
   return alerts;
 }
 
-// ── Panneau notifications ────────────────────────────────────────────────────
 function NotifPanel({ alerts, onClose, setView }) {
   if (alerts.length === 0) return (
     <div style={N.panel}>
@@ -163,7 +157,6 @@ const N = {
   },
 };
 
-// ── Navbar ────────────────────────────────────────────────────────────────────
 export default function Navbar({ view, setView, user, onLogout, serverStatus }) {
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -171,7 +164,6 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus }) 
   const alerts = useDeadlineAlerts(user);
   const badge  = alerts.length;
 
-  // Fermer le panneau en cliquant ailleurs
   useEffect(() => {
     if (!notifOpen) return;
     const handler = (e) => {
@@ -195,7 +187,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus }) 
         {navItems.map(item => (
           <button
             key={item.id}
-            className={`nav-item ${view === item.id ? 'active' : ''}`}
+            className={`nav-item ${view === item.id ? 'active' : ''} ${item.id === 'recommandations' ? 'nav-item-reco' : ''}`}
             onClick={() => setView(item.id)}
           >
             <span className="nav-icon">{item.icon}</span>
@@ -321,6 +313,20 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus }) 
         }
         .nav-item:hover { background:rgba(99,102,241,0.15); color:#e2e8f0; }
         .nav-item.active { background:rgba(99,102,241,0.25); color:#818cf8; }
+        .nav-item-reco {
+          background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1));
+          border: 1px solid rgba(99,102,241,0.2);
+          color: #a78bfa !important;
+        }
+        .nav-item-reco:hover {
+          background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25)) !important;
+          border-color: rgba(99,102,241,0.4);
+        }
+        .nav-item-reco.active {
+          background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(139,92,246,0.35)) !important;
+          border-color: rgba(139,92,246,0.5);
+          color: #c084fc !important;
+        }
         .nav-icon { font-size:15px; }
         .nav-user { flex-shrink:0; }
         .user-pill {
@@ -362,6 +368,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus }) 
         .mobile-nav-item:hover, .mobile-nav-item.active { background:rgba(99,102,241,0.2); color:#818cf8; }
         .mobile-nav-item.logout { color:#ef4444; }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.15)} }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width:768px) {
           .desktop-nav { display:none; }
           .hamburger { display:block; }

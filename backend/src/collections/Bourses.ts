@@ -4,7 +4,7 @@ const Bourses: CollectionConfig = {
   slug: 'bourses',
   admin: {
     useAsTitle: 'nom',
-    defaultColumns: ['nom', 'pays', 'niveau', 'financement', 'dateLimite'],
+    defaultColumns: ['nom', 'pays', 'niveau', 'financement', 'dateOuverture', 'dateLimite', 'statut','tunisienEligible','domaine', 'langue','description'],
   },
   access: {
     read:   () => true,
@@ -25,6 +25,28 @@ const Bourses: CollectionConfig = {
       required: true,
     },
     {
+  name: 'domaine',
+  type: 'select',
+  options: ['Sciences', 'Ingénierie', 'Médecine', 'Droit', 'Économie', 'Arts', 'Informatique', 'Agriculture', 'Tous domaines'],
+},
+{
+  name: 'langue',
+  type: 'select',
+  options: ['Anglais', 'Français', 'Arabe', 'Autre'],
+},
+{
+  name: 'tunisienEligible',
+  type: 'select',
+  options: ['oui', 'non', 'inconnu'],
+  defaultValue: 'inconnu',
+},
+{
+  name: 'statut',
+  type: 'select',
+  options: ['active', 'expiree', 'a_venir'],
+  defaultValue: 'active',
+},
+    {
       // ← TEXT au lieu de SELECT — accepte Master, Doctorat, Licence, etc.
       name: 'niveau',
       type: 'text',
@@ -35,11 +57,7 @@ const Bourses: CollectionConfig = {
       type: 'textarea',
       required: true,
     },
-    {
-      name: 'montant',
-      type: 'text',
-      admin: { placeholder: 'Ex: 1200€ / mois' },
-    },
+    
     {
       // ← TEXT au lieu de SELECT — 100% financée, Partielle, etc.
       name: 'financement',
@@ -51,13 +69,17 @@ const Bourses: CollectionConfig = {
       type: 'date',
     },
     {
+      name: 'dateOuverture',
+      type: 'date',
+    },
+    
+    {
       name: 'lienOfficiel',
       type: 'text',
+      required: true,
     },
-    {
-      name: 'domaine',
-      type: 'text',
-    },
+   
+
   ],
 };
 

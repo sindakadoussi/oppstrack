@@ -9,14 +9,16 @@ import ProfilPage from './pages/ProfilPage';
 import EntretienPage from './pages/EntretienPage';
 import CVPage from './pages/CVPage';
 import VerifyMagicLink from './pages/VerifyMagicLink';
+import RecommandationsPage from './pages/RecommandationsPage';
 
 const WEBHOOK_URL = 'http://localhost:5678/webhook-test/webhook';
-const API_BASE    = 'http://localhost:3000/api';
+const API_BASE    = 'http://localhost:3001/api';
 
 function AppContent() {
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
   const [bourses, setBourses]                 = useState([]);
+
   const [messages, setMessages]               = useState([]);
   const [input, setInput]                     = useState('');
   const [loading, setLoading]                 = useState(false);
@@ -87,7 +89,7 @@ function AppContent() {
 
   const fetchBourses = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/bourses`, { signal: AbortSignal.timeout(5000) });
+const res = await fetch(`${API_BASE}/bourses?limit=200&depth=0`, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return;
       const data = await res.json();
       setBourses(data.docs || []);
@@ -280,7 +282,7 @@ function AppContent() {
 
       {serverStatus.payload === false && (
         <div className="server-alert">
-          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
+          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3001
           &nbsp;·&nbsp;
           <button
             onClick={() => window.location.reload()}
@@ -294,6 +296,7 @@ function AppContent() {
       <main className="main-content">
         {view === 'accueil'   && <ChatPage      {...sharedProps} />}
         {view === 'bourses'   && <BoursesPage   {...sharedProps} />}
+        {view === 'recommandations' && <RecommandationsPage {...sharedProps} />}
         {view === 'roadmap'   && <RoadmapPage   {...sharedProps} />}
         {view === 'dashboard' && <DashboardPage {...sharedProps} />}
         {view === 'profil'    && <ProfilPage    {...sharedProps} />}

@@ -282,13 +282,28 @@ export interface Bourse {
   id: string;
   nom: string;
   pays: string;
+  domaine?:
+    | (
+        | 'Sciences'
+        | 'Ingénierie'
+        | 'Médecine'
+        | 'Droit'
+        | 'Économie'
+        | 'Arts'
+        | 'Informatique'
+        | 'Agriculture'
+        | 'Tous domaines'
+      )
+    | null;
+  langue?: ('Anglais' | 'Français' | 'Arabe' | 'Autre') | null;
+  tunisienEligible?: ('oui' | 'non' | 'inconnu') | null;
+  statut?: ('active' | 'expiree' | 'a_venir') | null;
   niveau: string;
   description: string;
-  montant?: string | null;
   financement?: string | null;
   dateLimite?: string | null;
-  lienOfficiel?: string | null;
-  domaine?: string | null;
+  dateOuverture?: string | null;
+  lienOfficiel: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -565,13 +580,16 @@ export interface MessagesSelect<T extends boolean = true> {
 export interface BoursesSelect<T extends boolean = true> {
   nom?: T;
   pays?: T;
+  domaine?: T;
+  langue?: T;
+  tunisienEligible?: T;
+  statut?: T;
   niveau?: T;
   description?: T;
-  montant?: T;
   financement?: T;
   dateLimite?: T;
+  dateOuverture?: T;
   lienOfficiel?: T;
-  domaine?: T;
   updatedAt?: T;
   createdAt?: T;
 }

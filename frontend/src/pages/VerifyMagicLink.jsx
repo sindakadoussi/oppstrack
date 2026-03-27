@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const PAYLOAD_URL = 'http://localhost:3000'
+const PAYLOAD_URL = 'http://localhost:3001'
 
 // Décoder JWT sans librairie (pour le cas où Payload envoie un JWT)
 function decodeJWT(token) {
@@ -53,6 +53,7 @@ export default function VerifyMagicLink({ setUser }) {
           // Stocker l'user — même clé que App.jsx utilise
           localStorage.setItem('opps_user',    JSON.stringify(data.user))
           localStorage.setItem('opps_user_id', data.user.id)
+          localStorage.setItem('opps_token',   data.token || '') 
           // Mettre à jour l'état React si setUser est passé
           if (setUser) setUser(data.user)
           setStatus('success')

@@ -275,16 +275,13 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
   const [showChat, setShowChat]       = useState(false);
   const [selected, setSelected]       = useState(null);
 
-  const filtered = bourses.filter(b => {
-    const q = search.toLowerCase();
-    const matchSearch  = !q || b.nom?.toLowerCase().includes(q) || b.pays?.toLowerCase().includes(q) || b.domaine?.toLowerCase().includes(q);
-    const matchNiveau  = !filterNiveau || b.niveau?.includes(filterNiveau);
-    const matchPays    = !filterPays   || b.pays === filterPays;
-    return matchSearch && matchNiveau && matchPays;
-  }).sort((a, b) => {
-    const sa = calcMatch(a, user) ?? 0;
-    const sb = calcMatch(b, user) ?? 0;
-    return sb - sa; // meilleures en premier
+ const filtered = bourses.filter(b => {
+  if (b.statut === 'expiree') return false;  // ← ajouter cette ligne
+  const q = search.toLowerCase();
+  const matchSearch  = !q || b.nom?.toLowerCase().includes(q) || b.pays?.toLowerCase().includes(q) || b.domaine?.toLowerCase().includes(q);
+  const matchNiveau  = !filterNiveau || b.niveau?.includes(filterNiveau);
+  const matchPays    = !filterPays   || b.pays === filterPays;
+  return matchSearch && matchNiveau && matchPays;
   });
 
   const pays    = [...new Set(bourses.map(b => b.pays).filter(Boolean))];

@@ -101,6 +101,7 @@ export const Users: CollectionConfig = {
       path: '/request-magic-link',
       method: 'post',
       handler: async (req: PayloadRequest) => {
+        console.log('[ENV CHECK]', process.env.GMAIL_USER, process.env.GMAIL_APP_PASSWORD?.slice(0,4))
         const body  = await req.json?.() || req.body || {}
         const email = (body.email || '').toLowerCase().trim()
         if (!email || !email.includes('@'))
@@ -144,59 +145,71 @@ export const Users: CollectionConfig = {
       },
     },
 
-    // ── POST /api/users/magic-login ─────────────────────────────────────
-    {
-      path: '/magic-login',
-      method: 'post',
-      handler: async (req: PayloadRequest) => {
-        const body  = await req.json?.() || req.body || {}
-        let { email, token } = body
-        if (!email || !token)
-          return NextResponse.json({ message: 'Email et token requis' }, { status: 400 })
-        email = email.toLowerCase().trim()
-        try {
-          const found = await req.payload.find({
-            collection: 'users',
-            where: { and: [{ email: { equals: email } }, { magicToken: { equals: token } }, { magicTokenExpiration: { greater_than: new Date().toISOString() } }] },
-          })
-          if (found.docs.length === 0)
-            return NextResponse.json({ message: 'Lien invalide ou expiré' }, { status: 401 })
-          const user = found.docs[0]
-          await req.payload.update({ collection: 'users', id: user.id, data: { magicToken: null, magicTokenExpiration: null } })
-          return NextResponse.json({
-            message: 'Connexion réussie',
-            user: {
-              id:                  user.id,
-              email:               user.email,
-              name:                user.name                || '',
-              pays:                user.pays                || '',
-              niveau:              user.niveau              || '',
-              domaine:             user.domaine             || '',
-              phone:               user.phone               || '',
-              nationality:         user.nationality         || '',
-              countryOfResidence:  user.countryOfResidence  || '',
-              currentLevel:        user.currentLevel        || user.niveau || '',
-              fieldOfStudy:        user.fieldOfStudy        || user.domaine || '',
-              institution:         user.institution         || '',
-              gpa:                 user.gpa                 || '',
-              graduationYear:      user.graduationYear      || '',
-              targetDegree:        user.targetDegree        || '',
-              motivationSummary:   user.motivationSummary   || '',
-              academicHistory:     user.academicHistory     || [],
-              workExperience:      user.workExperience      || [],
-              languages:           user.languages           || [],
-              skills:              user.skills              || [],
-              targetCountries:     user.targetCountries     || [],
-              targetFields:        user.targetFields        || [],
-              bourses_choisies:    user.bourses_choisies    || [],
-            },
-          })
-        } catch (err: any) {
-          return NextResponse.json({ message: err.message }, { status: 500 })
-        }
-      },
-    },
+  {
+  path: '/magic-login',
+  method: 'post',
+  handler: async (req: PayloadRequest) => {
+    const body = await req.json?.() || req.body || {}
+    let { email, token: magicToken } = body
+    if (!email || !magicToken)
+      return NextResponse.json({ message: 'Email et token requis' }, { status: 400 })
+    email = email.toLowerCase().trim()
+    try {
+      const found = await req.payload.find({
+        collection: 'users',
+        where: {
+          and: [
+            { email: { equals: email } },
+            { magicToken: { equals: magicToken } },
+            { magicTokenExpiration: { greater_than: new Date().toISOString() } }
+          ]
+        },
+      })
+      if (found.docs.length === 0)
+        return NextResponse.json({ message: 'Lien invalide ou expiré' }, { status: 401 })
 
+      const user = found.docs[0]
+
+      // Invalider le token après usage
+      await req.payload.update({
+        collection: 'users',
+        id: user.id,
+        data: { magicToken: null, magicTokenExpiration: null }
+      })
+
+      return NextResponse.json({
+        message: 'Connexion réussie',
+        user: {
+          id:                 user.id,
+          email:              user.email,
+          name:               user.name               || '',
+          pays:               user.pays               || '',
+          niveau:             user.niveau             || '',
+          domaine:            user.domaine            || '',
+          phone:              user.phone              || '',
+          nationality:        user.nationality        || '',
+          countryOfResidence: user.countryOfResidence || '',
+          currentLevel:       user.currentLevel       || user.niveau  || '',
+          fieldOfStudy:       user.fieldOfStudy       || user.domaine || '',
+          institution:        user.institution        || '',
+          gpa:                user.gpa                || '',
+          graduationYear:     user.graduationYear     || '',
+          targetDegree:       user.targetDegree       || '',
+          motivationSummary:  user.motivationSummary  || '',
+          academicHistory:    user.academicHistory    || [],
+          workExperience:     user.workExperience     || [],
+          languages:          user.languages          || [],
+          skills:             user.skills             || [],
+          targetCountries:    user.targetCountries    || [],
+          targetFields:       user.targetFields       || [],
+          bourses_choisies:   user.bourses_choisies   || [],
+        },
+      })
+    } catch (err: any) {
+      return NextResponse.json({ message: err.message }, { status: 500 })
+    }
+  },
+},
     // ── PATCH /api/users/:id/update-profile ─────────────────────────────
     {
       path: '/:id/update-profile',
@@ -234,7 +247,8 @@ export const Users: CollectionConfig = {
         console.log('[UPDATE-PROFILE] saving:', JSON.stringify(dataToUpdate).slice(0, 200))
 
         try {
-          const updated = await req.payload.update({ collection: 'users', id, data: dataToUpdate })
+          const updated = await req.payload.update({ collection: 'users', id,  data: dataToUpdate,
+  overrideAccess: true})
           console.log('[UPDATE-PROFILE] ✅', updated.id)
           return NextResponse.json({
             message: 'Profil mis à jour',
