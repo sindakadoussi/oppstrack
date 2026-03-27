@@ -190,6 +190,14 @@ export interface User {
         id?: string | null;
       }[]
     | null;
+  progression?:
+    | {
+        bourseNom?: string | null;
+        etape?: number | null;
+        updatedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   magicToken?: string | null;
   magicTokenExpiration?: string | null;
   bourses_choisies?:
@@ -488,6 +496,14 @@ export interface UsersSelect<T extends boolean = true> {
     | T
     | {
         field?: T;
+        id?: T;
+      };
+  progression?:
+    | T
+    | {
+        bourseNom?: T;
+        etape?: T;
+        updatedAt?: T;
         id?: T;
       };
   magicToken?: T;

@@ -78,6 +78,15 @@ export const Users: CollectionConfig = {
       type: 'array',
       fields: [{ name: 'field', type: 'text' }],
     },
+    {
+      name: 'progression',
+      type: 'array',
+      fields: [
+        { name: 'bourseNom', type: 'text' },
+        { name: 'etape',     type: 'number' }, // index 0-6
+        { name: 'updatedAt', type: 'date'   },
+      ],
+    },
     { name: 'magicToken',           type: 'text', hidden: true },
     { name: 'magicTokenExpiration', type: 'date', hidden: true },
     {
@@ -145,6 +154,7 @@ export const Users: CollectionConfig = {
       },
     },
 
+<<<<<<< HEAD
   {
   path: '/magic-login',
   method: 'post',
@@ -167,6 +177,62 @@ export const Users: CollectionConfig = {
       })
       if (found.docs.length === 0)
         return NextResponse.json({ message: 'Lien invalide ou expiré' }, { status: 401 })
+=======
+    // ── POST /api/users/magic-login ─────────────────────────────────────
+    {
+      path: '/magic-login',
+      method: 'post',
+      handler: async (req: PayloadRequest) => {
+        const body  = await req.json?.() || req.body || {}
+        let { email, token } = body
+        if (!email || !token)
+          return NextResponse.json({ message: 'Email et token requis' }, { status: 400 })
+        email = email.toLowerCase().trim()
+        try {
+          const found = await req.payload.find({
+            collection: 'users',
+            where: { and: [{ email: { equals: email } }, { magicToken: { equals: token } }, { magicTokenExpiration: { greater_than: new Date().toISOString() } }] },
+          })
+          if (found.docs.length === 0)
+            return NextResponse.json({ message: 'Lien invalide ou expiré' }, { status: 401 })
+          const user = found.docs[0]
+          await req.payload.update({ collection: 'users', id: user.id, data: { magicToken: null, magicTokenExpiration: null } })
+          return NextResponse.json({
+            message: 'Connexion réussie',
+            user: {
+              id:                  user.id,
+              email:               user.email,
+              name:                user.name                || '',
+              pays:                user.pays                || '',
+              niveau:              user.niveau              || '',
+              domaine:             user.domaine             || '',
+              phone:               user.phone               || '',
+              nationality:         user.nationality         || '',
+              countryOfResidence:  user.countryOfResidence  || '',
+              currentLevel:        user.currentLevel        || user.niveau || '',
+              fieldOfStudy:        user.fieldOfStudy        || user.domaine || '',
+              institution:         user.institution         || '',
+              gpa:                 user.gpa                 || '',
+              graduationYear:      user.graduationYear      || '',
+              targetDegree:        user.targetDegree        || '',
+              motivationSummary:   user.motivationSummary   || '',
+              academicHistory:     user.academicHistory     || [],
+              workExperience:      user.workExperience      || [],
+              languages:           user.languages           || [],
+              skills:              user.skills              || [],
+              targetCountries:     user.targetCountries     || [],
+              targetFields:        user.targetFields        || [],
+              bourses_choisies:    user.bourses_choisies    || [],
+              progression:         user.progression         || [],
+              progression:         user.progression         || [],
+            },
+          })
+        } catch (err: any) {
+          return NextResponse.json({ message: err.message }, { status: 500 })
+        }
+      },
+    },
+>>>>>>> 14b2ee325919ee1b8cc99811bbd2497fe921f968
 
       const user = found.docs[0]
 
@@ -305,6 +371,116 @@ export const Users: CollectionConfig = {
           })
           return NextResponse.json({ message: `"${nom}" ajoutée`, bourses_choisies: updated.bourses_choisies })
         } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── PATCH /api/users/:id/progression ────────────────────────────────
+    {
+      path: '/:id/progression',
+      method: 'patch',
+      handler: async (req: PayloadRequest) => {
+        const id   = req.routeParams?.id as string
+        const body = await req.json?.() || req.body || {}
+        const { bourseNom, etape } = body
+
+        if (!id || !bourseNom || etape === undefined)
+          return NextResponse.json({ error: 'id, bourseNom et etape requis' }, { status: 400 })
+
+        try {
+          const existing = await req.payload.findByID({ collection: 'users', id, depth: 0 })
+          const progression: any[] = existing.progression || []
+
+          // Mettre à jour ou ajouter
+          const idx = progression.findIndex((p: any) => p.bourseNom === bourseNom)
+          if (idx >= 0) {
+            progression[idx] = { bourseNom, etape, updatedAt: new Date().toISOString() }
+          } else {
+            progression.push({ bourseNom, etape, updatedAt: new Date().toISOString() })
+          }
+
+          const updated = await req.payload.update({
+            collection: 'users', id,
+            data: { progression },
+          })
+
+          console.log(`[PROGRESSION] ${bourseNom} → étape ${etape}`)
+          return NextResponse.json({ message: 'Progression mise à jour', progression: updated.progression })
+        } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── DELETE /api/users/:id ──────────────────────────────────────────
+    {
+      path: '/:id/delete',
+      method: 'delete',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+        try {
+          await req.payload.delete({ collection: 'users', id })
+          console.log('[DELETE USER] ✅', id)
+          return NextResponse.json({ message: 'Utilisateur supprimé', id })
+        } catch (err: any) {
+          console.error('[DELETE USER] ❌', err.message)
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── PATCH /api/users/:id/progression ────────────────────────────────
+    {
+      path: '/:id/progression',
+      method: 'patch',
+      handler: async (req: PayloadRequest) => {
+        const id   = req.routeParams?.id as string
+        const body = await req.json?.() || req.body || {}
+        const { bourseNom, etape } = body
+
+        if (!id || !bourseNom || etape === undefined)
+          return NextResponse.json({ error: 'id, bourseNom et etape requis' }, { status: 400 })
+
+        try {
+          const existing = await req.payload.findByID({ collection: 'users', id, depth: 0 })
+          const progression: any[] = existing.progression || []
+
+          // Mettre à jour ou ajouter
+          const idx = progression.findIndex((p: any) => p.bourseNom === bourseNom)
+          if (idx >= 0) {
+            progression[idx] = { bourseNom, etape, updatedAt: new Date().toISOString() }
+          } else {
+            progression.push({ bourseNom, etape, updatedAt: new Date().toISOString() })
+          }
+
+          const updated = await req.payload.update({
+            collection: 'users', id,
+            data: { progression },
+          })
+
+          console.log(`[PROGRESSION] ${bourseNom} → étape ${etape}`)
+          return NextResponse.json({ message: 'Progression mise à jour', progression: updated.progression })
+        } catch (err: any) {
+          return NextResponse.json({ error: err.message }, { status: 500 })
+        }
+      },
+    },
+
+    // ── DELETE /api/users/:id ──────────────────────────────────────────
+    {
+      path: '/:id',
+      method: 'delete',
+      handler: async (req: PayloadRequest) => {
+        const id = req.routeParams?.id as string
+        if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
+        try {
+          await req.payload.delete({ collection: 'users', id })
+          console.log('[DELETE-USER] ✅ User supprimé:', id)
+          return NextResponse.json({ message: 'Utilisateur supprimé', id })
+        } catch (err: any) {
+          console.error('[DELETE-USER] ❌', err.message)
           return NextResponse.json({ error: err.message }, { status: 500 })
         }
       },
