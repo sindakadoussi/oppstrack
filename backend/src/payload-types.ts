@@ -135,6 +135,9 @@ export interface User {
   phone?: string | null;
   nationality?: string | null;
   countryOfResidence?: string | null;
+  linkedin?: string | null;
+  github?: string | null;
+  portfolio?: string | null;
   currentLevel?: string | null;
   fieldOfStudy?: string | null;
   institution?: string | null;
@@ -157,8 +160,63 @@ export interface User {
         type?: string | null;
         position?: string | null;
         company?: string | null;
+        city?: string | null;
         startDate?: string | null;
         endDate?: string | null;
+        description?: string | null;
+        technologies?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  academicProjects?:
+    | {
+        title?: string | null;
+        type?: string | null;
+        supervisor?: string | null;
+        year?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        description?: string | null;
+        technologies?: string | null;
+        link?: string | null;
+        teamSize?: string | null;
+        impact?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  certifications?:
+    | {
+        name?: string | null;
+        issuer?: string | null;
+        date?: string | null;
+        credential?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  volunteerWork?:
+    | {
+        role?: string | null;
+        organization?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  publications?:
+    | {
+        title?: string | null;
+        venue?: string | null;
+        year?: string | null;
+        authors?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  awards?:
+    | {
+        title?: string | null;
+        organization?: string | null;
+        year?: string | null;
         description?: string | null;
         id?: string | null;
       }[]
@@ -175,6 +233,7 @@ export interface User {
     | {
         skill?: string | null;
         level?: string | null;
+        category?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -443,6 +502,9 @@ export interface UsersSelect<T extends boolean = true> {
   phone?: T;
   nationality?: T;
   countryOfResidence?: T;
+  linkedin?: T;
+  github?: T;
+  portfolio?: T;
   currentLevel?: T;
   fieldOfStudy?: T;
   institution?: T;
@@ -466,8 +528,63 @@ export interface UsersSelect<T extends boolean = true> {
         type?: T;
         position?: T;
         company?: T;
+        city?: T;
         startDate?: T;
         endDate?: T;
+        description?: T;
+        technologies?: T;
+        id?: T;
+      };
+  academicProjects?:
+    | T
+    | {
+        title?: T;
+        type?: T;
+        supervisor?: T;
+        year?: T;
+        startDate?: T;
+        endDate?: T;
+        description?: T;
+        technologies?: T;
+        link?: T;
+        teamSize?: T;
+        impact?: T;
+        id?: T;
+      };
+  certifications?:
+    | T
+    | {
+        name?: T;
+        issuer?: T;
+        date?: T;
+        credential?: T;
+        id?: T;
+      };
+  volunteerWork?:
+    | T
+    | {
+        role?: T;
+        organization?: T;
+        startDate?: T;
+        endDate?: T;
+        description?: T;
+        id?: T;
+      };
+  publications?:
+    | T
+    | {
+        title?: T;
+        venue?: T;
+        year?: T;
+        authors?: T;
+        id?: T;
+      };
+  awards?:
+    | T
+    | {
+        title?: T;
+        organization?: T;
+        year?: T;
         description?: T;
         id?: T;
       };
@@ -484,6 +601,7 @@ export interface UsersSelect<T extends boolean = true> {
     | {
         skill?: T;
         level?: T;
+        category?: T;
         id?: T;
       };
   targetCountries?:

@@ -8,6 +8,7 @@ const Candidatures: CollectionConfig = {
   access: {
     read: () => true, // On pourra affiner plus tard pour que l'user ne voie que les siennes
     create: () => true,
+    delete: () => true,
   },
   fields: [
     {

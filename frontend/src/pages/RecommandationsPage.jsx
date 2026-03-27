@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3000/api';
 
 function getScoreGradient(score) {
   if (score >= 80) return 'linear-gradient(135deg, #0f4c2a 0%, #1a6b3a 50%, #0d3d22 100%)';

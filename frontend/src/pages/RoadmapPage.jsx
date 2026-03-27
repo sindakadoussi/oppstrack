@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
 
-const API_BASE    = 'http://localhost:3001/api';
+const API_BASE    = 'http://localhost:3000/api';
 const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
 
 const ETAPES_GENERIQUES = [
@@ -103,7 +103,7 @@ function buildFallback(bourse) {
 }
 
 // ── BourseTimeline avec persistance de l'étape ────────────────────────────────
-function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) {
+function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, onDelete }) {
   const stepKey = `roadmap_step_${bourse.nom.replace(/\s+/g, '_')}`;
 
   const [currentStep, setCurrentStep] = useState(() => {
@@ -122,24 +122,24 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) 
   const { roadmap, genLoading } = useRoadmap(bourse);
 
   // ✅ Sauvegarder dans localStorage ET Payload
- const goToStep = useCallback(async (stepIndex) => {
-  setCurrentStep(stepIndex);
-  
-  // 1. Sauvegarde locale pour la rapidité
-  localStorage.setItem(stepKey, String(stepIndex));
+  const goToStep = useCallback(async (stepIndex) => {
+    setCurrentStep(stepIndex);
+    
+    // 1. Sauvegarde locale pour la rapidité
+    localStorage.setItem(stepKey, String(stepIndex));
 
-  // 2. Mise à jour de la base de données (Payload)
-  if (user?.id) {
-    await fetch(`${API_BASE}/users/${user.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        current_step: stepIndex, // Assure-toi que ce champ existe dans ton schéma User sur Payload
-        last_bourse: bourse.nom
-      }),
-    });
-  }
-}, [user?.id, bourse.nom]);
+    // 2. Mise à jour de la base de données (Payload)
+    if (user?.id) {
+      await fetch(`${API_BASE}/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_step: stepIndex,
+          last_bourse: bourse.nom
+        }),
+      });
+    }
+  }, [user?.id, bourse.nom]);
 
   const etapes = roadmap?.etapes || [];
   const total  = etapes.length || ETAPES_GENERIQUES.length;
@@ -165,10 +165,19 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) 
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          {/* ✅ Afficher l'étape courante dans le badge */}
+          {/* Afficher l'étape courante dans le badge */}
           <div style={S.pctBadge}>
             {currentStep + 1}/{total} · {pct}%
           </div>
+          {/* Bouton de suppression */}
+          <button 
+            className="delete-btn"
+            style={S.deleteBtn}
+            onClick={(e) => onDelete?.(bourse.nom, e)}
+            title="Supprimer cette bourse"
+          >
+            🗑️
+          </button>
           <div style={{ ...S.chevron, transform: isActive ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</div>
         </div>
       </div>
@@ -316,6 +325,59 @@ export default function RoadmapPage({
     if (bourses.length > 0) setActiveBourse(0);
   }, [bourses.length]);
 
+  // Fonction de suppression d'une bourse
+  const handleDeleteBourse = useCallback(async (bourseNom, event) => {
+    event.stopPropagation(); // Empêche de déclencher l'ouverture de la timeline
+    
+    if (!user?.id) return;
+    
+    // Confirmation avant suppression
+    const confirmDelete = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer "${bourseNom}" de vos bourses ?\n\n` +
+      `Toute la progression sur cette bourse sera perdue.`
+    );
+    
+    if (!confirmDelete) return;
+    
+    try {
+      // 1. Récupérer les bourses actuelles
+      const res = await fetch(`${API_BASE}/users/${user.id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const userData = await res.json();
+      const currentBourses = userData.bourses_choisies || [];
+      
+      // 2. Filtrer pour enlever la bourse
+      const updatedBourses = currentBourses.filter(b => b.nom !== bourseNom);
+      
+      // 3. Mettre à jour dans Payload
+      const updateRes = await fetch(`${API_BASE}/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bourses_choisies: updatedBourses
+        })
+      });
+      
+      if (!updateRes.ok) throw new Error('Erreur lors de la suppression');
+      
+      // 4. Nettoyer le localStorage pour cette bourse
+      const stepKey = `roadmap_step_${bourseNom.replace(/\s+/g, '_')}`;
+      localStorage.removeItem(stepKey);
+      
+      // 5. Recharger la liste des bourses
+      await reload();
+      
+      // 6. Afficher un message de succès dans le chat
+      handleQuickReply(`✅ J'ai supprimé "${bourseNom}" de mes bourses.`);
+      
+    } catch (error) {
+      console.error('Erreur suppression bourse:', error);
+      alert("Erreur lors de la suppression. Veuillez réessayer.");
+    }
+  }, [user?.id, reload, handleQuickReply]);
+
   return (
     <div style={{ width:'100%', padding:'32px 16px', fontFamily:"'Outfit', sans-serif" }}>
       <div style={S.layout}>
@@ -361,10 +423,11 @@ export default function RoadmapPage({
               onSelect={() => setActiveBourse(activeBourse === i ? -1 : i)}
               user={user}
               handleQuickReply={handleQuickReply}
+              onDelete={handleDeleteBourse}
             />
           ))}
 
-          {user?.id && !boursesLoading && (
+          {user?.id && !boursesLoading && bourses.length > 0 && (
             <button style={S.btnRefresh} onClick={reload}>🔄 Actualiser mes bourses</button>
           )}
         </div>
@@ -411,7 +474,9 @@ export default function RoadmapPage({
               </div>
             )}
           </div>
-          <ChatInput input={input} setInput={setInput}
+          <ChatInput 
+            input={input} 
+            setInput={setInput}
             onSend={() => {
               // Enrichir le message avec le contexte de la bourse active
               const b = bourses[activeBourse];
@@ -423,8 +488,10 @@ export default function RoadmapPage({
               } else {
                 handleSend();
               }
-            }} loading={loading}
-            placeholder="Demandez conseil sur cette étape…" />
+            }} 
+            loading={loading}
+            placeholder="Demandez conseil sur cette étape…" 
+          />
         </div>
       </div>
 
@@ -432,6 +499,12 @@ export default function RoadmapPage({
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
         @keyframes spin   { to { transform: rotate(360deg); } }
         @keyframes bounce { 0%,60%,100%{transform:scale(0.7);opacity:0.5} 30%{transform:scale(1.1);opacity:1} }
+        
+        .delete-btn:hover {
+          background: rgba(239, 68, 68, 0.25) !important;
+          transform: scale(1.05);
+          transition: all 0.2s ease;
+        }
       `}</style>
     </div>
   );
@@ -454,6 +527,19 @@ const S = {
   bourseMeta:   { display:'flex', gap:14, fontSize:12, color:'#64748b', flexWrap:'wrap' },
   bourseUrl:    { display:'inline-block', marginTop:6, fontSize:12, color:'#818cf8', textDecoration:'none' },
   pctBadge:     { padding:'4px 12px', borderRadius:99, background:'rgba(99,102,241,.12)', border:'1px solid rgba(99,102,241,.25)', color:'#818cf8', fontSize:12, fontWeight:700 },
+  deleteBtn:    { 
+    background: 'rgba(239, 68, 68, 0.1)',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+    borderRadius: '8px',
+    padding: '6px 10px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    color: '#f87171',
+    transition: 'all 0.2s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   chevron:      { fontSize:22, color:'#475569', transition:'transform .2s' },
   timelineBody: { padding:'0 22px 22px', borderTop:'1px solid rgba(255,255,255,.05)' },
   conseilGlobal:{ margin:'16px 0 20px', padding:'12px 16px', borderRadius:10, background:'rgba(99,102,241,.06)', border:'1px solid rgba(99,102,241,.15)', color:'#94a3b8', fontSize:13, lineHeight:1.6 },

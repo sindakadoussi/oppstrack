@@ -12,7 +12,7 @@ import VerifyMagicLink from './pages/VerifyMagicLink';
 import RecommandationsPage from './pages/RecommandationsPage';
 
 const WEBHOOK_URL = 'http://localhost:5678/webhook-test/webhook';
-const API_BASE    = 'http://localhost:3001/api';
+const API_BASE    = 'http://localhost:3000/api';
 
 function AppContent() {
   const location = useLocation();
@@ -299,7 +299,7 @@ const res = await fetch(`${API_BASE}/bourses?limit=200&depth=0`, { signal: Abort
 
       {serverStatus.payload === false && (
         <div className="server-alert">
-          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3001
+          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
           &nbsp;·&nbsp;
           <button
             onClick={() => window.location.reload()}

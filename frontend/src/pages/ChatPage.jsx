@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatMessage from '../components/ChatMessage';
 import ChatInput from '../components/ChatInput';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3000/api';
 
 const quickReplies = [
   { emoji: '🎓', label: 'Trouver mes bourses', text: 'Quelles bourses correspondent à mon profil ?' },
@@ -95,12 +95,68 @@ function StatNumber({ value, suffix = '', loading }) {
   );
 }
 
+// ─── Composant ScrollButton ─────────────────────────────────────────────────
+function ScrollToBottomButton({ onClick, visible }) {
+  if (!visible) return null;
+  
+  return (
+    <button className="scroll-to-bottom-btn" onClick={onClick} title="Aller en bas">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  );
+}
+
 // ─── ChatPage ────────────────────────────────────────────────────────────────
 export default function ChatPage({
   user, messages, input, setInput, loading,
   handleSend, handleQuickReply, chatContainerRef, setView
 }) {
   const heroStats = useHeroStats();
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const localChatContainerRef = useRef(null);
+  const containerRef = chatContainerRef || localChatContainerRef;
+
+  // Fonction pour scroller en bas
+  const scrollToBottom = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  };
+
+  // Vérifier si on est en bas du scroll
+  const checkScrollPosition = () => {
+    if (containerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    }
+  };
+
+  // Scroller en bas à chaque nouveau message
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  // Scroller en bas au chargement initial
+  useEffect(() => {
+    setTimeout(scrollToBottom, 100);
+  }, []);
+
+  // Ajouter l'écouteur d'événement scroll
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollPosition);
+      // Vérifier la position initiale
+      checkScrollPosition();
+      
+      return () => {
+        container.removeEventListener('scroll', checkScrollPosition);
+      };
+    }
+  }, [containerRef.current]);
 
   return (
     <div className="chat-page">
@@ -150,7 +206,7 @@ export default function ChatPage({
       {/* Chat Box */}
       <div className="chat-box">
         {/* Messages */}
-        <div className="chat-messages" ref={chatContainerRef}>
+        <div className="chat-messages" ref={containerRef}>
           {messages.length === 0 && (
             <div className="welcome-screen">
               <div className="welcome-robot">🤖</div>
@@ -169,7 +225,7 @@ export default function ChatPage({
           )}
 
           {messages.map((msg, i) => (
-            <ChatMessage key={i} msg={msg} index={i} />
+            <ChatMessage key={i} msg={msg} index={i}  showVoiceBadge={msg.voiceInput}  />
           ))}
 
           {loading && (
@@ -208,11 +264,15 @@ export default function ChatPage({
         />
       </div>
 
+      {/* Bouton flèche pour aller en bas */}
+      <ScrollToBottomButton onClick={scrollToBottom} visible={showScrollButton} />
+
       <style>{`
         .chat-page {
           display: flex; flex-direction: column; align-items: center;
           width: 100%; max-width: 760px; margin: 0 auto;
           padding: 32px 16px;
+          position: relative;
         }
         .chat-hero { text-align: center; margin-bottom: 32px; }
         .hero-badge {
@@ -270,6 +330,7 @@ export default function ChatPage({
           box-shadow: 0 20px 60px rgba(0,0,0,0.4),
                       inset 0 1px 0 rgba(255,255,255,0.05);
           overflow: hidden;
+          position: relative;
         }
         .chat-messages {
           height: 420px; overflow-y: auto; padding: 20px 16px;
@@ -364,9 +425,50 @@ export default function ChatPage({
         }
         .quick-reply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        /* Bouton flèche pour scroller en bas */
+        .scroll-to-bottom-btn {
+          position: fixed;
+          bottom: 120px;
+          right: 24px;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          border: none;
+          color: white;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(79,70,229,0.5);
+          transition: all 0.3s ease;
+          z-index: 1000;
+          animation: fadeInUp 0.3s ease;
+        }
+        .scroll-to-bottom-btn:hover {
+          transform: scale(1.1);
+          box-shadow: 0 6px 20px rgba(79,70,229,0.7);
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         @media (max-width: 640px) {
           .chat-messages { height: 340px; }
           .hero-stats { gap: 16px; }
+          .scroll-to-bottom-btn {
+            bottom: 100px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+          }
         }
       `}</style>
     </div>

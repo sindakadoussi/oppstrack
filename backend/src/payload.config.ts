@@ -29,29 +29,17 @@ export default buildConfig({
 
   // ── Email : lit depuis .env ─────────────────────────────────────────────
   email: nodemailerAdapter({
-<<<<<<< HEAD
-    defaultFromName:    'OppTrack',
+    defaultFromName: 'OppTrack',
     defaultFromAddress: process.env.GMAIL_USER || 'opportunitylink32@gmail.com',
-    skipVerify:         true,   // ← évite l'erreur EAUTH au démarrage
+    skipVerify: true,   // ← évite l'erreur EAUTH au démarrage
     transportOptions: {
-      host:   'smtp.gmail.com',
-      port:   587,
+      host: 'smtp.gmail.com',
+      port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER     || 'opportunitylink32@gmail.com',
+        user: process.env.GMAIL_USER || 'opportunitylink32@gmail.com',
         pass: process.env.GMAIL_APP_PASSWORD || '',
       },
-=======
-  defaultFromName: 'OppTrack',
-  defaultFromAddress: 'opportunitylink32@gmail.com',
-  transportOptions: {
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: 'opportunitylink32@gmail.com',
-      pass: 'jebazrauhwdzswbg',
->>>>>>> 14b2ee325919ee1b8cc99811bbd2497fe921f968
     },
   }),
 
