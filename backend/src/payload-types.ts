@@ -73,6 +73,7 @@ export interface Config {
     bourses: Bourse;
     candidatures: Candidature;
     entretiens: Entretien;
+    favoris: Favoris;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     bourses: BoursesSelect<false> | BoursesSelect<true>;
     candidatures: CandidaturesSelect<false> | CandidaturesSelect<true>;
     entretiens: EntretiensSelect<false> | EntretiensSelect<true>;
+    favoris: FavorisSelect<false> | FavorisSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -401,6 +403,33 @@ export interface Entretien {
   createdAt: string;
 }
 /**
+ * Bourses favorites par étudiant
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "favoris".
+ */
+export interface Favoris {
+  id: string;
+  /**
+   * Un seul document de favoris par utilisateur
+   */
+  user: string | User;
+  userEmail?: string | null;
+  bourses?:
+    | {
+        nom: string;
+        pays?: string | null;
+        lienOfficiel?: string | null;
+        financement?: string | null;
+        dateLimite?: string | null;
+        ajouteLe?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -447,6 +476,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'entretiens';
         value: string | Entretien;
+      } | null)
+    | ({
+        relationTo: 'favoris';
+        value: string | Favoris;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -748,6 +781,27 @@ export interface EntretiensSelect<T extends boolean = true> {
   score?: T;
   conversationId?: T;
   context?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "favoris_select".
+ */
+export interface FavorisSelect<T extends boolean = true> {
+  user?: T;
+  userEmail?: T;
+  bourses?:
+    | T
+    | {
+        nom?: T;
+        pays?: T;
+        lienOfficiel?: T;
+        financement?: T;
+        dateLimite?: T;
+        ajouteLe?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

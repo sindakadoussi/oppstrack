@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
 
-const API_BASE    = 'http://localhost:3001\api';
+const API_BASE    = 'http://localhost:3001/api';
 const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
 
 const ETAPES_GENERIQUES = [
@@ -15,6 +15,7 @@ const ETAPES_GENERIQUES = [
   { id: 6, icon: '🎉', titre: 'Attendre les résultats',   couleur: '#fb923c' },
 ];
 
+// ── Charge les bourses depuis la collection /api/roadmap ──────────────────────
 function useBourses(userId) {
   const [bourses, setBourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,17 +23,32 @@ function useBourses(userId) {
   const reload = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     try {
-      const res  = await fetch(`${API_BASE}/users/${userId}?depth=0`, { signal: AbortSignal.timeout(5000) });
+      const res  = await fetch(
+        `${API_BASE}/roadmap?where[userId][equals]=${userId}&limit=50&depth=0`,
+        { signal: AbortSignal.timeout(5000) }
+      );
       const data = await res.json();
-      setBourses(data.bourses_choisies || []);
+      // Normaliser les champs pour correspondre à ce qu'attend BourseTimeline
+      const docs = (data.docs || []).map(d => ({
+        _id:          d.id,
+        nom:          d.nom,
+        pays:         d.pays        || '',
+        url:          d.lienOfficiel || '',
+        deadline:     d.dateLimite  || '',
+        financement:  d.financement || '',
+        etapeCourante: d.etapeCourante || 0,
+        statut:       d.statut      || 'en_cours',
+      }));
+      setBourses(docs);
     } catch { setBourses([]); }
-    finally   { setLoading(false); }
+    finally  { setLoading(false); }
   }, [userId]);
 
   useEffect(() => { reload(); }, [reload]);
   return { bourses, loading, reload };
 }
 
+// ── Génère la roadmap via n8n (inchangé) ─────────────────────────────────────
 function useRoadmap(bourse) {
   const [roadmap,    setRoadmap]    = useState(null);
   const [genLoading, setGenLoading] = useState(false);
@@ -91,27 +107,24 @@ function buildFallback(bourse) {
     langue:         bourse.langue   || 'À confirmer',
     conseilGlobal:  `Consultez le site officiel de ${bourse.nom} pour les exigences exactes.`,
     etapes: [
-      { id:0, icon:'🎯', titre:"Vérifier l'éligibilité",    description:`Vérifier que vous correspondez aux critères de ${bourse.nom}.`,    deadline:'Avant de commencer',          documents:['Relevés de notes','Passeport','Justificatifs de niveau'],                                               conseils:[`Lisez attentivement les critères de ${bourse.nom}`,"Contactez l'ambassade si nécessaire"],                   dureeEstimee:'1 semaine' },
-      { id:1, icon:'📋', titre:'Rassembler les documents',  description:`Préparer le dossier complet selon les exigences de ${bourse.nom}.`, deadline:'6 semaines avant la deadline', documents:['Relevés de notes traduits','Diplômes certifiés','Passeport valide 6+ mois'],                               conseils:['Faites certifier chaque document','Prévoyez 2 copies de chaque pièce'],                                       dureeEstimee:'3 semaines' },
-      { id:2, icon:'✍️', titre:'Lettre de motivation',      description:`Rédiger une lettre personnalisée pour ${bourse.nom}.`,              deadline:'4 semaines avant',             documents:['Lettre de motivation (1-2 pages)','Plan de recherche si requis'],                                          conseils:[`Mentionnez explicitement ${bourse.nom}`,'Structure : projet → motivation → impact'],                          dureeEstimee:'2 semaines' },
-      { id:3, icon:'📝', titre:'CV académique',             description:'Adapter le CV au format international requis.',                     deadline:'4 semaines avant',             documents:['CV en français ET en anglais','Europass si requis'],                                                        conseils:['Format 1-2 pages max','Inclure publications et prix'],                                                         dureeEstimee:'1 semaine' },
-      { id:4, icon:'🎙️', titre:"Préparer l'entretien",     description:`S'entraîner avec le simulateur IA OppsTrack.`,                      deadline:'2 semaines avant',             documents:['Notes de préparation','Questions types de la bourse'],                                                     conseils:['Utilisez le simulateur entretien OppsTrack',`Renseignez-vous sur ${bourse.pays||'le pays cible'}`],            dureeEstimee:'2 semaines' },
-      { id:5, icon:'📬', titre:'Soumettre la candidature',  description:`Déposer le dossier complet sur la plateforme officielle.`,          deadline:bourse.deadline||'Voir site',   documents:['Dossier complet finalisé','Formulaire de candidature rempli'],                                              conseils:['Soumettez 48h avant la deadline','Conservez les accusés de réception'],                                       dureeEstimee:'2 jours' },
-      { id:6, icon:'🎉', titre:'Suivi & résultats',         description:"Suivre l'avancement et répondre aux demandes complémentaires.",     deadline:'Après soumission',             documents:[],                                                                                                          conseils:['Vérifiez vos emails quotidiennement','Préparez un plan B'],                                                   dureeEstimee:'4-12 semaines' },
+      { id:0, icon:'🎯', titre:"Vérifier l'éligibilité",   description:`Vérifier que vous correspondez aux critères de ${bourse.nom}.`,    deadline:'Avant de commencer',          documents:['Relevés de notes','Passeport','Justificatifs de niveau'],            conseils:[`Lisez attentivement les critères de ${bourse.nom}`,"Contactez l'ambassade si nécessaire"], dureeEstimee:'1 semaine' },
+      { id:1, icon:'📋', titre:'Rassembler les documents', description:`Préparer le dossier complet selon les exigences de ${bourse.nom}.`, deadline:'6 semaines avant la deadline', documents:['Relevés de notes traduits','Diplômes certifiés','Passeport valide 6+ mois'], conseils:['Faites certifier chaque document','Prévoyez 2 copies de chaque pièce'],    dureeEstimee:'3 semaines' },
+      { id:2, icon:'✍️', titre:'Lettre de motivation',     description:`Rédiger une lettre personnalisée pour ${bourse.nom}.`,              deadline:'4 semaines avant',             documents:['Lettre de motivation (1-2 pages)','Plan de recherche si requis'],        conseils:[`Mentionnez explicitement ${bourse.nom}`,'Structure : projet → motivation → impact'], dureeEstimee:'2 semaines' },
+      { id:3, icon:'📝', titre:'CV académique',            description:'Adapter le CV au format international requis.',                     deadline:'4 semaines avant',             documents:['CV en français ET en anglais','Europass si requis'],                     conseils:['Format 1-2 pages max','Inclure publications et prix'],                   dureeEstimee:'1 semaine' },
+      { id:4, icon:'🎙️', titre:"Préparer l'entretien",    description:`S'entraîner avec le simulateur IA OppsTrack.`,                      deadline:'2 semaines avant',             documents:['Notes de préparation','Questions types de la bourse'],                  conseils:['Utilisez le simulateur entretien OppsTrack',`Renseignez-vous sur ${bourse.pays||'le pays cible'}`], dureeEstimee:'2 semaines' },
+      { id:5, icon:'📬', titre:'Soumettre la candidature', description:`Déposer le dossier complet sur la plateforme officielle.`,          deadline:bourse.deadline||'Voir site',   documents:['Dossier complet finalisé','Formulaire de candidature rempli'],           conseils:['Soumettez 48h avant la deadline','Conservez les accusés de réception'],  dureeEstimee:'2 jours' },
+      { id:6, icon:'🎉', titre:'Suivi & résultats',        description:"Suivre l'avancement et répondre aux demandes complémentaires.",     deadline:'Après soumission',             documents:[],                                                                        conseils:['Vérifiez vos emails quotidiennement','Préparez un plan B'],             dureeEstimee:'4-12 semaines' },
     ],
   };
 }
 
-// ── BourseTimeline avec persistance de l'étape ────────────────────────────────
-function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, onDelete }) {
+// ── BourseTimeline — logique inchangée, goToStep sauvegarde dans /api/roadmap ─
+function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) {
   const stepKey = `roadmap_step_${bourse.nom.replace(/\s+/g, '_')}`;
 
   const [currentStep, setCurrentStep] = useState(() => {
-    // 1. Chercher dans la progression du user (Payload)
-    if (user?.progression) {
-      const prog = user.progression.find(p => p.bourseNom === bourse.nom);
-      if (prog) return prog.etape || 0;
-    }
+    // 1. Étape depuis la collection roadmap (champ etapeCourante)
+    if (bourse.etapeCourante !== undefined) return bourse.etapeCourante;
     // 2. Fallback localStorage
     try {
       const saved = localStorage.getItem(stepKey);
@@ -121,25 +134,20 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
 
   const { roadmap, genLoading } = useRoadmap(bourse);
 
-  // ✅ Sauvegarder dans localStorage ET Payload
+  // Sauvegarde localStorage + collection roadmap
   const goToStep = useCallback(async (stepIndex) => {
     setCurrentStep(stepIndex);
-    
-    // 1. Sauvegarde locale pour la rapidité
     localStorage.setItem(stepKey, String(stepIndex));
 
-    // 2. Mise à jour de la base de données (Payload)
-    if (user?.id) {
-      await fetch(`${API_BASE}/users/${user.id}`, {
-        method: 'PATCH',
+    // Mettre à jour etapeCourante dans /api/roadmap/:id
+    if (bourse._id) {
+      await fetch(`${API_BASE}/roadmap/${bourse._id}`, {
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_step: stepIndex,
-          last_bourse: bourse.nom
-        }),
-      });
+        body:    JSON.stringify({ etapeCourante: stepIndex }),
+      }).catch(() => {});
     }
-  }, [user?.id, bourse.nom]);
+  }, [bourse._id, bourse.nom]);
 
   const etapes = roadmap?.etapes || [];
   const total  = etapes.length || ETAPES_GENERIQUES.length;
@@ -147,11 +155,25 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
 
   const COLORS = ['#6366f1','#8b5cf6','#a855f7','#c084fc','#e879f9','#f472b6','#fb923c'];
 
+  // Badge statut
+  const statutColors = {
+    en_cours: { bg:'rgba(99,102,241,0.12)', color:'#818cf8', label:'En cours' },
+    soumis:   { bg:'rgba(251,191,36,0.12)', color:'#fbbf24', label:'Soumis' },
+    accepte:  { bg:'rgba(16,185,129,0.12)', color:'#10b981', label:'Accepté ✓' },
+    refuse:   { bg:'rgba(239,68,68,0.12)',  color:'#f87171', label:'Refusé' },
+  };
+  const statutStyle = statutColors[bourse.statut] || statutColors.en_cours;
+
   return (
     <div style={S.timelineCard}>
       <div style={S.bourseHeader} onClick={onSelect}>
         <div style={S.bourseInfo}>
-          <div style={S.bourseName}>{bourse.nom}</div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={S.bourseName}>{bourse.nom}</div>
+            <span style={{ ...S.statutBadge, background: statutStyle.bg, color: statutStyle.color }}>
+              {statutStyle.label}
+            </span>
+          </div>
           <div style={S.bourseMeta}>
             {bourse.pays     && <span>📍 {bourse.pays}</span>}
             {roadmap?.deadlineFinale && <span>⏰ {roadmap.deadlineFinale}</span>}
@@ -165,19 +187,7 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          {/* Afficher l'étape courante dans le badge */}
-          <div style={S.pctBadge}>
-            {currentStep + 1}/{total} · {pct}%
-          </div>
-          {/* Bouton de suppression */}
-          <button 
-            className="delete-btn"
-            style={S.deleteBtn}
-            onClick={(e) => onDelete?.(bourse.nom, e)}
-            title="Supprimer cette bourse"
-          >
-            🗑️
-          </button>
+          <div style={S.pctBadge}>{currentStep + 1}/{total} · {pct}%</div>
           <div style={{ ...S.chevron, transform: isActive ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</div>
         </div>
       </div>
@@ -316,7 +326,6 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
 export default function RoadmapPage({
   user, messages, input, setInput, loading,
   handleSend, chatContainerRef, handleQuickReply,
-  currentStep, setCurrentStep,
 }) {
   const { bourses, loading: boursesLoading, reload } = useBourses(user?.id);
   const [activeBourse, setActiveBourse] = useState(0);
@@ -324,59 +333,6 @@ export default function RoadmapPage({
   useEffect(() => {
     if (bourses.length > 0) setActiveBourse(0);
   }, [bourses.length]);
-
-  // Fonction de suppression d'une bourse
-  const handleDeleteBourse = useCallback(async (bourseNom, event) => {
-    event.stopPropagation(); // Empêche de déclencher l'ouverture de la timeline
-    
-    if (!user?.id) return;
-    
-    // Confirmation avant suppression
-    const confirmDelete = window.confirm(
-      `Êtes-vous sûr de vouloir supprimer "${bourseNom}" de vos bourses ?\n\n` +
-      `Toute la progression sur cette bourse sera perdue.`
-    );
-    
-    if (!confirmDelete) return;
-    
-    try {
-      // 1. Récupérer les bourses actuelles
-      const res = await fetch(`${API_BASE}/users/${user.id}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const userData = await res.json();
-      const currentBourses = userData.bourses_choisies || [];
-      
-      // 2. Filtrer pour enlever la bourse
-      const updatedBourses = currentBourses.filter(b => b.nom !== bourseNom);
-      
-      // 3. Mettre à jour dans Payload
-      const updateRes = await fetch(`${API_BASE}/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bourses_choisies: updatedBourses
-        })
-      });
-      
-      if (!updateRes.ok) throw new Error('Erreur lors de la suppression');
-      
-      // 4. Nettoyer le localStorage pour cette bourse
-      const stepKey = `roadmap_step_${bourseNom.replace(/\s+/g, '_')}`;
-      localStorage.removeItem(stepKey);
-      
-      // 5. Recharger la liste des bourses
-      await reload();
-      
-      // 6. Afficher un message de succès dans le chat
-      handleQuickReply(`✅ J'ai supprimé "${bourseNom}" de mes bourses.`);
-      
-    } catch (error) {
-      console.error('Erreur suppression bourse:', error);
-      alert("Erreur lors de la suppression. Veuillez réessayer.");
-    }
-  }, [user?.id, reload, handleQuickReply]);
 
   return (
     <div style={{ width:'100%', padding:'32px 16px', fontFamily:"'Outfit', sans-serif" }}>
@@ -387,7 +343,7 @@ export default function RoadmapPage({
             <p style={S.sub}>
               {bourses.length > 0
                 ? `${bourses.length} bourse${bourses.length > 1 ? 's' : ''} — timeline personnalisée par l'IA`
-                : 'Choisissez une bourse dans le chat pour générer votre roadmap personnalisée'}
+                : 'Cliquez sur Appliquer dans les recommandations pour ajouter une bourse'}
             </p>
           </div>
 
@@ -400,34 +356,33 @@ export default function RoadmapPage({
 
           {!boursesLoading && bourses.length === 0 && (
             <div style={S.emptyBox}>
-              <div style={{ fontSize:48, marginBottom:16 }}>🎯</div>
+              <div style={{ fontSize:48, marginBottom:16 }}>🗺️</div>
               <div style={{ color:'#f1f5f9', fontWeight:700, fontSize:16, marginBottom:8 }}>
-                Aucune bourse sélectionnée
+                Aucune candidature en cours
               </div>
               <div style={{ color:'#64748b', fontSize:13, lineHeight:1.6, maxWidth:360, textAlign:'center' }}>
-                Discutez avec l'assistant IA et dites-lui quelle bourse vous intéresse.<br />
-                Une roadmap personnalisée sera générée automatiquement.
+                Allez dans <strong style={{ color:'#818cf8' }}>Recommandations</strong> et cliquez sur{' '}
+                <strong style={{ color:'#818cf8' }}>🗺️ Appliquer</strong> sur une bourse pour démarrer votre roadmap.
               </div>
               <button style={S.btnChat}
-                onClick={() => handleQuickReply('Quelles bourses correspondent à mon profil ?')}>
-                🤖 Trouver une bourse
+                onClick={() => handleQuickReply('Recommande moi des bourses')}>
+                🎯 Voir les recommandations
               </button>
             </div>
           )}
 
           {!boursesLoading && bourses.map((bourse, i) => (
             <BourseTimeline
-              key={bourse.nom + i}
+              key={bourse._id || bourse.nom + i}
               bourse={bourse}
               isActive={activeBourse === i}
               onSelect={() => setActiveBourse(activeBourse === i ? -1 : i)}
               user={user}
               handleQuickReply={handleQuickReply}
-              onDelete={handleDeleteBourse}
             />
           ))}
 
-          {user?.id && !boursesLoading && bourses.length > 0 && (
+          {user?.id && !boursesLoading && (
             <button style={S.btnRefresh} onClick={reload}>🔄 Actualiser mes bourses</button>
           )}
         </div>
@@ -474,24 +429,19 @@ export default function RoadmapPage({
               </div>
             )}
           </div>
-          <ChatInput 
-            input={input} 
-            setInput={setInput}
+
+          <ChatInput input={input} setInput={setInput}
             onSend={() => {
-              // Enrichir le message avec le contexte de la bourse active
               const b = bourses[activeBourse];
               const stepKey = b ? `roadmap_step_${b.nom.replace(/\s+/g, '_')}` : null;
               const step = stepKey ? parseInt(localStorage.getItem(stepKey) || '0') : 0;
               if (b && input.trim()) {
-                const ctx = `[Contexte: bourse "${b.nom}", étape ${step+1}/7] `;
-                handleSend(ctx + input);
+                handleSend(`[Contexte: bourse "${b.nom}", étape ${step+1}/7] ` + input);
               } else {
                 handleSend();
               }
-            }} 
-            loading={loading}
-            placeholder="Demandez conseil sur cette étape…" 
-          />
+            }} loading={loading}
+            placeholder="Demandez conseil sur cette étape…" />
         </div>
       </div>
 
@@ -499,12 +449,6 @@ export default function RoadmapPage({
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
         @keyframes spin   { to { transform: rotate(360deg); } }
         @keyframes bounce { 0%,60%,100%{transform:scale(0.7);opacity:0.5} 30%{transform:scale(1.1);opacity:1} }
-        
-        .delete-btn:hover {
-          background: rgba(239, 68, 68, 0.25) !important;
-          transform: scale(1.05);
-          transition: all 0.2s ease;
-        }
       `}</style>
     </div>
   );
@@ -526,20 +470,8 @@ const S = {
   bourseName:   { fontSize:16, fontWeight:700, color:'#f1f5f9', marginBottom:4 },
   bourseMeta:   { display:'flex', gap:14, fontSize:12, color:'#64748b', flexWrap:'wrap' },
   bourseUrl:    { display:'inline-block', marginTop:6, fontSize:12, color:'#818cf8', textDecoration:'none' },
+  statutBadge:  { fontSize:11, padding:'2px 8px', borderRadius:8, fontWeight:600 },
   pctBadge:     { padding:'4px 12px', borderRadius:99, background:'rgba(99,102,241,.12)', border:'1px solid rgba(99,102,241,.25)', color:'#818cf8', fontSize:12, fontWeight:700 },
-  deleteBtn:    { 
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    borderRadius: '8px',
-    padding: '6px 10px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    color: '#f87171',
-    transition: 'all 0.2s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
   chevron:      { fontSize:22, color:'#475569', transition:'transform .2s' },
   timelineBody: { padding:'0 22px 22px', borderTop:'1px solid rgba(255,255,255,.05)' },
   conseilGlobal:{ margin:'16px 0 20px', padding:'12px 16px', borderRadius:10, background:'rgba(99,102,241,.06)', border:'1px solid rgba(99,102,241,.15)', color:'#94a3b8', fontSize:13, lineHeight:1.6 },

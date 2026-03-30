@@ -12,7 +12,7 @@ import VerifyMagicLink from './pages/VerifyMagicLink';
 import RecommandationsPage from './pages/RecommandationsPage';
 
 const WEBHOOK_URL = 'http://localhost:5678/webhook-test/webhook';
-const API_BASE    = 'http://localhost:3000/api';
+const API_BASE    = 'http://localhost:3001/api';
 
 function AppContent() {
   const location = useLocation();
