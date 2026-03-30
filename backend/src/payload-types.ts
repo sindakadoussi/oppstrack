@@ -74,6 +74,7 @@ export interface Config {
     candidatures: Candidature;
     entretiens: Entretien;
     favoris: Favoris;
+    roadmap: Roadmap;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     candidatures: CandidaturesSelect<false> | CandidaturesSelect<true>;
     entretiens: EntretiensSelect<false> | EntretiensSelect<true>;
     favoris: FavorisSelect<false> | FavorisSelect<true>;
+    roadmap: RoadmapSelect<false> | RoadmapSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -369,6 +371,20 @@ export interface Bourse {
   statut?: ('active' | 'expiree' | 'a_venir') | null;
   niveau: string;
   description: string;
+  eligibilite?: {
+    nationalitesEligibles?: string | null;
+    niveauRequis?: string | null;
+    ageMax?: number | null;
+    conditionsSpeciales?: string | null;
+  };
+  documentsRequis?:
+    | {
+        nom: string;
+        obligatoire?: boolean | null;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   financement?: string | null;
   dateLimite?: string | null;
   dateOuverture?: string | null;
@@ -431,6 +447,26 @@ export interface Favoris {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "roadmap".
+ */
+export interface Roadmap {
+  id: string;
+  userId: string;
+  userEmail?: string | null;
+  nom: string;
+  pays?: string | null;
+  lienOfficiel?: string | null;
+  financement?: string | null;
+  dateLimite?: string | null;
+  ajouteLe?: string | null;
+  statut?: ('en_cours' | 'soumis' | 'accepte' | 'refuse') | null;
+  etapeCourante?: number | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -480,6 +516,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'favoris';
         value: string | Favoris;
+      } | null)
+    | ({
+        relationTo: 'roadmap';
+        value: string | Roadmap;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -753,6 +793,22 @@ export interface BoursesSelect<T extends boolean = true> {
   statut?: T;
   niveau?: T;
   description?: T;
+  eligibilite?:
+    | T
+    | {
+        nationalitesEligibles?: T;
+        niveauRequis?: T;
+        ageMax?: T;
+        conditionsSpeciales?: T;
+      };
+  documentsRequis?:
+    | T
+    | {
+        nom?: T;
+        obligatoire?: T;
+        description?: T;
+        id?: T;
+      };
   financement?: T;
   dateLimite?: T;
   dateOuverture?: T;
@@ -802,6 +858,25 @@ export interface FavorisSelect<T extends boolean = true> {
         ajouteLe?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "roadmap_select".
+ */
+export interface RoadmapSelect<T extends boolean = true> {
+  userId?: T;
+  userEmail?: T;
+  nom?: T;
+  pays?: T;
+  lienOfficiel?: T;
+  financement?: T;
+  dateLimite?: T;
+  ajouteLe?: T;
+  statut?: T;
+  etapeCourante?: T;
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

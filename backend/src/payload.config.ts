@@ -13,6 +13,7 @@ import nodemailer from 'nodemailer'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
 import Favoris from './collections/Favoris'
+import Roadmap from './collections/Roadmap';
 
 const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
@@ -44,7 +45,7 @@ export default buildConfig({
     },
   }),
 
-  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris],
+  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris,Roadmap],
   editor:      lexicalEditor(),
   secret:      process.env.PAYLOAD_SECRET || '',
 

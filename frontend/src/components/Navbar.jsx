@@ -4,14 +4,14 @@ const API_BASE = 'http://localhost:3001/api';
 const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
 
 const navItems = [
-  { id: 'accueil',         icon: '💬', label: 'IA Chat'         },
-  { id: 'bourses',         icon: '🎓', label: 'Bourses'         },
-  { id: 'recommandations', icon: '🎯', label: 'Recommandations' },
-  { id: 'roadmap',         icon: '🗺️', label: 'Roadmap'        },
-  { id: 'entretien',       icon: '🎙️', label: 'Entretien'      },
-  { id: 'cv',              icon: '📄', label: 'CV & LM'        },
-  { id: 'dashboard',       icon: '📊', label: 'Dashboard'       },
-  { id: 'profil',          icon: '👤', label: 'Profil'         },
+  { id: 'accueil'       , label: 'IA Chat'         },
+  { id: 'bourses', label: 'Bourses'         },
+  { id: 'recommandations', label: 'Recommandations' },
+  { id: 'roadmap', label: 'Roadmap'        },
+  { id: 'entretien', label: 'Entretien'      },
+  { id: 'cv', label: 'CV & LM'        },
+  { id: 'dashboard', label: 'Dashboard'       },
+  { id: 'profil', label: 'Profil'         },
 ];
 
 function useDeadlineAlerts(user) {

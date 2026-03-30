@@ -382,7 +382,7 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
       const docFav  = dataFav.docs?.[0];
       setStarredNoms(new Set((docFav?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
 
-      const resRM   = await fetch(`${API_BASE}/roadmap?where[userId][equals]=${user.id}&limit=100&depth=0`);
+      const resRM   = await fetch(`${API_BASE}/roadmaps?where[userId][equals]=${user.id}&limit=100&depth=0`);
       const dataRM  = await resRM.json();
       setAppliedNoms(new Set((dataRM.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
     } catch {}
