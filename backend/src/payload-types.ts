@@ -369,6 +369,20 @@ export interface Bourse {
   statut?: ('active' | 'expiree' | 'a_venir') | null;
   niveau: string;
   description: string;
+  eligibilite?: {
+    nationalitesEligibles?: string | null;
+    niveauRequis?: string | null;
+    ageMax?: number | null;
+    conditionsSpeciales?: string | null;
+  };
+  documentsRequis?:
+    | {
+        nom: string;
+        obligatoire?: boolean | null;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   financement?: string | null;
   dateLimite?: string | null;
   dateOuverture?: string | null;
@@ -753,6 +767,22 @@ export interface BoursesSelect<T extends boolean = true> {
   statut?: T;
   niveau?: T;
   description?: T;
+  eligibilite?:
+    | T
+    | {
+        nationalitesEligibles?: T;
+        niveauRequis?: T;
+        ageMax?: T;
+        conditionsSpeciales?: T;
+      };
+  documentsRequis?:
+    | T
+    | {
+        nom?: T;
+        obligatoire?: T;
+        description?: T;
+        id?: T;
+      };
   financement?: T;
   dateLimite?: T;
   dateOuverture?: T;

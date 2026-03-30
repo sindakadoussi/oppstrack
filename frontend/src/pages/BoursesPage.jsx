@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3000/api';
 
 function countryFlag(pays) {
   const flags = {

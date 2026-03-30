@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3000/api';
 
 function getScoreColor(score) {
   if (score >= 80) return '#4ade80';
