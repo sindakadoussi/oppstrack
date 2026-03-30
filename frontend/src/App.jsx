@@ -12,7 +12,7 @@ import VerifyMagicLink from './pages/VerifyMagicLink';
 import RecommandationsPage from './pages/RecommandationsPage';
 
 const WEBHOOK_URL = 'http://localhost:5678/webhook-test/webhook';
-const API_BASE    = 'http://localhost:3000/api';
+const API_BASE    = 'http://localhost:3001/api';
 
 function AppContent() {
   const location = useLocation();
@@ -321,14 +321,35 @@ const res = await fetch(`${API_BASE}/bourses?limit=200&depth=0`, { signal: Abort
         {view === 'cv'        && <CVPage        {...sharedProps} />}
       </main>
 
-      <style>{`
-        .server-alert {
-          background: rgba(239,68,68,0.1);
-          border-bottom: 1px solid rgba(239,68,68,0.25);
-          color: #fca5a5; padding: 9px 24px;
-          font-size: 13px; text-align: center;
-        }
-      `}</style>
+  <style>{`
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #080812 !important; }
+  body {
+    font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,0.08) 0%, transparent 60%),
+      #080812 !important;
+  }
+  .app-root  { display:flex; flex-direction:column; min-height:100vh; background:transparent; }
+  .main-content { flex:1; overflow-x:hidden; background:transparent; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(99,102,241,0.25); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(99,102,241,0.4); }
+  ::selection { background:rgba(99,102,241,0.3); color:#f1f5f9; }
+  .server-alert {
+    background: rgba(239,68,68,0.1);
+    border-bottom: 1px solid rgba(239,68,68,0.25);
+    color: #fca5a5; padding: 9px 24px;
+    font-size: 13px; text-align: center;
+  }
+`}</style>
     </div>
   );
 }

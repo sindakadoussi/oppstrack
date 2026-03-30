@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ChatMessage from '../components/ChatMessage';
 import ChatInput from '../components/ChatInput';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3001/api';
 
 const quickReplies = [
   { emoji: '🎓', label: 'Trouver mes bourses', text: 'Quelles bourses correspondent à mon profil ?' },
