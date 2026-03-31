@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE = 'http://localhost:3001/api';
+import axiosInstance from '@/config/axiosInstance';
+import { API_ROUTES } from '@/config/routes';
 
 export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply }) {
   const [boursesSuivies, setBoursesSuivies] = useState([]);
@@ -13,9 +13,9 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       setLoadingBourses(false);
       return;
     }
-    fetch(`${API_BASE}/users/${user.id}?depth=0`)
-      .then(r => r.json())
-      .then(d => setBoursesSuivies(d.bourses_choisies || []))
+    // Modification : utilisation de axiosInstance et API_ROUTES
+    axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
+      .then(response => setBoursesSuivies(response.data.bourses_choisies || []))
       .catch(() => {})
       .finally(() => setLoadingBourses(false));
   }, [user?.id]);

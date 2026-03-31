@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axiosInstance from '@/config/axiosInstance';
 
-const API_BASE = 'http://localhost:3001/api';
 
 const emptyProfile = {
   name: '', email: '', phone: '', dateOfBirth: '',
@@ -88,29 +88,30 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
         github:           profile.github,
         portfolio:        profile.portfolio,
       };
-      const res = await fetch(`${API_BASE}/users/${user.id}/update-profile`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || `Erreur ${res.status}`);
+
+      const { data: result } = await axiosInstance.patch(
+        `/api/users/${user.id}/update-profile`,
+        body
+      );
+
       const updated = { ...user, ...(result.user || body) };
       localStorage.setItem('opps_user', JSON.stringify(updated));
       localStorage.setItem('opps_profile', JSON.stringify({
-        dateOfBirth: profile.dateOfBirth,
+        dateOfBirth:      profile.dateOfBirth,
         academicProjects: profile.academicProjects,
-        certifications: profile.certifications,
-        volunteerWork: profile.volunteerWork,
-        publications: profile.publications,
-        awards: profile.awards,
-        linkedin: profile.linkedin, github: profile.github, portfolio: profile.portfolio,
+        certifications:   profile.certifications,
+        volunteerWork:    profile.volunteerWork,
+        publications:     profile.publications,
+        awards:           profile.awards,
+        linkedin:  profile.linkedin,
+        github:    profile.github,
+        portfolio: profile.portfolio,
       }));
       setUser(updated);
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => setSaved(false), 3001);
     } catch (err) {
-      console.error('[ProfilPage]', err);
+      console.error('[ProfilPage]', err.response?.data || err.message);
     } finally {
       setSaving(false);
     }

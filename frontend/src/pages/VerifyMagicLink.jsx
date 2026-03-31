@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axiosInstance from '@/config/axiosInstance'
+import { API_ROUTES } from '@/config/routes'
 
-const PAYLOAD_URL = 'http://localhost:3001'
-
-// Décoder JWT sans librairie (pour le cas où Payload envoie un JWT)
 function decodeJWT(token) {
   try {
     const payload = token.split('.')[1]
@@ -20,7 +19,6 @@ export default function VerifyMagicLink({ setUser }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token  = params.get('token')
-    // Cas 1 : notre endpoint → email dans l'URL
     let email    = params.get('email')
 
     if (!token) {
@@ -29,7 +27,6 @@ export default function VerifyMagicLink({ setUser }) {
       return
     }
 
-    // Cas 2 : Payload natif → email dans le JWT
     if (!email) {
       const decoded = decodeJWT(token)
       email = decoded?.email || null
@@ -41,20 +38,16 @@ export default function VerifyMagicLink({ setUser }) {
       return
     }
 
-    // Appel vers notre endpoint /magic-login
-    fetch(`${PAYLOAD_URL}/api/users/magic-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.toLowerCase(), token }),
+    axiosInstance.post(API_ROUTES.auth.magicLogin, {
+      email: email.toLowerCase(),
+      token,
     })
-      .then(r => r.json())
-      .then(data => {
+      .then(res => {
+        const data = res.data
         if (data.user) {
-          // Stocker l'user — même clé que App.jsx utilise
           localStorage.setItem('opps_user',    JSON.stringify(data.user))
           localStorage.setItem('opps_user_id', data.user.id)
-          localStorage.setItem('opps_token',   data.token || '') 
-          // Mettre à jour l'état React si setUser est passé
+          localStorage.setItem('opps_token',   data.token || '')
           if (setUser) setUser(data.user)
           setStatus('success')
           setMessage(`Bienvenue ${data.user.name || data.user.email} !`)

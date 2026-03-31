@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
+import { WEBHOOK_ROUTES } from '@/config/routes';
 
-const WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
-const API_BASE    = 'http://localhost:3001/api';
-const TOTAL_Q     = 8;
+
+const TOTAL_Q = 8;
 
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
@@ -25,14 +27,11 @@ function tts(text) {
 async function saveEntretien(userId, scoreText, conversationId, bourseNom) {
   if (!userId) return;
   try {
-    await fetch(`${API_BASE}/entretiens`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user: userId, score: scoreText,
-        conversationId: conversationId || `entretien-${Date.now()}`,
-        context: bourseNom || '',
-      }),
+    await axiosInstance.post('/api/entretiens', {
+      user:           userId,
+      score:          scoreText,
+      conversationId: conversationId || `entretien-${Date.now()}`,
+      context:        bourseNom || '',
     });
     console.log('✅ Entretien sauvegardé');
   } catch(e) { console.error('❌ Save entretien:', e.message); }
@@ -70,8 +69,8 @@ class VoiceAnalyzer {
     if (vol < 3) {
       if (!this.silenceStart) this.silenceStart = now;
       const dur = now - this.silenceStart;
-      if (dur > 500 && dur < 3000) this.hesitationMs += dt;
-      if (dur >= 3000 && dur < 3100) this.pauseCount++;
+      if (dur > 500 && dur < 3001) this.hesitationMs += dt;
+      if (dur >= 3001 && dur < 3101) this.pauseCount++;
     } else {
       this.silenceStart = null;
       this.speakingMs  += dt;
@@ -98,7 +97,6 @@ class VoiceAnalyzer {
 }
 
 // ── HistoriquePanel ───────────────────────────────────────────────────────────
-// ── HistoriquePanel amélioré ───────────────────────────────────────────────────────────
 function HistoriquePanel({ userId, onClose }) {
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -106,71 +104,43 @@ function HistoriquePanel({ userId, onClose }) {
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
-    fetch(`${API_BASE}/entretiens?where[user][equals]=${userId}&sort=-createdAt&limit=20`)
-      .then(r => r.json())
-      .then(d => { setRecords(d.docs||[]); setLoading(false); })
+    axiosInstance.get('/api/entretiens', {
+      params: { 'where[user][equals]': userId, sort: '-createdAt', limit: 20 },
+    })
+      .then(res => { setRecords(res.data.docs || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [userId]);
 
-  // Parser avancé pour extraire les données structurées du scoreText
   const parseEntretien = (text) => {
     if (!text) return { score: null, verdict: '', details: [], conseils: [] };
-    
-    // Score global
     const scoreMatch = text.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    
-    // Verdict
     const verdictMatch = text.match(/VERDICT\s*[:\-]\s*(.+?)(?=\n|$)/i);
     const verdict = verdictMatch ? verdictMatch[1].trim() : '';
-    
-    // Extraire les sections structurées
     const extractSection = (title) => {
       const regex = new RegExp(`${title}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|VERDICT|SCORE|$))`, 'i');
       const match = text.match(regex);
-      if (match) {
-        return match[1].trim().split(/\n/).filter(l => l.trim()).map(l => l.replace(/^[-•*]\s*/, '').trim());
-      }
+      if (match) return match[1].trim().split(/\n/).filter(l => l.trim()).map(l => l.replace(/^[-•*]\s*/, '').trim());
       return [];
     };
-    
-    // Points forts
-    const pointsForts = extractSection('POINTS FORTS');
-    // Points à améliorer
+    const pointsForts    = extractSection('POINTS FORTS');
     const pointsAmeliorer = extractSection('POINTS À AMÉLIORER');
-    // Conseils personnalisés
-    const conseils = extractSection('CONSEILS PERSONNALISÉS');
-    
-    // Extraire les métriques par question si présentes
+    const conseils       = extractSection('CONSEILS PERSONNALISÉS');
     const questionMetrics = [];
     const qRegex = /Question\s*(\d+)[:\s]*([^\n]+).*?mots[:\s]*(\d+).*?m\/min[:\s]*(\d+)/gi;
     let match;
     while ((match = qRegex.exec(text)) !== null) {
-      questionMetrics.push({
-        num: parseInt(match[1]),
-        answer: match[2].trim(),
-        words: parseInt(match[3]) || 0,
-        wpm: parseInt(match[4]) || 0
-      });
+      questionMetrics.push({ num: parseInt(match[1]), answer: match[2].trim(), words: parseInt(match[3]) || 0, wpm: parseInt(match[4]) || 0 });
     }
-    
-    return {
-      score,
-      verdict,
-      pointsForts: pointsForts.length ? pointsForts : [],
-      pointsAmeliorer: pointsAmeliorer.length ? pointsAmeliorer : [],
-      conseils: conseils.length ? conseils : [],
-      questionMetrics,
-      rawText: text
-    };
+    return { score, verdict, pointsForts, pointsAmeliorer, conseils, questionMetrics, rawText: text };
   };
 
   const getScoreColor = (score) => {
     if (score === null) return { bg: 'rgba(100,116,139,.15)', color: '#94a3b8', border: 'rgba(100,116,139,.3)', grade: 'Non évalué' };
-    if (score >= 85) return { bg: 'rgba(16,185,129,.2)', color: '#34d399', border: 'rgba(16,185,129,.4)', grade: 'Excellent', icon: '🏆' };
-    if (score >= 70) return { bg: 'rgba(16,185,129,.15)', color: '#34d399', border: 'rgba(16,185,129,.35)', grade: 'Très bien', icon: '🌟' };
-    if (score >= 55) return { bg: 'rgba(245,158,11,.15)', color: '#fbbf24', border: 'rgba(245,158,11,.35)', grade: 'Bien', icon: '👍' };
-    if (score >= 40) return { bg: 'rgba(245,158,11,.12)', color: '#fbbf24', border: 'rgba(245,158,11,.3)', grade: 'À améliorer', icon: '📈' };
+    if (score >= 85) return { bg: 'rgba(16,185,129,.2)',  color: '#34d399', border: 'rgba(16,185,129,.4)',  grade: 'Excellent',   icon: '🏆' };
+    if (score >= 70) return { bg: 'rgba(16,185,129,.15)', color: '#34d399', border: 'rgba(16,185,129,.35)', grade: 'Très bien',   icon: '🌟' };
+    if (score >= 55) return { bg: 'rgba(245,158,11,.15)', color: '#fbbf24', border: 'rgba(245,158,11,.35)', grade: 'Bien',        icon: '👍' };
+    if (score >= 40) return { bg: 'rgba(245,158,11,.12)', color: '#fbbf24', border: 'rgba(245,158,11,.3)',  grade: 'À améliorer', icon: '📈' };
     return { bg: 'rgba(239,68,68,.15)', color: '#f87171', border: 'rgba(239,68,68,.35)', grade: 'À renforcer', icon: '⚠️' };
   };
 
@@ -178,11 +148,9 @@ function HistoriquePanel({ userId, onClose }) {
     const d = new Date(dateStr);
     const now = new Date();
     const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-    
     if (diffDays === 0) return `Aujourd'hui, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (diffDays === 1) return `Hier, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (diffDays < 7) return `Il y a ${diffDays} jours`;
-    
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
@@ -243,9 +211,7 @@ function HistoriquePanel({ userId, onClose }) {
                   </div>
                   <div style={H.cardMid}>
                     <div style={H.cardDate}>{formatDate(r.createdAt)}</div>
-                    <div style={H.cardTitle}>
-                      {r.context || 'Entretien bourse'}
-                    </div>
+                    <div style={H.cardTitle}>{r.context || 'Entretien bourse'}</div>
                     <div style={H.cardVerdict}>
                       <span style={{color: scoreColor.color}}>{scoreColor.icon} {scoreColor.grade}</span>
                       {parsed.verdict && <span style={{marginLeft: 8, color: '#64748b'}}>· {parsed.verdict.slice(0, 40)}</span>}
@@ -270,28 +236,16 @@ function HistoriquePanel({ userId, onClose }) {
       </div>
       <div style={H.backdrop} onClick={onClose}/>
       <style>{`
-        .hcard {
-          transition: all 0.2s ease;
-        }
-        .hcard:hover {
-          background: rgba(139, 92, 246, 0.08) !important;
-          border-color: rgba(139, 92, 246, 0.35) !important;
-          transform: translateX(4px);
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
+        .hcard { transition: all 0.2s ease; }
+        .hcard:hover { background: rgba(139, 92, 246, 0.08) !important; border-color: rgba(139, 92, 246, 0.35) !important; transform: translateX(4px); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );
 }
 
-// ── Composant de détail d'entretien amélioré ───────────────────────────────────────────
+// ── EntretienDetail ───────────────────────────────────────────────────────────
 function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate }) {
   const [activeTab, setActiveTab] = useState('summary');
   const parsed = parseEntretien(entretien.score);
@@ -299,138 +253,73 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
   
   return (
     <div style={D.container}>
-      <button style={D.backBtn} onClick={onBack}>
-        <span style={{fontSize:18}}>←</span> Retour à la liste
-      </button>
+      <button style={D.backBtn} onClick={onBack}><span style={{fontSize:18}}>←</span> Retour à la liste</button>
       
-      {/* En-tête avec score */}
       <div style={D.header}>
         <div style={D.headerTop}>
-          <div style={D.bourseTag}>
-            <span style={{fontSize:20}}>🎓</span>
-            <span>{entretien.context || 'Entretien de bourse'}</span>
-          </div>
-          <div style={D.dateTag}>
-            <span>📅</span>
-            <span>{formatDate(entretien.createdAt)}</span>
-          </div>
+          <div style={D.bourseTag}><span style={{fontSize:20}}>🎓</span><span>{entretien.context || 'Entretien de bourse'}</span></div>
+          <div style={D.dateTag}><span>📅</span><span>{formatDate(entretien.createdAt)}</span></div>
         </div>
-        
         <div style={D.scoreSection}>
           <div style={{...D.scoreCircle, background: scoreColor.bg, border: `2px solid ${scoreColor.color}`}}>
             <span style={D.scoreValue}>{parsed.score !== null ? parsed.score : '?'}</span>
             <span style={D.scoreMax}>/100</span>
           </div>
           <div style={D.scoreInfo}>
-            <div style={{...D.scoreGrade, color: scoreColor.color}}>
-              {scoreColor.icon} {scoreColor.grade}
-            </div>
-            {parsed.verdict && (
-              <div style={D.scoreVerdict}>{parsed.verdict}</div>
-            )}
+            <div style={{...D.scoreGrade, color: scoreColor.color}}>{scoreColor.icon} {scoreColor.grade}</div>
+            {parsed.verdict && <div style={D.scoreVerdict}>{parsed.verdict}</div>}
           </div>
         </div>
       </div>
       
-      {/* Onglets */}
       <div style={D.tabs}>
         {['summary', 'strengths', 'advice', 'details'].map(tab => (
-          <button 
-            key={tab}
-            style={{...D.tab, ...(activeTab === tab ? D.tabActive : {})}}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'summary' && '📊 Résumé'}
+          <button key={tab} style={{...D.tab, ...(activeTab === tab ? D.tabActive : {})}} onClick={() => setActiveTab(tab)}>
+            {tab === 'summary'   && '📊 Résumé'}
             {tab === 'strengths' && '✅ Analyse'}
-            {tab === 'advice' && '💡 Conseils'}
-            {tab === 'details' && '📝 Détails'}
+            {tab === 'advice'    && '💡 Conseils'}
+            {tab === 'details'   && '📝 Détails'}
           </button>
         ))}
       </div>
       
-      {/* Contenu des onglets */}
       <div style={D.content}>
         {activeTab === 'summary' && (
           <div style={D.summaryContent}>
-            {/* Points clés */}
             <div style={D.statsGrid}>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>⏱️</div>
-                <div style={D.statLabel}>Durée totale</div>
-                <div style={D.statValue}>
-                  {parsed.questionMetrics.length > 0 
-                    ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00`
-                    : '—'}
-                </div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>📝</div>
-                <div style={D.statLabel}>Questions</div>
-                <div style={D.statValue}>{parsed.questionMetrics.length || '8'}</div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>🎯</div>
-                <div style={D.statLabel}>Score</div>
-                <div style={D.statValue}>{parsed.score !== null ? `${parsed.score}/100` : '—'}</div>
-              </div>
+              <div style={D.statItem}><div style={D.statIcon}>⏱️</div><div style={D.statLabel}>Durée totale</div><div style={D.statValue}>{parsed.questionMetrics.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—'}</div></div>
+              <div style={D.statItem}><div style={D.statIcon}>📝</div><div style={D.statLabel}>Questions</div><div style={D.statValue}>{parsed.questionMetrics.length || '8'}</div></div>
+              <div style={D.statItem}><div style={D.statIcon}>🎯</div><div style={D.statLabel}>Score</div><div style={D.statValue}>{parsed.score !== null ? `${parsed.score}/100` : '—'}</div></div>
             </div>
-            
-            {/* Points forts en résumé */}
             {parsed.pointsForts.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>✅ Points forts identifiés</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsForts.slice(0, 3).map((p, i) => <li key={i} style={D.listItem}>{p}</li>)}</ul>
               </div>
             )}
-            
-            {/* Axes d'amélioration */}
             {parsed.pointsAmeliorer.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>📈 Axes d'amélioration</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsAmeliorer.slice(0, 3).map((p, i) => <li key={i} style={D.listItem}>{p}</li>)}</ul>
               </div>
             )}
           </div>
         )}
-        
+
         {activeTab === 'strengths' && (
           <div style={D.strengthsContent}>
             {parsed.pointsForts.length > 0 && (
               <div style={D.section}>
                 <div style={{...D.sectionTitle, color: '#34d399'}}>✅ POINTS FORTS</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#34d399', marginRight: 8}}>✓</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsForts.map((p, i) => <li key={i} style={D.listItem}><span style={{color: '#34d399', marginRight: 8}}>✓</span>{p}</li>)}</ul>
               </div>
             )}
-            
             {parsed.pointsAmeliorer.length > 0 && (
               <div style={{...D.section, marginTop: 24}}>
                 <div style={{...D.sectionTitle, color: '#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#fbbf24', marginRight: 8}}>!</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsAmeliorer.map((p, i) => <li key={i} style={D.listItem}><span style={{color: '#fbbf24', marginRight: 8}}>!</span>{p}</li>)}</ul>
               </div>
             )}
-            
             {parsed.questionMetrics.length > 0 && (
               <div style={{...D.section, marginTop: 24}}>
                 <div style={D.sectionTitle}>📊 Performance par question</div>
@@ -449,53 +338,33 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
             )}
           </div>
         )}
-        
+
         {activeTab === 'advice' && (
           <div style={D.adviceContent}>
             {parsed.conseils.length > 0 ? (
               <div style={D.section}>
                 <div style={{...D.sectionTitle, color: '#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div>
-                <ul style={D.list}>
-                  {parsed.conseils.map((c, i) => (
-                    <li key={i} style={{...D.listItem, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.05)'}}>
-                      <span style={{fontSize: 18, marginRight: 12}}>🎯</span>
-                      <span>{c}</span>
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.conseils.map((c, i) => <li key={i} style={{...D.listItem, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.05)'}}><span style={{fontSize: 18, marginRight: 12}}>🎯</span><span>{c}</span></li>)}</ul>
               </div>
             ) : (
-              <div style={D.emptyAdvice}>
-                <span style={{fontSize: 48}}>📝</span>
-                <p>Des conseils personnalisés apparaîtront ici après votre entretien</p>
-              </div>
+              <div style={D.emptyAdvice}><span style={{fontSize: 48}}>📝</span><p>Des conseils personnalisés apparaîtront ici après votre entretien</p></div>
             )}
-            
-            {/* Citation de motivation */}
             <div style={D.motivationCard}>
-              <div style={D.motivationQuote}>
-                "La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."
-              </div>
+              <div style={D.motivationQuote}>"La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."</div>
               <div style={D.motivationAuthor}>— Jury IA</div>
             </div>
           </div>
         )}
-        
+
         {activeTab === 'details' && (
           <div style={D.detailsContent}>
             <div style={D.section}>
               <div style={D.sectionTitle}>📄 Rapport complet</div>
               <div style={D.rawContent}>
                 {parsed.rawText.split('\n').map((line, i) => {
-                  if (line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)) {
-                    return <div key={i} style={D.rawHeader}>{line}</div>;
-                  }
-                  if (line.trim() && line.match(/^[-•*]/)) {
-                    return <div key={i} style={D.rawBullet}>{line}</div>;
-                  }
-                  if (line.trim()) {
-                    return <div key={i} style={D.rawLine}>{line}</div>;
-                  }
+                  if (line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)) return <div key={i} style={D.rawHeader}>{line}</div>;
+                  if (line.trim() && line.match(/^[-•*]/)) return <div key={i} style={D.rawBullet}>{line}</div>;
+                  if (line.trim()) return <div key={i} style={D.rawLine}>{line}</div>;
                   return <div key={i} style={{height: 8}} />;
                 })}
               </div>
@@ -504,358 +373,83 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         )}
       </div>
       
-      {/* Actions */}
       <div style={D.actions}>
-        <button style={D.actionBtn} onClick={() => window.print()}>
-          🖨️ Imprimer
-        </button>
-        <button style={D.actionBtn} onClick={() => {
-          navigator.clipboard.writeText(parsed.rawText);
-          alert('Rapport copié dans le presse-papier');
-        }}>
-          📋 Copier
-        </button>
+        <button style={D.actionBtn} onClick={() => window.print()}>🖨️ Imprimer</button>
+        <button style={D.actionBtn} onClick={() => { navigator.clipboard.writeText(parsed.rawText); alert('Rapport copié dans le presse-papier'); }}>📋 Copier</button>
       </div>
     </div>
   );
 }
 
-// Styles pour le détail
 const D = {
-  container: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '20px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-    animation: 'slideIn 0.3s ease'
-  },
-  backBtn: {
-    alignSelf: 'flex-start',
-    background: 'rgba(255,255,255,.05)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    padding: '8px 16px',
-    borderRadius: 10,
-    cursor: 'pointer',
-    fontSize: 13,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    transition: 'all 0.2s'
-  },
-  header: {
-    background: 'rgba(139, 92, 246, .06)',
-    borderRadius: 20,
-    padding: '20px',
-    border: '1px solid rgba(139, 92, 246, .15)'
-  },
-  headerTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    flexWrap: 'wrap',
-    gap: 12
-  },
-  bourseTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 14px',
-    background: 'rgba(139, 92, 246, .12)',
-    borderRadius: 20,
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#c4b5fd'
-  },
-  dateTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 12,
-    color: '#64748b'
-  },
-  scoreSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 20,
-    flexWrap: 'wrap'
-  },
-  scoreCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: '50%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2
-  },
-  scoreValue: {
-    fontSize: 36,
-    fontWeight: 800,
-    lineHeight: 1
-  },
-  scoreMax: {
-    fontSize: 12,
-    opacity: 0.7
-  },
-  scoreInfo: {
-    flex: 1
-  },
-  scoreGrade: {
-    fontSize: 20,
-    fontWeight: 700,
-    marginBottom: 4
-  },
-  scoreVerdict: {
-    fontSize: 14,
-    color: '#94a3b8'
-  },
-  tabs: {
-    display: 'flex',
-    gap: 8,
-    borderBottom: '1px solid rgba(255,255,255,.08)',
-    paddingBottom: 12
-  },
-  tab: {
-    padding: '8px 20px',
-    background: 'transparent',
-    border: 'none',
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    borderRadius: 20,
-    transition: 'all 0.2s'
-  },
-  tabActive: {
-    background: 'rgba(139, 92, 246, .15)',
-    color: '#c4b5fd'
-  },
-  content: {
-    flex: 1,
-    overflowY: 'auto',
-    minHeight: 300
-  },
-  summaryContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 12
-  },
-  statItem: {
-    background: 'rgba(255,255,255,.03)',
-    borderRadius: 14,
-    padding: '14px',
-    textAlign: 'center',
-    border: '1px solid rgba(255,255,255,.06)'
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 6
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#f1f5f9'
-  },
-  section: {
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 14,
-    padding: '16px',
-    border: '1px solid rgba(255,255,255,.05)'
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 1,
-    color: '#a78bfa',
-    marginBottom: 12,
-    textTransform: 'uppercase'
-  },
-  list: {
-    margin: 0,
-    paddingLeft: 0,
-    listStyle: 'none'
-  },
-  listItem: {
-    fontSize: 13,
-    color: '#cbd5e1',
-    lineHeight: 1.6,
-    marginBottom: 10,
-    display: 'flex',
-    alignItems: 'flex-start'
-  },
-  questionsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8
-  },
-  questionItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 12px',
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 10
-  },
-  questionNum: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#a78bfa'
-  },
-  questionStats: {
-    display: 'flex',
-    gap: 16,
-    fontSize: 11,
-    color: '#64748b'
-  },
-  wordCount: {
-    padding: '2px 8px',
-    background: 'rgba(16,185,129,.1)',
-    borderRadius: 12,
-    color: '#34d399'
-  },
-  wpm: {
-    padding: '2px 8px',
-    background: 'rgba(139,92,246,.1)',
-    borderRadius: 12,
-    color: '#a78bfa'
-  },
-  adviceContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  emptyAdvice: {
-    textAlign: 'center',
-    padding: '40px 20px',
-    color: '#64748b'
-  },
-  motivationCard: {
-    background: 'linear-gradient(135deg, rgba(139,92,246,.1), rgba(232,121,249,.05))',
-    borderRadius: 16,
-    padding: '20px',
-    marginTop: 8,
-    border: '1px solid rgba(139,92,246,.2)'
-  },
-  motivationQuote: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#e2e8f0',
-    lineHeight: 1.5,
-    marginBottom: 12
-  },
-  motivationAuthor: {
-    fontSize: 11,
-    color: '#64748b',
-    textAlign: 'right'
-  },
-  detailsContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16
-  },
-  rawContent: {
-    fontSize: 13,
-    lineHeight: 1.7,
-    color: '#94a3b8',
-    whiteSpace: 'pre-wrap',
-    maxHeight: 400,
-    overflowY: 'auto',
-    padding: '4px 0'
-  },
-  rawHeader: {
-    fontWeight: 700,
-    color: '#c4b5fd',
-    marginTop: 12,
-    marginBottom: 6,
-    fontSize: 12,
-    letterSpacing: 1
-  },
-  rawBullet: {
-    paddingLeft: 20,
-    marginBottom: 6,
-    color: '#94a3b8'
-  },
-  rawLine: {
-    marginBottom: 4,
-    color: '#94a3b8'
-  },
-  actions: {
-    display: 'flex',
-    gap: 12,
-    paddingTop: 16,
-    borderTop: '1px solid rgba(255,255,255,.06)',
-    marginTop: 8
-  },
-  actionBtn: {
-    flex: 1,
-    padding: '10px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,.04)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    fontSize: 13,
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  }
+  container:       {flex:1,overflowY:'auto',padding:'20px 24px',display:'flex',flexDirection:'column',gap:20,animation:'slideIn 0.3s ease'},
+  backBtn:         {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',padding:'8px 16px',borderRadius:10,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,transition:'all 0.2s'},
+  header:          {background:'rgba(139,92,246,.06)',borderRadius:20,padding:'20px',border:'1px solid rgba(139,92,246,.15)'},
+  headerTop:       {display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12},
+  bourseTag:       {display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'rgba(139,92,246,.12)',borderRadius:20,fontSize:13,fontWeight:600,color:'#c4b5fd'},
+  dateTag:         {display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#64748b'},
+  scoreSection:    {display:'flex',alignItems:'center',gap:20,flexWrap:'wrap'},
+  scoreCircle:     {width:100,height:100,borderRadius:'50%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2},
+  scoreValue:      {fontSize:36,fontWeight:800,lineHeight:1},
+  scoreMax:        {fontSize:12,opacity:0.7},
+  scoreInfo:       {flex:1},
+  scoreGrade:      {fontSize:20,fontWeight:700,marginBottom:4},
+  scoreVerdict:    {fontSize:14,color:'#94a3b8'},
+  tabs:            {display:'flex',gap:8,borderBottom:'1px solid rgba(255,255,255,.08)',paddingBottom:12},
+  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:20,transition:'all 0.2s'},
+  tabActive:       {background:'rgba(139,92,246,.15)',color:'#c4b5fd'},
+  content:         {flex:1,overflowY:'auto',minHeight:300},
+  summaryContent:  {display:'flex',flexDirection:'column',gap:24},
+  statsGrid:       {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12},
+  statItem:        {background:'rgba(255,255,255,.03)',borderRadius:14,padding:'14px',textAlign:'center',border:'1px solid rgba(255,255,255,.06)'},
+  statIcon:        {fontSize:24,marginBottom:6},
+  statLabel:       {fontSize:11,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:4},
+  statValue:       {fontSize:18,fontWeight:700,color:'#f1f5f9'},
+  section:         {background:'rgba(255,255,255,.02)',borderRadius:14,padding:'16px',border:'1px solid rgba(255,255,255,.05)'},
+  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#a78bfa',marginBottom:12,textTransform:'uppercase'},
+  list:            {margin:0,paddingLeft:0,listStyle:'none'},
+  listItem:        {fontSize:13,color:'#cbd5e1',lineHeight:1.6,marginBottom:10,display:'flex',alignItems:'flex-start'},
+  strengthsContent:{display:'flex',flexDirection:'column'},
+  questionsList:   {display:'flex',flexDirection:'column',gap:8},
+  questionItem:    {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'rgba(255,255,255,.02)',borderRadius:10},
+  questionNum:     {fontSize:12,fontWeight:600,color:'#a78bfa'},
+  questionStats:   {display:'flex',gap:16,fontSize:11,color:'#64748b'},
+  wordCount:       {padding:'2px 8px',background:'rgba(16,185,129,.1)',borderRadius:12,color:'#34d399'},
+  wpm:             {padding:'2px 8px',background:'rgba(139,92,246,.1)',borderRadius:12,color:'#a78bfa'},
+  adviceContent:   {display:'flex',flexDirection:'column',gap:24},
+  emptyAdvice:     {textAlign:'center',padding:'40px 20px',color:'#64748b'},
+  motivationCard:  {background:'linear-gradient(135deg,rgba(139,92,246,.1),rgba(232,121,249,.05))',borderRadius:16,padding:'20px',marginTop:8,border:'1px solid rgba(139,92,246,.2)'},
+  motivationQuote: {fontSize:14,fontStyle:'italic',color:'#e2e8f0',lineHeight:1.5,marginBottom:12},
+  motivationAuthor:{fontSize:11,color:'#64748b',textAlign:'right'},
+  detailsContent:  {display:'flex',flexDirection:'column',gap:16},
+  rawContent:      {fontSize:13,lineHeight:1.7,color:'#94a3b8',whiteSpace:'pre-wrap',maxHeight:400,overflowY:'auto',padding:'4px 0'},
+  rawHeader:       {fontWeight:700,color:'#c4b5fd',marginTop:12,marginBottom:6,fontSize:12,letterSpacing:1},
+  rawBullet:       {paddingLeft:20,marginBottom:6,color:'#94a3b8'},
+  rawLine:         {marginBottom:4,color:'#94a3b8'},
+  actions:         {display:'flex',gap:12,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.06)',marginTop:8},
+  actionBtn:       {flex:1,padding:'10px',borderRadius:10,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',fontSize:13,cursor:'pointer',transition:'all 0.2s'},
 };
 
-// Mise à jour des styles H existants
 const H = {
-  overlay: {position:'fixed',inset:0,zIndex:1000,display:'flex'},
-  backdrop:{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)'},
-  drawer:  {position:'relative',zIndex:1,width:440,maxWidth:'95vw',background:'#0d0d22',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',overflow:'hidden'},
-  dHead:   {display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'24px 22px 18px',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0},
-  dTitle:  {fontSize:17,fontWeight:700,color:'#f1f5f9',marginBottom:4},
-  dSub:    {fontSize:12,color:'#64748b'},
-  closeBtn:{background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',width:32,height:32,borderRadius:8,cursor:'pointer',fontSize:16},
-  center:  {flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#64748b',fontSize:14,gap:8},
-  list:    {flex:1,overflowY:'auto',padding:'14px 16px',display:'flex',flexDirection:'column',gap:10},
-  card:    {display:'flex',alignItems:'center',gap:14,padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer',textAlign:'left'},
-  scoreBadge:{padding:'6px 12px',borderRadius:99,fontWeight:700,fontSize:15,flexShrink:0},
-  cardMid: {flex:1,display:'flex',flexDirection:'column',gap:4},
-  cardDate:{fontSize:12,color:'#64748b'},
-  detail:  {flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:12},
-  backBtn: {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',padding:'7px 14px',borderRadius:8,cursor:'pointer',fontSize:13},
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#f1f5f9'
-  },
-  cardVerdict: {
-    fontSize: 11,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4
-  },
-  cardArrow: {
-    color: '#475569',
-    fontSize: 16
-  },
-  spinner: {
-    width: 40,
-    height: 40,
-    border: '3px solid rgba(139, 92, 246, .2)',
-    borderTopColor: '#8b5cf6',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  }
+  overlay:    {position:'fixed',inset:0,zIndex:1000,display:'flex'},
+  backdrop:   {position:'absolute',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)'},
+  drawer:     {position:'relative',zIndex:1,width:440,maxWidth:'95vw',background:'#0d0d22',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',overflow:'hidden'},
+  dHead:      {display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'24px 22px 18px',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0},
+  dTitle:     {fontSize:17,fontWeight:700,color:'#f1f5f9',marginBottom:4},
+  dSub:       {fontSize:12,color:'#64748b'},
+  closeBtn:   {background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',width:32,height:32,borderRadius:8,cursor:'pointer',fontSize:16},
+  center:     {flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#64748b',fontSize:14,gap:8},
+  list:       {flex:1,overflowY:'auto',padding:'14px 16px',display:'flex',flexDirection:'column',gap:10},
+  card:       {display:'flex',alignItems:'center',gap:14,padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer',textAlign:'left'},
+  scoreBadge: {padding:'6px 12px',borderRadius:99,fontWeight:700,fontSize:15,flexShrink:0},
+  cardMid:    {flex:1,display:'flex',flexDirection:'column',gap:4},
+  cardDate:   {fontSize:12,color:'#64748b'},
+  detail:     {flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:12},
+  backBtn:    {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',padding:'7px 14px',borderRadius:8,cursor:'pointer',fontSize:13},
+  cardTitle:  {fontSize:14,fontWeight:600,color:'#f1f5f9'},
+  cardVerdict:{fontSize:11,display:'flex',alignItems:'center',gap:4},
+  cardArrow:  {color:'#475569',fontSize:16},
+  spinner:    {width:40,height:40,border:'3px solid rgba(139,92,246,.2)',borderTopColor:'#8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'},
 };
 
 // ── BoursePicker ──────────────────────────────────────────────────────────────
@@ -888,6 +482,7 @@ function BoursePicker({ bourses, userId, onSelect }) {
     </div>
   );
 }
+
 const P = {
   root:       {minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 16px',fontFamily:"'Outfit',sans-serif",position:'relative',background:'radial-gradient(ellipse 90% 55% at 50% -5%,rgba(139,92,246,.16),transparent)'},
   glow:       {position:'fixed',inset:0,pointerEvents:'none',background:'radial-gradient(circle at 75% 25%,rgba(232,121,249,.06),transparent 55%)'},
@@ -940,12 +535,12 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const elapsedRef     = useRef(0);
   const answersRef     = useRef([]);
   const qIndexRef      = useRef(0);
-  const capturedRef    = useRef(''); // réponse capturée au stop
+  const capturedRef    = useRef('');
   const phaseRef       = useRef('intro');
-  const historyRef     = useRef([]); // historique Q/R pour n8n
+  const historyRef     = useRef([]);
 
-  useEffect(() => { liveTextRef.current = liveText; }, [liveText]);
-  useEffect(() => { elapsedRef.current  = elapsed;   }, [elapsed]);
+  useEffect(() => { liveTextRef.current = liveText;  }, [liveText]);
+  useEffect(() => { elapsedRef.current  = elapsed;    }, [elapsed]);
   useEffect(() => { qIndexRef.current   = qIndex;    }, [qIndex]);
   useEffect(() => { phaseRef.current    = phase;     }, [phase]);
 
@@ -969,39 +564,33 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   };
 
-  // ── callAI → n8n fait TOUT ───────────────────────────────────────────────
+  // ── callAI → webhook n8n (serveur différent → axios brut, pas axiosInstance) ──
   const callAI = useCallback(async (payload, ctx) => {
     if (aiLockRef.current) return { output: null };
     aiLockRef.current = true;
     const controller = new AbortController();
     const timeout    = setTimeout(() => controller.abort(), 45000);
     try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // ── Données pour n8n ──────────────────────────────────────────────
+      const res = await axios.post(
+        WEBHOOK_ROUTES.entretien,
+        {
           text:              typeof payload === 'string' ? payload : payload.lastAnswer || '',
-          context:           ctx,  // start_entretien | entretien | fin_entretien
+          context:           ctx,
           conversationId,
           id:                user?.id    || null,
           email:             user?.email || null,
-          // ── Contexte bourse ───────────────────────────────────────────────
           bourse:            { id:bourse.id, nom:bourse.nom, pays:bourse.pays, niveau:bourse.niveau, financement:bourse.financement },
           bourse_context:    `${bourse.nom} | ${bourse.pays} | ${bourse.niveau} | ${bourse.financement||'100%'}`,
-          // ── Historique complet Q/R pour n8n ───────────────────────────────
           entretien_history: historyRef.current,
           question_index:    typeof payload === 'object' ? (payload.questionIndex ?? 0) : 0,
           total_questions:   TOTAL_Q,
-          // ── Stats vocales réelles pour fin_entretien ──────────────────────
-          voiceStats: typeof payload === 'object' && payload.voiceStats ? payload.voiceStats : null,
-        }),
-        signal: controller.signal,
-      });
+          voiceStats:        typeof payload === 'object' && payload.voiceStats ? payload.voiceStats : null,
+        },
+        { signal: controller.signal }
+      );
       clearTimeout(timeout);
-      const txt = await res.text();
       aiLockRef.current = false;
-      try { return JSON.parse(txt); } catch { return { output: txt }; }
+      return res.data;
     } catch(err) {
       clearTimeout(timeout);
       aiLockRef.current = false;
@@ -1015,16 +604,12 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     return out.trim().replace(/^(question\s*\d+\s*[:\-–]?\s*|Q\d+\s*[:\-–]?\s*)/i,'').trim();
   };
 
-  // ── Démarrer entretien — n8n génère la 1ère question ────────────────────
   const startInterview = async () => {
     setPhase('ai_speaking'); setAiLoading(true);
     savedRef.current = false; aiLockRef.current = false;
     historyRef.current = [];
-
-    // n8n reçoit context=start_entretien → EntretienAgent pose Q1
     const data = await callAI({ lastAnswer: '', questionIndex: 0 }, 'start_entretien');
     const q    = cleanQ(data?.output) || `Présentez-vous et expliquez votre motivation pour la bourse ${bourse.nom}.`;
-
     historyRef.current = [{ role: 'assistant', content: q }];
     setCurrentQ(q);
     setQIndex(0); qIndexRef.current = 0;
@@ -1033,7 +618,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     setPhase('waiting');
   };
 
-  // ── Enregistrement avec vraie analyse vocale ─────────────────────────────
   const startRecording = () => {
     if (!streamRef.current || recRef.current?.state==='recording') return;
     setLiveText(''); liveTextRef.current = '';
@@ -1042,17 +626,14 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     setLiveWordCount(0);
     setPhase('recording');
 
-    // VoiceAnalyzer
     if (analyzerRef.current) analyzerRef.current.destroy();
     analyzerRef.current = new VoiceAnalyzer(streamRef.current);
     analyzerRef.current.start();
 
-    // MediaRecorder
     const mr = new MediaRecorder(streamRef.current);
     mr.ondataavailable = e => {};
     mr.start(200); recRef.current = mr;
 
-    // Timer
     timerRef.current = setInterval(() => {
       setElapsed(prev => {
         const n = prev + 1; elapsedRef.current = n;
@@ -1061,7 +642,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       });
     }, 1000);
 
-    // Métriques vocales en temps réel
     metricsRef.current = setInterval(() => {
       if (!analyzerRef.current) return;
       const s = analyzerRef.current.getStats();
@@ -1073,7 +653,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       setLiveWordCount(liveTextRef.current.split(/\s+/).filter(w=>w.length>1).length);
     }, 800);
 
-    // SpeechRecognition
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SR) {
       const sr = new SR(); sr.lang='fr-FR'; sr.continuous=true; sr.interimResults=true;
@@ -1092,14 +671,13 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const stopRecording = useCallback(() => {
     clearInterval(timerRef.current);
     clearInterval(metricsRef.current);
-    capturedRef.current = liveTextRef.current; // ✅ capturer avant reset
+    capturedRef.current = liveTextRef.current;
     if (recRef.current?.state==='recording') { try { recRef.current.stop(); } catch {} }
     try { if (srRef.current) { srRef.current.onend=null; srRef.current.stop(); } } catch {}
     if (analyzerRef.current) analyzerRef.current.stop();
     setPhase('analyzing');
   }, []);
 
-  // ── Analyser réponse + demander prochaine question à n8n ────────────────
   useEffect(() => {
     if (phase !== 'analyzing') return;
     const go = async () => {
@@ -1113,7 +691,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       const wordCount = answer.split(/\s+/).filter(w=>w.length>1).length;
       const wpm       = dur > 3 ? Math.round((wordCount/dur)*60) : 0;
 
-      // Ajouter réponse à l'historique pour n8n
       historyRef.current.push({ role: 'user', content: answer, duration: dur, wordCount, wpm, voice });
 
       const entry = { q:currentQ, a:answer, duration:dur, wordCount, wpm, voice };
@@ -1121,7 +698,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       setAllAnswers([...answersRef.current]);
 
       if (isLast) {
-        // ── FIN : n8n fait l'analyse complète ───────────────────────────
         const voiceStats = {
           totalAnswered:    answersRef.current.filter(a=>a.a&&a.a!=='(aucune réponse détectée)'&&a.a.length>5).length,
           avgWpm:           Math.round(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).reduce((s,a)=>s+a.wpm,0) / Math.max(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).length,1)),
@@ -1131,11 +707,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           avgStability:     Math.round(answersRef.current.reduce((s,a)=>s+(a.voice?.stability||0),0)/Math.max(answersRef.current.length,1)),
           scoresParQuestion: answersRef.current.map((a,i)=>({q:i+1,words:a.wordCount||0,wpm:a.wpm||0,answer:(a.a||'').slice(0,200)})),
         };
-
-        // n8n reçoit context=fin_entretien + TOUT l'historique + stats vocales réelles
         const data = await callAI({ lastAnswer: answer, questionIndex: curIdx, voiceStats }, 'fin_entretien');
         const scoreText = data?.output || data?.message || data?.text || 'Erreur — vérifiez la connexion n8n';
-
         setFinalScore(scoreText);
         setPhase('result');
         if (!savedRef.current) {
@@ -1143,15 +716,12 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           await saveEntretien(user?.id, scoreText, conversationId, bourse.nom);
         }
         await tts('Entretien terminé. Voici votre évaluation complète.');
-
       } else {
-        // ── SUITE : n8n génère la prochaine question ─────────────────────
         const nextIdx = curIdx + 1;
         const data    = await callAI({ lastAnswer: answer, questionIndex: nextIdx }, 'entretien');
         const nextQ   = cleanQ(data?.output || data?.message || data?.text);
 
         if (!nextQ) {
-          // Si n8n ne répond pas, utiliser fallback simple
           const fallbacks = [
             `Pourquoi ${bourse.nom} plutôt qu'une autre bourse ?`,
             `Décrivez un projet concret que vous réaliserez grâce à cette bourse.`,
@@ -1194,11 +764,11 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       return m ? m[1].trim() : null;
     };
     return {
-      score:   txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
-      verdict: txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
-      forts:   get('POINTS FORTS'),
-      fix:     get('POINTS À AMÉLIORER'),
-      conseils:get('CONSEILS PERSONNALISÉS'),
+      score:    txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
+      verdict:  txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
+      forts:    get('POINTS FORTS'),
+      fix:      get('POINTS À AMÉLIORER'),
+      conseils: get('CONSEILS PERSONNALISÉS'),
     };
   };
 
@@ -1210,7 +780,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
 
   return (
     <div style={T.root}>
-      {/* ── Topbar ────────────────────────────────────────────────────── */}
       <div style={T.topbar}>
         <div style={T.tbLeft}>
           <div style={{...T.dot,background:phase==='recording'?'#ef4444':'#10b981'}}/>
@@ -1234,9 +803,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────── */}
       <div style={T.body}>
-        {/* Gauche : caméra + métriques vocales réelles */}
         <div style={T.left}>
           <div style={T.videoBox}>
             {camError
@@ -1250,11 +817,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 Jury IA parle…
               </div>
             )}
-            {/* Barre volume réelle */}
             <div style={T.meterBg}><div style={{...T.meterFill,width:`${liveVolume}%`}}/></div>
           </div>
 
-          {/* Panel métriques vocales RÉELLES */}
           {phase!=='intro'&&phase!=='result'&&(
             <div style={T.metricsBox}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
@@ -1275,9 +840,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
               ))}
               <div style={{display:'flex',gap:8,marginTop:4}}>
                 {[
-                  {icon:'⏸',val:livePauses, label:'pauses',  warn:livePauses>5},
-                  {icon:'💬',val:liveHesit,  label:'s hésit.', warn:liveHesit>8},
-                  {icon:'📝',val:liveWordCount,label:'mots',  warn:false},
+                  {icon:'⏸',val:livePauses,    label:'pauses',   warn:livePauses>5},
+                  {icon:'💬',val:liveHesit,     label:'s hésit.', warn:liveHesit>8},
+                  {icon:'📝',val:liveWordCount, label:'mots',     warn:false},
                 ].map(c=>(
                   <div key={c.label} style={{flex:1,textAlign:'center',padding:'6px 4px',borderRadius:8,
                     background:`rgba(${c.warn?'239,68,68':'99,102,241'},.06)`,
@@ -1291,10 +856,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           )}
         </div>
 
-        {/* Droite : question + contrôles */}
         <div style={T.right}>
-
-          {/* INTRO */}
           {phase==='intro'&&(
             <div style={{width:'100%',maxWidth:500,display:'flex',flexDirection:'column',height:'100%'}}>
               <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:14,paddingBottom:8}}>
@@ -1317,7 +879,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
             </div>
           )}
 
-          {/* ENTRETIEN EN COURS */}
           {['ai_speaking','waiting','recording','analyzing'].includes(phase)&&(
             <div style={T.panel}>
               <div style={T.qHead}>
@@ -1360,14 +921,13 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
               )}
 
               <div>
-                {phase==='waiting'   &&<button style={T.btnRec}  onClick={startRecording}><span style={{fontSize:20}}>🎤</span> Répondre à la question</button>}
-                {phase==='recording' &&<button style={T.btnStop} onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> Terminer ma réponse</button>}
+                {phase==='waiting'  &&<button style={T.btnRec}  onClick={startRecording}><span style={{fontSize:20}}>🎤</span> Répondre à la question</button>}
+                {phase==='recording'&&<button style={T.btnStop} onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> Terminer ma réponse</button>}
                 {(phase==='ai_speaking'||phase==='analyzing')&&<div style={T.hint}>{phase==='ai_speaking'?'🔊 Écoutez la question…':'⏳ Analyse IA en cours…'}</div>}
               </div>
             </div>
           )}
 
-          {/* RÉSULTATS — affiche ce que n8n a retourné */}
           {phase==='result'&&(
             <div style={{...T.panel,overflowY:'auto',gap:16,padding:'20px 24px'}}>
               <div style={{textAlign:'center'}}>
@@ -1377,7 +937,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 {user?.id&&<p style={{color:'#10b981',fontSize:12,marginTop:4}}>✅ Sauvegardé dans votre historique</p>}
               </div>
 
-              {/* Stats globales réelles */}
               <div style={T.statsGrid}>
                 {[
                   {v:parsed.score?`${parsed.score}/100`:'—', l:'Score final'},
@@ -1392,7 +951,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 ))}
               </div>
 
-              {/* Verdict */}
               {parsed.verdict&&(
                 <div style={{padding:'12px 18px',borderRadius:12,background:'rgba(16,185,129,.06)',border:'1px solid rgba(16,185,129,.2)',textAlign:'center'}}>
                   <span style={{fontSize:13,color:'#64748b',display:'block',marginBottom:4}}>VERDICT</span>
@@ -1400,35 +958,11 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 </div>
               )}
 
-              {/* Points forts, à améliorer, conseils — viennent de n8n */}
-              {parsed.forts&&(
-                <div style={T.sectionCard}>
-                  <div style={{...T.sectionHead,color:'#34d399'}}>✅ POINTS FORTS</div>
-                  <div style={T.sectionBody}>{parsed.forts}</div>
-                </div>
-              )}
-              {parsed.fix&&(
-                <div style={{...T.sectionCard,background:'rgba(245,158,11,.04)',border:'1px solid rgba(245,158,11,.2)'}}>
-                  <div style={{...T.sectionHead,color:'#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div>
-                  <div style={T.sectionBody}>{parsed.fix}</div>
-                </div>
-              )}
-              {parsed.conseils&&(
-                <div style={{...T.sectionCard,background:'rgba(139,92,246,.05)',border:'1px solid rgba(139,92,246,.2)'}}>
-                  <div style={{...T.sectionHead,color:'#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div>
-                  <div style={T.sectionBody}>{parsed.conseils}</div>
-                </div>
-              )}
+              {parsed.forts&&<div style={T.sectionCard}><div style={{...T.sectionHead,color:'#34d399'}}>✅ POINTS FORTS</div><div style={T.sectionBody}>{parsed.forts}</div></div>}
+              {parsed.fix&&<div style={{...T.sectionCard,background:'rgba(245,158,11,.04)',border:'1px solid rgba(245,158,11,.2)'}}><div style={{...T.sectionHead,color:'#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div><div style={T.sectionBody}>{parsed.fix}</div></div>}
+              {parsed.conseils&&<div style={{...T.sectionCard,background:'rgba(139,92,246,.05)',border:'1px solid rgba(139,92,246,.2)'}}><div style={{...T.sectionHead,color:'#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div><div style={T.sectionBody}>{parsed.conseils}</div></div>}
+              {!parsed.forts&&finalScore&&<div style={T.scoreCard}><div style={T.scoreHead}>ÉVALUATION DU JURY IA</div><div style={T.scoreBody}>{finalScore}</div></div>}
 
-              {/* Si n8n n'a pas retourné le format attendu */}
-              {!parsed.forts&&finalScore&&(
-                <div style={T.scoreCard}>
-                  <div style={T.scoreHead}>ÉVALUATION DU JURY IA</div>
-                  <div style={T.scoreBody}>{finalScore}</div>
-                </div>
-              )}
-
-              {/* Statistiques vocales réelles par question */}
               <div>
                 <div style={T.scoreHead}>DÉROULEMENT — STATISTIQUES RÉELLES</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:10}}>
@@ -1437,13 +971,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                       <div style={{width:22,height:22,borderRadius:'50%',background:'rgba(139,92,246,.2)',border:'1px solid rgba(139,92,246,.4)',color:'#a78bfa',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:2}}>{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,color:'#cbd5e1',marginBottom:3}}>{a.q.slice(0,70)}{a.q.length>70?'…':''}</div>
-                        <div style={{fontSize:11,color:'#64748b'}}>
-                          ⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} mots · 🏃 {a.wpm||0} m/min
-                          {a.voice&&` · ⏸ ${a.voice.pauseCount||0} pauses · 💬 ${a.voice.hesitations||0}s`}
-                        </div>
-                        {a.a&&a.a!=='(aucune réponse détectée)'&&(
-                          <div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>
-                        )}
+                        <div style={{fontSize:11,color:'#64748b'}}>⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} mots · 🏃 {a.wpm||0} m/min{a.voice&&` · ⏸ ${a.voice.pauseCount||0} pauses · 💬 ${a.voice.hesitations||0}s`}</div>
+                        {a.a&&a.a!=='(aucune réponse détectée)'&&<div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>}
                       </div>
                     </div>
                   ))}

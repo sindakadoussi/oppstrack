@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
-
-const API_BASE = 'http://localhost:3001/api';
+import axiosInstance from '@/config/axiosInstance';
+import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 
 function countryFlag(pays) {
   const flags = {
@@ -377,15 +377,19 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
   const loadUserData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const resFav  = await fetch(`${API_BASE}/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
-      const dataFav = await resFav.json();
-      const docFav  = dataFav.docs?.[0];
+      // Modification : utilisation de axiosInstance et API_ROUTES pour les favoris
+      const resFav = await axiosInstance.get(API_ROUTES.favoris?.byUser?.(user.id) || `/api/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
+      const dataFav = resFav.data;
+      const docFav = dataFav.docs?.[0];
       setStarredNoms(new Set((docFav?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
 
-      const resRM   = await fetch(`${API_BASE}/roadmaps?where[userId][equals]=${user.id}&limit=100&depth=0`);
-      const dataRM  = await resRM.json();
+      // Modification : utilisation de axiosInstance et API_ROUTES pour les roadmaps
+      const resRM = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id));
+      const dataRM = resRM.data;
       setAppliedNoms(new Set((dataRM.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
-    } catch {}
+    } catch (err) {
+      console.error('[loadUserData]', err);
+    }
   }, [user?.id]);
 
   useEffect(() => { loadUserData(); }, [loadUserData]);
@@ -394,20 +398,22 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) return;
     try {
-      const res  = await fetch(`${API_BASE}/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
-      const data = await res.json();
-      const doc  = data.docs?.[0];
+      // Modification : utilisation de axiosInstance pour les favoris
+      const res = await axiosInstance.get(`/api/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
+      const data = res.data;
+      const doc = data.docs?.[0];
+      
       if (isStarred) {
         if (!doc?.id) return;
         const newBourses = (doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey);
-        await fetch(`${API_BASE}/favoris/${doc.id}`,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({bourses:newBourses}) });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: newBourses });
         setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); return s; });
       } else {
         const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
         if (doc?.id) {
-          await fetch(`${API_BASE}/favoris/${doc.id}`,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({bourses:[...(doc.bourses||[]),nb]}) });
+          await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]), nb] });
         } else {
-          await fetch(`${API_BASE}/favoris`,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:user.id, userEmail:user.email||'', bourses:[nb]}) });
+          await axiosInstance.post(`/api/favoris`, { user:user.id, userEmail:user.email||'', bourses:[nb] });
         }
         setStarredNoms(prev=>new Set([...prev,nomKey]));
       }
@@ -418,7 +424,19 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id||appliedNoms.has(nomKey)) return;
     try {
-      await fetch(`${API_BASE}/roadmap`,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0 }) });
+      // Modification : utilisation de axiosInstance et API_ROUTES pour la création roadmap
+      await axiosInstance.post(API_ROUTES.roadmap.create, { 
+        userId:user.id, 
+        userEmail:user.email||'', 
+        nom:bourse.nom, 
+        pays:bourse.pays||'', 
+        lienOfficiel:bourse.lienOfficiel||'', 
+        financement:bourse.financement||'', 
+        dateLimite:bourse.dateLimite||null, 
+        ajouteLe:new Date().toISOString(), 
+        statut:'en_cours', 
+        etapeCourante:0 
+      });
       setAppliedNoms(prev=>new Set([...prev,nomKey]));
     } catch(err){ console.error('[Apply]',err); }
   };

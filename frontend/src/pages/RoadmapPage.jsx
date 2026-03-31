@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
+import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
+import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 
-const API_BASE    = 'http://localhost:3001/api';
-const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
 
 const ETAPES_GENERIQUES = [
   { id: 0, icon: '🎯', titre: 'Choisir la bourse',        couleur: '#6366f1' },
@@ -23,36 +24,32 @@ function useBourses(userId) {
   const reload = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     try {
-      const res  = await fetch(
-        `${API_BASE}/roadmap?where[userId][equals]=${userId}&limit=50&depth=0`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      const data = await res.json();
-      
+      const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(userId), {
+        params: { limit: 50, depth: 0 },
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = res.data;
+
       // Normaliser les champs pour correspondre à ce qu'attend BourseTimeline
       const docs = (data.docs || []).map(d => ({
-        _id:          d.id,
-        nom:          d.nom,
-        pays:         d.pays        || '',
-        url:          d.lienOfficiel || '',
-        deadline:     d.dateLimite  || '',
-        financement:  d.financement || '',
+        _id:           d.id,
+        nom:           d.nom,
+        pays:          d.pays         || '',
+        url:           d.lienOfficiel || '',
+        deadline:      d.dateLimite   || '',
+        financement:   d.financement  || '',
         etapeCourante: d.etapeCourante || 0,
-        statut:       d.statut      || 'en_cours',
+        statut:        d.statut       || 'en_cours',
       }));
 
       // 🎯 DÉDUPLICATION : garder la version la plus récente par (nom + pays + deadline)
       const uniqueMap = new Map();
       docs.forEach(bourse => {
-        // Clé unique : normaliser le texte pour éviter les doublons "Maroc" vs " maroc "
         const key = `${bourse.nom?.toLowerCase().trim()}|${bourse.pays?.toLowerCase().trim()}|${bourse.deadline}`;
-        
-        // Si la bourse existe déjà, on garde celle qui a un _id (déjà sauvegardée) ou la première
         if (!uniqueMap.has(key)) {
           uniqueMap.set(key, bourse);
         } else {
           const existing = uniqueMap.get(key);
-          // Priorité à celle qui a un _id (déjà persistée) ou une étape plus avancée
           if (!existing._id && bourse._id) {
             uniqueMap.set(key, bourse);
           } else if (existing._id && bourse._id && bourse.etapeCourante > existing.etapeCourante) {
@@ -60,13 +57,14 @@ function useBourses(userId) {
           }
         }
       });
-      
+
       setBourses(Array.from(uniqueMap.values()));
     } catch (err) {
       console.error('Erreur chargement bourses:', err);
       setBourses([]);
+    } finally {
+      setLoading(false);
     }
-    finally  { setLoading(false); }
   }, [userId]);
 
   useEffect(() => { reload(); }, [reload]);
@@ -93,17 +91,19 @@ function useRoadmap(bourse) {
     const generate = async () => {
       setGenLoading(true);
       try {
-        const res = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const res = await axios.post(
+          WEBHOOK_ROUTES.chat,
+          {
             text:    `Génère la roadmap de candidature pour la bourse "${bourse.nom}"`,
             context: 'generate_roadmap',
             bourse:  { nom: bourse.nom, pays: bourse.pays, url: bourse.url },
-          }),
-          signal: AbortSignal.timeout(45000),
-        });
-        const data = await res.json();
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(45000),
+          }
+        );
+        const data = res.data;
         const rm   = data?.roadmap || data?.output;
 
         if (rm && rm.etapes) {
@@ -163,11 +163,9 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply }) 
     localStorage.setItem(stepKey, String(stepIndex));
 
     if (bourse._id) {
-      await fetch(`${API_BASE}/roadmap/${bourse._id}`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ etapeCourante: stepIndex }),
-      }).catch(() => {});
+      await axiosInstance
+        .patch(API_ROUTES.roadmap.update(bourse._id), { etapeCourante: stepIndex })
+        .catch(() => {});
     }
   }, [bourse._id, stepKey]);
 
@@ -356,7 +354,6 @@ export default function RoadmapPage({
     if (bourses.length > 0) setActiveBourse(0);
   }, [bourses.length]);
 
-  // Fonction pour générer une clé unique fiable pour chaque bourse
   const getBourseKey = (bourse, index) => {
     return bourse._id || `${bourse.nom?.replace(/\s+/g, '_')}-${bourse.pays}-${bourse.deadline}-${index}`;
   };
