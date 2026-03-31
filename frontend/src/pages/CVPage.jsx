@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-const WEBHOOK_URL = 'http://localhost:5678/webhook-test/webhook';
-const API_BASE    = 'http://localhost:3000/api';
+import axiosInstance from '@/config/axiosInstance';
+import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 
 function loadJsPDF() {
   return new Promise(resolve => {
@@ -205,8 +204,18 @@ function checkProfile(user) {
   return { ok: m.length===0, missing: m };
 }
 
+// Modification : utilisation de WEBHOOK_ROUTES au lieu de WEBHOOK_URL direct
 async function callN8N(context, payload) {
-  const res = await fetch(WEBHOOK_URL, {
+  // Déterminer la route webhook à utiliser en fonction du contexte
+  let webhookUrl = WEBHOOK_ROUTES.chat; // route par défaut
+  
+  if (context === 'generate_cv' || context === 'generate_lm') {
+    webhookUrl = WEBHOOK_ROUTES.cv;
+  } else if (context === 'CV_ANALYSIS') {
+    webhookUrl = WEBHOOK_ROUTES.entretien;
+  }
+  
+  const res = await fetch(webhookUrl, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({...payload, context}),
     signal: AbortSignal.timeout(90000),
@@ -296,9 +305,12 @@ export default function CVPage({ user, setView }) {
   const pCheck  = checkProfile(user);
   const isLM    = tab === 'lm';
 
+  // Modification : utilisation de axiosInstance et API_ROUTES
   useEffect(()=>{
     if (!user?.id) return;
-    fetch(`${API_BASE}/users/${user.id}?depth=0`).then(r=>r.json()).then(d=>setBourses(d.bourses_choisies||[])).catch(()=>{});
+    axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
+      .then(response => setBourses(response.data.bourses_choisies || []))
+      .catch(() => {});
   },[user?.id]);
 
   const reset = () => { setMode('menu'); setContent(''); setImproved(''); setAnalysis(null); setFileName(null); setStep(''); setLmPreviewMode('rendered'); };

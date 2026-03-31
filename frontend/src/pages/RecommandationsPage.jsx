@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axiosInstance from '@/config/axiosInstance';
+import { API_ROUTES } from '@/config/routes';
 
-const API_BASE = 'http://localhost:3000/api';
 
 function getScoreColor(score) {
   if (score >= 80) return '#4ade80';
@@ -42,7 +43,7 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
   const [starLoading,  setStarLoading]  = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
 
-  const days = getDaysLeft(bourse.dateLimite);
+  const days    = getDaysLeft(bourse.dateLimite);
   const dateStr = formatDate(bourse.dateLimite);
 
   const deadlineColor = days === null ? '#64748b' : days < 0 ? '#f87171' : days <= 30 ? '#f87171' : days <= 90 ? '#fbbf24' : '#4ade80';
@@ -68,46 +69,32 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
       onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 12px 32px rgba(0,0,0,0.4)`; }}
       onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}
     >
-      {/* Barre de score colorée en haut */}
       <div style={{ height: 4, background: `linear-gradient(90deg, ${scoreColor}88, ${scoreColor})`, width: '100%' }} />
 
-      {/* Header carte */}
       <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>{countryFlag(bourse.pays)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>
-              {bourse.pays || 'International'}
-            </div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.3, marginTop: 2 }}>
-              {bourse.nom}
-            </div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>{bourse.pays || 'International'}</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.3, marginTop: 2 }}>{bourse.nom}</div>
           </div>
         </div>
-        {/* Score % */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}%</div>
           <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{getScoreLabel(score)}</div>
         </div>
       </div>
 
-      {/* Séparateur */}
       <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
 
-      {/* Body */}
       <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-        {/* Niveaux + domaine */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-          {niveaux.map((n, i) => (
-            <span key={i} style={tag}>{n}</span>
-          ))}
+          {niveaux.map((n, i) => <span key={i} style={tag}>{n}</span>)}
           {reasons.map((r, i) => (
             <span key={i} style={{ ...tag, background: 'rgba(74,222,128,0.08)', color: '#4ade80', borderColor: 'rgba(74,222,128,0.15)' }}>{r}</span>
           ))}
         </div>
 
-        {/* Financement */}
         {bourse.financement && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💰</span>
@@ -115,7 +102,6 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
           </div>
         )}
 
-        {/* Deadline */}
         {(dateStr || deadlineLabel) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
             {dateStr && (
@@ -124,9 +110,7 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
                 <div style={{ fontSize: 12, color: deadlineColor, fontWeight: 700 }}>{dateStr}</div>
               </div>
             )}
-            {deadlineLabel && (
-              <div style={{ fontSize: 12, color: deadlineColor, fontWeight: 600, textAlign: 'right' }}>{deadlineLabel}</div>
-            )}
+            {deadlineLabel && <div style={{ fontSize: 12, color: deadlineColor, fontWeight: 600, textAlign: 'right' }}>{deadlineLabel}</div>}
           </div>
         )}
 
@@ -137,17 +121,14 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
         )}
       </div>
 
-      {/* Actions */}
       <div style={{ padding: '10px 16px 14px', display: 'flex', gap: 8 }}>
-        {/* Bouton Postuler */}
         <button
           style={{
             flex: 1, padding: '9px 12px', borderRadius: 10,
             background: applied ? 'rgba(99,102,241,0.15)' : '#1e1e30',
             border: applied ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(255,255,255,0.08)',
             color: applied ? '#a5b4fc' : '#e2e8f0',
-            fontSize: 13, fontWeight: 600, cursor: applied ? 'default' : 'pointer',
-            transition: 'all .2s',
+            fontSize: 13, fontWeight: 600, cursor: applied ? 'default' : 'pointer', transition: 'all .2s',
           }}
           onClick={!applied ? async () => { setApplyLoading(true); await onApply(bourse); setApplyLoading(false); } : undefined}
           disabled={applied || applyLoading}
@@ -157,7 +138,6 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
           {applyLoading ? '⏳' : applied ? '✅ Dans la roadmap' : 'Postuler maintenant'}
         </button>
 
-        {/* Bouton étoile */}
         <button
           style={{
             width: 40, height: 40, borderRadius: 10, flexShrink: 0,
@@ -165,8 +145,7 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
             border: starred ? '1px solid rgba(251,191,36,0.35)' : '1px solid rgba(255,255,255,0.08)',
             color: starred ? '#fbbf24' : '#64748b',
             fontSize: 18, cursor: starLoading ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all .2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s',
           }}
           onClick={async () => { setStarLoading(true); await onStar(bourse, starred); setStarLoading(false); }}
           disabled={starLoading}
@@ -176,7 +155,6 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
         </button>
       </div>
 
-      {/* Lien officiel discret en bas */}
       {bourse.lienOfficiel && (
         <a href={bourse.lienOfficiel} target="_blank" rel="noopener noreferrer"
           style={{ display: 'block', textAlign: 'center', padding: '0 16px 12px', fontSize: 11, color: '#475569', textDecoration: 'none' }}
@@ -212,28 +190,36 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
     setLoading(true);
     setError(null);
     try {
-      const resUser  = await fetch(`${API_BASE}/users/${user.id}?depth=0`);
-      const userData = await resUser.json();
+      // 1. Données utilisateur
+      const { data: userData } = await axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 0 } });
 
-      const resFav  = await fetch(`${API_BASE}/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
-      const dataFav = await resFav.json();
-      const docFav  = dataFav.docs?.[0];
+      // 2. Favoris
+      const { data: dataFav } = await axiosInstance.get('/api/favoris', {
+        params: { 'where[user][equals]': user.id, limit: 1, depth: 0 },
+      });
+      const docFav     = dataFav.docs?.[0];
       const newStarred = new Set((docFav?.bourses || []).map(b => b.nom?.trim().toLowerCase()));
       setStarredNoms(newStarred);
       onStarChange?.(newStarred.size);
 
-      const resRoadmap = await fetch(`${API_BASE}/roadmaps?where[userId][equals]=${user.id}&limit=100&depth=0`);
-      const dataRoadmap = await resRoadmap.json();
+      // 3. Roadmap
+      const { data: dataRoadmap } = await axiosInstance.get(API_ROUTES.roadmap.list, {
+        params: { 'where[userId][equals]': user.id, limit: 100, depth: 0 },
+      });
       setAppliedNoms(new Set((dataRoadmap.docs || []).map(b => b.nom?.trim().toLowerCase())));
 
+      // 4. Profil
       const profNiveau  = (userData.niveau  || userData.currentLevel || user.niveau  || user.currentLevel || '').toLowerCase().trim();
       const profDomaine = (userData.domaine  || userData.fieldOfStudy || user.domaine || user.fieldOfStudy || '').toLowerCase().trim();
       const profPays    = (userData.pays     || user.pays    || '').toLowerCase().trim();
 
-      const resBourses  = await fetch(`${API_BASE}/bourses?limit=200&depth=0`);
-      const dataBourses = await resBourses.json();
-      const bourses     = dataBourses.docs || [];
+      // 5. Bourses
+      const { data: dataBourses } = await axiosInstance.get(API_ROUTES.bourses.list, {
+        params: { limit: 200, depth: 0 },
+      });
+      const bourses = dataBourses.docs || [];
 
+      // 6. Scoring
       const scored = bourses.filter(b => b.tunisienEligible !== 'non').map(b => {
         let score = 0; const reasons = [];
         const bN = (b.niveau||'').toLowerCase(), bD = (b.domaine||'').toLowerCase(), bP = (b.pays||'').toLowerCase();
@@ -246,21 +232,23 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
         if (b.statut === 'a_venir')                              { score += 8;  reasons.push('Bientôt disponible'); }
         if (b.dateLimite) {
           const j = Math.floor((new Date(b.dateLimite) - new Date()) / 86400000);
-          if (j > 30) { score += 3; }
+          if (j > 30) score += 3;
         }
-        if (profPays && (bP.includes(profPays) || bP.includes('international'))) { score += 2; }
+        if (profPays && (bP.includes(profPays) || bP.includes('international'))) score += 2;
         return { ...b, matchScore: score, matchReasons: reasons };
       });
 
       const newActives  = scored.filter(b => b.statut !== 'expiree' && b.matchScore > 25).sort((a,b) => b.matchScore-a.matchScore).slice(0,8);
-      const newExpirees = scored.filter(b => b.statut === 'expiree' && b.matchScore > 25).sort((a,b) => b.matchScore-a.matchScore).slice(0,4);
-      const activesFinales = newActives.length > 0 ? newActives : bourses.filter(b => b.statut !== 'expiree').slice(0,5).map(b => ({ ...b, matchScore:0, matchReasons:[] }));
+      const newExpirees = scored.filter(b => b.statut === 'expiree'  && b.matchScore > 25).sort((a,b) => b.matchScore-a.matchScore).slice(0,4);
+      const activesFinales = newActives.length > 0
+        ? newActives
+        : bourses.filter(b => b.statut !== 'expiree').slice(0,5).map(b => ({ ...b, matchScore:0, matchReasons:[] }));
 
       setActives(activesFinales);
       setExpirees(newExpirees);
       setLastUpdated(new Date());
     } catch(err) {
-      setError('Impossible de charger les recommandations : ' + err.message);
+      setError('Impossible de charger les recommandations : ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -270,35 +258,32 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) return;
     try {
-      const res  = await fetch(`${API_BASE}/favoris?where[user][equals]=${user.id}&limit=1&depth=0`);
-      const data = await res.json();
-      const doc  = data.docs?.[0];
+      const { data } = await axiosInstance.get('/api/favoris', {
+        params: { 'where[user][equals]': user.id, limit: 1, depth: 0 },
+      });
+      const doc = data.docs?.[0];
 
       if (isStarred) {
         if (!doc?.id) return;
         const newBourses = (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey);
-        await fetch(`${API_BASE}/favoris/${doc.id}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bourses: newBourses }),
-        });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: newBourses });
         setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
       } else {
         const nouvelleBourse = {
-          nom: bourse.nom, pays: bourse.pays || '',
-          lienOfficiel: bourse.lienOfficiel || '',
-          financement: bourse.financement || '',
-          dateLimite: bourse.dateLimite || null,
-          ajouteLe: new Date().toISOString(),
+          nom:          bourse.nom,
+          pays:         bourse.pays          || '',
+          lienOfficiel: bourse.lienOfficiel  || '',
+          financement:  bourse.financement   || '',
+          dateLimite:   bourse.dateLimite    || null,
+          ajouteLe:     new Date().toISOString(),
         };
         if (doc?.id) {
-          await fetch(`${API_BASE}/favoris/${doc.id}`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bourses: [...(doc.bourses || []), nouvelleBourse] }),
+          await axiosInstance.patch(`/api/favoris/${doc.id}`, {
+            bourses: [...(doc.bourses || []), nouvelleBourse],
           });
         } else {
-          await fetch(`${API_BASE}/favoris`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user: user.id, userEmail: user.email || '', bourses: [nouvelleBourse] }),
+          await axiosInstance.post('/api/favoris', {
+            user: user.id, userEmail: user.email || '', bourses: [nouvelleBourse],
           });
         }
         setStarredNoms(prev => { const s = new Set([...prev, nomKey]); onStarChange?.(s.size); return s; });
@@ -310,17 +295,17 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id || appliedNoms.has(nomKey)) return;
     try {
-      await fetch(`${API_BASE}/roadmaps`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id, userEmail: user.email || '',
-          nom: bourse.nom, pays: bourse.pays || '',
-          lienOfficiel: bourse.lienOfficiel || '',
-          financement: bourse.financement || '',
-          dateLimite: bourse.dateLimite || null,
-          ajouteLe: new Date().toISOString(),
-          statut: 'en_cours', etapeCourante: 0,
-        }),
+      await axiosInstance.post(API_ROUTES.roadmap.create, {
+        userId:       user.id,
+        userEmail:    user.email       || '',
+        nom:          bourse.nom,
+        pays:         bourse.pays      || '',
+        lienOfficiel: bourse.lienOfficiel || '',
+        financement:  bourse.financement  || '',
+        dateLimite:   bourse.dateLimite   || null,
+        ajouteLe:     new Date().toISOString(),
+        statut:       'en_cours',
+        etapeCourante: 0,
       });
       setAppliedNoms(prev => new Set([...prev, nomKey]));
       setTimeout(() => setView?.('roadmap'), 1000);
@@ -336,7 +321,8 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
       <div style={{ fontSize:52, marginBottom:16 }}>🎯</div>
       <h3 style={{ color:'#e2e8f0', marginBottom:8 }}>Recommandations personnalisées</h3>
       <p style={{ color:'#64748b', marginBottom:24 }}>Connectez-vous pour voir vos bourses compatibles</p>
-      <button style={{ padding:'12px 28px', borderRadius:12, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'white', border:'none', fontSize:14, fontWeight:600, cursor:'pointer' }} onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
+      <button style={{ padding:'12px 28px', borderRadius:12, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'white', border:'none', fontSize:14, fontWeight:600, cursor:'pointer' }}
+        onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
     </div>
   );
 
@@ -355,7 +341,9 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
             {lastUpdated && <span style={{ color:'#475569' }}> · {lastUpdated.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>}
           </p>
         </div>
-        <button style={{ padding:'9px 18px', borderRadius:10, background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', color:'#818cf8', fontSize:13, fontWeight:600, cursor:'pointer' }} onClick={loadRecommandations} disabled={loading}>
+        <button
+          style={{ padding:'9px 18px', borderRadius:10, background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', color:'#818cf8', fontSize:13, fontWeight:600, cursor:'pointer' }}
+          onClick={loadRecommandations} disabled={loading}>
           {loading ? '⏳' : '🔄'} Actualiser
         </button>
       </div>
@@ -389,8 +377,19 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
         ))}
       </div>
 
-      {loading && <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'60px 20px' }}><div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #1e1e30', borderTop:'3px solid #6366f1', animation:'spin 1s linear infinite' }}/><p style={{ color:'#64748b', marginTop:16 }}>Analyse en cours...</p></div>}
-      {error && !loading && <div style={{ margin:'20px 28px', padding:'16px 20px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12, color:'#f87171', fontSize:13, display:'flex', justifyContent:'space-between', gap:12 }}>⚠️ {error}<button style={{ padding:'6px 14px', borderRadius:8, background:'rgba(239,68,68,0.2)', border:'none', color:'#f87171', fontSize:12, cursor:'pointer' }} onClick={loadRecommandations}>Réessayer</button></div>}
+      {loading && (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'60px 20px' }}>
+          <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #1e1e30', borderTop:'3px solid #6366f1', animation:'spin 1s linear infinite' }}/>
+          <p style={{ color:'#64748b', marginTop:16 }}>Analyse en cours...</p>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div style={{ margin:'20px 28px', padding:'16px 20px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12, color:'#f87171', fontSize:13, display:'flex', justifyContent:'space-between', gap:12 }}>
+          ⚠️ {error}
+          <button style={{ padding:'6px 14px', borderRadius:8, background:'rgba(239,68,68,0.2)', border:'none', color:'#f87171', fontSize:12, cursor:'pointer' }} onClick={loadRecommandations}>Réessayer</button>
+        </div>
+      )}
 
       {!loading && !error && filter !== 'expirees' && actives.length > 0 && (
         <>

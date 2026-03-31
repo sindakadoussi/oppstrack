@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ChatMessage from '../components/ChatMessage';
 import ChatInput from '../components/ChatInput';
-
-const API_BASE = 'http://localhost:3000/api';
+import axiosInstance from '@/config/axiosInstance';
+import { API_ROUTES } from '@/config/routes';
 
 const quickReplies = [
   { emoji: '🎓', label: 'Trouver mes bourses', text: 'Quelles bourses correspondent à mon profil ?' },
@@ -24,19 +24,16 @@ function useHeroStats() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // 1 seul appel — on récupère tout avec limit élevé
-        const res = await fetch(
-          `${API_BASE}/bourses?limit=500&depth=0`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-        if (!res.ok) throw new Error('Payload inaccessible');
-        const data = await res.json();
-
-        const docs        = data.docs || [];
-        const total       = data.totalDocs ?? docs.length;
+        // Modification : utilisation de axiosInstance et API_ROUTES
+        const response = await axiosInstance.get(API_ROUTES.bourses.list, {
+          params: { limit: 500, depth: 0 }
+        });
+        
+        const docs = response.data.docs || [];
+        const total = response.data.totalDocs ?? docs.length;
 
         // % financées = bourses dont financement contient "100" ou "Totale" ou "Complète"
-        const financees   = docs.filter(b => {
+        const financees = docs.filter(b => {
           const f = (b.financement || '').toLowerCase();
           return f.includes('100') || f.includes('total') || f.includes('complet') || f.includes('intégral');
         });

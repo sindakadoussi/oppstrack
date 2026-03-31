@@ -1,7 +1,5 @@
 import { CollectionConfig } from 'payload';
 
-const API_BASE    = 'http://localhost:3000/api';
-const WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
 const Roadmap: CollectionConfig = {
   slug: 'roadmap',
   admin: {
@@ -67,5 +65,8 @@ const Roadmap: CollectionConfig = {
     },
   ],
 };
+
+
+
 
 export default Roadmap;

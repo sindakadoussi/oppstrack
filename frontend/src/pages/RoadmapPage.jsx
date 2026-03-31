@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import ChatMessage from '../components/ChatMessage';
+import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
+import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 
-const API_BASE = 'http://localhost:3000/api';
-const WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
 
 const ETAPES_GENERIQUES = [
   { id: 0, icon: '🎯', titre: 'Choisir la bourse', couleur: '#6366f1' },
@@ -23,21 +24,22 @@ function useBourses(userId) {
   const reload = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
     try {
-      const res = await fetch(
-        `${API_BASE}/roadmap?where[userId][equals]=${userId}&limit=50&depth=0`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      const data = await res.json();
+      const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(userId), {
+        params: { limit: 50, depth: 0 },
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = res.data;
 
+      // Normaliser les champs pour correspondre à ce qu'attend BourseTimeline
       const docs = (data.docs || []).map(d => ({
-        _id: d.id,
-        nom: d.nom,
-        pays: d.pays || '',
-        url: d.lienOfficiel || '',
-        deadline: d.dateLimite || '',
-        financement: d.financement || '',
+        _id:           d.id,
+        nom:           d.nom,
+        pays:          d.pays         || '',
+        url:           d.lienOfficiel || '',
+        deadline:      d.dateLimite   || '',
+        financement:   d.financement  || '',
         etapeCourante: d.etapeCourante || 0,
-        statut: d.statut || 'en_cours',
+        statut:        d.statut       || 'en_cours',
       }));
 
       // Déduplication simple
@@ -79,18 +81,20 @@ function useRoadmap(bourse) {
     const generate = async () => {
       setGenLoading(true);
       try {
-        const res = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: `Génère la roadmap de candidature pour la bourse "${bourse.nom}"`,
+        const res = await axios.post(
+          WEBHOOK_ROUTES.chat,
+          {
+            text:    `Génère la roadmap de candidature pour la bourse "${bourse.nom}"`,
             context: 'generate_roadmap',
-            bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.url },
-          }),
-          signal: AbortSignal.timeout(45000),
-        });
-        const data = await res.json();
-        const rm = data?.roadmap || data?.output;
+            bourse:  { nom: bourse.nom, pays: bourse.pays, url: bourse.url },
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(45000),
+          }
+        );
+        const data = res.data;
+        const rm   = data?.roadmap || data?.output;
 
         if (rm && rm.etapes) {
           setRoadmap(rm);
@@ -149,11 +153,9 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
     localStorage.setItem(stepKey, String(stepIndex));
 
     if (bourse._id) {
-      await fetch(`${API_BASE}/roadmap/${bourse._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ etapeCourante: stepIndex }),
-      }).catch(() => {});
+      await axiosInstance
+        .patch(API_ROUTES.roadmap.update(bourse._id), { etapeCourante: stepIndex })
+        .catch(() => {});
     }
   }, [bourse._id, stepKey]);
 
@@ -368,33 +370,6 @@ export default function RoadmapPage({
     if (bourses.length > 0) setActiveBourse(0);
   }, [bourses.length]);
 
-  // Fonction de suppression
-  const handleDeleteBourse = async (bourse) => {
-    if (!window.confirm(`Supprimer "${bourse.nom}" de votre roadmap ?`)) return;
-    if (!bourse._id) {
-      console.warn('ID manquant, impossible de supprimer');
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/roadmap/${bourse._id}`, { method: 'DELETE' });
-      if (res.ok) {
-        // Recharger la liste
-        await reload();
-        // Réinitialiser l'index actif si la liste n'est pas vide
-        if (bourses.length > 1) {
-          setActiveBourse(0);
-        } else {
-          setActiveBourse(-1);
-        }
-      } else {
-        console.error('Échec suppression');
-      }
-    } catch (err) {
-      console.error('Erreur suppression:', err);
-    }
-  };
-
-  // Fonction pour générer une clé unique fiable pour chaque bourse
   const getBourseKey = (bourse, index) => {
     return bourse._id || `${bourse.nom?.replace(/\s+/g, '_')}-${bourse.pays}-${bourse.deadline}-${index}`;
   };

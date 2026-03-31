@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
+import { WEBHOOK_ROUTES } from '@/config/routes';
 
-const WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
-const API_BASE    = 'http://localhost:3000/api';
-const TOTAL_Q     = 8;
+
+const TOTAL_Q = 8;
 
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
@@ -25,14 +27,11 @@ function tts(text) {
 async function saveEntretien(userId, scoreText, conversationId, bourseNom) {
   if (!userId) return;
   try {
-    await fetch(`${API_BASE}/entretiens`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user: userId, score: scoreText,
-        conversationId: conversationId || `entretien-${Date.now()}`,
-        context: bourseNom || '',
-      }),
+    await axiosInstance.post('/api/entretiens', {
+      user:           userId,
+      score:          scoreText,
+      conversationId: conversationId || `entretien-${Date.now()}`,
+      context:        bourseNom || '',
     });
     console.log('✅ Entretien sauvegardé');
   } catch(e) { console.error('❌ Save entretien:', e.message); }
@@ -70,8 +69,8 @@ class VoiceAnalyzer {
     if (vol < 3) {
       if (!this.silenceStart) this.silenceStart = now;
       const dur = now - this.silenceStart;
-      if (dur > 500 && dur < 3000) this.hesitationMs += dt;
-      if (dur >= 3000 && dur < 3100) this.pauseCount++;
+      if (dur > 500 && dur < 3001) this.hesitationMs += dt;
+      if (dur >= 3001 && dur < 3101) this.pauseCount++;
     } else {
       this.silenceStart = null;
       this.speakingMs  += dt;
@@ -105,9 +104,10 @@ function HistoriquePanel({ userId, onClose }) {
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
-    fetch(`${API_BASE}/entretiens?where[user][equals]=${userId}&sort=-createdAt&limit=20`)
-      .then(r => r.json())
-      .then(d => { setRecords(d.docs||[]); setLoading(false); })
+    axiosInstance.get('/api/entretiens', {
+      params: { 'where[user][equals]': userId, sort: '-createdAt', limit: 20 },
+    })
+      .then(res => { setRecords(res.data.docs || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [userId]);
 
@@ -120,9 +120,7 @@ function HistoriquePanel({ userId, onClose }) {
     const extractSection = (title) => {
       const regex = new RegExp(`${title}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|VERDICT|SCORE|$))`, 'i');
       const match = text.match(regex);
-      if (match) {
-        return match[1].trim().split(/\n/).filter(l => l.trim()).map(l => l.replace(/^[-•*]\s*/, '').trim());
-      }
+      if (match) return match[1].trim().split(/\n/).filter(l => l.trim()).map(l => l.replace(/^[-•*]\s*/, '').trim());
       return [];
     };
     const pointsForts = extractSection('POINTS FORTS');
@@ -132,12 +130,7 @@ function HistoriquePanel({ userId, onClose }) {
     const qRegex = /Question\s*(\d+)[:\s]*([^\n]+).*?mots[:\s]*(\d+).*?m\/min[:\s]*(\d+)/gi;
     let match;
     while ((match = qRegex.exec(text)) !== null) {
-      questionMetrics.push({
-        num: parseInt(match[1]),
-        answer: match[2].trim(),
-        words: parseInt(match[3]) || 0,
-        wpm: parseInt(match[4]) || 0
-      });
+      questionMetrics.push({ num: parseInt(match[1]), answer: match[2].trim(), words: parseInt(match[3]) || 0, wpm: parseInt(match[4]) || 0 });
     }
     return {
       score, verdict, pointsForts, pointsAmeliorer, conseils, questionMetrics, rawText: text
@@ -220,9 +213,7 @@ function HistoriquePanel({ userId, onClose }) {
                   </div>
                   <div style={H.cardMid}>
                     <div style={H.cardDate}>{formatDate(r.createdAt)}</div>
-                    <div style={H.cardTitle}>
-                      {r.context || 'Entretien bourse'}
-                    </div>
+                    <div style={H.cardTitle}>{r.context || 'Entretien bourse'}</div>
                     <div style={H.cardVerdict}>
                       <span style={{color: scoreColor.color}}>{scoreColor.icon} {scoreColor.grade}</span>
                       {parsed.verdict && <span style={{marginLeft: 8, color: '#64748b'}}>· {parsed.verdict.slice(0, 40)}</span>}
@@ -247,22 +238,10 @@ function HistoriquePanel({ userId, onClose }) {
       </div>
       <div style={H.backdrop} onClick={onClose}/>
       <style>{`
-        .hcard {
-          transition: all 0.2s ease;
-        }
-        .hcard:hover {
-          background: rgba(139, 92, 246, 0.08) !important;
-          border-color: rgba(139, 92, 246, 0.35) !important;
-          transform: translateX(4px);
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
+        .hcard { transition: all 0.2s ease; }
+        .hcard:hover { background: rgba(139, 92, 246, 0.08) !important; border-color: rgba(139, 92, 246, 0.35) !important; transform: translateX(4px); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );
@@ -275,49 +254,32 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
   
   return (
     <div style={D.container}>
-      <button style={D.backBtn} onClick={onBack}>
-        <span style={{fontSize:18}}>←</span> Retour à la liste
-      </button>
+      <button style={D.backBtn} onClick={onBack}><span style={{fontSize:18}}>←</span> Retour à la liste</button>
       
       <div style={D.header}>
         <div style={D.headerTop}>
-          <div style={D.bourseTag}>
-            <span style={{fontSize:20}}>🎓</span>
-            <span>{entretien.context || 'Entretien de bourse'}</span>
-          </div>
-          <div style={D.dateTag}>
-            <span>📅</span>
-            <span>{formatDate(entretien.createdAt)}</span>
-          </div>
+          <div style={D.bourseTag}><span style={{fontSize:20}}>🎓</span><span>{entretien.context || 'Entretien de bourse'}</span></div>
+          <div style={D.dateTag}><span>📅</span><span>{formatDate(entretien.createdAt)}</span></div>
         </div>
-        
         <div style={D.scoreSection}>
           <div style={{...D.scoreCircle, background: scoreColor.bg, border: `2px solid ${scoreColor.color}`}}>
             <span style={D.scoreValue}>{parsed.score !== null ? parsed.score : '?'}</span>
             <span style={D.scoreMax}>/100</span>
           </div>
           <div style={D.scoreInfo}>
-            <div style={{...D.scoreGrade, color: scoreColor.color}}>
-              {scoreColor.icon} {scoreColor.grade}
-            </div>
-            {parsed.verdict && (
-              <div style={D.scoreVerdict}>{parsed.verdict}</div>
-            )}
+            <div style={{...D.scoreGrade, color: scoreColor.color}}>{scoreColor.icon} {scoreColor.grade}</div>
+            {parsed.verdict && <div style={D.scoreVerdict}>{parsed.verdict}</div>}
           </div>
         </div>
       </div>
       
       <div style={D.tabs}>
         {['summary', 'strengths', 'advice', 'details'].map(tab => (
-          <button 
-            key={tab}
-            style={{...D.tab, ...(activeTab === tab ? D.tabActive : {})}}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'summary' && '📊 Résumé'}
+          <button key={tab} style={{...D.tab, ...(activeTab === tab ? D.tabActive : {})}} onClick={() => setActiveTab(tab)}>
+            {tab === 'summary'   && '📊 Résumé'}
             {tab === 'strengths' && '✅ Analyse'}
-            {tab === 'advice' && '💡 Conseils'}
-            {tab === 'details' && '📝 Détails'}
+            {tab === 'advice'    && '💡 Conseils'}
+            {tab === 'details'   && '📝 Détails'}
           </button>
         ))}
       </div>
@@ -326,81 +288,41 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         {activeTab === 'summary' && (
           <div style={D.summaryContent}>
             <div style={D.statsGrid}>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>⏱️</div>
-                <div style={D.statLabel}>Durée totale</div>
-                <div style={D.statValue}>
-                  {parsed.questionMetrics.length > 0 
-                    ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00`
-                    : '—'}
-                </div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>📝</div>
-                <div style={D.statLabel}>Questions</div>
-                <div style={D.statValue}>{parsed.questionMetrics.length || '8'}</div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>🎯</div>
-                <div style={D.statLabel}>Score</div>
-                <div style={D.statValue}>{parsed.score !== null ? `${parsed.score}/100` : '—'}</div>
-              </div>
+              <div style={D.statItem}><div style={D.statIcon}>⏱️</div><div style={D.statLabel}>Durée totale</div><div style={D.statValue}>{parsed.questionMetrics.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—'}</div></div>
+              <div style={D.statItem}><div style={D.statIcon}>📝</div><div style={D.statLabel}>Questions</div><div style={D.statValue}>{parsed.questionMetrics.length || '8'}</div></div>
+              <div style={D.statItem}><div style={D.statIcon}>🎯</div><div style={D.statLabel}>Score</div><div style={D.statValue}>{parsed.score !== null ? `${parsed.score}/100` : '—'}</div></div>
             </div>
             
             {parsed.pointsForts.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>✅ Points forts identifiés</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsForts.slice(0, 3).map((p, i) => <li key={i} style={D.listItem}>{p}</li>)}</ul>
               </div>
             )}
             
             {parsed.pointsAmeliorer.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>📈 Axes d'amélioration</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsAmeliorer.slice(0, 3).map((p, i) => <li key={i} style={D.listItem}>{p}</li>)}</ul>
               </div>
             )}
           </div>
         )}
-        
+
         {activeTab === 'strengths' && (
           <div style={D.strengthsContent}>
             {parsed.pointsForts.length > 0 && (
               <div style={D.section}>
                 <div style={{...D.sectionTitle, color: '#34d399'}}>✅ POINTS FORTS</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#34d399', marginRight: 8}}>✓</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsForts.map((p, i) => <li key={i} style={D.listItem}><span style={{color: '#34d399', marginRight: 8}}>✓</span>{p}</li>)}</ul>
               </div>
             )}
-            
             {parsed.pointsAmeliorer.length > 0 && (
               <div style={{...D.section, marginTop: 24}}>
                 <div style={{...D.sectionTitle, color: '#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#fbbf24', marginRight: 8}}>!</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.pointsAmeliorer.map((p, i) => <li key={i} style={D.listItem}><span style={{color: '#fbbf24', marginRight: 8}}>!</span>{p}</li>)}</ul>
               </div>
             )}
-            
             {parsed.questionMetrics.length > 0 && (
               <div style={{...D.section, marginTop: 24}}>
                 <div style={D.sectionTitle}>📊 Performance par question</div>
@@ -419,52 +341,34 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
             )}
           </div>
         )}
-        
+
         {activeTab === 'advice' && (
           <div style={D.adviceContent}>
             {parsed.conseils.length > 0 ? (
               <div style={D.section}>
                 <div style={{...D.sectionTitle, color: '#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div>
-                <ul style={D.list}>
-                  {parsed.conseils.map((c, i) => (
-                    <li key={i} style={{...D.listItem, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.05)'}}>
-                      <span style={{fontSize: 18, marginRight: 12}}>🎯</span>
-                      <span>{c}</span>
-                    </li>
-                  ))}
-                </ul>
+                <ul style={D.list}>{parsed.conseils.map((c, i) => <li key={i} style={{...D.listItem, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.05)'}}><span style={{fontSize: 18, marginRight: 12}}>🎯</span><span>{c}</span></li>)}</ul>
               </div>
             ) : (
-              <div style={D.emptyAdvice}>
-                <span style={{fontSize: 48}}>📝</span>
-                <p>Des conseils personnalisés apparaîtront ici après votre entretien</p>
-              </div>
+              <div style={D.emptyAdvice}><span style={{fontSize: 48}}>📝</span><p>Des conseils personnalisés apparaîtront ici après votre entretien</p></div>
             )}
             
             <div style={D.motivationCard}>
-              <div style={D.motivationQuote}>
-                "La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."
-              </div>
+              <div style={D.motivationQuote}>"La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."</div>
               <div style={D.motivationAuthor}>— Jury IA</div>
             </div>
           </div>
         )}
-        
+
         {activeTab === 'details' && (
           <div style={D.detailsContent}>
             <div style={D.section}>
               <div style={D.sectionTitle}>📄 Rapport complet</div>
               <div style={D.rawContent}>
                 {parsed.rawText.split('\n').map((line, i) => {
-                  if (line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)) {
-                    return <div key={i} style={D.rawHeader}>{line}</div>;
-                  }
-                  if (line.trim() && line.match(/^[-•*]/)) {
-                    return <div key={i} style={D.rawBullet}>{line}</div>;
-                  }
-                  if (line.trim()) {
-                    return <div key={i} style={D.rawLine}>{line}</div>;
-                  }
+                  if (line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)) return <div key={i} style={D.rawHeader}>{line}</div>;
+                  if (line.trim() && line.match(/^[-•*]/)) return <div key={i} style={D.rawBullet}>{line}</div>;
+                  if (line.trim()) return <div key={i} style={D.rawLine}>{line}</div>;
                   return <div key={i} style={{height: 8}} />;
                 })}
               </div>
@@ -474,313 +378,60 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
       </div>
       
       <div style={D.actions}>
-        <button style={D.actionBtn} onClick={() => window.print()}>
-          🖨️ Imprimer
-        </button>
-        <button style={D.actionBtn} onClick={() => {
-          navigator.clipboard.writeText(parsed.rawText);
-          alert('Rapport copié dans le presse-papier');
-        }}>
-          📋 Copier
-        </button>
+        <button style={D.actionBtn} onClick={() => window.print()}>🖨️ Imprimer</button>
+        <button style={D.actionBtn} onClick={() => { navigator.clipboard.writeText(parsed.rawText); alert('Rapport copié dans le presse-papier'); }}>📋 Copier</button>
       </div>
     </div>
   );
 }
 
 const D = {
-  container: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '20px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-    animation: 'slideIn 0.3s ease'
-  },
-  backBtn: {
-    alignSelf: 'flex-start',
-    background: 'rgba(255,255,255,.05)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    padding: '8px 16px',
-    borderRadius: 10,
-    cursor: 'pointer',
-    fontSize: 13,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    transition: 'all 0.2s'
-  },
-  header: {
-    background: 'rgba(139, 92, 246, .06)',
-    borderRadius: 20,
-    padding: '20px',
-    border: '1px solid rgba(139, 92, 246, .15)'
-  },
-  headerTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    flexWrap: 'wrap',
-    gap: 12
-  },
-  bourseTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 14px',
-    background: 'rgba(139, 92, 246, .12)',
-    borderRadius: 20,
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#c4b5fd'
-  },
-  dateTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 12,
-    color: '#64748b'
-  },
-  scoreSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 20,
-    flexWrap: 'wrap'
-  },
-  scoreCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: '50%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2
-  },
-  scoreValue: {
-    fontSize: 36,
-    fontWeight: 800,
-    lineHeight: 1
-  },
-  scoreMax: {
-    fontSize: 12,
-    opacity: 0.7
-  },
-  scoreInfo: {
-    flex: 1
-  },
-  scoreGrade: {
-    fontSize: 20,
-    fontWeight: 700,
-    marginBottom: 4
-  },
-  scoreVerdict: {
-    fontSize: 14,
-    color: '#94a3b8'
-  },
-  tabs: {
-    display: 'flex',
-    gap: 8,
-    borderBottom: '1px solid rgba(255,255,255,.08)',
-    paddingBottom: 12
-  },
-  tab: {
-    padding: '8px 20px',
-    background: 'transparent',
-    border: 'none',
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    borderRadius: 20,
-    transition: 'all 0.2s'
-  },
-  tabActive: {
-    background: 'rgba(139, 92, 246, .15)',
-    color: '#c4b5fd'
-  },
-  content: {
-    flex: 1,
-    overflowY: 'auto',
-    minHeight: 300
-  },
-  summaryContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 12
-  },
-  statItem: {
-    background: 'rgba(255,255,255,.03)',
-    borderRadius: 14,
-    padding: '14px',
-    textAlign: 'center',
-    border: '1px solid rgba(255,255,255,.06)'
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 6
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#f1f5f9'
-  },
-  section: {
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 14,
-    padding: '16px',
-    border: '1px solid rgba(255,255,255,.05)'
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 1,
-    color: '#a78bfa',
-    marginBottom: 12,
-    textTransform: 'uppercase'
-  },
-  list: {
-    margin: 0,
-    paddingLeft: 0,
-    listStyle: 'none'
-  },
-  listItem: {
-    fontSize: 13,
-    color: '#cbd5e1',
-    lineHeight: 1.6,
-    marginBottom: 10,
-    display: 'flex',
-    alignItems: 'flex-start'
-  },
-  questionsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8
-  },
-  questionItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 12px',
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 10
-  },
-  questionNum: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#a78bfa'
-  },
-  questionStats: {
-    display: 'flex',
-    gap: 16,
-    fontSize: 11,
-    color: '#64748b'
-  },
-  wordCount: {
-    padding: '2px 8px',
-    background: 'rgba(16,185,129,.1)',
-    borderRadius: 12,
-    color: '#34d399'
-  },
-  wpm: {
-    padding: '2px 8px',
-    background: 'rgba(139,92,246,.1)',
-    borderRadius: 12,
-    color: '#a78bfa'
-  },
-  adviceContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  emptyAdvice: {
-    textAlign: 'center',
-    padding: '40px 20px',
-    color: '#64748b'
-  },
-  motivationCard: {
-    background: 'linear-gradient(135deg, rgba(139,92,246,.1), rgba(232,121,249,.05))',
-    borderRadius: 16,
-    padding: '20px',
-    marginTop: 8,
-    border: '1px solid rgba(139,92,246,.2)'
-  },
-  motivationQuote: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#e2e8f0',
-    lineHeight: 1.5,
-    marginBottom: 12
-  },
-  motivationAuthor: {
-    fontSize: 11,
-    color: '#64748b',
-    textAlign: 'right'
-  },
-  detailsContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16
-  },
-  rawContent: {
-    fontSize: 13,
-    lineHeight: 1.7,
-    color: '#94a3b8',
-    whiteSpace: 'pre-wrap',
-    maxHeight: 400,
-    overflowY: 'auto',
-    padding: '4px 0'
-  },
-  rawHeader: {
-    fontWeight: 700,
-    color: '#c4b5fd',
-    marginTop: 12,
-    marginBottom: 6,
-    fontSize: 12,
-    letterSpacing: 1
-  },
-  rawBullet: {
-    paddingLeft: 20,
-    marginBottom: 6,
-    color: '#94a3b8'
-  },
-  rawLine: {
-    marginBottom: 4,
-    color: '#94a3b8'
-  },
-  actions: {
-    display: 'flex',
-    gap: 12,
-    paddingTop: 16,
-    borderTop: '1px solid rgba(255,255,255,.06)',
-    marginTop: 8
-  },
-  actionBtn: {
-    flex: 1,
-    padding: '10px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,.04)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    fontSize: 13,
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  }
+  container:       {flex:1,overflowY:'auto',padding:'20px 24px',display:'flex',flexDirection:'column',gap:20,animation:'slideIn 0.3s ease'},
+  backBtn:         {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',padding:'8px 16px',borderRadius:10,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,transition:'all 0.2s'},
+  header:          {background:'rgba(139,92,246,.06)',borderRadius:20,padding:'20px',border:'1px solid rgba(139,92,246,.15)'},
+  headerTop:       {display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12},
+  bourseTag:       {display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'rgba(139,92,246,.12)',borderRadius:20,fontSize:13,fontWeight:600,color:'#c4b5fd'},
+  dateTag:         {display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#64748b'},
+  scoreSection:    {display:'flex',alignItems:'center',gap:20,flexWrap:'wrap'},
+  scoreCircle:     {width:100,height:100,borderRadius:'50%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2},
+  scoreValue:      {fontSize:36,fontWeight:800,lineHeight:1},
+  scoreMax:        {fontSize:12,opacity:0.7},
+  scoreInfo:       {flex:1},
+  scoreGrade:      {fontSize:20,fontWeight:700,marginBottom:4},
+  scoreVerdict:    {fontSize:14,color:'#94a3b8'},
+  tabs:            {display:'flex',gap:8,borderBottom:'1px solid rgba(255,255,255,.08)',paddingBottom:12},
+  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:20,transition:'all 0.2s'},
+  tabActive:       {background:'rgba(139,92,246,.15)',color:'#c4b5fd'},
+  content:         {flex:1,overflowY:'auto',minHeight:300},
+  summaryContent:  {display:'flex',flexDirection:'column',gap:24},
+  statsGrid:       {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12},
+  statItem:        {background:'rgba(255,255,255,.03)',borderRadius:14,padding:'14px',textAlign:'center',border:'1px solid rgba(255,255,255,.06)'},
+  statIcon:        {fontSize:24,marginBottom:6},
+  statLabel:       {fontSize:11,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:4},
+  statValue:       {fontSize:18,fontWeight:700,color:'#f1f5f9'},
+  section:         {background:'rgba(255,255,255,.02)',borderRadius:14,padding:'16px',border:'1px solid rgba(255,255,255,.05)'},
+  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#a78bfa',marginBottom:12,textTransform:'uppercase'},
+  list:            {margin:0,paddingLeft:0,listStyle:'none'},
+  listItem:        {fontSize:13,color:'#cbd5e1',lineHeight:1.6,marginBottom:10,display:'flex',alignItems:'flex-start'},
+  strengthsContent:{display:'flex',flexDirection:'column'},
+  questionsList:   {display:'flex',flexDirection:'column',gap:8},
+  questionItem:    {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'rgba(255,255,255,.02)',borderRadius:10},
+  questionNum:     {fontSize:12,fontWeight:600,color:'#a78bfa'},
+  questionStats:   {display:'flex',gap:16,fontSize:11,color:'#64748b'},
+  wordCount:       {padding:'2px 8px',background:'rgba(16,185,129,.1)',borderRadius:12,color:'#34d399'},
+  wpm:             {padding:'2px 8px',background:'rgba(139,92,246,.1)',borderRadius:12,color:'#a78bfa'},
+  adviceContent:   {display:'flex',flexDirection:'column',gap:24},
+  emptyAdvice:     {textAlign:'center',padding:'40px 20px',color:'#64748b'},
+  motivationCard:  {background:'linear-gradient(135deg,rgba(139,92,246,.1),rgba(232,121,249,.05))',borderRadius:16,padding:'20px',marginTop:8,border:'1px solid rgba(139,92,246,.2)'},
+  motivationQuote: {fontSize:14,fontStyle:'italic',color:'#e2e8f0',lineHeight:1.5,marginBottom:12},
+  motivationAuthor:{fontSize:11,color:'#64748b',textAlign:'right'},
+  detailsContent:  {display:'flex',flexDirection:'column',gap:16},
+  rawContent:      {fontSize:13,lineHeight:1.7,color:'#94a3b8',whiteSpace:'pre-wrap',maxHeight:400,overflowY:'auto',padding:'4px 0'},
+  rawHeader:       {fontWeight:700,color:'#c4b5fd',marginTop:12,marginBottom:6,fontSize:12,letterSpacing:1},
+  rawBullet:       {paddingLeft:20,marginBottom:6,color:'#94a3b8'},
+  rawLine:         {marginBottom:4,color:'#94a3b8'},
+  actions:         {display:'flex',gap:12,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.06)',marginTop:8},
+  actionBtn:       {flex:1,padding:'10px',borderRadius:10,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',fontSize:13,cursor:'pointer',transition:'all 0.2s'},
 };
 
 const H = {
@@ -890,8 +541,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const phaseRef       = useRef('intro');
   const historyRef     = useRef([]);
 
-  useEffect(() => { liveTextRef.current = liveText; }, [liveText]);
-  useEffect(() => { elapsedRef.current  = elapsed;   }, [elapsed]);
+  useEffect(() => { liveTextRef.current = liveText;  }, [liveText]);
+  useEffect(() => { elapsedRef.current  = elapsed;    }, [elapsed]);
   useEffect(() => { qIndexRef.current   = qIndex;    }, [qIndex]);
   useEffect(() => { phaseRef.current    = phase;     }, [phase]);
 
@@ -915,16 +566,16 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   };
 
+  // ── callAI → webhook n8n (serveur différent → axios brut, pas axiosInstance) ──
   const callAI = useCallback(async (payload, ctx) => {
     if (aiLockRef.current) return { output: null };
     aiLockRef.current = true;
     const controller = new AbortController();
     const timeout    = setTimeout(() => controller.abort(), 45000);
     try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await axios.post(
+        WEBHOOK_ROUTES.entretien,
+        {
           text:              typeof payload === 'string' ? payload : payload.lastAnswer || '',
           context:           ctx,
           conversationId,
@@ -936,13 +587,12 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           question_index:    typeof payload === 'object' ? (payload.questionIndex ?? 0) : 0,
           total_questions:   TOTAL_Q,
           voiceStats: typeof payload === 'object' && payload.voiceStats ? payload.voiceStats : null,
-        }),
-        signal: controller.signal,
-      });
+        },
+        { signal: controller.signal },
+      );
       clearTimeout(timeout);
-      const txt = await res.text();
       aiLockRef.current = false;
-      try { return JSON.parse(txt); } catch { return { output: txt }; }
+      return res.data;
     } catch(err) {
       clearTimeout(timeout);
       aiLockRef.current = false;
@@ -960,10 +610,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     setPhase('ai_speaking'); setAiLoading(true);
     savedRef.current = false; aiLockRef.current = false;
     historyRef.current = [];
-
     const data = await callAI({ lastAnswer: '', questionIndex: 0 }, 'start_entretien');
     const q    = cleanQ(data?.output) || `Présentez-vous et expliquez votre motivation pour la bourse ${bourse.nom}.`;
-
     historyRef.current = [{ role: 'assistant', content: q }];
     setCurrentQ(q);
     setQIndex(0); qIndexRef.current = 0;
@@ -1061,10 +709,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           avgStability:     Math.round(answersRef.current.reduce((s,a)=>s+(a.voice?.stability||0),0)/Math.max(answersRef.current.length,1)),
           scoresParQuestion: answersRef.current.map((a,i)=>({q:i+1,words:a.wordCount||0,wpm:a.wpm||0,answer:(a.a||'').slice(0,200)})),
         };
-
         const data = await callAI({ lastAnswer: answer, questionIndex: curIdx, voiceStats }, 'fin_entretien');
         const scoreText = data?.output || data?.message || data?.text || 'Erreur — vérifiez la connexion n8n';
-
         setFinalScore(scoreText);
         setPhase('result');
         if (!savedRef.current) {
@@ -1072,7 +718,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           await saveEntretien(user?.id, scoreText, conversationId, bourse.nom);
         }
         await tts('Entretien terminé. Voici votre évaluation complète.');
-
       } else {
         const nextIdx = curIdx + 1;
         const data    = await callAI({ lastAnswer: answer, questionIndex: nextIdx }, 'entretien');
@@ -1121,11 +766,11 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       return m ? m[1].trim() : null;
     };
     return {
-      score:   txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
-      verdict: txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
-      forts:   get('POINTS FORTS'),
-      fix:     get('POINTS À AMÉLIORER'),
-      conseils:get('CONSEILS PERSONNALISÉS'),
+      score:    txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
+      verdict:  txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
+      forts:    get('POINTS FORTS'),
+      fix:      get('POINTS À AMÉLIORER'),
+      conseils: get('CONSEILS PERSONNALISÉS'),
     };
   };
 
@@ -1197,9 +842,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
               ))}
               <div style={{display:'flex',gap:8,marginTop:4}}>
                 {[
-                  {icon:'⏸',val:livePauses, label:'pauses',  warn:livePauses>5},
-                  {icon:'💬',val:liveHesit,  label:'s hésit.', warn:liveHesit>8},
-                  {icon:'📝',val:liveWordCount,label:'mots',  warn:false},
+                  {icon:'⏸',val:livePauses,    label:'pauses',   warn:livePauses>5},
+                  {icon:'💬',val:liveHesit,     label:'s hésit.', warn:liveHesit>8},
+                  {icon:'📝',val:liveWordCount, label:'mots',     warn:false},
                 ].map(c=>(
                   <div key={c.label} style={{flex:1,textAlign:'center',padding:'6px 4px',borderRadius:8,
                     background:`rgba(${c.warn?'239,68,68':'99,102,241'},.06)`,
@@ -1214,7 +859,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
         </div>
 
         <div style={T.right}>
-
           {phase==='intro'&&(
             <div style={{width:'100%',maxWidth:500,display:'flex',flexDirection:'column',height:'100%'}}>
               <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:14,paddingBottom:8}}>
@@ -1279,8 +923,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
               )}
 
               <div>
-                {phase==='waiting'   &&<button style={T.btnRec}  onClick={startRecording}><span style={{fontSize:20}}>🎤</span> Répondre à la question</button>}
-                {phase==='recording' &&<button style={T.btnStop} onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> Terminer ma réponse</button>}
+                {phase==='waiting'  &&<button style={T.btnRec}  onClick={startRecording}><span style={{fontSize:20}}>🎤</span> Répondre à la question</button>}
+                {phase==='recording'&&<button style={T.btnStop} onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> Terminer ma réponse</button>}
                 {(phase==='ai_speaking'||phase==='analyzing')&&<div style={T.hint}>{phase==='ai_speaking'?'🔊 Écoutez la question…':'⏳ Analyse IA en cours…'}</div>}
               </div>
             </div>
@@ -1350,13 +994,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                       <div style={{width:22,height:22,borderRadius:'50%',background:'rgba(139,92,246,.2)',border:'1px solid rgba(139,92,246,.4)',color:'#a78bfa',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:2}}>{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,color:'#cbd5e1',marginBottom:3}}>{a.q.slice(0,70)}{a.q.length>70?'…':''}</div>
-                        <div style={{fontSize:11,color:'#64748b'}}>
-                          ⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} mots · 🏃 {a.wpm||0} m/min
-                          {a.voice&&` · ⏸ ${a.voice.pauseCount||0} pauses · 💬 ${a.voice.hesitations||0}s`}
-                        </div>
-                        {a.a&&a.a!=='(aucune réponse détectée)'&&(
-                          <div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>
-                        )}
+                        <div style={{fontSize:11,color:'#64748b'}}>⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} mots · 🏃 {a.wpm||0} m/min{a.voice&&` · ⏸ ${a.voice.pauseCount||0} pauses · 💬 ${a.voice.hesitations||0}s`}</div>
+                        {a.a&&a.a!=='(aucune réponse détectée)'&&<div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>}
                       </div>
                     </div>
                   ))}
