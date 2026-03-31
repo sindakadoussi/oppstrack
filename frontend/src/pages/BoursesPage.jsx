@@ -64,7 +64,7 @@ const daysLeft = (deadline) => {
 
 const isUrgent = (deadline) => {
   if (!deadline) return false;
-  return (new Date(deadline)-new Date())/(1000*60*60*24)<30;
+  return (new Date(deadline)-new Date())/(1000*60*60*60*24)<30;
 };
 
 // ── BourseCard ────────────────────────────────────────────────────────────────
@@ -88,10 +88,7 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 12px 32px rgba(0,0,0,0.4)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}
     >
-      {/* Barre score */}
       <div style={{ height:4, background:pct!==null?`linear-gradient(90deg,${scoreColor}88,${scoreColor})`:'rgba(255,255,255,0.05)' }}/>
-
-      {/* Header — cliquable pour ouvrir le drawer */}
       <div style={{ padding:'14px 16px 10px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, cursor:'pointer' }} onClick={onClick}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
           <span style={{ fontSize:20, flexShrink:0 }}>{countryFlag(bourse.pays)}</span>
@@ -110,10 +107,7 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
           </div>
         )}
       </div>
-
       <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'0 16px' }}/>
-
-      {/* Body — cliquable */}
       <div style={{ padding:'12px 16px', flex:1, display:'flex', flexDirection:'column', gap:8, cursor:'pointer' }} onClick={onClick}>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {niveaux.map((n,i)=>(
@@ -143,51 +137,33 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
           </div>
         )}
       </div>
-
-      {/* Actions */}
       <div style={{ padding:'10px 16px 14px', display:'flex', gap:6 }}>
-        {/* Voir les détails */}
-        <button
-          style={{ flex:1, padding:'9px 10px', borderRadius:10, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .2s' }}
+        <button style={{ flex:1, padding:'9px 10px', borderRadius:10, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .2s' }}
           onClick={(e)=>{ e.stopPropagation(); onClick(); }}
           onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}
-        >
-          Voir les détails →
-        </button>
-        {/* Postuler */}
-        <button
-          style={{ flex:1, padding:'9px 10px', borderRadius:10, background:applied?'rgba(99,102,241,0.15)':'#1e1e30', border:applied?'1px solid rgba(99,102,241,0.3)':'1px solid rgba(255,255,255,0.08)', color:applied?'#a5b4fc':'#e2e8f0', fontSize:12, fontWeight:600, cursor:applied?'default':'pointer', transition:'all .2s' }}
+        >Voir les détails →</button>
+        <button style={{ flex:1, padding:'9px 10px', borderRadius:10, background:applied?'rgba(99,102,241,0.15)':'#1e1e30', border:applied?'1px solid rgba(99,102,241,0.3)':'1px solid rgba(255,255,255,0.08)', color:applied?'#a5b4fc':'#e2e8f0', fontSize:12, fontWeight:600, cursor:applied?'default':'pointer', transition:'all .2s' }}
           onClick={!applied?async(e)=>{ e.stopPropagation(); setApplyLoading(true); await onApply(bourse); setApplyLoading(false); }:undefined}
           disabled={applied||applyLoading}
           onMouseEnter={e=>{ if(!applied) e.currentTarget.style.background='#2a2a45'; }}
           onMouseLeave={e=>{ if(!applied) e.currentTarget.style.background='#1e1e30'; }}
-        >
-          {applyLoading?'⏳':applied?'✅ Roadmap':'🗺️ Postuler'}
-        </button>
-        {/* Étoile */}
-        <button
-          style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:starred?'rgba(251,191,36,0.15)':'#1e1e30', border:starred?'1px solid rgba(251,191,36,0.35)':'1px solid rgba(255,255,255,0.08)', color:starred?'#fbbf24':'#64748b', fontSize:16, cursor:starLoading?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}
+        >{applyLoading?'⏳':applied?'✅ Roadmap':'🗺️ Postuler'}</button>
+        <button style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:starred?'rgba(251,191,36,0.15)':'#1e1e30', border:starred?'1px solid rgba(251,191,36,0.35)':'1px solid rgba(255,255,255,0.08)', color:starred?'#fbbf24':'#64748b', fontSize:16, cursor:starLoading?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}
           onClick={async(e)=>{ e.stopPropagation(); setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }}
           disabled={starLoading}
-          title={starred?'Retirer des favoris':'Ajouter aux favoris'}
-        >
-          {starred?'★':'☆'}
-        </button>
-        {/* IA */}
-        <button
-          style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', color:'#818cf8', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+        >{starred?'★':'☆'}</button>
+        {/* 🤖 Icône Chat - ouvre le chat latéral avec message pré-rempli */}
+        <button style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', color:'#818cf8', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
           onClick={(e)=>{ e.stopPropagation(); onAskAI(bourse); }}
           title="Demander à l'IA"
-        >
-          🤖
-        </button>
+        >🤖</button>
       </div>
     </div>
   );
 }
 
-// ── BourseDrawer avec éligibilité et documents ────────────────────────────────
+// ── BourseDrawer ──────────────────────────────────────────────────────────────
 function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, applied, onApply }) {
   if (!bourse) return null;
   const dl = daysLeft(bourse.dateLimite);
@@ -198,8 +174,6 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', animation:'fadeIn 0.2s ease' }}/>
       <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:480, maxWidth:'95vw', background:'#0d0d22', borderLeft:'1px solid rgba(99,102,241,0.2)', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', overflowY:'auto' }}>
-
-        {/* Header */}
         <div style={{ padding:'20px 22px 0', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
             <div style={{ fontSize:28, width:52, height:52, borderRadius:14, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -224,89 +198,48 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
           )}
           <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'0 -22px 16px' }}/>
         </div>
-
-        {/* Body */}
         <div style={{ padding:'0 22px', flex:1 }}>
-
-          {/* Description */}
           {bourse.description && (
             <div style={{ marginBottom:20 }}>
               <div style={D.label}>À propos</div>
               <p style={{ fontSize:13, color:'#94a3b8', lineHeight:1.7, margin:0 }}>{bourse.description}</p>
             </div>
           )}
-
-          {/* Critères d'éligibilité */}
           {bourse.eligibilite && Object.values(bourse.eligibilite).some(v=>v) && (
             <div style={{ marginBottom:20 }}>
               <div style={D.label}>✅ Critères d'éligibilité</div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {bourse.eligibilite.nationalitesEligibles && (
-                  <div style={D.infoRow}>
-                    <span style={D.infoIcon}>🌍</span>
-                    <div>
-                      <div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Nationalités éligibles</div>
-                      <div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.nationalitesEligibles}</div>
-                    </div>
-                  </div>
+                  <div style={D.infoRow}><span style={D.infoIcon}>🌍</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Nationalités éligibles</div><div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.nationalitesEligibles}</div></div></div>
                 )}
                 {bourse.eligibilite.niveauRequis && (
-                  <div style={D.infoRow}>
-                    <span style={D.infoIcon}>🎓</span>
-                    <div>
-                      <div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Niveau requis</div>
-                      <div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.niveauRequis}</div>
-                    </div>
-                  </div>
+                  <div style={D.infoRow}><span style={D.infoIcon}>🎓</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Niveau requis</div><div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.niveauRequis}</div></div></div>
                 )}
                 {bourse.eligibilite.ageMax && (
-                  <div style={D.infoRow}>
-                    <span style={D.infoIcon}>📅</span>
-                    <div>
-                      <div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Âge maximum</div>
-                      <div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.ageMax} ans</div>
-                    </div>
-                  </div>
+                  <div style={D.infoRow}><span style={D.infoIcon}>📅</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Âge maximum</div><div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.ageMax} ans</div></div></div>
                 )}
                 {bourse.eligibilite.conditionsSpeciales && (
-                  <div style={D.infoRow}>
-                    <span style={D.infoIcon}>📋</span>
-                    <div>
-                      <div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Conditions spéciales</div>
-                      <div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.conditionsSpeciales}</div>
-                    </div>
-                  </div>
+                  <div style={D.infoRow}><span style={D.infoIcon}>📋</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Conditions spéciales</div><div style={{ fontSize:13, color:'#e2e8f0' }}>{bourse.eligibilite.conditionsSpeciales}</div></div></div>
                 )}
               </div>
             </div>
           )}
-
-          {/* Documents requis */}
           {bourse.documentsRequis?.length > 0 && (
             <div style={{ marginBottom:20 }}>
               <div style={D.label}>📁 Documents requis ({bourse.documentsRequis.length})</div>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {bourse.documentsRequis.map((doc,i)=>(
                   <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'8px 12px', borderRadius:8, background:doc.obligatoire?'rgba(255,255,255,0.03)':'rgba(255,255,255,0.015)', border:`1px solid ${doc.obligatoire?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.05)'}` }}>
-                    <span style={{ fontSize:14, flexShrink:0, marginTop:1, color:doc.obligatoire?'#4ade80':'#64748b' }}>
-                      {doc.obligatoire?'✓':'○'}
-                    </span>
+                    <span style={{ fontSize:14, flexShrink:0, marginTop:1, color:doc.obligatoire?'#4ade80':'#64748b' }}>{doc.obligatoire?'✓':'○'}</span>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, color:doc.obligatoire?'#e2e8f0':'#94a3b8', fontWeight:doc.obligatoire?600:400 }}>
-                        {doc.nom}
-                        {!doc.obligatoire && <span style={{ fontSize:10, marginLeft:6, color:'#475569', fontWeight:400 }}>optionnel</span>}
-                      </div>
-                      {doc.description && doc.description!=='empty' && (
-                        <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{doc.description}</div>
-                      )}
+                      <div style={{ fontSize:13, color:doc.obligatoire?'#e2e8f0':'#94a3b8', fontWeight:doc.obligatoire?600:400 }}>{doc.nom}{!doc.obligatoire && <span style={{ fontSize:10, marginLeft:6, color:'#475569', fontWeight:400 }}>optionnel</span>}</div>
+                      {doc.description && doc.description!=='empty' && <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{doc.description}</div>}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Détails */}
           <div style={{ marginBottom:20 }}>
             <div style={D.label}>Détails</div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -319,8 +252,6 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
               ))}
             </div>
           </div>
-
-          {/* Lien officiel */}
           {bourse.lienOfficiel && (
             <div style={{ marginBottom:20 }}>
               <div style={D.label}>Lien officiel</div>
@@ -330,23 +261,16 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
             </div>
           )}
         </div>
-
-        {/* Actions */}
         <div style={{ padding:'16px 22px 24px', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0, display:'flex', flexDirection:'column', gap:10 }}>
           <button
             style={{ width:'100%', padding:13, borderRadius:11, border:'none', background:applied?'rgba(99,102,241,0.25)':'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'#fff', fontSize:14, fontWeight:700, cursor:applied?'default':'pointer', boxShadow:applied?'none':'0 4px 16px rgba(79,70,229,0.35)' }}
             onClick={!applied?async()=>{ setApplyLoading(true); await onApply(bourse); setApplyLoading(false); onClose(); }:undefined}
             disabled={applied||applyLoading}
-          >
-            {applyLoading?'⏳':applied?'✅ Déjà dans la roadmap':'🗺️ Postuler maintenant'}
-          </button>
+          >{applyLoading?'⏳':applied?'✅ Déjà dans la roadmap':'🗺️ Postuler maintenant'}</button>
           <div style={{ display:'flex', gap:8 }}>
-            <button
-              style={{ flex:1, padding:10, borderRadius:10, background:starred?'rgba(251,191,36,0.15)':'rgba(255,255,255,0.05)', border:starred?'1px solid rgba(251,191,36,0.3)':'1px solid rgba(255,255,255,0.1)', color:starred?'#fbbf24':'#94a3b8', fontSize:13, cursor:'pointer' }}
+            <button style={{ flex:1, padding:10, borderRadius:10, background:starred?'rgba(251,191,36,0.15)':'rgba(255,255,255,0.05)', border:starred?'1px solid rgba(251,191,36,0.3)':'1px solid rgba(255,255,255,0.1)', color:starred?'#fbbf24':'#94a3b8', fontSize:13, cursor:'pointer' }}
               onClick={async()=>{ setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }}
-            >
-              {starLoading?'⏳':starred?'★ Favori':'☆ Ajouter aux favoris'}
-            </button>
+            >{starLoading?'⏳':starred?'★ Favori':'☆ Ajouter aux favoris'}</button>
             <button style={{ flex:1, padding:10, borderRadius:10, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', color:'#818cf8', fontSize:13, cursor:'pointer' }}
               onClick={()=>{ onAskAI(bourse); onClose(); }}>🤖 Demander à l'IA</button>
           </div>
@@ -365,7 +289,20 @@ const D = {
 };
 
 // ── BoursesPage ───────────────────────────────────────────────────────────────
-export default function BoursesPage({ bourses, askAboutScholarship, handleSend, messages, input, setInput, loading, chatContainerRef, handleQuickReply, user }) {
+export default function BoursesPage({ 
+  bourses, 
+  askAboutScholarship, 
+  handleSend, 
+  messages, 
+  input, 
+  setInput, 
+  loading, 
+  chatContainerRef, 
+  handleQuickReply, 
+  user, 
+  initialSelected, 
+  onClearInitialSelected 
+}) {
   const [search,       setSearch]       = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
   const [filterPays,   setFilterPays]   = useState('');
@@ -373,6 +310,21 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
   const [selected,     setSelected]     = useState(null);
   const [starredNoms,  setStarredNoms]  = useState(new Set());
   const [appliedNoms,  setAppliedNoms]  = useState(new Set());
+
+  // ✅ Ouvrir automatiquement le drawer si initialSelected est fourni
+  useEffect(() => {
+    if (!initialSelected || !bourses?.length) return;
+    const nomLower = initialSelected.trim().toLowerCase();
+    const found = bourses.find(b =>
+      b.nom?.trim().toLowerCase() === nomLower ||
+      b.nom?.trim().toLowerCase().includes(nomLower) ||
+      nomLower.includes(b.nom?.trim().toLowerCase())
+    );
+    if (found) {
+      setSelected(found);
+      if (onClearInitialSelected) onClearInitialSelected();
+    }
+  }, [initialSelected, bourses, onClearInitialSelected]);
 
   const loadUserData = useCallback(async () => {
     if (!user?.id) return;
@@ -423,6 +375,31 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
     } catch(err){ console.error('[Apply]',err); }
   };
 
+  // 🤖 NOUVEAU : Handler pour ouvrir le chat latéral avec message pré-rempli
+  const handleAskAI = useCallback((bourse) => {
+    // 1. Ouvrir le panneau chat s'il est fermé
+    setShowChat(true);
+    
+    // 2. Pré-remplir l'input avec une question contextuelle sur la bourse
+    const question = `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`;
+    setInput(question);
+    
+    // 3. (Optionnel) Scroll vers le chat sur mobile
+    setTimeout(() => {
+      const chatEl = document.querySelector('[data-chat-sidebar]');
+      if (chatEl && window.innerWidth < 768) {
+        chatEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+    
+    // 💡 OPTION B : Pour envoyer automatiquement le message, décommentez ci-dessous :
+    // setTimeout(async () => {
+    //   if (typeof handleSend === 'function') {
+    //     await handleSend(question);
+    //   }
+    // }, 150);
+  }, [setInput, handleSend]);
+
   const filtered = bourses.filter(b => {
     if (b.statut==='expiree') return false;
     const q = search.toLowerCase();
@@ -437,7 +414,6 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
 
   return (
     <div style={{ width:'100%', padding:'28px 24px', background:'#07070f', minHeight:'100vh', fontFamily:"'Outfit', system-ui, sans-serif" }}>
-
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
           <h2 style={{ fontSize:'1.8rem', fontWeight:800, color:'#f1f5f9', margin:0 }}>Bourses 100% Financées</h2>
@@ -474,22 +450,40 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
               <div style={{ fontSize:40, marginBottom:12 }}>🔍</div>
               <p>Aucune bourse trouvée. Essayez d'autres critères.</p>
             </div>
-          ) : (
-            filtered.map(bourse=>(
-              <BourseCard key={bourse.id} bourse={bourse} user={user}
-                onAskAI={askAboutScholarship}
-                onClick={()=>setSelected(bourse)}
-                starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                onStar={handleStar}
-                applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                onApply={handleApply}
-              />
-            ))
-          )}
+          ) : filtered.map(bourse=>(
+            <BourseCard 
+              key={bourse.id} 
+              bourse={bourse} 
+              user={user}
+              onAskAI={handleAskAI}  // ← Utilise le nouveau handler
+              onClick={()=>setSelected(bourse)}
+              starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+              onStar={handleStar}
+              applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+              onApply={handleApply}
+            />
+          ))}
         </div>
 
+        {/* 🤖 Chat latéral avec attribut data pour scroll mobile */}
         {showChat && (
-          <div style={{ width:320, flexShrink:0, background:'rgba(15,15,30,0.9)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:16, overflow:'hidden', position:'sticky', top:80, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 100px)' }}>
+          <div 
+            data-chat-sidebar
+            style={{ 
+              width:320, 
+              flexShrink:0, 
+              background:'rgba(15,15,30,0.9)', 
+              border:'1px solid rgba(99,102,241,0.2)', 
+              borderRadius:16, 
+              overflow:'hidden', 
+              position:'sticky', 
+              top:80, 
+              display:'flex', 
+              flexDirection:'column', 
+              maxHeight:'calc(100vh - 100px)',
+              animation:'slideInChat 0.25s ease-out'
+            }}
+          >
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 16px', borderBottom:'1px solid rgba(99,102,241,0.15)', color:'#818cf8', fontWeight:600, fontSize:14 }}>
               <span>🤖</span><span>Assistant Bourses</span>
             </div>
@@ -513,7 +507,7 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
       <BourseDrawer
         bourse={selected}
         onClose={()=>setSelected(null)}
-        onAskAI={askAboutScholarship}
+        onAskAI={handleAskAI}  // ← Utilise aussi le nouveau handler dans le drawer
         onChoose={(b)=>handleSend(`je choisis ${b.nom}`)}
         starred={selected?starredNoms.has(selected.nom?.trim().toLowerCase()):false}
         onStar={handleStar}
@@ -523,7 +517,9 @@ export default function BoursesPage({ bourses, askAboutScholarship, handleSend, 
 
       <style>{`
         @keyframes bounce{0%,60%,100%{transform:scale(0.7);opacity:0.5}30%{transform:scale(1.1);opacity:1}}
+        @keyframes slideInChat{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
         input::placeholder{color:#475569}
+        [data-chat-sidebar]{animation:slideInChat 0.25s ease-out}
       `}</style>
     </div>
   );

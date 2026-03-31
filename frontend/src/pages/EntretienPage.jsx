@@ -98,7 +98,6 @@ class VoiceAnalyzer {
 }
 
 // ── HistoriquePanel ───────────────────────────────────────────────────────────
-// ── HistoriquePanel amélioré ───────────────────────────────────────────────────────────
 function HistoriquePanel({ userId, onClose }) {
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -112,19 +111,12 @@ function HistoriquePanel({ userId, onClose }) {
       .catch(() => setLoading(false));
   }, [userId]);
 
-  // Parser avancé pour extraire les données structurées du scoreText
   const parseEntretien = (text) => {
     if (!text) return { score: null, verdict: '', details: [], conseils: [] };
-    
-    // Score global
     const scoreMatch = text.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    
-    // Verdict
     const verdictMatch = text.match(/VERDICT\s*[:\-]\s*(.+?)(?=\n|$)/i);
     const verdict = verdictMatch ? verdictMatch[1].trim() : '';
-    
-    // Extraire les sections structurées
     const extractSection = (title) => {
       const regex = new RegExp(`${title}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|VERDICT|SCORE|$))`, 'i');
       const match = text.match(regex);
@@ -133,15 +125,9 @@ function HistoriquePanel({ userId, onClose }) {
       }
       return [];
     };
-    
-    // Points forts
     const pointsForts = extractSection('POINTS FORTS');
-    // Points à améliorer
     const pointsAmeliorer = extractSection('POINTS À AMÉLIORER');
-    // Conseils personnalisés
     const conseils = extractSection('CONSEILS PERSONNALISÉS');
-    
-    // Extraire les métriques par question si présentes
     const questionMetrics = [];
     const qRegex = /Question\s*(\d+)[:\s]*([^\n]+).*?mots[:\s]*(\d+).*?m\/min[:\s]*(\d+)/gi;
     let match;
@@ -153,20 +139,13 @@ function HistoriquePanel({ userId, onClose }) {
         wpm: parseInt(match[4]) || 0
       });
     }
-    
     return {
-      score,
-      verdict,
-      pointsForts: pointsForts.length ? pointsForts : [],
-      pointsAmeliorer: pointsAmeliorer.length ? pointsAmeliorer : [],
-      conseils: conseils.length ? conseils : [],
-      questionMetrics,
-      rawText: text
+      score, verdict, pointsForts, pointsAmeliorer, conseils, questionMetrics, rawText: text
     };
   };
 
   const getScoreColor = (score) => {
-    if (score === null) return { bg: 'rgba(100,116,139,.15)', color: '#94a3b8', border: 'rgba(100,116,139,.3)', grade: 'Non évalué' };
+    if (score === null) return { bg: 'rgba(100,116,139,.15)', color: '#94a3b8', border: 'rgba(100,116,139,.3)', grade: 'Non évalué', icon: '📊' };
     if (score >= 85) return { bg: 'rgba(16,185,129,.2)', color: '#34d399', border: 'rgba(16,185,129,.4)', grade: 'Excellent', icon: '🏆' };
     if (score >= 70) return { bg: 'rgba(16,185,129,.15)', color: '#34d399', border: 'rgba(16,185,129,.35)', grade: 'Très bien', icon: '🌟' };
     if (score >= 55) return { bg: 'rgba(245,158,11,.15)', color: '#fbbf24', border: 'rgba(245,158,11,.35)', grade: 'Bien', icon: '👍' };
@@ -178,11 +157,9 @@ function HistoriquePanel({ userId, onClose }) {
     const d = new Date(dateStr);
     const now = new Date();
     const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-    
     if (diffDays === 0) return `Aujourd'hui, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (diffDays === 1) return `Hier, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (diffDays < 7) return `Il y a ${diffDays} jours`;
-    
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
@@ -291,7 +268,6 @@ function HistoriquePanel({ userId, onClose }) {
   );
 }
 
-// ── Composant de détail d'entretien amélioré ───────────────────────────────────────────
 function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate }) {
   const [activeTab, setActiveTab] = useState('summary');
   const parsed = parseEntretien(entretien.score);
@@ -303,7 +279,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         <span style={{fontSize:18}}>←</span> Retour à la liste
       </button>
       
-      {/* En-tête avec score */}
       <div style={D.header}>
         <div style={D.headerTop}>
           <div style={D.bourseTag}>
@@ -332,7 +307,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         </div>
       </div>
       
-      {/* Onglets */}
       <div style={D.tabs}>
         {['summary', 'strengths', 'advice', 'details'].map(tab => (
           <button 
@@ -348,11 +322,9 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         ))}
       </div>
       
-      {/* Contenu des onglets */}
       <div style={D.content}>
         {activeTab === 'summary' && (
           <div style={D.summaryContent}>
-            {/* Points clés */}
             <div style={D.statsGrid}>
               <div style={D.statItem}>
                 <div style={D.statIcon}>⏱️</div>
@@ -375,7 +347,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
               </div>
             </div>
             
-            {/* Points forts en résumé */}
             {parsed.pointsForts.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>✅ Points forts identifiés</div>
@@ -387,7 +358,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
               </div>
             )}
             
-            {/* Axes d'amélioration */}
             {parsed.pointsAmeliorer.length > 0 && (
               <div style={D.section}>
                 <div style={D.sectionTitle}>📈 Axes d'amélioration</div>
@@ -471,7 +441,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
               </div>
             )}
             
-            {/* Citation de motivation */}
             <div style={D.motivationCard}>
               <div style={D.motivationQuote}>
                 "La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."
@@ -504,7 +473,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         )}
       </div>
       
-      {/* Actions */}
       <div style={D.actions}>
         <button style={D.actionBtn} onClick={() => window.print()}>
           🖨️ Imprimer
@@ -520,7 +488,6 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
   );
 }
 
-// Styles pour le détail
 const D = {
   container: {
     flex: 1,
@@ -816,7 +783,6 @@ const D = {
   }
 };
 
-// Mise à jour des styles H existants
 const H = {
   overlay: {position:'fixed',inset:0,zIndex:1000,display:'flex'},
   backdrop:{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)'},
@@ -831,31 +797,10 @@ const H = {
   scoreBadge:{padding:'6px 12px',borderRadius:99,fontWeight:700,fontSize:15,flexShrink:0},
   cardMid: {flex:1,display:'flex',flexDirection:'column',gap:4},
   cardDate:{fontSize:12,color:'#64748b'},
-  detail:  {flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:12},
-  backBtn: {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',padding:'7px 14px',borderRadius:8,cursor:'pointer',fontSize:13},
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#f1f5f9'
-  },
-  cardVerdict: {
-    fontSize: 11,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4
-  },
-  cardArrow: {
-    color: '#475569',
-    fontSize: 16
-  },
-  spinner: {
-    width: 40,
-    height: 40,
-    border: '3px solid rgba(139, 92, 246, .2)',
-    borderTopColor: '#8b5cf6',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  }
+  cardTitle:{fontSize:14,fontWeight:600,color:'#f1f5f9'},
+  cardVerdict:{fontSize:11,display:'flex',alignItems:'center',gap:4},
+  cardArrow:{color:'#475569',fontSize:16},
+  spinner: {width:40,height:40,border:'3px solid rgba(139,92,246,.2)',borderTopColor:'#8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}
 };
 
 // ── BoursePicker ──────────────────────────────────────────────────────────────
@@ -888,6 +833,7 @@ function BoursePicker({ bourses, userId, onSelect }) {
     </div>
   );
 }
+
 const P = {
   root:       {minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 16px',fontFamily:"'Outfit',sans-serif",position:'relative',background:'radial-gradient(ellipse 90% 55% at 50% -5%,rgba(139,92,246,.16),transparent)'},
   glow:       {position:'fixed',inset:0,pointerEvents:'none',background:'radial-gradient(circle at 75% 25%,rgba(232,121,249,.06),transparent 55%)'},
@@ -940,9 +886,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const elapsedRef     = useRef(0);
   const answersRef     = useRef([]);
   const qIndexRef      = useRef(0);
-  const capturedRef    = useRef(''); // réponse capturée au stop
+  const capturedRef    = useRef('');
   const phaseRef       = useRef('intro');
-  const historyRef     = useRef([]); // historique Q/R pour n8n
+  const historyRef     = useRef([]);
 
   useEffect(() => { liveTextRef.current = liveText; }, [liveText]);
   useEffect(() => { elapsedRef.current  = elapsed;   }, [elapsed]);
@@ -969,7 +915,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   };
 
-  // ── callAI → n8n fait TOUT ───────────────────────────────────────────────
   const callAI = useCallback(async (payload, ctx) => {
     if (aiLockRef.current) return { output: null };
     aiLockRef.current = true;
@@ -980,20 +925,16 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // ── Données pour n8n ──────────────────────────────────────────────
           text:              typeof payload === 'string' ? payload : payload.lastAnswer || '',
-          context:           ctx,  // start_entretien | entretien | fin_entretien
+          context:           ctx,
           conversationId,
           id:                user?.id    || null,
           email:             user?.email || null,
-          // ── Contexte bourse ───────────────────────────────────────────────
           bourse:            { id:bourse.id, nom:bourse.nom, pays:bourse.pays, niveau:bourse.niveau, financement:bourse.financement },
           bourse_context:    `${bourse.nom} | ${bourse.pays} | ${bourse.niveau} | ${bourse.financement||'100%'}`,
-          // ── Historique complet Q/R pour n8n ───────────────────────────────
           entretien_history: historyRef.current,
           question_index:    typeof payload === 'object' ? (payload.questionIndex ?? 0) : 0,
           total_questions:   TOTAL_Q,
-          // ── Stats vocales réelles pour fin_entretien ──────────────────────
           voiceStats: typeof payload === 'object' && payload.voiceStats ? payload.voiceStats : null,
         }),
         signal: controller.signal,
@@ -1015,13 +956,11 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     return out.trim().replace(/^(question\s*\d+\s*[:\-–]?\s*|Q\d+\s*[:\-–]?\s*)/i,'').trim();
   };
 
-  // ── Démarrer entretien — n8n génère la 1ère question ────────────────────
   const startInterview = async () => {
     setPhase('ai_speaking'); setAiLoading(true);
     savedRef.current = false; aiLockRef.current = false;
     historyRef.current = [];
 
-    // n8n reçoit context=start_entretien → EntretienAgent pose Q1
     const data = await callAI({ lastAnswer: '', questionIndex: 0 }, 'start_entretien');
     const q    = cleanQ(data?.output) || `Présentez-vous et expliquez votre motivation pour la bourse ${bourse.nom}.`;
 
@@ -1033,7 +972,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     setPhase('waiting');
   };
 
-  // ── Enregistrement avec vraie analyse vocale ─────────────────────────────
   const startRecording = () => {
     if (!streamRef.current || recRef.current?.state==='recording') return;
     setLiveText(''); liveTextRef.current = '';
@@ -1042,17 +980,14 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     setLiveWordCount(0);
     setPhase('recording');
 
-    // VoiceAnalyzer
     if (analyzerRef.current) analyzerRef.current.destroy();
     analyzerRef.current = new VoiceAnalyzer(streamRef.current);
     analyzerRef.current.start();
 
-    // MediaRecorder
     const mr = new MediaRecorder(streamRef.current);
     mr.ondataavailable = e => {};
     mr.start(200); recRef.current = mr;
 
-    // Timer
     timerRef.current = setInterval(() => {
       setElapsed(prev => {
         const n = prev + 1; elapsedRef.current = n;
@@ -1061,7 +996,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       });
     }, 1000);
 
-    // Métriques vocales en temps réel
     metricsRef.current = setInterval(() => {
       if (!analyzerRef.current) return;
       const s = analyzerRef.current.getStats();
@@ -1073,7 +1007,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       setLiveWordCount(liveTextRef.current.split(/\s+/).filter(w=>w.length>1).length);
     }, 800);
 
-    // SpeechRecognition
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SR) {
       const sr = new SR(); sr.lang='fr-FR'; sr.continuous=true; sr.interimResults=true;
@@ -1092,14 +1025,13 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const stopRecording = useCallback(() => {
     clearInterval(timerRef.current);
     clearInterval(metricsRef.current);
-    capturedRef.current = liveTextRef.current; // ✅ capturer avant reset
+    capturedRef.current = liveTextRef.current;
     if (recRef.current?.state==='recording') { try { recRef.current.stop(); } catch {} }
     try { if (srRef.current) { srRef.current.onend=null; srRef.current.stop(); } } catch {}
     if (analyzerRef.current) analyzerRef.current.stop();
     setPhase('analyzing');
   }, []);
 
-  // ── Analyser réponse + demander prochaine question à n8n ────────────────
   useEffect(() => {
     if (phase !== 'analyzing') return;
     const go = async () => {
@@ -1113,7 +1045,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       const wordCount = answer.split(/\s+/).filter(w=>w.length>1).length;
       const wpm       = dur > 3 ? Math.round((wordCount/dur)*60) : 0;
 
-      // Ajouter réponse à l'historique pour n8n
       historyRef.current.push({ role: 'user', content: answer, duration: dur, wordCount, wpm, voice });
 
       const entry = { q:currentQ, a:answer, duration:dur, wordCount, wpm, voice };
@@ -1121,7 +1052,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       setAllAnswers([...answersRef.current]);
 
       if (isLast) {
-        // ── FIN : n8n fait l'analyse complète ───────────────────────────
         const voiceStats = {
           totalAnswered:    answersRef.current.filter(a=>a.a&&a.a!=='(aucune réponse détectée)'&&a.a.length>5).length,
           avgWpm:           Math.round(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).reduce((s,a)=>s+a.wpm,0) / Math.max(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).length,1)),
@@ -1132,7 +1062,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           scoresParQuestion: answersRef.current.map((a,i)=>({q:i+1,words:a.wordCount||0,wpm:a.wpm||0,answer:(a.a||'').slice(0,200)})),
         };
 
-        // n8n reçoit context=fin_entretien + TOUT l'historique + stats vocales réelles
         const data = await callAI({ lastAnswer: answer, questionIndex: curIdx, voiceStats }, 'fin_entretien');
         const scoreText = data?.output || data?.message || data?.text || 'Erreur — vérifiez la connexion n8n';
 
@@ -1145,13 +1074,11 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
         await tts('Entretien terminé. Voici votre évaluation complète.');
 
       } else {
-        // ── SUITE : n8n génère la prochaine question ─────────────────────
         const nextIdx = curIdx + 1;
         const data    = await callAI({ lastAnswer: answer, questionIndex: nextIdx }, 'entretien');
         const nextQ   = cleanQ(data?.output || data?.message || data?.text);
 
         if (!nextQ) {
-          // Si n8n ne répond pas, utiliser fallback simple
           const fallbacks = [
             `Pourquoi ${bourse.nom} plutôt qu'une autre bourse ?`,
             `Décrivez un projet concret que vous réaliserez grâce à cette bourse.`,
@@ -1210,7 +1137,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
 
   return (
     <div style={T.root}>
-      {/* ── Topbar ────────────────────────────────────────────────────── */}
       <div style={T.topbar}>
         <div style={T.tbLeft}>
           <div style={{...T.dot,background:phase==='recording'?'#ef4444':'#10b981'}}/>
@@ -1234,9 +1160,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────── */}
       <div style={T.body}>
-        {/* Gauche : caméra + métriques vocales réelles */}
         <div style={T.left}>
           <div style={T.videoBox}>
             {camError
@@ -1250,11 +1174,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 Jury IA parle…
               </div>
             )}
-            {/* Barre volume réelle */}
             <div style={T.meterBg}><div style={{...T.meterFill,width:`${liveVolume}%`}}/></div>
           </div>
 
-          {/* Panel métriques vocales RÉELLES */}
           {phase!=='intro'&&phase!=='result'&&(
             <div style={T.metricsBox}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
@@ -1291,10 +1213,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           )}
         </div>
 
-        {/* Droite : question + contrôles */}
         <div style={T.right}>
 
-          {/* INTRO */}
           {phase==='intro'&&(
             <div style={{width:'100%',maxWidth:500,display:'flex',flexDirection:'column',height:'100%'}}>
               <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:14,paddingBottom:8}}>
@@ -1317,7 +1237,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
             </div>
           )}
 
-          {/* ENTRETIEN EN COURS */}
           {['ai_speaking','waiting','recording','analyzing'].includes(phase)&&(
             <div style={T.panel}>
               <div style={T.qHead}>
@@ -1367,7 +1286,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
             </div>
           )}
 
-          {/* RÉSULTATS — affiche ce que n8n a retourné */}
           {phase==='result'&&(
             <div style={{...T.panel,overflowY:'auto',gap:16,padding:'20px 24px'}}>
               <div style={{textAlign:'center'}}>
@@ -1377,7 +1295,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 {user?.id&&<p style={{color:'#10b981',fontSize:12,marginTop:4}}>✅ Sauvegardé dans votre historique</p>}
               </div>
 
-              {/* Stats globales réelles */}
               <div style={T.statsGrid}>
                 {[
                   {v:parsed.score?`${parsed.score}/100`:'—', l:'Score final'},
@@ -1392,7 +1309,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 ))}
               </div>
 
-              {/* Verdict */}
               {parsed.verdict&&(
                 <div style={{padding:'12px 18px',borderRadius:12,background:'rgba(16,185,129,.06)',border:'1px solid rgba(16,185,129,.2)',textAlign:'center'}}>
                   <span style={{fontSize:13,color:'#64748b',display:'block',marginBottom:4}}>VERDICT</span>
@@ -1400,7 +1316,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 </div>
               )}
 
-              {/* Points forts, à améliorer, conseils — viennent de n8n */}
               {parsed.forts&&(
                 <div style={T.sectionCard}>
                   <div style={{...T.sectionHead,color:'#34d399'}}>✅ POINTS FORTS</div>
@@ -1420,7 +1335,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 </div>
               )}
 
-              {/* Si n8n n'a pas retourné le format attendu */}
               {!parsed.forts&&finalScore&&(
                 <div style={T.scoreCard}>
                   <div style={T.scoreHead}>ÉVALUATION DU JURY IA</div>
@@ -1428,7 +1342,6 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 </div>
               )}
 
-              {/* Statistiques vocales réelles par question */}
               <div>
                 <div style={T.scoreHead}>DÉROULEMENT — STATISTIQUES RÉELLES</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:10}}>
@@ -1545,8 +1458,216 @@ const T = {
   btnDone:    {flex:1,padding:'13px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'},
 };
 
-export default function EntretienPage({ user, bourses=[], conversationId, setView }) {
+// ── Composant LoginModal ──────────────────────────────────────────────────────
+function LoginModal({ onClose }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // idle, sending, success, error
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const sendMagicLink = async () => {
+    if (!email || !email.includes('@')) {
+      setErrorMsg('Email invalide');
+      return;
+    }
+    setStatus('sending');
+    try {
+      const res = await fetch(`${API_BASE}/users/request-magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus('success');
+      } else {
+        setStatus('error');
+        setErrorMsg(data.message || 'Erreur d\'envoi');
+      }
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg('Impossible de contacter le serveur');
+    }
+  };
+
+  return (
+    <div style={modalOverlay}>
+      <div style={modalContainer}>
+        <div style={modalHeader}>
+          <span style={{ fontSize: 24 }}>🔐</span>
+          <h3 style={{ color: '#f1f5f9', margin: 0 }}>Connexion à OppsTrack</h3>
+          <button onClick={onClose} style={modalClose}>✕</button>
+        </div>
+        <div style={modalBody}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: '#94a3b8', marginBottom: 16 }}>Entrez votre email pour recevoir un lien de connexion magique.</p>
+              <input
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={modalInput}
+                autoFocus
+              />
+              {errorMsg && <div style={{ color: '#f87171', fontSize: 13, marginTop: 8 }}>{errorMsg}</div>}
+              <button onClick={sendMagicLink} style={modalButton}>Envoyer le lien</button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={H.spinner} />
+              <p style={{ color: '#94a3b8', marginTop: 12 }}>Envoi en cours...</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
+              <p style={{ color: '#10b981', fontWeight: 600 }}>Lien envoyé !</p>
+              <p style={{ color: '#94a3b8', marginTop: 8 }}>Vérifiez votre boîte mail (et les spams).</p>
+              <button onClick={onClose} style={{ ...modalButton, marginTop: 20, background: '#10b981' }}>Fermer</button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+              <p style={{ color: '#f87171', marginBottom: 8 }}>{errorMsg}</p>
+              <button onClick={() => setStatus('idle')} style={{ ...modalButton, marginTop: 12 }}>Réessayer</button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={modalBackdrop} onClick={onClose} />
+    </div>
+  );
+}
+
+const modalOverlay = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 2000,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0,0,0,0.7)',
+  backdropFilter: 'blur(6px)',
+};
+const modalContainer = {
+  position: 'relative',
+  zIndex: 2001,
+  width: 380,
+  maxWidth: '90vw',
+  background: '#0d0d22',
+  borderRadius: 20,
+  border: '1px solid rgba(139,92,246,0.3)',
+  boxShadow: '0 25px 50px -12px black',
+  overflow: 'hidden',
+};
+const modalHeader = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '18px 24px',
+  borderBottom: '1px solid rgba(255,255,255,.08)',
+};
+const modalClose = {
+  background: 'none',
+  border: 'none',
+  fontSize: 20,
+  color: '#94a3b8',
+  cursor: 'pointer',
+  padding: '4px 8px',
+  borderRadius: 8,
+  transition: 'background 0.2s',
+};
+const modalBody = {
+  padding: '24px',
+};
+const modalInput = {
+  width: '100%',
+  padding: '12px 16px',
+  borderRadius: 12,
+  border: '1px solid rgba(139,92,246,0.3)',
+  background: 'rgba(255,255,255,0.03)',
+  color: '#f1f5f9',
+  fontSize: 14,
+  outline: 'none',
+  transition: 'border 0.2s',
+  ':focus': { borderColor: '#8b5cf6' },
+};
+const modalButton = {
+  width: '100%',
+  marginTop: 20,
+  padding: '12px',
+  borderRadius: 12,
+  border: 'none',
+  background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+  transition: 'transform 0.2s',
+  ':hover': { transform: 'translateY(-1px)' },
+};
+const modalBackdrop = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 1999,
+};
+
+// ── PAGE PRINCIPALE ──────────────────────────────────────────────────────────
+export default function EntretienPage({ user, bourses=[], conversationId, setView, handleQuickReply }) {
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // 🔒 Si non connecté, afficher le message verrouillé avec modal
+  if (!user) {
+    return (
+      <>
+        <div style={S.locked}>
+          <span style={{ fontSize: 48 }}>👤</span>
+          <h3 style={{ color: '#e2e8f0' }}>Profil non disponible</h3>
+          <p style={{ color: '#64748b' }}>Connectez-vous pour accéder à votre profil</p>
+          <button style={S.lockBtn} onClick={() => setShowLoginModal(true)}>
+            🔐 Se connecter
+          </button>
+        </div>
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+      </>
+    );
+  }
+
+  // Si connecté, afficher le sélecteur de bourses ou la session d'entretien
   const [selected, setSelected] = useState(null);
   if (!selected) return <BoursePicker bourses={bourses} userId={user?.id} onSelect={setSelected}/>;
   return <EntretienSession bourse={selected} user={user} conversationId={conversationId} onFinish={()=>setSelected(null)}/>;
 }
+
+const S = {
+  locked: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    background: 'radial-gradient(ellipse 80% 50% at 50% 20%, rgba(139,92,246,0.08), #080812)',
+    padding: '24px',
+    gap: '16px',
+  },
+  lockBtn: {
+    marginTop: '20px',
+    padding: '12px 28px',
+    borderRadius: '30px',
+    background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+    border: 'none',
+    color: '#fff',
+    fontWeight: 600,
+    fontSize: '15px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    ':hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 20px rgba(99,102,241,0.5)',
+    },
+  },
+};

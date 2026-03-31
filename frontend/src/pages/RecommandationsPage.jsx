@@ -222,7 +222,7 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
       setStarredNoms(newStarred);
       onStarChange?.(newStarred.size);
 
-      const resRoadmap  = await fetch(`${API_BASE}/roadmap?where[userId][equals]=${user.id}&limit=100&depth=0`);
+      const resRoadmap = await fetch(`${API_BASE}/roadmaps?where[userId][equals]=${user.id}&limit=100&depth=0`);
       const dataRoadmap = await resRoadmap.json();
       setAppliedNoms(new Set((dataRoadmap.docs || []).map(b => b.nom?.trim().toLowerCase())));
 
@@ -310,7 +310,7 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id || appliedNoms.has(nomKey)) return;
     try {
-      await fetch(`${API_BASE}/roadmap`, {
+      await fetch(`${API_BASE}/roadmaps`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id, userEmail: user.email || '',

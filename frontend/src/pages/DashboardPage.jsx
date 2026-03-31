@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import CalendrierDeadlines from './CalendrierDeadlines';
 
 const API_BASE = 'http://localhost:3000/api';
 
-export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply }) {
+export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse }) {
   const [boursesSuivies, setBoursesSuivies] = useState([]);
   const [loadingBourses, setLoadingBourses] = useState(true);
 
@@ -34,7 +35,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   const scoreDiff = scores.length >= 2 ? scores[0].scoreNum - scores[1].scoreNum : null;
 
   const completion = !user ? 0 : Math.round(['name','email','pays','niveau','domaine'].filter(f => user[f]).length / 5 * 100);
-  const initials   = (user?.name || user?.email || 'U').slice(0,2).toUpperCase();
 
   const deadlines = boursesSuivies
     .filter(b => b.deadline)
@@ -44,7 +44,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
   const daysLeft = d => {
     const diff = Math.round((d - new Date()) / 86400000);
-    if (diff < 0)  return { label: 'Expiré',      color: '#f87171' };
+    if (diff < 0)   return { label: 'Expiré',      color: '#f87171' };
     if (diff === 0) return { label: "Aujourd'hui", color: '#f87171' };
     if (diff <= 7)  return { label: `${diff}j`,    color: '#fbbf24' };
     if (diff <= 30) return { label: `${diff}j`,    color: '#a78bfa' };
@@ -55,6 +55,54 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     nom: b.nom, pays: b.pays, financement: b.financement,
     match: Math.round(60 + Math.random() * 35),
   }));
+
+  // ── Outils liés aux bourses sauvegardées ─────────────────────────────────
+  const outils = [
+    {
+      icon: '📅',
+      titre: 'Calendrier des deadlines',
+      desc: 'Vue mensuelle et annuelle de toutes les dates limites avec alertes automatiques avant expiration.',
+      badge: 'Essentiel',
+      badgeColor: '#b45309',
+      badgeBg: '#78350f',
+      action: () => setView('roadmap'),
+      data: boursesSuivies.filter(b => b.deadline).length,
+      dataLabel: 'deadlines',
+    },
+    {
+      icon: '🌍',
+      titre: 'Carte des destinations',
+      desc: 'Visualisez les pays de vos bourses sauvegardées sur une carte interactive.',
+      badge: 'Valeur ajoutée',
+      badgeColor: '#065f46',
+      badgeBg: '#064e3b',
+      action: () => setView('bourses'),
+      data: [...new Set(boursesSuivies.map(b => b.pays).filter(Boolean))].length,
+      dataLabel: 'pays',
+    },
+    {
+      icon: '📄',
+      titre: 'CV & Lettre de motivation',
+      desc: "Générez un CV et une LM personnalisés pour chaque bourse grâce à l'IA.",
+      badge: 'IA',
+      badgeColor: '#4338ca',
+      badgeBg: '#312e81',
+      action: () => setView('cv'),
+      data: boursesSuivies.length,
+      dataLabel: 'bourses',
+    },
+    {
+      icon: '🎤',
+      titre: "Simulation d'entretien",
+      desc: "Préparez-vous aux entretiens de sélection avec notre IA. Obtenez un score et des conseils.",
+      badge: 'Pro',
+      badgeColor: '#6d28d9',
+      badgeBg: '#4c1d95',
+      action: () => setView('entretien'),
+      data: scores.length > 0 ? lastScore : null,
+      dataLabel: 'score',
+    },
+  ];
 
   if (!user) {
     return (
@@ -91,10 +139,10 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       {/* KPIs */}
       <div style={S.kpiRow}>
         {[
-          { label:'Bourses Sauvegardées', val:boursesSuivies.length, icon:'🎓', accent:'#818cf8' },
-          { label:'Candidatures Prévues', val:boursesSuivies.length, icon:'📋', accent:'#34d399' },
-          { label:'Deadlines Proches',   val:deadlines.filter(d => (d.deadline - new Date()) < 30*86400000).length, icon:'⏰', accent:'#fbbf24' },
-          { label:'Score d\'Éligibilité', val:`${completion}%`, icon:'⭐', accent:'#a78bfa' },
+          { label:'Bourses Sauvegardées', val:boursesSuivies.length,                                                                   icon:'🎓', accent:'#818cf8' },
+          { label:'Candidatures Prévues', val:boursesSuivies.length,                                                                   icon:'📋', accent:'#34d399' },
+          { label:'Deadlines Proches',    val:deadlines.filter(d => (d.deadline - new Date()) < 30*86400000).length,                   icon:'⏰', accent:'#fbbf24' },
+          { label:"Score d'Éligibilité",  val:`${completion}%`,                                                                        icon:'⭐', accent:'#a78bfa' },
         ].map((k,i) => (
           <div key={i} style={{ ...S.kpiCard, borderTop:`2px solid ${k.accent}` }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -108,10 +156,32 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         ))}
       </div>
 
+      {/* ── CALENDRIER DES DEADLINES ─────────────────────────────────────── */}
+      <div style={{ marginBottom:24 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700, color:'#e2e8f0' }}>Calendrier des Deadlines</div>
+            <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>
+              Vos bourses sauvegardées avec leurs dates limites
+            </div>
+          </div>
+        </div>
+        <CalendrierDeadlines
+          user={user}
+          onSelectBourse={(b) => {
+            if (onOpenBourse) {
+              onOpenBourse(b.nom);
+            } else {
+              setView('bourses');
+            }
+          }}
+        />
+      </div>
+
       {/* Main grid */}
       <div style={S.mainGrid}>
 
-        {/* LEFT — Progression chart + Deadlines */}
+        {/* LEFT */}
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
           {/* Progression entretiens */}
@@ -137,9 +207,8 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               </div>
             ) : (
               <>
-                {/* Mini chart */}
                 <div style={{ position:'relative', height:140, marginBottom:12 }}>
-                  <svg width="100%" height="140" viewBox={`0 0 400 140`} preserveAspectRatio="none">
+                  <svg width="100%" height="140" viewBox="0 0 400 140" preserveAspectRatio="none">
                     <defs>
                       <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#818cf8" stopOpacity="0.3"/>
@@ -225,7 +294,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
 
-        {/* RIGHT — Recommandations + Profil */}
+        {/* RIGHT */}
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
           {/* Recommandations IA */}
@@ -248,7 +317,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                   {b.pays} · {b.financement}
                 </div>
                 <button
-                  style={{ fontSize:11, color:'#818cf8', background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}
+                  style={{ fontSize:11, color:'#818cf8', background:'none', border:'none', cursor:'pointer', padding:0 }}
                   onClick={() => handleQuickReply(`Peux-tu me donner plus de détails sur la bourse "${b.nom}" ?`)}
                 >
                   Voir plus de détails →
@@ -264,7 +333,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           <div style={S.card}>
             <div style={S.cardTitle}>Force de votre Dossier</div>
             <div style={{ display:'flex', alignItems:'center', gap:16, margin:'16px 0' }}>
-              {/* Cercle */}
               <div style={{ position:'relative', width:80, height:80, flexShrink:0 }}>
                 <svg width="80" height="80" viewBox="0 0 80 80">
                   <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8"/>
@@ -295,17 +363,14 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               </div>
             </div>
             <div style={{ display:'flex', gap:8 }}>
-              <button style={{ ...S.btnOutline, flex:1, textAlign:'center' }} onClick={() => setView('profil')}>
-                Modifier le profil
-              </button>
+              <button style={{ ...S.btnOutline, flex:1 }} onClick={() => setView('profil')}>Modifier le profil</button>
               {completion < 100 && (
-                <button style={{ ...S.btnPrimary, flex:1, textAlign:'center' }} onClick={() => handleQuickReply('Je veux compléter mon profil')}>
+                <button style={{ ...S.btnPrimary, flex:1 }} onClick={() => handleQuickReply('Je veux compléter mon profil')}>
                   Lancer le Chat ↗
                 </button>
               )}
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -313,26 +378,26 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 }
 
 const S = {
-  page: { width:'100%', padding:'28px 20px', maxWidth:1100, margin:'0 auto', fontFamily:'sans-serif' },
-  header: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 },
-  h1: { fontSize:'1.5rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 },
+  page:      { width:'100%', padding:'28px 20px', maxWidth:1100, margin:'0 auto', fontFamily:'sans-serif' },
+  header:    { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 },
+  h1:        { fontSize:'1.5rem', fontWeight:700, color:'#f1f5f9', marginBottom:4 },
   headerSub: { fontSize:13, color:'#64748b' },
 
-  kpiRow: { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 },
-  kpiCard: { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'16px 18px' },
+  kpiRow:   { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 },
+  kpiCard:  { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'16px 18px' },
   kpiLabel: { fontSize:11, color:'#64748b', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.04em' },
-  kpiVal: { fontSize:26, fontWeight:800 },
+  kpiVal:   { fontSize:26, fontWeight:800 },
 
   mainGrid: { display:'grid', gridTemplateColumns:'1.2fr 1fr', gap:16 },
-  card: { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'18px 20px' },
-  cardTitle: { fontSize:14, fontWeight:700, color:'#e2e8f0' },
-  cardSub: { fontSize:12, color:'#64748b', marginTop:2 },
+  card:     { background:'rgba(15,15,30,0.8)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'18px 20px' },
+  cardTitle:{ fontSize:14, fontWeight:700, color:'#e2e8f0' },
+  cardSub:  { fontSize:12, color:'#64748b', marginTop:2 },
 
   miniStat: { display:'flex', flexDirection:'column', gap:2 },
-  miniVal: { fontSize:16, fontWeight:700, color:'#f1f5f9' },
-  miniLabel: { fontSize:11, color:'#64748b' },
+  miniVal:  { fontSize:16, fontWeight:700, color:'#f1f5f9' },
+  miniLabel:{ fontSize:11, color:'#64748b' },
 
   btnPrimary: { padding:'8px 16px', borderRadius:9, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', color:'#fff', border:'none', fontSize:13, fontWeight:600, cursor:'pointer' },
   btnOutline: { padding:'8px 16px', borderRadius:9, background:'transparent', color:'#94a3b8', border:'1px solid rgba(255,255,255,0.15)', fontSize:13, cursor:'pointer' },
-  btnXs: { padding:'4px 10px', borderRadius:8, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.25)', color:'#818cf8', fontSize:11, cursor:'pointer' },
+  btnXs:      { padding:'4px 10px', borderRadius:8, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.25)', color:'#818cf8', fontSize:11, cursor:'pointer' },
 };

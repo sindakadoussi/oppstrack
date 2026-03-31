@@ -20,7 +20,7 @@ const Messages: CollectionConfig = {
           console.log("🚀 Tentative d'envoi à n8n via localhost...");
           try {
             // Utilisation de localhost car Payload et n8n (via ports) sont sur la même machine
-            const response = await fetch('http://localhost:5678/webhook-test/payload-webhook', {
+            const response = await fetch('http://localhost:5678/webhook-test/webhook', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(doc),
