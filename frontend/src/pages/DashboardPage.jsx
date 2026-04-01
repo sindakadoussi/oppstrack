@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import CalendrierDeadlines from './CalendrierDeadlines';
+import BourseDrawer from '../components/Boursedrawer';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 
 export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse }) {
   const [boursesSuivies, setBoursesSuivies] = useState([]);
   const [loadingBourses, setLoadingBourses] = useState(true);
+  const [drawerBourse, setDrawerBourse]     = useState(null);
+  const [appliedNoms,  setAppliedNoms]      = useState(new Set());
+  const [starredNoms,  setStarredNoms]      = useState(new Set());
 
   useEffect(() => {
     if (!user?.id) { setLoadingBourses(false); return; }
@@ -13,7 +18,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       setLoadingBourses(false);
       return;
     }
-    // Modification : utilisation de axiosInstance et API_ROUTES
     axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
       .then(response => setBoursesSuivies(response.data.bourses_choisies || []))
       .catch(() => {})
@@ -126,9 +130,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           <p style={S.headerSub}>Bonjour {user.name || user.email?.split('@')[0]}, voici l'état de vos bourses d'études.</p>
         </div>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          <button style={S.btnOutline} onClick={() => handleQuickReply('Donne-moi des conseils pour compléter mon dossier')}>
-            Créer Documents
-          </button>
+          
           <button style={S.btnPrimary} onClick={() => setView('bourses')}>
             Explorer Bourses
           </button>
@@ -167,13 +169,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         </div>
         <CalendrierDeadlines
           user={user}
-          onSelectBourse={(b) => {
-            if (onOpenBourse) {
-              onOpenBourse(b.nom);
-            } else {
-              setView('bourses');
-            }
-          }}
+          onSelectBourse={(b) => setDrawerBourse(b)}
         />
       </div>
 
@@ -323,7 +319,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 </button>
               </div>
             ))}
-            <button style={{ ...S.btnPrimary, width:'100%', marginTop:4 }} onClick={() => handleQuickReply('Quelles bourses correspondent à mon profil ?')}>
+            <button style={{ ...S.btnPrimary, width:'100%', marginTop:4 }} onClick={() => setView('recommandations')}>
               Voir plus de recommandations
             </button>
           </div>
@@ -363,15 +359,55 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button style={{ ...S.btnOutline, flex:1 }} onClick={() => setView('profil')}>Modifier le profil</button>
-              {completion < 100 && (
-                <button style={{ ...S.btnPrimary, flex:1 }} onClick={() => handleQuickReply('Je veux compléter mon profil')}>
-                  Lancer le Chat ↗
-                </button>
-              )}
+              
             </div>
           </div>
         </div>
       </div>
+      {/* Drawer bourse depuis calendrier */}
+      {drawerBourse && (
+        <BourseDrawer
+          bourse={drawerBourse}
+          onClose={() => setDrawerBourse(null)}
+          onAskAI={(b) => { handleQuickReply('Donne-moi les détails sur "' + b.nom + '"'); setDrawerBourse(null); }}
+          onChoose={(b) => handleQuickReply('je choisis ' + b.nom)}
+          applied={appliedNoms.has(drawerBourse.nom?.trim().toLowerCase())}
+          onApply={async (b) => {
+            try {
+              await axiosInstance.post(API_ROUTES.roadmap.create, {
+                userId: user.id, userEmail: user.email || '',
+                nom: b.nom, pays: b.pays || '',
+                lienOfficiel: b.lienOfficiel || '',
+                financement: b.financement || '',
+                dateLimite: b.dateLimite || null,
+                ajouteLe: new Date().toISOString(),
+                statut: 'en_cours', etapeCourante: 0,
+              });
+              setAppliedNoms(prev => new Set([...prev, b.nom?.trim().toLowerCase()]));
+            } catch(e) { console.error(e); }
+          }}
+          starred={starredNoms.has(drawerBourse.nom?.trim().toLowerCase())}
+          onStar={async (b, isStarred) => {
+            const nomKey = b.nom?.trim().toLowerCase();
+            try {
+              const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id) + '&limit=1&depth=0');
+              const doc = res.data.docs?.[0];
+              if (isStarred) {
+                if (doc?.id) {
+                  const newB = (doc.bourses || []).filter(x => x.nom?.trim().toLowerCase() !== nomKey);
+                  await axiosInstance.patch(API_ROUTES.favoris.update(doc.id), { bourses: newB });
+                  setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
+                }
+              } else {
+                const nb = { nom: b.nom, pays: b.pays || '', lienOfficiel: b.lienOfficiel || '', financement: b.financement || '', dateLimite: b.dateLimite || null, ajouteLe: new Date().toISOString() };
+                if (doc?.id) await axiosInstance.patch(API_ROUTES.favoris.update(doc.id), { bourses: [...(doc.bourses || []), nb] });
+                else await axiosInstance.post(API_ROUTES.favoris.create, { user: user.id, userEmail: user.email || '', bourses: [nb] });
+                setStarredNoms(prev => new Set([...prev, nomKey]));
+              }
+            } catch(e) { console.error(e); }
+          }}
+        />
+      )}
     </div>
   );
 }
