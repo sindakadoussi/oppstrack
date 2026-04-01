@@ -364,7 +364,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
         {tab === 'projects' && (
           <div style={S.sec}>
             <T>Projets académiques</T>
-            <div style={{ fontSize: 12, color: '#64748b', padding: '10px 14px', borderRadius: 10, background: '#13131f', border: '1px solid #2a2a3d', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 12, color: '#64748b', padding: '10px 14px', borderRadius: 10, background: '#c4c4f7', border: '1px solid #2a2a3d', lineHeight: 1.6 }}>
               💡 Les projets académiques sont essentiels pour un CV de bourse — ils montrent vos compétences pratiques, votre capacité à mener un projet et les technologies maîtrisées.
             </div>
 
@@ -563,7 +563,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
 }
 
 function T({ children }) {
-  return <div style={{ color: '#c8c8e8', fontSize: '0.9rem', fontWeight: 700, paddingBottom: 8, borderBottom: '1px solid #2a2a3d', letterSpacing: '0.02em', marginTop: 8 }}>{children}</div>;
+  return <div style={{ color: '#0f172a', fontSize: '0.9rem', fontWeight: 700, paddingBottom: 8, borderBottom: '1px solid #eef2ff', letterSpacing: '0.02em', marginTop: 8 }}>{children}</div>;
 }
 
 function F({ label, v, s, ph, type = 'text', readOnly = false }) {
@@ -579,30 +579,30 @@ function F({ label, v, s, ph, type = 'text', readOnly = false }) {
 }
 
 const S = {
-  page:        { width: '100%', fontFamily: 'system-ui,sans-serif', color: '#e8e8f0', background: '#0a0a0f', minHeight: '100vh' },
+  page:        { width: '100%', fontFamily: 'system-ui,sans-serif', color: '#0f172a', background: 'transparent', minHeight: '100vh' },
   locked:      { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, gap: 16, textAlign: 'center' },
   lockBtn:     { padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  header:      { background: '#0d0d18', borderBottom: '1px solid #1e1e30', padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  header:      { background: 'transparent', borderBottom: '1px solid #eef2ff', padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   hLeft:       { display: 'flex', alignItems: 'center', gap: 14 },
   avatar:      { width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: 'white', flexShrink: 0 },
-  hName:       { fontSize: '1.05rem', fontWeight: 700, color: '#e8e8f0' },
-  hEmail:      { fontSize: 12, color: '#64748b' },
-  scoreLabel:  { fontSize: 10, color: '#64748b', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 1 },
-  scoreBarBg:  { width: 120, height: 6, background: '#1e1e30', borderRadius: 3, overflow: 'hidden' },
+  hName:       { fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' },
+  hEmail:      { fontSize: 12, color: '#6b7280' },
+  scoreLabel:  { fontSize: 10, color: '#6b7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 1 },
+  scoreBarBg:  { width: 120, height: 6, background: '#eef2ff', borderRadius: 3, overflow: 'hidden' },
   scoreBarFill:{ height: '100%', borderRadius: 3, transition: 'width 0.5s' },
   body:        { maxWidth: 880, margin: '0 auto', padding: '24px 20px' },
-  tabBar:      { display: 'flex', gap: 3, marginBottom: 22, background: '#0d0d18', padding: 4, borderRadius: 12, border: '1px solid #1e1e30', flexWrap: 'wrap' },
-  tabBtn:      { flex: 1, minWidth: 80, padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: 'rgba(144,144,176,0.55)', fontWeight: 500, fontSize: '0.78rem', transition: 'all 0.2s', whiteSpace: 'nowrap' },
+  tabBar:      { display: 'flex', gap: 3, marginBottom: 22, background: '#ffffff', padding: 4, borderRadius: 12, border: '1px solid #eef2ff', flexWrap: 'wrap' },
+  tabBtn:      { flex: 1, minWidth: 80, padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: '#6b7280', fontWeight: 500, fontSize: '0.78rem', transition: 'all 0.2s', whiteSpace: 'nowrap' },
   tabOn:       { background: 'linear-gradient(135deg,#7c6af7,#5b4de8)', color: '#fff', fontWeight: 700 },
   sec:         { display: 'flex', flexDirection: 'column', gap: 14 },
   g2:          { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 },
-  lbl:         { color: '#9090b0', fontSize: '0.75rem', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  inp:         { width: '100%', padding: '9px 13px', borderRadius: 9, border: '1.5px solid #2a2a3d', background: '#13131f', color: '#e8e8f0', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'system-ui', transition: 'border .15s' },
-  card:        { background: '#13131f', border: '1px solid #2a2a3d', borderRadius: 12, padding: 16, marginBottom: 6 },
-  addBtn:      { background: 'transparent', border: '1.5px dashed #4a4a6a', color: '#7c6af7', padding: '8px 16px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, transition: 'all .15s' },
-  rmBtn:       { background: 'rgba(255,80,80,0.1)', border: 'none', color: '#ff6060', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', marginTop: 8 },
-  footer:      { display: 'flex', gap: 10, marginTop: 24, paddingTop: 18, borderTop: '1px solid #1e1e30', flexWrap: 'wrap' },
+  lbl:         { color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  inp:         { width: '100%', padding: '9px 13px', borderRadius: 9, border: '1.5px solid #eef2ff', background: '#ffffff', color: '#0f172a', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'system-ui', transition: 'border .15s' },
+  card:        { background: '#ffffff', border: '1px solid #eef2ff', borderRadius: 12, padding: 16, marginBottom: 6 },
+  addBtn:      { background: 'transparent', border: '1.5px dashed #eef2ff', color: '#6b5df7', padding: '8px 16px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, transition: 'all .15s' },
+  rmBtn:       { background: 'rgba(254,226,226,0.6)', border: 'none', color: '#b91c1c', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', marginTop: 8 },
+  footer:      { display: 'flex', gap: 10, marginTop: 24, paddingTop: 18, borderTop: '1px solid #eef2ff', flexWrap: 'wrap' },
   saveBtn:     { flex: 2, padding: 11, borderRadius: 11, border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' },
-  chatBtn:     { flex: 1, padding: 11, borderRadius: 11, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  logoutBtn:   { padding: '11px 16px', borderRadius: 11, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  chatBtn:     { flex: 1, padding: 11, borderRadius: 11, background: 'linear-gradient(135deg,#eef2ff,#eef2ff)', border: '1px solid #eef2ff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  logoutBtn:   { padding: '11px 16px', borderRadius: 11, background: 'rgba(254,226,226,0.6)', border: '1px solid rgba(239,68,68,0.12)', color: '#b91c1c', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
 };

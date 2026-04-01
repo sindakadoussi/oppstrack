@@ -130,7 +130,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           <p style={S.headerSub}>Bonjour {user.name || user.email?.split('@')[0]}, voici l'état de vos bourses d'études.</p>
         </div>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          
+
           <button style={S.btnPrimary} onClick={() => setView('bourses')}>
             Explorer Bourses
           </button>

@@ -387,90 +387,109 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
 
 const D = {
   container:       {flex:1,overflowY:'auto',padding:'20px 24px',display:'flex',flexDirection:'column',gap:20,animation:'slideIn 0.3s ease'},
-  backBtn:         {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',padding:'8px 16px',borderRadius:10,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,transition:'all 0.2s'},
-  header:          {background:'rgba(139,92,246,.06)',borderRadius:20,padding:'20px',border:'1px solid rgba(139,92,246,.15)'},
+  backBtn:         {alignSelf:'flex-start',background:'#ffffff',border:'1px solid rgba(15,23,42,0.06)',color:'#475569',padding:'8px 16px',borderRadius:10,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,transition:'all 0.2s'},
+  header:          {background:'#f8fafc',borderRadius:20,padding:'20px',border:'1px solid rgba(15,23,42,0.04)'},
   headerTop:       {display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12},
-  bourseTag:       {display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'rgba(139,92,246,.12)',borderRadius:20,fontSize:13,fontWeight:600,color:'#c4b5fd'},
-  dateTag:         {display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#64748b'},
+  bourseTag:       {display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'#f8fafc',borderRadius:20,fontSize:13,fontWeight:600,color:'#475569'},
+  dateTag:         {display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#475569'},
   scoreSection:    {display:'flex',alignItems:'center',gap:20,flexWrap:'wrap'},
   scoreCircle:     {width:100,height:100,borderRadius:'50%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2},
-  scoreValue:      {fontSize:36,fontWeight:800,lineHeight:1},
+  scoreValue:      {fontSize:36,fontWeight:800,lineHeight:1,color:'#0f172a'},
   scoreMax:        {fontSize:12,opacity:0.7},
   scoreInfo:       {flex:1},
   scoreGrade:      {fontSize:20,fontWeight:700,marginBottom:4},
-  scoreVerdict:    {fontSize:14,color:'#94a3b8'},
-  tabs:            {display:'flex',gap:8,borderBottom:'1px solid rgba(255,255,255,.08)',paddingBottom:12},
-  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:20,transition:'all 0.2s'},
-  tabActive:       {background:'rgba(139,92,246,.15)',color:'#c4b5fd'},
+  scoreVerdict:    {fontSize:14,color:'#475569'},
+  tabs:            {display:'flex',gap:8,borderBottom:'1px solid rgba(15,23,42,0.04)',paddingBottom:12},
+  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#475569',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:20,transition:'all 0.2s'},
+  tabActive:       {background:'rgba(99,102,241,0.08)',color:'#4f46e5'},
   content:         {flex:1,overflowY:'auto',minHeight:300},
   summaryContent:  {display:'flex',flexDirection:'column',gap:24},
   statsGrid:       {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12},
-  statItem:        {background:'rgba(255,255,255,.03)',borderRadius:14,padding:'14px',textAlign:'center',border:'1px solid rgba(255,255,255,.06)'},
+  statItem:        {background:'#ffffff',borderRadius:14,padding:'14px',textAlign:'center',border:'1px solid rgba(15,23,42,0.04)'},
   statIcon:        {fontSize:24,marginBottom:6},
-  statLabel:       {fontSize:11,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:4},
-  statValue:       {fontSize:18,fontWeight:700,color:'#f1f5f9'},
-  section:         {background:'rgba(255,255,255,.02)',borderRadius:14,padding:'16px',border:'1px solid rgba(255,255,255,.05)'},
-  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#a78bfa',marginBottom:12,textTransform:'uppercase'},
+  statLabel:       {fontSize:11,color:'#475569',textTransform:'uppercase',letterSpacing:1,marginBottom:4},
+  statValue:       {fontSize:18,fontWeight:700,color:'#0f172a'},
+  section:         {background:'#ffffff',borderRadius:14,padding:'16px',border:'1px solid rgba(15,23,42,0.04)'},
+  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#6366f1',marginBottom:12,textTransform:'uppercase'},
   list:            {margin:0,paddingLeft:0,listStyle:'none'},
-  listItem:        {fontSize:13,color:'#cbd5e1',lineHeight:1.6,marginBottom:10,display:'flex',alignItems:'flex-start'},
+  listItem:        {fontSize:13,color:'#334155',lineHeight:1.6,marginBottom:10,display:'flex',alignItems:'flex-start'},
   strengthsContent:{display:'flex',flexDirection:'column'},
   questionsList:   {display:'flex',flexDirection:'column',gap:8},
-  questionItem:    {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'rgba(255,255,255,.02)',borderRadius:10},
-  questionNum:     {fontSize:12,fontWeight:600,color:'#a78bfa'},
-  questionStats:   {display:'flex',gap:16,fontSize:11,color:'#64748b'},
-  wordCount:       {padding:'2px 8px',background:'rgba(16,185,129,.1)',borderRadius:12,color:'#34d399'},
-  wpm:             {padding:'2px 8px',background:'rgba(139,92,246,.1)',borderRadius:12,color:'#a78bfa'},
+  questionItem:    {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'#ffffff',borderRadius:10,border:'1px solid rgba(15,23,42,0.04)'},
+  questionNum:     {fontSize:12,fontWeight:600,color:'#6366f1'},
+  questionStats:   {display:'flex',gap:16,fontSize:11,color:'#475569'},
+  wordCount:       {padding:'2px 8px',background:'rgba(16,185,129,.08)',borderRadius:12,color:'#059669'},
+  wpm:             {padding:'2px 8px',background:'rgba(99,102,241,.06)',borderRadius:12,color:'#6366f1'},
   adviceContent:   {display:'flex',flexDirection:'column',gap:24},
-  emptyAdvice:     {textAlign:'center',padding:'40px 20px',color:'#64748b'},
-  motivationCard:  {background:'linear-gradient(135deg,rgba(139,92,246,.1),rgba(232,121,249,.05))',borderRadius:16,padding:'20px',marginTop:8,border:'1px solid rgba(139,92,246,.2)'},
-  motivationQuote: {fontSize:14,fontStyle:'italic',color:'#e2e8f0',lineHeight:1.5,marginBottom:12},
-  motivationAuthor:{fontSize:11,color:'#64748b',textAlign:'right'},
+  emptyAdvice:     {textAlign:'center',padding:'40px 20px',color:'#475569'},
+  motivationCard:  {background:'#f8fafc',borderRadius:16,padding:'20px',marginTop:8,border:'1px solid rgba(15,23,42,0.04)'},
+  motivationQuote: {fontSize:14,fontStyle:'italic',color:'#0f172a',lineHeight:1.5,marginBottom:12},
+  motivationAuthor:{fontSize:11,color:'#475569',textAlign:'right'},
   detailsContent:  {display:'flex',flexDirection:'column',gap:16},
-  rawContent:      {fontSize:13,lineHeight:1.7,color:'#94a3b8',whiteSpace:'pre-wrap',maxHeight:400,overflowY:'auto',padding:'4px 0'},
-  rawHeader:       {fontWeight:700,color:'#c4b5fd',marginTop:12,marginBottom:6,fontSize:12,letterSpacing:1},
-  rawBullet:       {paddingLeft:20,marginBottom:6,color:'#94a3b8'},
-  rawLine:         {marginBottom:4,color:'#94a3b8'},
-  actions:         {display:'flex',gap:12,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.06)',marginTop:8},
-  actionBtn:       {flex:1,padding:'10px',borderRadius:10,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',color:'#94a3b8',fontSize:13,cursor:'pointer',transition:'all 0.2s'},
+  rawContent:      {fontSize:13,lineHeight:1.7,color:'#334155',whiteSpace:'pre-wrap',maxHeight:400,overflowY:'auto',padding:'4px 0'},
+  rawHeader:       {fontWeight:700,color:'#6366f1',marginTop:12,marginBottom:6,fontSize:12,letterSpacing:1},
+  rawBullet:       {paddingLeft:20,marginBottom:6,color:'#475569'},
+  rawLine:         {marginBottom:4,color:'#475569'},
+  actions:         {display:'flex',gap:12,paddingTop:16,borderTop:'1px solid rgba(15,23,42,0.04)',marginTop:8},
+  actionBtn:       {flex:1,padding:'10px',borderRadius:10,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)',color:'#475569',fontSize:13,cursor:'pointer',transition:'all 0.2s'},
 };
 
 const H = {
   overlay: {position:'fixed',inset:0,zIndex:1000,display:'flex'},
   backdrop:{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)'},
-  drawer:  {position:'relative',zIndex:1,width:440,maxWidth:'95vw',background:'#0d0d22',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',overflow:'hidden'},
-  dHead:   {display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'24px 22px 18px',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0},
-  dTitle:  {fontSize:17,fontWeight:700,color:'#f1f5f9',marginBottom:4},
-  dSub:    {fontSize:12,color:'#64748b'},
-  closeBtn:{background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',width:32,height:32,borderRadius:8,cursor:'pointer',fontSize:16},
-  center:  {flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#64748b',fontSize:14,gap:8},
+  drawer:  {position:'relative',zIndex:1,width:440,maxWidth:'95vw',background:'#ffffff',borderRight:'1px solid rgba(15,23,42,0.04)',display:'flex',flexDirection:'column',overflow:'hidden'},
+  dHead:   {display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'24px 22px 18px',borderBottom:'1px solid rgba(15,23,42,0.04)',flexShrink:0},
+  dTitle:  {fontSize:17,fontWeight:700,color:'#0f172a',marginBottom:4},
+  dSub:    {fontSize:12,color:'#475569'},
+  closeBtn:{background:'transparent',border:'none',color:'#475569',width:32,height:32,borderRadius:8,cursor:'pointer',fontSize:16},
+  center:  {flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#475569',fontSize:14,gap:8},
   list:    {flex:1,overflowY:'auto',padding:'14px 16px',display:'flex',flexDirection:'column',gap:10},
-  card:    {display:'flex',alignItems:'center',gap:14,padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer',textAlign:'left'},
+  card:    {display:'flex',alignItems:'center',gap:14,padding:'14px 16px',borderRadius:12,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)',cursor:'pointer',textAlign:'left'},
   scoreBadge:{padding:'6px 12px',borderRadius:99,fontWeight:700,fontSize:15,flexShrink:0},
   cardMid: {flex:1,display:'flex',flexDirection:'column',gap:4},
-  cardDate:{fontSize:12,color:'#64748b'},
-  cardTitle:{fontSize:14,fontWeight:600,color:'#f1f5f9'},
+  cardDate:{fontSize:12,color:'#475569'},
+  cardTitle:{fontSize:14,fontWeight:600,color:'#0f172a'},
   cardVerdict:{fontSize:11,display:'flex',alignItems:'center',gap:4},
   cardArrow:{color:'#475569',fontSize:16},
-  spinner: {width:40,height:40,border:'3px solid rgba(139,92,246,.2)',borderTopColor:'#8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}
+  spinner: {width:40,height:40,border:'3px solid rgba(139,92,246,.08)',borderTopColor:'#8b5cf6',borderRadius:'50%',animation:'spin 1s linear infinite'}
 };
 
 // ── BoursePicker ──────────────────────────────────────────────────────────────
 function BoursePicker({ bourses, userId, onSelect }) {
   const [showHist, setShowHist] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const q = (query || '').trim().toLowerCase();
+  const filtered = q.length === 0 ? bourses : bourses.filter(b => (
+    (b.nom||'').toLowerCase().includes(q) ||
+    (b.pays||'').toLowerCase().includes(q) ||
+    (b.niveau||'').toLowerCase().includes(q) ||
+    (String(b.financement||'')).toLowerCase().includes(q)
+  ));
+
   return (
     <div style={P.root}>
       <div style={P.glow}/>
       <div style={P.inner}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
           <div style={P.badge}>ENTRETIEN VIRTUEL IA</div>
-          <button style={P.histBtn} onClick={()=>setShowHist(true)}>📋 Mes entretiens</button>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input
+              aria-label="Rechercher une bourse"
+              placeholder="Rechercher une bourse, pays, niveau..."
+              value={query}
+              onChange={e=>setQuery(e.target.value)}
+              style={P.search}
+            />
+            <button style={P.histBtn} onClick={()=>setShowHist(true)}>📋 Mes entretiens</button>
+          </div>
         </div>
         <h1 style={P.h1}>Préparez votre<br/><em style={P.em}>entretien de bourse</em></h1>
         <p style={P.sub}>Le jury IA vous posera <strong style={{color:'#e879f9'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</p>
         <div style={P.grid}>
-          {bourses.length===0&&<div style={P.empty}><span style={{fontSize:36}}>📭</span><p>Aucune bourse disponible.</p></div>}
-          {bourses.map(b=>(
-            <div key={b.id} style={P.card} className="bcard-h">
+          {filtered.length===0&&<div style={P.empty}><span style={{fontSize:36}}>🔎</span><p>Aucune bourse trouvée.</p></div>}
+          {filtered.map(b=>(
+            <div key={b.id} style={{...P.card, border:'2px solid rgba(99,102,241,0.12)'}} className="bcard-h">
               <div style={P.cardTop}><span style={{fontSize:24}}>🎓</span><span style={P.finance}>{b.financement}</span></div>
               <div style={P.cardName}>{b.nom}</div>
               <div style={P.cardMeta}>{b.pays} · {b.niveau}</div>
@@ -480,28 +499,29 @@ function BoursePicker({ bourses, userId, onSelect }) {
         </div>
       </div>
       {showHist&&<HistoriquePanel userId={userId} onClose={()=>setShowHist(false)}/>}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap');.bcard-h{transition:all .2s}.bcard-h:hover{transform:translateY(-4px)!important;border-color:rgba(232,121,249,.45)!important;box-shadow:0 14px 36px rgba(139,92,246,.2)!important}@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap');.bcard-h{transition:all .2s}.bcard-h:hover{transform:translateY(-4px)!important;border-color:rgba(99,102,241,.36)!important;box-shadow:0 18px 40px rgba(99,102,241,.12)!important}@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}`}</style>
     </div>
   );
 }
 
 const P = {
-  root:       {minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 16px',fontFamily:"'Outfit',sans-serif",position:'relative',background:'radial-gradient(ellipse 90% 55% at 50% -5%,rgba(139,92,246,.16),transparent)'},
-  glow:       {position:'fixed',inset:0,pointerEvents:'none',background:'radial-gradient(circle at 75% 25%,rgba(232,121,249,.06),transparent 55%)'},
+  root:       {minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 16px',fontFamily:"'Outfit',sans-serif",position:'relative',background:'transparent'},
+  glow:       {position:'fixed',inset:0,pointerEvents:'none',background:'radial-gradient(circle at 75% 25%,rgba(232,121,249,.02),transparent 55%)'},
   inner:      {width:'100%',maxWidth:760,position:'relative',zIndex:1},
-  badge:      {display:'inline-flex',padding:'4px 16px',borderRadius:99,border:'1px solid rgba(139,92,246,.4)',color:'#a78bfa',fontSize:11,fontWeight:700,letterSpacing:2},
-  histBtn:    {padding:'8px 16px',borderRadius:10,background:'rgba(99,102,241,.12)',border:'1px solid rgba(99,102,241,.35)',color:'#818cf8',fontSize:13,fontWeight:600,cursor:'pointer'},
-  h1:         {fontFamily:"'Cormorant Garamond',serif",fontSize:'clamp(2rem,5vw,2.8rem)',fontWeight:600,color:'#f1f5f9',lineHeight:1.15,marginBottom:14,marginTop:14},
+  badge:      {display:'inline-flex',padding:'4px 16px',borderRadius:99,border:'1px solid rgba(15,23,42,0.04)',color:'#6366f1',fontSize:11,fontWeight:700,letterSpacing:2,background:'#f8fafc'},
+  histBtn:    {padding:'8px 16px',borderRadius:10,background:'#f8fafc',border:'1px solid rgba(15,23,42,0.04)',color:'#475569',fontSize:13,fontWeight:600,cursor:'pointer'},
+  search:     {padding:'10px 12px',borderRadius:10,border:'1px solid rgba(15,23,42,0.06)',width:320,maxWidth:'42vw',outline:'none',fontSize:13,color:'#0f172a',background:'#ffffff'},
+  h1:         {fontFamily:"'Cormorant Garamond',serif",fontSize:'clamp(2rem,5vw,2.8rem)',fontWeight:600,color:'#0f172a',lineHeight:1.15,marginBottom:14,marginTop:14},
   em:         {color:'#e879f9',fontStyle:'italic'},
-  sub:        {color:'#64748b',fontSize:15,marginBottom:36,maxWidth:500,lineHeight:1.6},
+  sub:        {color:'#475569',fontSize:15,marginBottom:36,maxWidth:500,lineHeight:1.6},
   grid:       {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16},
   empty:      {textAlign:'center',color:'#475569',padding:'48px 0',gridColumn:'1/-1',display:'flex',flexDirection:'column',alignItems:'center',gap:8},
-  card:       {display:'flex',flexDirection:'column',gap:10,padding:'22px',borderRadius:16,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',textAlign:'left',color:'#f1f5f9',animation:'fadeUp .4s ease both'},
+  card:       {display:'flex',flexDirection:'column',gap:10,padding:'22px',borderRadius:16,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)',textAlign:'left',color:'#0f172a',animation:'fadeUp .4s ease both'},
   cardTop:    {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  finance:    {fontSize:12,color:'#10b981',fontWeight:600,padding:'3px 10px',borderRadius:99,background:'rgba(16,185,129,.1)',border:'1px solid rgba(16,185,129,.2)'},
-  cardName:   {fontSize:15,fontWeight:700},
-  cardMeta:   {fontSize:13,color:'#64748b',marginBottom:4},
-  btnDemarrer:{marginTop:6,padding:'11px 16px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#6d28d9,#a21caf)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',width:'100%',boxShadow:'0 4px 18px rgba(139,92,246,.35)'},
+  finance:    {fontSize:12,color:'#059669',fontWeight:600,padding:'3px 10px',borderRadius:99,background:'rgba(16,185,129,.08)',border:'1px solid rgba(16,185,129,.12)'},
+  cardName:   {fontSize:15,fontWeight:700,color:'#0f172a'},
+  cardMeta:   {fontSize:13,color:'#475569',marginBottom:4},
+  btnDemarrer:{marginTop:6,padding:'11px 16px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#4f46e5,#7c3aed)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',width:'100%',boxShadow:'0 6px 20px rgba(79,70,229,0.08)'},
 };
 
 // ── EntretienSession ──────────────────────────────────────────────────────────
@@ -1033,67 +1053,67 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
 }
 
 const T = {
-  root:       {height:'100vh',display:'flex',flexDirection:'column',background:'#06060f',fontFamily:"'Outfit',sans-serif",overflow:'hidden'},
-  topbar:     {display:'flex',alignItems:'center',gap:14,padding:'11px 22px',flexShrink:0,background:'rgba(255,255,255,.02)',borderBottom:'1px solid rgba(255,255,255,.06)'},
+  root:       {height:'100vh',display:'flex',flexDirection:'column',background:'#ffffff',fontFamily:"'Outfit',sans-serif",overflow:'hidden'},
+  topbar:     {display:'flex',alignItems:'center',gap:14,padding:'11px 22px',flexShrink:0,background:'#f8fafc',borderBottom:'1px solid rgba(15,23,42,0.04)'},
   tbLeft:     {display:'flex',alignItems:'center',gap:9},
-  dot:        {width:9,height:9,borderRadius:'50%',flexShrink:0,animation:'pulse 2s infinite'},
-  tbName:     {fontSize:14,fontWeight:700,color:'#f1f5f9'},
-  sep:        {color:'rgba(255,255,255,.12)'},
-  tbMeta:     {fontSize:13,color:'#64748b'},
+  dot:        {width:9,height:9,borderRadius:'50%',flexShrink:0,animation:'pulse 2s infinite',background:'#e2e8f0'},
+  tbName:     {fontSize:14,fontWeight:700,color:'#0f172a'},
+  sep:        {color:'rgba(15,23,42,0.08)'},
+  tbMeta:     {fontSize:13,color:'#475569'},
   prog:       {display:'flex',alignItems:'center',gap:7,marginLeft:'auto'},
   pDot:       {width:9,height:9,borderRadius:'50%',transition:'all .4s ease',flexShrink:0},
-  pLabel:     {fontSize:12,color:'#64748b',marginLeft:6},
-  histBtn:    {padding:'6px 12px',borderRadius:8,background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.25)',color:'#818cf8',fontSize:12,cursor:'pointer'},
-  quitBtn:    {padding:'6px 14px',borderRadius:8,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#f87171',fontSize:13,cursor:'pointer'},
+  pLabel:     {fontSize:12,color:'#475569',marginLeft:6},
+  histBtn:    {padding:'6px 12px',borderRadius:8,background:'#f8fafc',border:'1px solid rgba(15,23,42,0.04)',color:'#475569',fontSize:12,cursor:'pointer'},
+  quitBtn:    {padding:'6px 14px',borderRadius:8,background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.12)',color:'#bf4444',fontSize:13,cursor:'pointer'},
   body:       {flex:1,display:'grid',gridTemplateColumns:'1fr 1.15fr',overflow:'hidden'},
-  left:       {display:'flex',flexDirection:'column',background:'#080818',borderRight:'1px solid rgba(255,255,255,.05)',overflow:'hidden'},
+  left:       {display:'flex',flexDirection:'column',background:'#f8fafc',borderRight:'1px solid rgba(15,23,42,0.04)',overflow:'hidden'},
   videoBox:   {flex:1,position:'relative',background:'#000',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'},
   video:      {width:'100%',height:'100%',objectFit:'cover'},
   noCam:      {display:'flex',flexDirection:'column',alignItems:'center',gap:8,color:'#475569',textAlign:'center'},
-  recBadge:   {position:'absolute',top:14,left:14,display:'flex',alignItems:'center',gap:7,padding:'6px 14px',borderRadius:99,background:'rgba(239,68,68,.88)',color:'#fff',fontSize:13,fontWeight:700,backdropFilter:'blur(8px)',animation:'recPulse 1.4s infinite'},
+  recBadge:   {position:'absolute',top:14,left:14,display:'flex',alignItems:'center',gap:7,padding:'6px 14px',borderRadius:99,background:'#ef4444',color:'#fff',fontSize:13,fontWeight:700,backdropFilter:'blur(8px)',animation:'recPulse 1.4s infinite'},
   recDot:     {width:9,height:9,borderRadius:'50%',background:'#fff',animation:'pulse 1s infinite'},
-  aiOverlay:  {position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 22px',borderRadius:12,background:'rgba(99,102,241,.9)',color:'#fff',fontSize:13,backdropFilter:'blur(8px)',whiteSpace:'nowrap'},
+  aiOverlay:  {position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 22px',borderRadius:12,background:'#4f46e5',color:'#fff',fontSize:13,backdropFilter:'blur(8px)',whiteSpace:'nowrap'},
   waveRow:    {display:'flex',alignItems:'flex-end',gap:4,height:24},
   waveBar:    {width:3,background:'#fff',borderRadius:99,animation:'wave .55s ease-in-out infinite alternate'},
-  meterBg:    {position:'absolute',bottom:0,left:0,right:0,height:4,background:'rgba(255,255,255,.05)'},
+  meterBg:    {position:'absolute',bottom:0,left:0,right:0,height:4,background:'rgba(15,23,42,0.04)'},
   meterFill:  {height:'100%',borderRadius:'0 2px 2px 0',background:'linear-gradient(90deg,#6366f1,#10b981)',transition:'width .08s'},
-  metricsBox: {padding:'14px 18px',flexShrink:0,background:'rgba(0,0,0,.45)',borderTop:'1px solid rgba(255,255,255,.04)',display:'flex',flexDirection:'column',gap:8},
+  metricsBox: {padding:'14px 18px',flexShrink:0,background:'#ffffff',borderTop:'1px solid rgba(15,23,42,0.04)',display:'flex',flexDirection:'column',gap:8},
   mHead:      {fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700},
   mRow:       {display:'flex',alignItems:'center',gap:9},
   mIcon:      {fontSize:14,width:18,textAlign:'center'},
-  mBarBg:     {flex:1,height:5,background:'rgba(255,255,255,.07)',borderRadius:99,overflow:'hidden'},
+  mBarBg:     {flex:1,height:5,background:'#f1f5f9',borderRadius:99,overflow:'hidden'},
   mBarFill:   {height:'100%',borderRadius:99,transition:'width .85s ease, background .5s'},
-  mPct:       {fontSize:11,color:'#94a3b8',width:30,textAlign:'right'},
+  mPct:       {fontSize:11,color:'#475569',width:30,textAlign:'right'},
   mLabel:     {fontSize:11,color:'#64748b',width:90},
-  right:      {display:'flex',alignItems:'stretch',justifyContent:'center',padding:'24px 28px',overflow:'hidden',background:'radial-gradient(ellipse 80% 55% at 60% 20%,rgba(139,92,246,.07),transparent)'},
+  right:      {display:'flex',alignItems:'stretch',justifyContent:'center',padding:'24px 28px',overflow:'hidden',background:'transparent'},
   panel:      {width:'100%',maxWidth:500,display:'flex',flexDirection:'column',gap:20,maxHeight:'100%'},
-  panelH2:    {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.75rem',fontWeight:600,color:'#f1f5f9',textAlign:'center',lineHeight:1.2},
-  panelP:     {color:'#64748b',fontSize:14,textAlign:'center',lineHeight:1.6},
-  btnStart:   {display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'18px 24px',borderRadius:14,width:'100%',border:'none',background:'linear-gradient(135deg,#7c3aed,#be185d)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 28px rgba(124,58,237,.5)'},
+  panelH2:    {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.75rem',fontWeight:600,color:'#0f172a',textAlign:'center',lineHeight:1.2},
+  panelP:     {color:'#475569',fontSize:14,textAlign:'center',lineHeight:1.6},
+  btnStart:   {display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'18px 24px',borderRadius:14,width:'100%',border:'none',background:'linear-gradient(135deg,#4f46e5,#7c3aed)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 28px rgba(79,70,229,0.08)'},
   qHead:      {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  qBadge:     {padding:'5px 14px',borderRadius:99,background:'rgba(139,92,246,.12)',border:'1px solid rgba(139,92,246,.3)',color:'#a78bfa',fontSize:12,fontWeight:700},
-  timerBadge: {padding:'5px 14px',borderRadius:99,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#f87171',fontSize:13,fontWeight:700},
-  qBubble:    {padding:'22px',borderRadius:16,background:'rgba(99,102,241,.07)',border:'1px solid rgba(99,102,241,.2)',color:'#e2e8f0',fontSize:15,minHeight:80,display:'flex',alignItems:'center'},
+  qBadge:     {padding:'5px 14px',borderRadius:99,background:'rgba(99,102,241,.08)',border:'1px solid rgba(99,102,241,.12)',color:'#6366f1',fontSize:12,fontWeight:700},
+  timerBadge: {padding:'5px 14px',borderRadius:99,background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.12)',color:'#bf4444',fontSize:13,fontWeight:700},
+  qBubble:    {padding:'22px',borderRadius:16,background:'#f8fafc',border:'1px solid rgba(15,23,42,0.04)',color:'#0f172a',fontSize:15,minHeight:80,display:'flex',alignItems:'center'},
   dot2:       {width:10,height:10,borderRadius:'50%',background:'#8b5cf6',animation:'bounce .8s ease-in-out infinite'},
-  liveBox:    {padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.07)',maxHeight:120,overflowY:'auto'},
+  liveBox:    {padding:'14px 16px',borderRadius:12,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)',maxHeight:120,overflowY:'auto'},
   liveHead:   {fontSize:10,color:'#475569',letterSpacing:1.5},
-  liveP:      {fontSize:13,color:'#94a3b8',fontStyle:'italic',margin:'6px 0 0'},
-  analyzeBox: {display:'flex',alignItems:'flex-start',gap:18,padding:'18px 20px',borderRadius:14,background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.07)'},
-  spinner:    {width:40,height:40,borderRadius:'50%',flexShrink:0,marginTop:2,border:'3px solid rgba(139,92,246,.12)',borderTopColor:'#8b5cf6',borderRightColor:'#e879f9',animation:'spin 1s linear infinite'},
-  btnRec:     {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 6px 24px rgba(16,185,129,.45)'},
-  btnStop:    {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#b91c1c,#ef4444)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',animation:'stopGlow 1.6s ease-in-out infinite',boxShadow:'0 6px 24px rgba(239,68,68,.45)'},
-  hint:       {textAlign:'center',color:'#94a3b8',fontSize:14,padding:'16px',borderRadius:10,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)'},
+  liveP:      {fontSize:13,color:'#475569',fontStyle:'italic',margin:'6px 0 0'},
+  analyzeBox: {display:'flex',alignItems:'flex-start',gap:18,padding:'18px 20px',borderRadius:14,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)'},
+  spinner:    {width:40,height:40,borderRadius:'50%',flexShrink:0,marginTop:2,border:'3px solid rgba(99,102,241,.08)',borderTopColor:'#6366f1',borderRightColor:'#e879f9',animation:'spin 1s linear infinite'},
+  btnRec:     {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 6px 24px rgba(16,185,129,0.12)'},
+  btnStop:    {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#b91c1c,#ef4444)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',animation:'stopGlow 1.6s ease-in-out infinite',boxShadow:'0 6px 24px rgba(239,68,68,0.12)'},
+  hint:       {textAlign:'center',color:'#475569',fontSize:14,padding:'16px',borderRadius:10,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)'},
   statsGrid:  {display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10},
-  statCard:   {padding:'14px 8px',borderRadius:12,textAlign:'center',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.15)',display:'flex',flexDirection:'column',gap:5},
-  statV:      {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.3rem',fontWeight:600,color:'#c4b5fd'},
+  statCard:   {padding:'14px 8px',borderRadius:12,textAlign:'center',background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.08)',display:'flex',flexDirection:'column',gap:5},
+  statV:      {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.3rem',fontWeight:600,color:'#4f46e5'},
   statL:      {fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1},
-  sectionCard:{padding:'16px 18px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.18)'},
+  sectionCard:{padding:'16px 18px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.12)'},
   sectionHead:{fontSize:11,letterSpacing:1.5,fontWeight:700,marginBottom:10},
-  sectionBody:{color:'#e2e8f0',fontSize:13,lineHeight:1.75,whiteSpace:'pre-wrap'},
-  scoreCard:  {padding:'18px 20px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.18)',maxHeight:300,overflowY:'auto'},
+  sectionBody:{color:'#475569',fontSize:13,lineHeight:1.75,whiteSpace:'pre-wrap'},
+  scoreCard:  {padding:'18px 20px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.12)',maxHeight:300,overflowY:'auto'},
   scoreHead:  {fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700,marginBottom:10},
-  scoreBody:  {color:'#e2e8f0',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'},
-  btnRetry:   {flex:1,padding:'13px',borderRadius:12,background:'rgba(139,92,246,.1)',border:'1px solid rgba(139,92,246,.25)',color:'#a78bfa',fontSize:14,fontWeight:600,cursor:'pointer'},
+  scoreBody:  {color:'#475569',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'},
+  btnRetry:   {flex:1,padding:'13px',borderRadius:12,background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.12)',color:'#4f46e5',fontSize:14,fontWeight:600,cursor:'pointer'},
   btnDone:    {flex:1,padding:'13px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'},
 };
 

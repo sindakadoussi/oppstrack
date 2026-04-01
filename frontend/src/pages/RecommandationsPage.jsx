@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '@/config/axiosInstance';
+import BourseDrawer from '../components/Boursedrawer';
 import { API_ROUTES } from '@/config/routes';
 
 
@@ -37,7 +38,7 @@ function countryFlag(pays) {
 }
 
 // ── Nouvelle BourseCard ───────────────────────────────────────────────────────
-function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
+function BourseCard({ bourse, onStar, onApply, starred, applied, expired, onClick }) {
   const score      = bourse.matchScore || 0;
   const scoreColor = getScoreColor(score);
   const [starLoading,  setStarLoading]  = useState(false);
@@ -56,18 +57,19 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
 
   return (
     <div style={{
-      background: '#0e0e1a',
-      border: '1px solid rgba(255,255,255,0.07)',
+      background: '#ffffff',
+      border: '1px solid #eef2ff',
       borderRadius: 16,
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
       transition: 'transform .2s, box-shadow .2s',
-      opacity: expired ? 0.7 : 1,
+      opacity: expired ? 0.85 : 1,
       position: 'relative',
     }}
-      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 12px 32px rgba(0,0,0,0.4)`; }}
+      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 8px 20px rgba(16,24,40,0.08)`; }}
       onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}
+      onClick={() => onClick && onClick(bourse)}
     >
       <div style={{ height: 4, background: `linear-gradient(90deg, ${scoreColor}88, ${scoreColor})`, width: '100%' }} />
 
@@ -75,17 +77,17 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>{countryFlag(bourse.pays)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>{bourse.pays || 'International'}</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.3, marginTop: 2 }}>{bourse.nom}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{bourse.pays || 'International'}</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.3, marginTop: 2 }}>{bourse.nom}</div>
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}%</div>
-          <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{getScoreLabel(score)}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}%</div>
+            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{getScoreLabel(score)}</div>
         </div>
       </div>
 
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
+        <div style={{ height: 1, background: '#f3f4f6', margin: '0 16px' }} />
 
       <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -97,16 +99,16 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
 
         {bourse.financement && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💰</span>
-            <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>{bourse.financement}</span>
-          </div>
+              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💰</span>
+              <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>{bourse.financement}</span>
+            </div>
         )}
 
         {(dateStr || deadlineLabel) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
             {dateStr && (
               <div>
-                <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Date limite</div>
+                <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Date limite</div>
                 <div style={{ fontSize: 12, color: deadlineColor, fontWeight: 700 }}>{dateStr}</div>
               </div>
             )}
@@ -125,15 +127,15 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
         <button
           style={{
             flex: 1, padding: '9px 12px', borderRadius: 10,
-            background: applied ? 'rgba(99,102,241,0.15)' : '#1e1e30',
-            border: applied ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(255,255,255,0.08)',
-            color: applied ? '#a5b4fc' : '#e2e8f0',
+            background: applied ? '#eef2ff' : 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+            border: applied ? '1px solid #c7d2fe' : 'none',
+            color: applied ? '#4f46e5' : '#ffffff',
             fontSize: 13, fontWeight: 600, cursor: applied ? 'default' : 'pointer', transition: 'all .2s',
           }}
-          onClick={!applied ? async () => { setApplyLoading(true); await onApply(bourse); setApplyLoading(false); } : undefined}
+          onClick={!applied ? async (e) => { e.stopPropagation(); setApplyLoading(true); await onApply(bourse); setApplyLoading(false); } : undefined}
           disabled={applied || applyLoading}
-          onMouseEnter={e => { if (!applied) e.currentTarget.style.background='#2a2a45'; }}
-          onMouseLeave={e => { if (!applied) e.currentTarget.style.background='#1e1e30'; }}
+          onMouseEnter={e => { if (!applied) e.currentTarget.style.filter='brightness(0.95)'; }}
+          onMouseLeave={e => { if (!applied) e.currentTarget.style.filter='none'; }}
         >
           {applyLoading ? '⏳' : applied ? '✅ Dans la roadmap' : 'Postuler maintenant'}
         </button>
@@ -141,13 +143,13 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
         <button
           style={{
             width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-            background: starred ? 'rgba(251,191,36,0.15)' : '#1e1e30',
-            border: starred ? '1px solid rgba(251,191,36,0.35)' : '1px solid rgba(255,255,255,0.08)',
-            color: starred ? '#fbbf24' : '#64748b',
+            background: '#ffffff',
+            border: starred ? '1px solid #fef3c7' : '1px solid #eef2ff',
+            color: starred ? '#b45309' : '#6b7280',
             fontSize: 18, cursor: starLoading ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
           }}
-          onClick={async () => { setStarLoading(true); await onStar(bourse, starred); setStarLoading(false); }}
+          onClick={async (e) => { e.stopPropagation(); setStarLoading(true); await onStar(bourse, starred); setStarLoading(false); }}
           disabled={starLoading}
           title={starred ? 'Retirer des favoris' : 'Ajouter aux favoris'}
         >
@@ -170,8 +172,8 @@ function BourseCard({ bourse, onStar, onApply, starred, applied, expired }) {
 
 const tag = {
   fontSize: 11, padding: '2px 8px', borderRadius: 6,
-  background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)',
-  color: '#94a3b8',
+  background: '#f8fafc', border: '1px solid #eef2ff',
+  color: '#374151',
 };
 
 // ── Page principale ───────────────────────────────────────────────────────────
@@ -181,6 +183,7 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
   const [expirees,    setExpirees]    = useState([]);
   const [starredNoms, setStarredNoms] = useState(new Set());
   const [appliedNoms, setAppliedNoms] = useState(new Set());
+  const [selected, setSelected] = useState(null);
   const [filter,      setFilter]      = useState('all');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error,       setError]       = useState(null);
@@ -330,7 +333,7 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
   const profDomaine = user.domaine || user.fieldOfStudy || '';
 
   return (
-    <div style={{ width:'100%', background:'#07070f', minHeight:'100vh', color:'#e2e8f0', fontFamily:"'Outfit', system-ui, sans-serif", paddingBottom:40 }}>
+    <div style={{ width:'100%', background: 'transparent', minHeight:'100vh', color: '#111827', fontFamily:"'Outfit', system-ui, sans-serif", paddingBottom:40 }}>
 
       {/* Header */}
       <div style={{ padding:'28px 28px 0', display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
@@ -351,14 +354,14 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
       {/* Stats */}
       <div style={{ display:'flex', gap:12, padding:'20px 28px 0', flexWrap:'wrap' }}>
         {[
-          { num: actives.length,    color:'#4ade80', label:'Actives' },
-          { num: expirees.length,   color:'#f87171', label:'À préparer' },
-          { num: starredNoms.size,  color:'#fbbf24', label:'★ Favoris' },
-          { num: appliedNoms.size,  color:'#60a5fa', label:'🗺️ Roadmap' },
+          { num: actives.length,    color:'#16a34a', label:'Actives' },
+          { num: expirees.length,   color:'#ef4444', label:'À préparer' },
+          { num: starredNoms.size,  color:'#f59e0b', label:'★ Favoris' },
+          { num: appliedNoms.size,  color:'#0ea5e9', label:'🗺️ Roadmap' },
         ].map((s,i) => (
-          <div key={i} style={{ background:'#0d0d18', border:'1px solid #1e1e30', borderRadius:12, padding:'12px 18px', minWidth:80, textAlign:'center' }}>
+          <div key={i} style={{ background:'#ffffff', border:'1px solid #eef2ff', borderRadius:12, padding:'12px 18px', minWidth:80, textAlign:'center' }}>
             <div style={{ fontSize:'1.6rem', fontWeight:800, color:s.color }}>{s.num}</div>
-            <div style={{ fontSize:11, color:'#64748b', marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>{s.label}</div>
+            <div style={{ fontSize:11, color:'#6b7280', marginTop:2, textTransform:'uppercase', letterSpacing:'0.05em' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -396,9 +399,20 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
           <div style={{ padding:'20px 28px 0', fontSize:12, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.06em', display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ color:'#4ade80' }}>●</span> Bourses disponibles maintenant
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:16, padding:'12px 28px 0' }}>
-            {actives.map(b => <BourseCard key={b.id} bourse={b} onStar={handleStar} onApply={handleApply} starred={starredNoms.has(b.nom?.trim().toLowerCase())} applied={appliedNoms.has(b.nom?.trim().toLowerCase())} expired={false}/>)}
-          </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:16, padding:'12px 28px 0' }}>
+                {actives.map(b => (
+                  <BourseCard
+                    key={b.id}
+                    bourse={b}
+                    onStar={handleStar}
+                    onApply={handleApply}
+                    starred={starredNoms.has(b.nom?.trim().toLowerCase())}
+                    applied={appliedNoms.has(b.nom?.trim().toLowerCase())}
+                    expired={false}
+                    onClick={(bb) => setSelected(bb)}
+                  />
+                ))}
+              </div>
         </>
       )}
 
@@ -408,9 +422,34 @@ export default function RecommandationsPage({ user, handleQuickReply, setView, o
             <span style={{ color:'#f87171' }}>●</span> À préparer pour la prochaine session
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:16, padding:'12px 28px 0' }}>
-            {expirees.map(b => <BourseCard key={b.id} bourse={b} onStar={handleStar} onApply={handleApply} starred={starredNoms.has(b.nom?.trim().toLowerCase())} applied={appliedNoms.has(b.nom?.trim().toLowerCase())} expired={true}/>)}
+            {expirees.map(b => (
+              <BourseCard
+                key={b.id}
+                bourse={b}
+                onStar={handleStar}
+                onApply={handleApply}
+                starred={starredNoms.has(b.nom?.trim().toLowerCase())}
+                applied={appliedNoms.has(b.nom?.trim().toLowerCase())}
+                expired={true}
+                onClick={(bb) => setSelected(bb)}
+              />
+            ))}
           </div>
         </>
+      )}
+
+      {/* Drawer details (same as BoursesPage) */}
+      {selected && (
+        <BourseDrawer
+          bourse={selected}
+          onClose={() => setSelected(null)}
+          onAskAI={(b) => { handleQuickReply('Donne-moi les détails sur "' + b.nom + '"'); setSelected(null); }}
+          onChoose={(b) => handleQuickReply('je choisis ' + b.nom)}
+          applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}
+          onApply={async (b) => { await handleApply(b); setSelected(null); }}
+          starred={starredNoms.has(selected.nom?.trim().toLowerCase())}
+          onStar={async (b, isStarred) => { await handleStar(b, isStarred); }}
+        />
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

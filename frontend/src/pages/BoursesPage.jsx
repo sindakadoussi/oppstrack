@@ -84,20 +84,20 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
   };
 
   return (
-    <div style={{ background:'#0e0e1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, overflow:'hidden', display:'flex', flexDirection:'column', transition:'transform .2s, box-shadow .2s' }}
-      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 12px 32px rgba(0,0,0,0.4)';}}
+    <div style={{ background:'#ffffff', border:'1px solid rgba(15,23,42,0.06)', borderRadius:16, overflow:'hidden', display:'flex', flexDirection:'column', transition:'transform .2s, box-shadow .2s' }}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 12px 32px rgba(12,18,40,0.06)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}
     >
-      <div style={{ height:4, background:pct!==null?`linear-gradient(90deg,${scoreColor}88,${scoreColor})`:'rgba(255,255,255,0.05)' }}/>
+      <div style={{ height:4, background:pct!==null?`linear-gradient(90deg,${scoreColor}88,${scoreColor})`:'rgba(15,23,42,0.04)' }}/>
       <div style={{ padding:'14px 16px 10px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, cursor:'pointer' }} onClick={onClick}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
           <span style={{ fontSize:20, flexShrink:0 }}>{countryFlag(bourse.pays)}</span>
           <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:11, color:'#64748b', fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ fontSize:11, color:'#475569', fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
               {bourse.pays||'International'}
               {urgent && <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'rgba(239,68,68,0.15)', color:'#f87171', fontWeight:700, textTransform:'uppercase' }}>Urgent</span>}
             </div>
-            <div style={{ fontSize:'0.95rem', fontWeight:700, color:'#f1f5f9', lineHeight:1.3, marginTop:2 }}>{bourse.nom}</div>
+            <div style={{ fontSize:'0.95rem', fontWeight:700, color:'#0f172a', lineHeight:1.3, marginTop:2 }}>{bourse.nom}</div>
           </div>
         </div>
         {pct!==null && (
@@ -107,17 +107,17 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
           </div>
         )}
       </div>
-      <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'0 16px' }}/>
+      <div style={{ height:1, background:'rgba(15,23,42,0.04)', margin:'0 16px' }}/>
       <div style={{ padding:'12px 16px', flex:1, display:'flex', flexDirection:'column', gap:8, cursor:'pointer' }} onClick={onClick}>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {niveaux.map((n,i)=>(
-            <span key={i} style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.15)', color:'#94a3b8' }}>{n}</span>
+            <span key={i} style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#f8fafc', border:'1px solid rgba(15,23,42,0.04)', color:'#475569' }}>{n}</span>
           ))}
         </div>
         {bourse.financement && (
           <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
             <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>💰</span>
-            <span style={{ fontSize:12, color:'#94a3b8', lineHeight:1.5 }}>{bourse.financement}</span>
+            <span style={{ fontSize:12, color:'#475569', lineHeight:1.5 }}>{bourse.financement}</span>
           </div>
         )}
         {bourse.description && (
@@ -143,13 +143,13 @@ function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, 
           onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}
         >Voir les détails →</button>
-        <button style={{ flex:1, padding:'9px 10px', borderRadius:10, background:applied?'rgba(99,102,241,0.15)':'#1e1e30', border:applied?'1px solid rgba(99,102,241,0.3)':'1px solid rgba(255,255,255,0.08)', color:applied?'#a5b4fc':'#e2e8f0', fontSize:12, fontWeight:600, cursor:applied?'default':'pointer', transition:'all .2s' }}
+        <button style={{ flex:1, padding:'9px 10px', borderRadius:10, background:applied?'rgba(99,102,241,0.08)':'#ffffff', border:applied?'1px solid rgba(99,102,241,0.12)':'1px solid rgba(15,23,42,0.06)', color:applied?'#4f46e5':'#0f172a', fontSize:12, fontWeight:600, cursor:applied?'default':'pointer', transition:'all .2s' }}
           onClick={!applied?async(e)=>{ e.stopPropagation(); setApplyLoading(true); await onApply(bourse); setApplyLoading(false); }:undefined}
           disabled={applied||applyLoading}
-          onMouseEnter={e=>{ if(!applied) e.currentTarget.style.background='#2a2a45'; }}
-          onMouseLeave={e=>{ if(!applied) e.currentTarget.style.background='#1e1e30'; }}
+          onMouseEnter={e=>{ if(!applied) e.currentTarget.style.background='#f8fafc'; }}
+          onMouseLeave={e=>{ if(!applied) e.currentTarget.style.background='#ffffff'; }}
         >{applyLoading?'⏳':applied?'✅ Roadmap':'🗺️ Postuler'}</button>
-        <button style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:starred?'rgba(251,191,36,0.15)':'#1e1e30', border:starred?'1px solid rgba(251,191,36,0.35)':'1px solid rgba(255,255,255,0.08)', color:starred?'#fbbf24':'#64748b', fontSize:16, cursor:starLoading?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}
+        <button style={{ width:38, height:38, borderRadius:10, flexShrink:0, background:starred?'rgba(251,191,36,0.12)':'#ffffff', border:starred?'1px solid rgba(251,191,36,0.25)':'1px solid rgba(15,23,42,0.06)', color:starred?'#fbbf24':'#475569', fontSize:16, cursor:starLoading?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}
           onClick={async(e)=>{ e.stopPropagation(); setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }}
           disabled={starLoading}
         >{starred?'★':'☆'}</button>
@@ -173,15 +173,15 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(3px)', animation:'fadeIn 0.2s ease' }}/>
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:480, maxWidth:'95vw', background:'#0d0d22', borderLeft:'1px solid rgba(99,102,241,0.2)', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', overflowY:'auto' }}>
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:480, maxWidth:'95vw', background:'#ffffff', borderLeft:'1px solid rgba(15,23,42,0.04)', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', overflowY:'auto' }}>
         <div style={{ padding:'20px 22px 0', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-            <div style={{ fontSize:28, width:52, height:52, borderRadius:14, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div style={{ fontSize:28, width:52, height:52, borderRadius:14, background:'#f8fafc', border:'1px solid rgba(15,23,42,0.04)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {countryFlag(bourse.pays)}
             </div>
-            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.06)', border:'none', color:'#94a3b8', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16 }}>✕</button>
+            <button onClick={onClose} style={{ background:'transparent', border:'none', color:'#475569', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16 }}>✕</button>
           </div>
-          <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#f1f5f9', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
+          <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#0f172a', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
             <span style={D.tag}>{countryFlag(bourse.pays)} {bourse.pays}</span>
             {bourse.niveau && <span style={D.tag}>🎓 {bourse.niveau}</span>}
@@ -282,10 +282,10 @@ function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, app
 }
 
 const D = {
-  tag:     { fontSize:11, padding:'3px 10px', borderRadius:99, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', color:'#94a3b8' },
+  tag:     { fontSize:11, padding:'3px 10px', borderRadius:99, background:'#f8fafc', border:'1px solid rgba(15,23,42,0.04)', color:'#475569' },
   label:   { fontSize:10, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 },
-  infoRow: { display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)' },
-  infoIcon:{ fontSize:16, flexShrink:0, marginTop:2 },
+  infoRow: { display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:8, background:'#ffffff', border:'1px solid rgba(15,23,42,0.04)' },
+  infoIcon:{ fontSize:16, flexShrink:0, marginTop:2, color:'#475569' },
 };
 
 // ── BoursesPage ───────────────────────────────────────────────────────────────
@@ -430,7 +430,7 @@ export default function BoursesPage({
   const niveaux = [...new Set(bourses.flatMap(b=>(b.niveau||'').split(',').map(s=>s.trim())).filter(Boolean))];
 
   return (
-    <div style={{ width:'100%', padding:'28px 24px', background:'#07070f', minHeight:'100vh', fontFamily:"'Outfit', system-ui, sans-serif" }}>
+    <div style={{ width:'100%', padding:'28px 24px', background:'#ffffff', minHeight:'100vh', fontFamily:"'Outfit', system-ui, sans-serif" }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
           <h2 style={{ fontSize:'1.8rem', fontWeight:800, color:'#f1f5f9', margin:0 }}>Bourses 100% Financées</h2>

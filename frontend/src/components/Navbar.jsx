@@ -334,7 +334,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
       )}
 
       <style>{`
-        .navbar { position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;padding:0 24px;height:60px;background:rgba(10,10,20,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(99,102,241,0.2);box-shadow:0 4px 30px rgba(0,0,0,0.3); }
+        .navbar { position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;padding:0 24px;height:60px;background:rgba(249, 249, 249, 0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(99,102,241,0.2);box-shadow:0 4px 30px rgba(0,0,0,0.3); }
         .nav-brand { display:flex;align-items:center;gap:8px;margin-right:16px;flex-shrink:0; }
         .brand-icon { font-size:22px; }
         .brand-name { font-size:1.1rem;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
@@ -343,9 +343,9 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
         .nav-item { display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:none;background:transparent;color:#94a3b8;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;white-space:nowrap; }
         .nav-item:hover { background:rgba(99,102,241,0.15);color:#e2e8f0; }
         .nav-item.active { background:rgba(99,102,241,0.25);color:#818cf8; }
-        .nav-item-reco { background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1));border:1px solid rgba(99,102,241,0.2);color:#a78bfa !important; }
-        .nav-item-reco:hover { background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.25)) !important;border-color:rgba(99,102,241,0.4); }
-        .nav-item-reco.active { background:linear-gradient(135deg,rgba(99,102,241,0.35),rgba(139,92,246,0.35)) !important;border-color:rgba(139,92,246,0.5);color:#c084fc !important; }
+        .nav-item-reco { color: #94a3b8; background: transparent; border: none; }
+        .nav-item-reco:hover { background: rgba(99,102,241,0.15); color: #e2e8f0; }
+        .nav-item-reco.active { background: rgba(99,102,241,0.25); color: #818cf8; }
         .nav-user { flex-shrink:0; }
         .user-pill { display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:24px; }
         .user-avatar { width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white; }

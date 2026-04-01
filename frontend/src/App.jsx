@@ -12,6 +12,8 @@ import VerifyMagicLink from './pages/VerifyMagicLink';
 import RecommandationsPage from './pages/RecommandationsPage';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
+import Footer from './components/Footer'; // à ajouter en haut
+
 
 function AppContent() {
   const location = useLocation();
@@ -294,35 +296,182 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
         {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
         {view === 'cv'              && <CVPage               {...sharedProps} />}
       </main>
+      <Footer setView={setView} />
       <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: #080812 !important; }
-        body {
-          font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
-          color: #e2e8f0;
-          -webkit-font-smoothing: antialiased;
-        }
-        #root {
-          min-height: 100vh;
-          background:
-            radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,0.08) 0%, transparent 60%),
-            #080812 !important;
-        }
-        .app-root     { display:flex; flex-direction:column; min-height:100vh; background:transparent; }
-        .main-content { flex:1; overflow-x:hidden; background:transparent; }
-        ::-webkit-scrollbar       { width:6px; }
-        ::-webkit-scrollbar-track { background:transparent; }
-        ::-webkit-scrollbar-thumb { background:rgba(99,102,241,0.25); border-radius:3px; }
-        ::-webkit-scrollbar-thumb:hover { background:rgba(99,102,241,0.4); }
-        ::selection    { background:rgba(99,102,241,0.3); color:#f1f5f9; }
-        .server-alert  {
-          background: rgba(239,68,68,0.1);
-          border-bottom: 1px solid rgba(239,68,68,0.25);
-          color: #fca5a5; padding: 9px 24px;
-          font-size: 13px; text-align: center;
-        }
-      `}</style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #ffffff !important; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    min-height: 100vh;
+    background: #ffffff !important;
+  }
+  .app-root     { display:flex; flex-direction:column; min-height:100vh; background:#ffffff; }
+  .main-content { flex:1; overflow-x:hidden; background:#ffffff; }
+  ::-webkit-scrollbar       { width:6px; }
+  ::-webkit-scrollbar-track { background:#f3f4f6; }
+  ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
+  ::selection    { background:#bfdbfe; color:#1f2937; }
+  .server-alert  {
+    background: #fee2e2;
+    border-bottom: 1px solid #fecaca;
+    color: #b91c1c; padding: 9px 24px;
+    font-size: 13px; text-align: center;
+  }
+    /* Footer styles */
+.footer {
+  background: #ffffff;
+  border-top: 1px solid #eef2ff;
+  padding: 48px 32px 24px;
+  margin-top: 48px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.footer-logo-icon {
+  font-size: 24px;
+}
+
+.footer-logo-text {
+  font-size: 1.2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.footer-desc {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.footer-social {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.social-link {
+  color: #6b7280;
+  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.social-link:hover {
+  color: #2563eb;
+}
+
+.footer-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-links li a {
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.footer-links li a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: 40px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.footer-bottom p {
+  margin: 0;
+}
+
+.footer-legal {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.footer-legal a {
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-legal a:hover {
+  color: #2563eb;
+}
+
+.footer-legal span {
+  color: #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 40px 20px 24px;
+  }
+  .footer-container {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+  .footer-legal {
+    justify-content: center;
+  }
+}
+`}</style>
     </div>
   );
 }
