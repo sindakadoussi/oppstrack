@@ -109,7 +109,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
       }));
       setUser(updated);
       setSaved(true);
-      setTimeout(() => setSaved(false), 3001);
+      setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error('[ProfilPage]', err.response?.data || err.message);
     } finally {

@@ -11,14 +11,16 @@ import CVPage from './pages/CVPage';
 import VerifyMagicLink from './pages/VerifyMagicLink';
 import RecommandationsPage from './pages/RecommandationsPage';
 import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
-import Footer from './components/Footer'; // à ajouter en haut
+import Footer from './components/Footer';
 
 
 function AppContent() {
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
   const [bourses, setBourses]                 = useState([]);
+  const [initialSelected, setInitialSelected] = useState(null);
   const [messages, setMessages]               = useState([]);
   const [input, setInput]                     = useState('');
   const [loading, setLoading]                 = useState(false);
@@ -101,8 +103,8 @@ function AppContent() {
 
   const fetchBourses = useCallback(async () => {
     try {
-const res = await axiosInstance.get(API_ROUTES.bourses.list, {
-  params: { limit: 500, depth: 0 },
+      const res = await axiosInstance.get(API_ROUTES.bourses.list, {
+        params: { limit: 500, depth: 0 },
         signal: AbortSignal.timeout(5000),
       });
       setBourses(res.data.docs || []);
@@ -153,8 +155,8 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
     }).catch(e => console.warn('Save user msg:', e.message));
 
     try {
-      // Appel n8n webhook — axios sans token JWT
-      const n8nRes = await axiosInstance.post(WEBHOOK_ROUTES.chat, {
+      // ✅ axios direct (pas axiosInstance) pour éviter baseURL Payload + CORS
+      const n8nRes = await axios.post("http://localhost:5678/webhook-test/webhook",  {
         text:           textToSend,
         conversationId: conversationId.current,
         id:             user?.id    || null,
@@ -170,7 +172,10 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
           name:        user.name,
           is_complete: !!(user.pays && user.niveau && user.domaine),
         } : null,
-      }, { signal: AbortSignal.timeout(30000) });
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(120000),
+      });
 
       setServerStatus(s => ({ ...s, n8n: true }));
 
@@ -218,8 +223,8 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
       let msg = '';
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
         msg = '⏳ **Temps dépassé.** L\'IA est occupée, réessaie dans quelques secondes.';
-      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        msg = `🔌 **Serveur n8n inaccessible.**\n\nVérifie que :\n- n8n tourne sur \`localhost:5678\`\n- Le workflow est **activé** (bouton ON dans n8n)\n- L'URL du webhook est \`/webhook/webhook\``;
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.message?.includes('Network Error')) {
+        msg = `🔌 **Serveur n8n inaccessible.**\n\nVérifie que :\n- n8n tourne sur \`localhost:5678\`\n- Le workflow est **activé** (bouton ON dans n8n)\n- L'URL du webhook est \`/webhook-test/chat\``;
       } else {
         msg = `⚠️ Erreur : ${err.message}`;
       }
@@ -273,6 +278,7 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
         user={user}
         onLogout={handleLogout}
         serverStatus={serverStatus}
+        onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
       />
       {serverStatus.payload === false && (
         <div className="server-alert">
@@ -288,7 +294,7 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
       )}
       <main className="main-content">
         {view === 'accueil'         && <ChatPage             {...sharedProps} />}
-        {view === 'bourses'         && <BoursesPage          {...sharedProps} />}
+        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
         {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
         {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
         {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
@@ -322,155 +328,53 @@ const res = await axiosInstance.get(API_ROUTES.bourses.list, {
     color: #b91c1c; padding: 9px 24px;
     font-size: 13px; text-align: center;
   }
-    /* Footer styles */
-.footer {
-  background: #ffffff;
-  border-top: 1px solid #eef2ff;
-  padding: 48px 32px 24px;
-  margin-top: 48px;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.footer-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 40px;
-}
-
-.footer-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.footer-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.footer-logo-icon {
-  font-size: 24px;
-}
-
-.footer-logo-text {
-  font-size: 1.2rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.footer-desc {
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.footer-social {
-  display: flex;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.social-link {
-  color: #6b7280;
-  transition: color 0.2s;
-  display: inline-flex;
-  align-items: center;
-}
-
-.social-link:hover {
-  color: #2563eb;
-}
-
-.footer-heading {
-  font-size: 14px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px 0;
-  letter-spacing: 0.5px;
-}
-
-.footer-links {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.footer-links li a {
-  color: #6b7280;
-  text-decoration: none;
-  font-size: 13px;
-  transition: color 0.2s;
-}
-
-.footer-links li a:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-.footer-bottom {
-  max-width: 1200px;
-  margin: 40px auto 0;
-  padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.footer-bottom p {
-  margin: 0;
-}
-
-.footer-legal {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.footer-legal a {
-  color: #9ca3af;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.footer-legal a:hover {
-  color: #2563eb;
-}
-
-.footer-legal span {
-  color: #e5e7eb;
-}
-
-@media (max-width: 768px) {
   .footer {
-    padding: 40px 20px 24px;
+    background: #ffffff;
+    border-top: 1px solid #eef2ff;
+    padding: 48px 32px 24px;
+    margin-top: 48px;
+    font-family: 'Inter', system-ui, sans-serif;
   }
   .footer-container {
-    grid-template-columns: 1fr;
-    gap: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px;
   }
+  .footer-col { display: flex; flex-direction: column; gap: 16px; }
+  .footer-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .footer-logo-icon { font-size: 24px; }
+  .footer-logo-text {
+    font-size: 1.2rem; font-weight: 800;
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .footer-desc { color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0; }
+  .footer-social { display: flex; gap: 16px; margin-top: 8px; }
+  .social-link { color: #6b7280; transition: color 0.2s; display: inline-flex; align-items: center; }
+  .social-link:hover { color: #2563eb; }
+  .footer-heading { font-size: 14px; font-weight: 700; color: #111827; margin: 0 0 8px 0; letter-spacing: 0.5px; }
+  .footer-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .footer-links li a { color: #6b7280; text-decoration: none; font-size: 13px; transition: color 0.2s; }
+  .footer-links li a:hover { color: #2563eb; text-decoration: underline; }
   .footer-bottom {
-    flex-direction: column;
-    text-align: center;
+    max-width: 1200px; margin: 40px auto 0; padding-top: 24px;
+    border-top: 1px solid #f0f0f0; display: flex;
+    justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 16px; font-size: 12px; color: #9ca3af;
   }
-  .footer-legal {
-    justify-content: center;
+  .footer-bottom p { margin: 0; }
+  .footer-legal { display: flex; gap: 12px; align-items: center; }
+  .footer-legal a { color: #9ca3af; text-decoration: none; transition: color 0.2s; }
+  .footer-legal a:hover { color: #2563eb; }
+  .footer-legal span { color: #e5e7eb; }
+  @media (max-width: 768px) {
+    .footer { padding: 40px 20px 24px; }
+    .footer-container { grid-template-columns: 1fr; gap: 32px; }
+    .footer-bottom { flex-direction: column; text-align: center; }
+    .footer-legal { justify-content: center; }
   }
-}
 `}</style>
     </div>
   );

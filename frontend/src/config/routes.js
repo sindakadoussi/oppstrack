@@ -49,7 +49,7 @@ export const API_ROUTES = {
 
 
 export const WEBHOOK_ROUTES = {
-  cv:        `${WEBHOOK}/webhook/cv`,
-  entretien: `${WEBHOOK}/webhook/entretien`,
-  chat:      `${WEBHOOK}/webhook/chat`,
+  chat: "http://localhost:5678/webhook-test/webhook",
+  cv: "http://localhost:5678/webhook-test/webhook",
+  entretien: "http://localhost:5678/webhook-test/webhook",
 };
