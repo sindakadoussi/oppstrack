@@ -271,8 +271,17 @@ export default function CVPage({ user, setView }) {
   useEffect(()=>{
     if (!user?.id) return;
     axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
-      .then(response => setBourses(response.data.bourses_choisies || []))
-      .catch(() => {});
+      .then(response => {
+        const docs = (response.data.docs || []).map(d => ({
+          nom: d.nom,
+          pays: d.pays || '',
+          url: d.lienOfficiel || d.url || '',
+          deadline: d.dateLimite || d.deadline || '',
+          langue: d.langue || '',
+        }));
+        setBourses(docs || []);
+      })
+      .catch(() => { setBourses([]); });
   },[user?.id]);
 
   const reset = () => { setMode('menu'); setContent(''); setImproved(''); setAnalysis(null); setFileName(null); setStep(''); setLmPreviewMode('rendered'); };

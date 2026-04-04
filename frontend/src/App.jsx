@@ -211,6 +211,7 @@ function AppContent() {
     bourses, askAboutScholarship, entretienScores,
     fetchEntretienScores, conversationId: conversationId.current,
     view, setView, serverStatus,
+    onOpenBourse: (nom) => { setInitialSelected(nom); setView('bourses'); },
   };
 
   if (location.pathname === '/verify') {

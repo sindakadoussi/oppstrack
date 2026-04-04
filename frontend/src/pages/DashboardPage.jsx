@@ -122,7 +122,7 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts }) {
   );
 }
 
-function Calendrier({ deadlines }) {
+function Calendrier({ deadlines, onSelectBourse }) {
   const today = new Date();
   const [view, setView] = useState({ month: today.getMonth(), year: today.getFullYear() });
   const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -175,7 +175,7 @@ function Calendrier({ deadlines }) {
               color: isToday ? '#fff' : dl ? color : '#94a3b8',
               cursor: dl ? 'pointer' : 'default',
               fontWeight: isToday ? 700 : 400,
-            }}>
+            }} onClick={() => { if (dl && dl.length && onSelectBourse) onSelectBourse(dl[0]); }}>
               {day}
               {dl && (
                 <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', display:'flex', gap:1 }}>
@@ -200,7 +200,7 @@ function Calendrier({ deadlines }) {
   );
 }
 
-export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply }) {
+export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse }) {
   const [roadmap,       setRoadmap]       = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [activeCountry, setActiveCountry] = useState(null);
@@ -389,7 +389,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                     <button style={S.btnPrimary} onClick={() => setView('bourses')}>Parcourir les bourses</button>
                   </div>
                 </div>
-              ) : <Calendrier deadlines={deadlines} />}
+              ) : <Calendrier deadlines={deadlines} onSelectBourse={(b) => { if (onOpenBourse) onOpenBourse(b.nom); else { setView('bourses'); } }} />}
             </div>
 
             {/* Alertes deadlines */}
