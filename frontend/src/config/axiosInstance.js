@@ -7,6 +7,7 @@ const axiosInstance = axios.create({
   },
 });
 
+// Ajoute le token automatiquement à chaque requête
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {

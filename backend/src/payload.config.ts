@@ -1,5 +1,4 @@
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -14,7 +13,10 @@ import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
 import Favoris from './collections/Favoris'
 import Roadmap from './collections/Roadmap';
-
+import dns from 'dns'
+dns.setServers(['8.8.8.8', '8.8.4.4'])
+import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
 const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
 

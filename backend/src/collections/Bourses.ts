@@ -101,6 +101,34 @@ const Bourses: CollectionConfig = {
    
 
   ],
+  hooks: {
+    afterChange: [
+      async ({ doc, operation }) => {
+        // Seulement quand une nouvelle bourse est créée
+        if (operation !== 'create') return;
+        try {
+          await fetch('http://localhost:5678/webhook/nouvelle-bourse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nom:          doc.nom          || '',
+              pays:         doc.pays         || '',
+              financement:  doc.financement  || '',
+              dateLimite:   doc.dateLimite   || '',
+              lienOfficiel: doc.lienOfficiel || '',
+              niveau:       doc.niveau       || '',
+              description:  doc.description  || '',
+            }),
+          });
+       } catch (e) {
+  console.warn('Hook nouvelle bourse:', (e as Error).message);
+}
+      },
+    ],
+  },
 };
+
+
+
 
 export default Bourses;

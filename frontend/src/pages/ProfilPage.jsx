@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 
-
 const emptyProfile = {
   name: '', email: '', phone: '', dateOfBirth: '',
   nationality: '', countryOfResidence: '',
@@ -88,12 +87,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
         github:           profile.github,
         portfolio:        profile.portfolio,
       };
-
-      const { data: result } = await axiosInstance.patch(
-        `/api/users/${user.id}/update-profile`,
-        body
-      );
-
+      const { data: result } = await axiosInstance.patch(`/api/users/${user.id}/update-profile`, body);
       const updated = { ...user, ...(result.user || body) };
       localStorage.setItem('opps_user', JSON.stringify(updated));
       localStorage.setItem('opps_profile', JSON.stringify({
@@ -117,7 +111,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     }
   };
 
-  // Score complétude
   const scoreItems = [
     !!profile.name, !!profile.phone, !!profile.nationality,
     !!profile.currentLevel, !!profile.fieldOfStudy, !!profile.institution,
@@ -131,13 +124,12 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   if (!user) return (
     <div style={S.locked}>
       <span style={{ fontSize: 48 }}>👤</span>
-      <h3 style={{ color: '#e2e8f0' }}>Profil non disponible</h3>
+      <h3 style={{ color: '#1a3a6b', fontWeight: 700 }}>Profil non disponible</h3>
       <p style={{ color: '#64748b' }}>Connectez-vous pour accéder à votre profil</p>
       <button style={S.lockBtn} onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
     </div>
   );
 
-  // Helpers mutation
   const upd = (field) => (i, key, val) =>
     setProfile(p => { const a = [...p[field]]; a[i] = { ...a[i], [key]: val }; return { ...p, [field]: a }; });
   const add = (field, empty) => () =>
@@ -154,42 +146,28 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     { id: 'goals',      label: 'Objectifs',   icon: '🎯' },
   ];
 
+  const scoreColor = score >= 80 ? '#166534' : score >= 50 ? '#d97706' : '#1a3a6b';
+
   return (
     <div style={S.page}>
-      {/* Header */}
-      <div style={S.header}>
-        <div style={S.hLeft}>
-          <div style={S.avatar}>{(user.name || user.email || 'U')[0].toUpperCase()}</div>
-          <div>
-            <div style={S.hName}>{user.name || 'Mon Profil'}</div>
-            <div style={S.hEmail}>{user.email}</div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={S.scoreLabel}>Complétude du profil</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={S.scoreBarBg}>
-              <div style={{ ...S.scoreBarFill, width: `${score}%`, background: score >= 80 ? '#4ade80' : score >= 50 ? '#fbbf24' : '#6366f1' }} />
-            </div>
-            <span style={{ color: score >= 80 ? '#4ade80' : score >= 50 ? '#fbbf24' : '#818cf8', fontWeight: 700 }}>{score}%</span>
-          </div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
-            {scoreItems.filter(Boolean).length}/{scoreItems.length} sections remplies
-          </div>
-        </div>
-      </div>
+
+      {/* ── EN-TÊTE PAGE ── */}
+
 
       <div style={S.body}>
-        {/* Tabs */}
+
+        {/* ── TABS ── */}
         <div style={S.tabBar}>
           {tabs.map(t => (
-            <button key={t.id} style={{ ...S.tabBtn, ...(tab === t.id ? S.tabOn : {}) }} onClick={() => setTab(t.id)}>
-              <span style={{ marginRight: 4 }}>{t.icon}</span>{t.label}
+            <button key={t.id}
+              style={{ ...S.tabBtn, ...(tab === t.id ? S.tabOn : {}) }}
+              onClick={() => setTab(t.id)}>
+              <span style={{ marginRight:4 }}>{t.icon}</span>{t.label}
             </button>
           ))}
         </div>
 
-        {/* ── PERSONNEL ─────────────────────────────────────────── */}
+        {/* ── PERSONNEL ── */}
         {tab === 'personal' && (
           <div style={S.sec}>
             <T>Informations personnelles</T>
@@ -201,16 +179,14 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
               <F label="Nationalité"       v={profile.nationality}        s={v => setProfile(p => ({ ...p, nationality: v }))}        ph="Ex: Tunisienne" />
               <F label="Pays de résidence" v={profile.countryOfResidence} s={v => setProfile(p => ({ ...p, countryOfResidence: v }))} ph="Ex: Tunisie" />
             </div>
-
             <T>Liens professionnels</T>
             <div style={S.g2}>
               <F label="LinkedIn"  v={profile.linkedin}  s={v => setProfile(p => ({ ...p, linkedin: v }))}  ph="linkedin.com/in/votre-profil" />
               <F label="GitHub"    v={profile.github}    s={v => setProfile(p => ({ ...p, github: v }))}    ph="github.com/votre-compte" />
-              <div style={{ gridColumn: '1/-1' }}>
+              <div style={{ gridColumn:'1/-1' }}>
                 <F label="Portfolio / Site web" v={profile.portfolio} s={v => setProfile(p => ({ ...p, portfolio: v }))} ph="https://votre-site.com" />
               </div>
             </div>
-
             <T>Distinctions & prix</T>
             {profile.awards.map((a, i) => (
               <div key={i} style={S.card}>
@@ -218,18 +194,18 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   <F label="Titre du prix / distinction" v={a.title}        s={v => upd('awards')(i, 'title', v)}        ph="Ex: Prix Innovation 2024" />
                   <F label="Organisation"                v={a.organization} s={v => upd('awards')(i, 'organization', v)} ph="Ex: Université X" />
                   <F label="Année"                       v={a.year}         s={v => upd('awards')(i, 'year', v)}         ph="2024" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Description" v={a.description} s={v => upd('awards')(i, 'description', v)} ph="Brève description du prix" />
                   </div>
                 </div>
                 <button style={S.rmBtn} onClick={() => del('awards')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('awards', { title: '', organization: '', year: '', description: '' })}>+ Ajouter une distinction</button>
+            <button style={S.addBtn} onClick={add('awards', { title:'', organization:'', year:'', description:'' })}>+ Ajouter une distinction</button>
           </div>
         )}
 
-        {/* ── FORMATION ─────────────────────────────────────────── */}
+        {/* ── FORMATION ── */}
         {tab === 'academic' && (
           <div style={S.sec}>
             <T>Formation actuelle</T>
@@ -238,17 +214,16 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <div style={S.lbl}>Niveau actuel</div>
                 <select style={S.inp} value={profile.currentLevel} onChange={e => setProfile(p => ({ ...p, currentLevel: e.target.value }))}>
                   <option value="">Sélectionner...</option>
-                  {['Licence 1', 'Licence 2', 'Licence 3', 'Master 1', 'Master 2', 'Doctorat', 'Ingénieur 1', 'Ingénieur 2', 'Ingénieur 3'].map(v => <option key={v}>{v}</option>)}
+                  {['Licence 1','Licence 2','Licence 3','Master 1','Master 2','Doctorat','Ingénieur 1','Ingénieur 2','Ingénieur 3'].map(v => <option key={v}>{v}</option>)}
                 </select>
               </div>
               <F label="Domaine d'études" v={profile.fieldOfStudy}   s={v => setProfile(p => ({ ...p, fieldOfStudy: v }))}   ph="Ex: Informatique de Gestion" />
-              <div style={{ gridColumn: '1/-1' }}>
+              <div style={{ gridColumn:'1/-1' }}>
                 <F label="Établissement" v={profile.institution}    s={v => setProfile(p => ({ ...p, institution: v }))}    ph="Ex: ISIMA Mahdia" />
               </div>
               <F label="Moyenne (sur 20)"  v={profile.gpa}            s={v => setProfile(p => ({ ...p, gpa: v }))}            type="number" ph="Ex: 14.5" />
               <F label="Année de diplôme"  v={profile.graduationYear} s={v => setProfile(p => ({ ...p, graduationYear: v }))} type="number" ph="Ex: 2026" />
             </div>
-
             <T>Historique académique</T>
             {profile.academicHistory.map((h, i) => (
               <div key={i} style={S.card}>
@@ -257,15 +232,14 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   <F label="Établissement"   v={h.institution} s={v => upd('academicHistory')(i, 'institution', v)} ph="Ex: Lycée Mixte Mahdia" />
                   <F label="Domaine"         v={h.field}       s={v => upd('academicHistory')(i, 'field', v)}       ph="Ex: Mathématiques" />
                   <F label="Année"           v={h.year}        s={v => upd('academicHistory')(i, 'year', v)}        ph="2022" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Mention / Note" v={h.grade}      s={v => upd('academicHistory')(i, 'grade', v)}      ph="Ex: Bien, Très bien, 15/20" />
                   </div>
                 </div>
                 <button style={S.rmBtn} onClick={() => del('academicHistory')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('academicHistory', { degree: '', institution: '', field: '', year: '', grade: '' })}>+ Ajouter un diplôme</button>
-
+            <button style={S.addBtn} onClick={add('academicHistory', { degree:'', institution:'', field:'', year:'', grade:'' })}>+ Ajouter un diplôme</button>
             <T>Certifications & formations courtes</T>
             {profile.certifications.map((c, i) => (
               <div key={i} style={S.card}>
@@ -278,29 +252,28 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <button style={S.rmBtn} onClick={() => del('certifications')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('certifications', { name: '', issuer: '', date: '', credential: '' })}>+ Ajouter une certification</button>
-
+            <button style={S.addBtn} onClick={add('certifications', { name:'', issuer:'', date:'', credential:'' })}>+ Ajouter une certification</button>
             <T>Publications & communications scientifiques</T>
             {profile.publications.map((p, i) => (
               <div key={i} style={S.card}>
                 <div style={S.g2}>
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Titre complet" v={p.title}   s={v => upd('publications')(i, 'title', v)}   ph="Titre de l'article ou communication" />
                   </div>
                   <F label="Revue / Conférence" v={p.venue}   s={v => upd('publications')(i, 'venue', v)}   ph="Ex: IEEE, Conférence ICSI..." />
                   <F label="Année"              v={p.year}    s={v => upd('publications')(i, 'year', v)}    ph="2024" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Co-auteurs"       v={p.authors} s={v => upd('publications')(i, 'authors', v)} ph="Noms des co-auteurs" />
                   </div>
                 </div>
                 <button style={S.rmBtn} onClick={() => del('publications')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('publications', { title: '', venue: '', year: '', authors: '' })}>+ Ajouter une publication</button>
+            <button style={S.addBtn} onClick={add('publications', { title:'', venue:'', year:'', authors:'' })}>+ Ajouter une publication</button>
           </div>
         )}
 
-        {/* ── EXPÉRIENCE ────────────────────────────────────────── */}
+        {/* ── EXPÉRIENCE ── */}
         {tab === 'experience' && (
           <div style={S.sec}>
             <T>Expériences professionnelles & stages</T>
@@ -321,22 +294,20 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   <F label="Ville"       v={w.city}        s={v => upd('workExperience')(i, 'city', v)}        ph="Ex: Tunis, Sfax..." />
                   <F label="Date début"  v={w.startDate}   s={v => upd('workExperience')(i, 'startDate', v)}   type="date" />
                   <F label="Date fin"    v={w.endDate}     s={v => upd('workExperience')(i, 'endDate', v)}     type="date" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description des missions & réalisations</div>
-                    <textarea style={{ ...S.inp, minHeight: 90, resize: 'vertical' }}
-                      value={w.description || ''}
-                      onChange={e => upd('workExperience')(i, 'description', e.target.value)}
-                      placeholder="Décrivez vos missions, résultats obtenus, chiffres clés..." />
+                    <textarea style={{ ...S.inp, minHeight:90, resize:'vertical' }}
+                      value={w.description || ''} onChange={e => upd('workExperience')(i, 'description', e.target.value)}
+                      placeholder="Décrivez vos missions, résultats obtenus, chiffres clés..."/>
                   </div>
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Technologies utilisées" v={w.technologies} s={v => upd('workExperience')(i, 'technologies', v)} ph="Ex: React, Laravel, MySQL, Docker..." />
                   </div>
                 </div>
                 <button style={S.rmBtn} onClick={() => del('workExperience')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('workExperience', { position: '', company: '', city: '', startDate: '', endDate: '', description: '', type: 'internship', technologies: '' })}>+ Ajouter une expérience</button>
-
+            <button style={S.addBtn} onClick={add('workExperience', { position:'', company:'', city:'', startDate:'', endDate:'', description:'', type:'internship', technologies:'' })}>+ Ajouter une expérience</button>
             <T>Bénévolat & associations</T>
             {profile.volunteerWork.map((v, i) => (
               <div key={i} style={S.card}>
@@ -345,47 +316,44 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   <F label="Organisation" v={v.organization} s={val => upd('volunteerWork')(i, 'organization', val)} ph="Ex: JCI, Club Microsoft ISIMA..." />
                   <F label="Début"        v={v.startDate}    s={val => upd('volunteerWork')(i, 'startDate', val)}    ph="2022" />
                   <F label="Fin"          v={v.endDate}      s={val => upd('volunteerWork')(i, 'endDate', val)}      ph="2024 ou En cours" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description</div>
-                    <textarea style={{ ...S.inp, minHeight: 70, resize: 'vertical' }}
-                      value={v.description || ''}
-                      onChange={e => upd('volunteerWork')(i, 'description', e.target.value)}
-                      placeholder="Responsabilités, compétences développées, impact..." />
+                    <textarea style={{ ...S.inp, minHeight:70, resize:'vertical' }}
+                      value={v.description || ''} onChange={e => upd('volunteerWork')(i, 'description', e.target.value)}
+                      placeholder="Responsabilités, compétences développées, impact..."/>
                   </div>
                 </div>
                 <button style={S.rmBtn} onClick={() => del('volunteerWork')(i)}>✕ Supprimer</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('volunteerWork', { role: '', organization: '', startDate: '', endDate: '', description: '' })}>+ Ajouter une activité</button>
+            <button style={S.addBtn} onClick={add('volunteerWork', { role:'', organization:'', startDate:'', endDate:'', description:'' })}>+ Ajouter une activité</button>
           </div>
         )}
 
-        {/* ── PROJETS ───────────────────────────────────────────── */}
+        {/* ── PROJETS ── */}
         {tab === 'projects' && (
           <div style={S.sec}>
             <T>Projets académiques</T>
-            <div style={{ fontSize: 12, color: '#64748b', padding: '10px 14px', borderRadius: 10, background: '#c4c4f7', border: '1px solid #2a2a3d', lineHeight: 1.6 }}>
+            <div style={{ fontSize:12, color:'#1a3a6b', padding:'10px 14px', borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', lineHeight:1.6 }}>
               💡 Les projets académiques sont essentiels pour un CV de bourse — ils montrent vos compétences pratiques, votre capacité à mener un projet et les technologies maîtrisées.
             </div>
-
             {profile.academicProjects.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '32px 20px', color: '#475569' }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🚀</div>
-                <div style={{ fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Aucun projet ajouté</div>
-                <div style={{ fontSize: 13 }}>Ajoutez vos projets : PFE, projets de cours, projets personnels, startups...</div>
+              <div style={{ textAlign:'center', padding:'32px 20px', color:'#64748b' }}>
+                <div style={{ fontSize:40, marginBottom:10 }}>🚀</div>
+                <div style={{ fontWeight:600, color:'#1a3a6b', marginBottom:6 }}>Aucun projet ajouté</div>
+                <div style={{ fontSize:13 }}>Ajoutez vos projets : PFE, projets de cours, projets personnels, startups...</div>
               </div>
             )}
-
             {profile.academicProjects.map((p, i) => (
               <div key={i} style={S.card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontWeight: 700, color: '#818cf8', fontSize: 13 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                  <div style={{ fontWeight:700, color:'#1a3a6b', fontSize:13 }}>
                     Projet #{i + 1} {p.title ? `— ${p.title}` : ''}
                   </div>
                   <button style={S.rmBtn} onClick={() => del('academicProjects')(i)}>✕ Supprimer</button>
                 </div>
                 <div style={S.g2}>
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Titre du projet" v={p.title} s={v => upd('academicProjects')(i, 'title', v)} ph="Ex: Système de gestion des étalonnages" />
                   </div>
                   <div>
@@ -409,18 +377,17 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                       <option value="6+">Plus de 5 personnes</option>
                     </select>
                   </div>
-                  <F label="Encadrant / Professeur"      v={p.supervisor}   s={v => upd('academicProjects')(i, 'supervisor', v)}   ph="Ex: Prof. Ben Ali" />
-                  <F label="Année"                       v={p.year}         s={v => upd('academicProjects')(i, 'year', v)}         ph="2024" />
-                  <F label="Date début"                  v={p.startDate}    s={v => upd('academicProjects')(i, 'startDate', v)}    ph="Ex: 2023-09" />
-                  <F label="Date fin"                    v={p.endDate}      s={v => upd('academicProjects')(i, 'endDate', v)}      ph="Ex: 2024-06 ou En cours" />
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <F label="Encadrant / Professeur" v={p.supervisor}   s={v => upd('academicProjects')(i, 'supervisor', v)}   ph="Ex: Prof. Ben Ali" />
+                  <F label="Année"                  v={p.year}         s={v => upd('academicProjects')(i, 'year', v)}         ph="2024" />
+                  <F label="Date début"             v={p.startDate}    s={v => upd('academicProjects')(i, 'startDate', v)}    ph="Ex: 2023-09" />
+                  <F label="Date fin"               v={p.endDate}      s={v => upd('academicProjects')(i, 'endDate', v)}      ph="Ex: 2024-06 ou En cours" />
+                  <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description du projet</div>
-                    <textarea style={{ ...S.inp, minHeight: 100, resize: 'vertical' }}
-                      value={p.description || ''}
-                      onChange={e => upd('academicProjects')(i, 'description', e.target.value)}
-                      placeholder="Objectif, fonctionnalités développées, problème résolu, résultats obtenus..." />
+                    <textarea style={{ ...S.inp, minHeight:100, resize:'vertical' }}
+                      value={p.description || ''} onChange={e => upd('academicProjects')(i, 'description', e.target.value)}
+                      placeholder="Objectif, fonctionnalités développées, problème résolu, résultats obtenus..."/>
                   </div>
-                  <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
                     <F label="Langages & outils utilisés" v={p.technologies} s={v => upd('academicProjects')(i, 'technologies', v)} ph="Ex: HTML, CSS, JavaScript, PHP, MySQL, Laravel, Spring Boot..." />
                   </div>
                   <F label="Lien GitHub / Démo" v={p.link}   s={v => upd('academicProjects')(i, 'link', v)}   ph="https://github.com/..." />
@@ -428,38 +395,37 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 </div>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('academicProjects', { title: '', type: '', supervisor: '', year: '', startDate: '', endDate: '', description: '', technologies: '', link: '', teamSize: '', impact: '' })}>
+            <button style={S.addBtn} onClick={add('academicProjects', { title:'', type:'', supervisor:'', year:'', startDate:'', endDate:'', description:'', technologies:'', link:'', teamSize:'', impact:'' })}>
               + Ajouter un projet académique
             </button>
           </div>
         )}
 
-        {/* ── COMPÉTENCES ───────────────────────────────────────── */}
+        {/* ── COMPÉTENCES ── */}
         {tab === 'skills' && (
           <div style={S.sec}>
             <T>Langues</T>
             {profile.languages.map((l, i) => (
-              <div key={i} style={{ ...S.card, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, alignItems:'end' }}>
                 <F label="Langue"     v={l.language}    s={v => upd('languages')(i, 'language', v)}    ph="Ex: Anglais, Français..." />
                 <div>
                   <div style={S.lbl}>Niveau CECRL</div>
                   <select style={S.inp} value={l.level} onChange={e => upd('languages')(i, 'level', e.target.value)}>
                     <option value="">Niveau...</option>
-                    {['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Natif'].map(v => <option key={v}>{v}</option>)}
+                    {['A1','A2','B1','B2','C1','C2','Natif'].map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
                 <F label="Certificat" v={l.certificate} s={v => upd('languages')(i, 'certificate', v)} ph="Ex: IELTS 7.5, TOEIC 900" />
-                <button style={{ ...S.rmBtn, marginTop: 0 }} onClick={() => del('languages')(i)}>✕</button>
+                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={() => del('languages')(i)}>✕</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('languages', { language: '', level: '', certificate: '' })}>+ Ajouter une langue</button>
-
+            <button style={S.addBtn} onClick={add('languages', { language:'', level:'', certificate:'' })}>+ Ajouter une langue</button>
             <T>Compétences techniques</T>
-            <div style={{ fontSize: 12, color: '#64748b', padding: '8px 12px', borderRadius: 8, background: '#13131f', border: '1px solid #2a2a3d', marginBottom: 4 }}>
+            <div style={{ fontSize:12, color:'#1a3a6b', padding:'8px 12px', borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', marginBottom:4 }}>
               💡 Regroupez par catégorie : Langages de programmation, Frameworks, Bases de données, Outils DevOps...
             </div>
             {profile.skills.map((sk, i) => (
-              <div key={i} style={{ ...S.card, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, alignItems:'end' }}>
                 <F label="Compétence / Outil" v={sk.skill}    s={v => upd('skills')(i, 'skill', v)}    ph="Ex: Python, React, MySQL..." />
                 <div>
                   <div style={S.lbl}>Catégorie</div>
@@ -485,14 +451,14 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                     <option value="expert">Expert</option>
                   </select>
                 </div>
-                <button style={{ ...S.rmBtn, marginTop: 0 }} onClick={() => del('skills')(i)}>✕</button>
+                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={() => del('skills')(i)}>✕</button>
               </div>
             ))}
-            <button style={S.addBtn} onClick={add('skills', { skill: '', level: '', category: '' })}>+ Ajouter une compétence</button>
+            <button style={S.addBtn} onClick={add('skills', { skill:'', level:'', category:'' })}>+ Ajouter une compétence</button>
           </div>
         )}
 
-        {/* ── OBJECTIFS ─────────────────────────────────────────── */}
+        {/* ── OBJECTIFS ── */}
         {tab === 'goals' && (
           <div style={S.sec}>
             <T>Projet d'études à l'étranger</T>
@@ -501,58 +467,59 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <div style={S.lbl}>Niveau visé</div>
                 <select style={S.inp} value={profile.targetDegree} onChange={e => setProfile(p => ({ ...p, targetDegree: e.target.value }))}>
                   <option value="">Sélectionner...</option>
-                  {['Licence', 'Master', 'Doctorat', 'Ingénieur', 'Formation courte', 'Résidence de recherche'].map(v => <option key={v}>{v}</option>)}
+                  {['Licence','Master','Doctorat','Ingénieur','Formation courte','Résidence de recherche'].map(v => <option key={v}>{v}</option>)}
                 </select>
               </div>
-              <div />
+              <div/>
             </div>
-
             <div>
               <div style={S.lbl}>Pays cibles</div>
               {profile.targetCountries.map((c, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <input style={{ ...S.inp, flex: 1 }} value={c.country}
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <input style={{ ...S.inp, flex:1 }} value={c.country}
                     onChange={e => upd('targetCountries')(i, 'country', e.target.value)}
-                    placeholder="Ex: France, Canada, Belgique, Allemagne..." />
+                    placeholder="Ex: France, Canada, Belgique, Allemagne..."/>
                   <button style={S.rmBtn} onClick={() => del('targetCountries')(i)}>✕</button>
                 </div>
               ))}
-              <button style={S.addBtn} onClick={add('targetCountries', { country: '' })}>+ Ajouter un pays</button>
+              <button style={S.addBtn} onClick={add('targetCountries', { country:'' })}>+ Ajouter un pays</button>
             </div>
-
             <div>
               <div style={S.lbl}>Domaines visés</div>
               {profile.targetFields.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <input style={{ ...S.inp, flex: 1 }} value={f.field}
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <input style={{ ...S.inp, flex:1 }} value={f.field}
                     onChange={e => upd('targetFields')(i, 'field', e.target.value)}
-                    placeholder="Ex: Intelligence Artificielle, Data Science, Génie logiciel..." />
+                    placeholder="Ex: Intelligence Artificielle, Data Science, Génie logiciel..."/>
                   <button style={S.rmBtn} onClick={() => del('targetFields')(i)}>✕</button>
                 </div>
               ))}
-              <button style={S.addBtn} onClick={add('targetFields', { field: '' })}>+ Ajouter un domaine</button>
+              <button style={S.addBtn} onClick={add('targetFields', { field:'' })}>+ Ajouter un domaine</button>
             </div>
-
             <div>
               <div style={S.lbl}>Résumé de motivation</div>
-              <textarea style={{ ...S.inp, minHeight: 150, resize: 'vertical' }}
+              <textarea style={{ ...S.inp, minHeight:150, resize:'vertical' }}
                 value={profile.motivationSummary}
                 onChange={e => setProfile(p => ({ ...p, motivationSummary: e.target.value }))}
-                placeholder="Décrivez vos motivations, votre projet professionnel, pourquoi vous voulez étudier à l'étranger, vos ambitions..." />
-              <div style={{ color: '#475569', fontSize: 12, textAlign: 'right', marginTop: 4 }}>
+                placeholder="Décrivez vos motivations, votre projet professionnel, pourquoi vous voulez étudier à l'étranger, vos ambitions..."/>
+              <div style={{ color:'#64748b', fontSize:12, textAlign:'right', marginTop:4 }}>
                 {profile.motivationSummary.length} caractères
                 {profile.motivationSummary.length > 0 && profile.motivationSummary.length < 200 && (
-                  <span style={{ color: '#fbbf24', marginLeft: 8 }}>Recommandé : minimum 200 caractères</span>
+                  <span style={{ color:'#d97706', marginLeft:8 }}>Recommandé : minimum 200 caractères</span>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Footer */}
+        {/* ── FOOTER ── */}
         <div style={S.footer}>
-          <button style={S.chatBtn} onClick={() => handleQuickReply('Je veux mettre à jour mon profil')}>🤖 Mettre à jour via l'IA</button>
-          <button style={{ ...S.saveBtn, background: saved ? '#10b981' : 'linear-gradient(135deg,#4f46e5,#7c3aed)' }} onClick={handleSave} disabled={saving}>
+          <button style={S.chatBtn} onClick={() => handleQuickReply('Je veux mettre à jour mon profil')}>
+            🤖 Mettre à jour via l'IA
+          </button>
+          <button
+            style={{ ...S.saveBtn, background: saved ? '#166534' : '#1a3a6b' }}
+            onClick={handleSave} disabled={saving}>
             {saving ? '⏳ Sauvegarde...' : saved ? '✅ Sauvegardé !' : '💾 Sauvegarder le profil'}
           </button>
           <button style={S.logoutBtn} onClick={handleLogout}>↩ Déconnexion</button>
@@ -563,46 +530,49 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
 }
 
 function T({ children }) {
-  return <div style={{ color: '#0f172a', fontSize: '0.9rem', fontWeight: 700, paddingBottom: 8, borderBottom: '1px solid #eef2ff', letterSpacing: '0.02em', marginTop: 8 }}>{children}</div>;
+  return (
+    <div style={{
+      color: '#1a3a6b', fontSize:'0.88rem', fontWeight:700,
+      paddingBottom:8, borderBottom:'2px solid #f5a623',
+      letterSpacing:'0.02em', marginTop:8, display:'flex',
+      alignItems:'center', gap:8,
+    }}>
+      {children}
+    </div>
+  );
 }
 
 function F({ label, v, s, ph, type = 'text', readOnly = false }) {
   return (
     <div>
       <div style={S.lbl}>{label}</div>
-      <input style={{ ...S.inp, ...(readOnly ? { opacity: 0.5 } : {}) }}
+      <input
+        style={{ ...S.inp, ...(readOnly ? { opacity:0.5, cursor:'not-allowed' } : {}) }}
         type={type} value={v || ''}
         onChange={e => s?.(e.target.value)}
-        placeholder={ph} readOnly={readOnly} />
+        placeholder={ph} readOnly={readOnly}
+      />
     </div>
   );
 }
 
 const S = {
-  page:        { width: '100%', fontFamily: 'system-ui,sans-serif', color: '#0f172a', background: 'transparent', minHeight: '100vh' },
-  locked:      { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, gap: 16, textAlign: 'center' },
-  lockBtn:     { padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  header:      { background: 'transparent', borderBottom: '1px solid #eef2ff', padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  hLeft:       { display: 'flex', alignItems: 'center', gap: 14 },
-  avatar:      { width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: 'white', flexShrink: 0 },
-  hName:       { fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' },
-  hEmail:      { fontSize: 12, color: '#6b7280' },
-  scoreLabel:  { fontSize: 10, color: '#6b7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 1 },
-  scoreBarBg:  { width: 120, height: 6, background: '#eef2ff', borderRadius: 3, overflow: 'hidden' },
-  scoreBarFill:{ height: '100%', borderRadius: 3, transition: 'width 0.5s' },
-  body:        { maxWidth: 880, margin: '0 auto', padding: '24px 20px' },
-  tabBar:      { display: 'flex', gap: 3, marginBottom: 22, background: '#ffffff', padding: 4, borderRadius: 12, border: '1px solid #eef2ff', flexWrap: 'wrap' },
-  tabBtn:      { flex: 1, minWidth: 80, padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: '#6b7280', fontWeight: 500, fontSize: '0.78rem', transition: 'all 0.2s', whiteSpace: 'nowrap' },
-  tabOn:       { background: 'linear-gradient(135deg,#7c6af7,#5b4de8)', color: '#fff', fontWeight: 700 },
-  sec:         { display: 'flex', flexDirection: 'column', gap: 14 },
-  g2:          { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 },
-  lbl:         { color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  inp:         { width: '100%', padding: '9px 13px', borderRadius: 9, border: '1.5px solid #eef2ff', background: '#ffffff', color: '#0f172a', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'system-ui', transition: 'border .15s' },
-  card:        { background: '#ffffff', border: '1px solid #eef2ff', borderRadius: 12, padding: 16, marginBottom: 6 },
-  addBtn:      { background: 'transparent', border: '1.5px dashed #eef2ff', color: '#6b5df7', padding: '8px 16px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, transition: 'all .15s' },
-  rmBtn:       { background: 'rgba(254,226,226,0.6)', border: 'none', color: '#b91c1c', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', marginTop: 8 },
-  footer:      { display: 'flex', gap: 10, marginTop: 24, paddingTop: 18, borderTop: '1px solid #eef2ff', flexWrap: 'wrap' },
-  saveBtn:     { flex: 2, padding: 11, borderRadius: 11, border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' },
-  chatBtn:     { flex: 1, padding: 11, borderRadius: 11, background: 'linear-gradient(135deg,#eef2ff,#eef2ff)', border: '1px solid #eef2ff', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  logoutBtn:   { padding: '11px 16px', borderRadius: 11, background: 'rgba(254,226,226,0.6)', border: '1px solid rgba(239,68,68,0.12)', color: '#b91c1c', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  page:        { width:'100%', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#1a3a6b', background:'#f8f9fc', minHeight:'100vh' },
+  locked:      { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center', padding:40, background:'#f8f9fc' },
+  lockBtn:     { padding:'12px 24px', borderRadius:6, background:'#1a3a6b', color:'white', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' },
+  body:        { maxWidth:880, margin:'0 auto', padding:'24px 20px' },
+  tabBar:      { display:'flex', gap:3, marginBottom:22, background:'#ffffff', padding:4, borderRadius:8, border:'1px solid #e2e8f0', flexWrap:'wrap', boxShadow:'0 1px 4px rgba(26,58,107,0.06)' },
+  tabBtn:      { flex:1, minWidth:80, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background:'transparent', color:'#64748b', fontWeight:500, fontSize:'0.78rem', transition:'all 0.2s', whiteSpace:'nowrap', fontFamily:'inherit' },
+  tabOn:       { background:'#1a3a6b', color:'#fff', fontWeight:700 },
+  sec:         { display:'flex', flexDirection:'column', gap:14 },
+  g2:          { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 },
+  lbl:         { color:'#64748b', fontSize:'0.72rem', fontWeight:700, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' },
+  inp:         { width:'100%', padding:'9px 13px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#ffffff', color:'#1a3a6b', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', fontFamily:'inherit', transition:'border .15s' },
+  card:        { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:8, padding:16, marginBottom:6, boxShadow:'0 1px 4px rgba(26,58,107,0.04)' },
+  addBtn:      { background:'transparent', border:'1.5px dashed #bfdbfe', color:'#1a3a6b', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:'0.82rem', fontWeight:600, transition:'all .15s', fontFamily:'inherit' },
+  rmBtn:       { background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', padding:'4px 10px', borderRadius:4, cursor:'pointer', fontSize:'0.75rem', marginTop:8, fontFamily:'inherit' },
+  footer:      { display:'flex', gap:10, marginTop:24, paddingTop:18, borderTop:'2px solid #f5a623', flexWrap:'wrap' },
+  saveBtn:     { flex:2, padding:11, borderRadius:6, border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.3s', fontFamily:'inherit' },
+  chatBtn:     { flex:1, padding:11, borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
+  logoutBtn:   { padding:'11px 16px', borderRadius:6, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
 };
