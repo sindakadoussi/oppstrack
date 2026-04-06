@@ -67,9 +67,16 @@ function StatNumber({ value, suffix = '', loading }) {
 function ScrollToBottomButton({ onClick, visible }) {
   if (!visible) return null;
   return (
-    <button className="scroll-btn" onClick={onClick} title="Aller en bas">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <button
+      className="scroll-btn"
+      onClick={onClick}
+      title="Aller en bas"
+      aria-label="Aller au bas de la conversation"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     </button>
   );
@@ -158,6 +165,8 @@ export default function ChatPage({
               </div>
             </div>
           )}
+          {/* in-chat scroll button */}
+          <ScrollToBottomButton onClick={scrollToBottom} visible={showScrollButton} />
         </div>
 
         {/* Quick Replies */}
@@ -193,7 +202,7 @@ export default function ChatPage({
         </div>
       </div>
 
-      <ScrollToBottomButton onClick={scrollToBottom} visible={showScrollButton} />
+      
 
       <style>{`
         /* ── PAGE ──────────────────────────────────── */
@@ -246,6 +255,7 @@ export default function ChatPage({
 
         /* ── MESSAGES ──────────────────────────────── */
         .chat-messages {
+          position: relative;
           height: 420px; overflow-y: auto;
           padding: 20px; scroll-behavior: smooth;
           background: #fafbfc;
@@ -376,23 +386,25 @@ export default function ChatPage({
 
         /* ── SCROLL BTN ────────────────────────────── */
         .scroll-btn {
-          position: fixed; bottom: 120px; right: 24px;
-          width: 44px; height: 44px; border-radius: 8px;
-          background: #1a3a6b; border: 2px solid #f5a623;
-          color: #f5a623; cursor: pointer;
+          position: absolute; right: 12px; top: 50%;
+          transform: translateY(-50%);
+          width: 40px; height: 40px; border-radius: 999px;
+          background: #1a3a6b; border: none;
+          color: #ffffff; cursor: pointer; opacity: 0.96;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 12px rgba(26,58,107,0.3);
-          transition: all 0.2s; z-index: 1000;
-          animation: fadeInUp 0.3s ease;
+          box-shadow: 0 6px 18px rgba(26,58,107,0.14);
+          transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+          z-index: 20; animation: fadeInUp 0.18s ease;
         }
-        .scroll-btn:hover { transform: scale(1.1); background: #f5a623; color: #1a3a6b; }
+        .scroll-btn:hover { transform: translateY(-50%) scale(1.03); background: #15314f; box-shadow: 0 8px 22px rgba(26,58,107,0.18); }
+        .scroll-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(25, 61, 105, 0.18); }
         @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
         @media (max-width: 640px) {
           .chat-messages { height: 340px; }
           .hero-stats { gap: 20px; padding: 16px 20px; }
           .stat-num { font-size: 1.4rem; }
-          .scroll-btn { bottom: 100px; right: 14px; width: 38px; height: 38px; }
+          .scroll-btn { right: 10px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; }
         }
       `}</style>
     </div>

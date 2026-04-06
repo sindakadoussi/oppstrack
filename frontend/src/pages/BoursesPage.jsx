@@ -471,27 +471,57 @@ export default function BoursesPage({
 
         {/* Chat latéral */}
         {showChat && (
-          <div style={{ width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, overflow:'hidden', position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', boxShadow:'0 4px 16px rgba(26,58,107,0.08)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b', color:'#fff', fontWeight:600, fontSize:14 }}>
-              <span>🤖</span><span>Assistant Bourses</span>
+          <div style={{ width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 4px 16px rgba(26,58,107,0.08)' }}>
+            <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b' }}>
+              <span style={{ fontSize:20 }}>🤖</span>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Assistant Bourses</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Conseils personnalisés</div>
+              </div>
+              <button onClick={() => setShowChat(false)} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16, marginLeft:'auto' }} title="Fermer le chat">✕</button>
             </div>
-            <div style={{ flex:1, overflowY:'auto', padding:12, minHeight:300 }} ref={chatContainerRef}>
-              {messages.length===0 && (
-                <div style={{ color:'#64748b', fontSize:13, textAlign:'center', padding:20, lineHeight:1.6 }}>
-                  Demandez-moi de comparer des bourses ou de vérifier votre éligibilité !
+
+            <div style={{ flex:1, minHeight:0, overflowY:'auto', padding:12, paddingBottom:96 }} ref={chatContainerRef}>
+              {messages.length === 0 && (
+                <div style={{ padding:12 }}>
+                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>
+                    Demandez-moi des conseils sur une bourse ou une étape de candidature !
+                  </p>
+                  {[
+                    'Comment écrire une lettre de motivation percutante ?',
+                    'Quels documents faut-il pour une bourse en France ?',
+                    "Comment se préparer à l'entretien de sélection ?",
+                  ].map((q, i) => (
+                    <button key={i} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6 }} onClick={() => handleQuickReply(q)}>{q}</button>
+                  ))}
                 </div>
               )}
-              {messages.slice(-20).map((msg,i)=><ChatMessage key={i} msg={msg} index={i}/>)}
+
+              {messages.slice(-20).map((msg, i) => (
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:12, maxWidth:'92%', ...(msg.sender === 'user' ? { marginLeft:'auto', flexDirection:'row-reverse' } : {}) }}>
+                  {msg.sender === 'ai' && <div style={{ width:28, height:28, borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div>}
+                  <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, wordBreak:'break-word', ...(msg.sender === 'user' ? { background:'#1a3a6b', color:'#fff', borderTopRightRadius:4 } : { background:'#ffffff', border:'1px solid #e2e8f0', color:'#1a3a6b', borderTopLeftRadius:4 }) }}>
+                    {msg.text}
+                  </div>
+                  {msg.sender === 'user' && <div style={{ width:28, height:28, borderRadius:8, background:'#1a3a6b', border:'1px solid #1a3a6b', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>👤</div>}
+                </div>
+              ))}
+
               {loading && (
                 <div style={{ display:'flex', gap:8, marginBottom:12 }}>
                   <div style={{ width:28, height:28, borderRadius:'50%', background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div>
                   <div style={{ padding:'12px 16px', borderRadius:10, background:'#f8fafc', border:'1px solid #e2e8f0', display:'flex', gap:4, alignItems:'center' }}>
-                    {[0,1,2].map(i=><span key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out', animationDelay:`${i*0.2}s` }}/>)}
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out' }} />
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out', marginLeft:6 }} />
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out', marginLeft:6 }} />
                   </div>
                 </div>
               )}
             </div>
-            <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={loading}/>
+
+            <div style={{ flexShrink:0 }}>
+              <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={loading} />
+            </div>
           </div>
         )}
       </div>

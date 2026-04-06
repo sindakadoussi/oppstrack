@@ -433,8 +433,9 @@ export default function RoadmapPage({
               )}
             </div>
 
-            <ChatInput input={input} setInput={setInput}
-              onSend={() => {
+            <div style={{ flexShrink:0 }}>
+              <ChatInput input={input} setInput={setInput}
+                onSend={() => {
                 const b = bourses[activeBourse];
                 const stepKey = b ? `roadmap_step_${b.nom?.replace(/\s+/g, '_') || 'unknown'}` : null;
                 const step = stepKey ? parseInt(localStorage.getItem(stepKey) || '0') : 0;
@@ -444,6 +445,7 @@ export default function RoadmapPage({
               loading={loading}
               placeholder="Demandez conseil sur cette étape…"
             />
+            </div>
           </div>
         </div>
       </div>
@@ -507,9 +509,9 @@ const S = {
   progressTrack:{ height:6, background:'#e2e8f0', borderRadius:3, overflow:'hidden' },
   progressFill: { height:'100%', background:'linear-gradient(90deg,#1a3a6b,#f5a623)', borderRadius:3, transition:'width .5s ease' },
 
-  chatPanel:    { width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, overflow:'hidden', position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },
+  chatPanel:    { width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },
   chatHead:     { display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b' },
-  chatMessages: { flex:1, overflowY:'auto', padding:12, minHeight:300, background:'#fafbfc' },
+  chatMessages: { flex:1, minHeight:0, overflowY:'auto', padding:12, paddingBottom:96, background:'#fafbfc' },
   suggestBtn:   { display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6, lineHeight:1.4, fontFamily:'inherit' },
   msg:          { display:'flex', gap:8, marginBottom:12, maxWidth:'92%' },
   msgUser:      { marginLeft:'auto', flexDirection:'row-reverse' },

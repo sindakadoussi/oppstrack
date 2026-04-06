@@ -139,7 +139,12 @@ function Calendrier({ deadlines, onSelectBourse }) {
 
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
   const firstDay    = (new Date(view.year, view.month, 1).getDay() + 6) % 7;
-  const getColor    = (diff) => diff < 0 ? '#dc2626' : diff <= 7 ? '#d97706' : diff <= 30 ? '#2563eb' : '#166534';
+  // Color by status: roadmap (selected), favori, or other
+  const computeColor = (item) => {
+    if (item?.inRoadmap) return '#7c3aed';
+    if (item?.isFavori) return '#f5a623';
+    return '#2563eb';
+  };
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -151,21 +156,43 @@ function Calendrier({ deadlines, onSelectBourse }) {
   return (
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-        <button onClick={prev} style={S.navBtn}>‹</button>
-        <span style={{ fontSize:13, fontWeight:600, color:'#1a3a6b' }}>{MONTHS[view.month]} {view.year}</span>
-        <button onClick={next} style={S.navBtn}>›</button>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={() => setView(v => ({ ...v, year: v.year - 1 }))} style={S.iconBtn}>«</button>
+          <button onClick={prev} style={S.navBtn}>‹</button>
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <select
+            value={view.month}
+            onChange={e => setView(v => ({ ...v, month: parseInt(e.target.value, 10) }))}
+            style={{ fontSize:13, padding:'6px 10px', borderRadius:6, border:'1px solid #e6eef8', background:'#fff', color:'#0f1724', minWidth:140 }}>
+            {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
+          </select>
+          <input
+            type="number"
+            value={view.year}
+            onChange={e => setView(v => ({ ...v, year: parseInt(e.target.value || 0, 10) }))}
+            style={{ width:84, fontSize:13, padding:'6px 8px', borderRadius:6, border:'1px solid #e6eef8', background:'#fff' }}
+          />
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={next} style={S.navBtn}>›</button>
+          <button onClick={() => setView(v => ({ ...v, year: v.year + 1 }))} style={S.iconBtn}>»</button>
+          <button onClick={() => setView({ month: today.getMonth(), year: today.getFullYear() })} style={{ ...S.btnXs, padding:'6px 10px' }}>Aujourd'hui</button>
+        </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
         {DAYS.map(d => <div key={d} style={{ textAlign:'center', fontSize:9, color:'#94a3b8', fontWeight:600, padding:'2px 0' }}>{d}</div>)}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
-        {cells.map((day, i) => {
+          {cells.map((day, i) => {
           if (!day) return <div key={`e${i}`}/>;
           const isToday = day === today.getDate() && view.month === today.getMonth() && view.year === today.getFullYear();
           const k = `${view.year}-${view.month}-${day}`;
           const dl = deadlineMap[k];
           const diff = dl ? Math.round((new Date(view.year, view.month, day) - today) / 86400000) : null;
-          const color = diff !== null ? getColor(diff) : null;
+          const color = dl && dl.length ? computeColor(dl[0]) : null;
           return (
             <div key={k} style={{
               aspectRatio:'1', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
@@ -178,10 +205,35 @@ function Calendrier({ deadlines, onSelectBourse }) {
             }} onClick={() => { if (dl && dl.length && onSelectBourse) onSelectBourse(dl[0]); }}>
               {day}
               {dl && (
-                <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', display:'flex', gap:1 }}>
-                  {dl.slice(0,3).map((_,idx) => (
-                    <div key={idx} style={{ width:3, height:3, borderRadius:'50%', background:color }}/>
-                  ))}
+                <div style={{ position:'absolute', bottom:6, left:6, right:6, display:'flex', flexDirection:'column', gap:6, maxHeight:'calc(100% - 22px)', overflowY:'auto', boxSizing:'border-box', paddingRight:4 }}>
+                  {dl.map((item, idx) => {
+                    const c = computeColor(item);
+                    return (
+                      <button
+                        key={idx}
+                        onClick={(e) => { e.stopPropagation(); if (onSelectBourse) onSelectBourse(item); }}
+                        title={item.nom}
+                        style={{
+                          display:'block',
+                          width:'100%',
+                          boxSizing:'border-box',
+                          textAlign:'left',
+                          fontSize:9,
+                          padding:'3px 6px',
+                          borderRadius:6,
+                          background: c + '18',
+                          border: `1px solid ${c}44`,
+                          color: c,
+                          cursor:'pointer',
+                          overflow:'hidden',
+                          textOverflow:'ellipsis',
+                          whiteSpace:'nowrap'
+                        }}
+                      >
+                        {item.nom}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -189,7 +241,7 @@ function Calendrier({ deadlines, onSelectBourse }) {
         })}
       </div>
       <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
-        {[['#dc2626','Expiré'],['#d97706','≤7j'],['#2563eb','≤30j'],['#166534','Planifiée']].map(([c,l]) => (
+        {[["#7c3aed","Sélectionnée"],["#f5a623","Favoris"],["#2563eb","Autres"]].map(([c,l]) => (
           <div key={l} style={{ display:'flex', alignItems:'center', gap:4 }}>
             <div style={{ width:8, height:8, borderRadius:2, background:c }}/>
             <span style={{ fontSize:10, color:'#64748b' }}>{l}</span>
@@ -204,6 +256,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   const [roadmap,       setRoadmap]       = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [activeCountry, setActiveCountry] = useState(null);
+  const [favorites,     setFavorites]     = useState([]);
 
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
@@ -213,15 +266,36 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       .finally(() => setLoading(false));
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    axiosInstance.get(API_ROUTES.favoris.byUser(user.id))
+      .then(r => {
+        // Favoris API returns an array with a single document containing `bourses` array
+        const doc = (r.data && r.data.docs && r.data.docs[0]) || r.data;
+        const favs = doc && doc.bourses ? doc.bourses : [];
+        setFavorites(favs);
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
   const scholarshipCounts = {};
   (bourses || []).forEach(b => {
     const code = Object.entries(COUNTRIES).find(([, c]) => c.label === b.pays)?.[0];
     if (code) scholarshipCounts[code] = (scholarshipCounts[code] || 0) + 1;
   });
 
-  const deadlines = roadmap
+  // Build calendar items from the full bourses collection, mark favorites and roadmap items
+  const roadmapSet = new Set((roadmap || []).map(b => b.nom));
+  const favoritesSet = new Set((favorites || []).map(b => b.nom));
+  const deadlines = (bourses || [])
     .filter(b => b.dateLimite)
-    .map(b => ({ nom: b.nom, deadline: new Date(b.dateLimite), pays: b.pays }))
+    .map(b => ({
+      nom: b.nom,
+      deadline: new Date(b.dateLimite),
+      pays: b.pays,
+      isFavori: favoritesSet.has(b.nom),
+      inRoadmap: roadmapSet.has(b.nom),
+    }))
     .sort((a, b) => a.deadline - b.deadline);
 
   const daysLeft = d => {
@@ -377,7 +451,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <div>
                   <div style={S.cardTitle}>📅 Calendrier des deadlines</div>
-                  <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length > 1 ? 's' : ''} dans ta roadmap</div>
+                  <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length > 1 ? 's' : ''} avec deadline</div>
                 </div>
                 <button style={S.btnXs} onClick={() => setView('roadmap')}>Roadmap →</button>
               </div>
@@ -566,4 +640,5 @@ const S = {
   btnOutline:{ padding:'8px 16px', borderRadius:6, background:'transparent', color:'#475569', border:'1px solid #e2e8f0', fontSize:13, cursor:'pointer' },
   btnXs:     { padding:'5px 12px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:11, cursor:'pointer', fontWeight:600 },
   navBtn:    { padding:'3px 12px', borderRadius:4, background:'#f8fafc', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:16, cursor:'pointer' },
+  iconBtn:   { padding:'6px 8px', borderRadius:6, background:'transparent', border:'1px solid transparent', color:'#475569', fontSize:13, cursor:'pointer' },
 };
