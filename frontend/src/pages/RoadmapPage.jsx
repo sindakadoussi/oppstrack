@@ -1,6 +1,6 @@
+// RoadmapPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
-import ChatMessage from '../components/ChatMessage';
 import axiosInstance from '@/config/axiosInstance';
 import axios from 'axios';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
@@ -149,7 +149,6 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
 
   return (
     <div style={S.timelineCard}>
-      {/* Barre progression en haut */}
       <div style={{ height:3, background:`linear-gradient(90deg,#1a3a6b,#f5a623)`, width:`${pct}%`, transition:'width 0.5s ease' }}/>
 
       <div style={S.bourseHeader} onClick={onSelect}>
@@ -212,22 +211,15 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
                     boxShadow:    isActif ? `0 0 0 4px ${color}22` : 'none',
                     opacity:      isPending ? 0.5 : 1,
                   }}>
-                    {isCompleted
-                      ? <span style={{ color:'#fff', fontSize:14, fontWeight:700 }}>✓</span>
-                      : <span style={{ fontSize:16 }}>{etape.icon || '📌'}</span>
-                    }
+                    {isCompleted ? <span style={{ color:'#fff', fontSize:14, fontWeight:700 }}>✓</span> : <span style={{ fontSize:16 }}>{etape.icon || '📌'}</span>}
                   </div>
-                  {i < etapes.length - 1 && (
-                    <div style={{ ...S.line, background: isCompleted ? '#166534' : '#e2e8f0' }}/>
-                  )}
+                  {i < etapes.length - 1 && <div style={{ ...S.line, background: isCompleted ? '#166534' : '#e2e8f0' }}/>}
                 </div>
 
                 <div style={{ ...S.stepContent, paddingBottom: i < etapes.length - 1 ? 24 : 8 }}>
                   <div style={S.stepHead}>
                     <div>
-                      <div style={{ ...S.stepTitle, color: isPending ? '#94a3b8' : '#1a3a6b' }}>
-                        {etape.titre}
-                      </div>
+                      <div style={{ ...S.stepTitle, color: isPending ? '#94a3b8' : '#1a3a6b' }}>{etape.titre}</div>
                       {etape.deadline && <div style={S.deadline}>⏰ {etape.deadline}</div>}
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -263,17 +255,9 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
                     </div>
                   )}
 
-                  {(isActif || isCompleted) && etape.lienOfficiel && (
-                    <a href={etape.lienOfficiel} target="_blank" rel="noopener noreferrer"
-                      style={S.stepLink} onClick={e => e.stopPropagation()}>
-                      🔗 Lien officiel de cette étape
-                    </a>
-                  )}
-
                   {isActif && (
                     <div style={S.stepActions}>
-                      <button style={S.btnNext}
-                        onClick={e => { e.stopPropagation(); goToStep(Math.min(i + 1, total - 1)); }}>
+                      <button style={S.btnNext} onClick={e => { e.stopPropagation(); goToStep(Math.min(i + 1, total - 1)); }}>
                         Étape suivante →
                       </button>
                       <button style={S.btnAI}
@@ -284,8 +268,7 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
                         🤖 Aide IA
                       </button>
                       {i > 0 && (
-                        <button style={S.btnBack}
-                          onClick={e => { e.stopPropagation(); goToStep(i - 1); }}>
+                        <button style={S.btnBack} onClick={e => { e.stopPropagation(); goToStep(i - 1); }}>
                           ← Retour
                         </button>
                       )}
@@ -315,18 +298,27 @@ function BourseTimeline({ bourse, isActive, onSelect, user, handleQuickReply, on
 }
 
 export default function RoadmapPage({
-  user, messages, input, setInput, loading,
-  handleSend, chatContainerRef, handleQuickReply,
+  user,
+  messages,
+  input,
+  setInput,
+  loading: chatLoading,
+  handleSend,
+  chatContainerRef,
+  handleQuickReply,
 }) {
-  const { bourses, loading:boursesLoading, reload } = useBourses(user?.id);
+  const { bourses, loading: boursesLoading, reload } = useBourses(user?.id);
   const [activeBourse, setActiveBourse] = useState(0);
+  const [showChat, setShowChat] = useState(false);   // ← Ajouté
 
   const handleDeleteBourse = useCallback(async (bourse) => {
     if (!bourse._id) return;
     try {
       await axiosInstance.delete(API_ROUTES.roadmap.delete(bourse._id));
       reload();
-    } catch (err) { console.error('Erreur suppression:', err); }
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+    }
   }, [reload]);
 
   useEffect(() => {
@@ -337,36 +329,31 @@ export default function RoadmapPage({
     bourse._id || `${bourse.nom?.replace(/\s+/g, '_')}-${bourse.pays}-${bourse.deadline}-${index}`;
 
   return (
-    <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
+    <div style={{ width: '100%', background: '#f8f9fc', minHeight: '100vh', fontFamily: "'Segoe UI', system-ui, sans-serif", position: 'relative' }}>
 
-      {/* ── EN-TÊTE PAGE ── */}
-
-
-      <div style={{ maxWidth:1232, margin:'0 auto', padding:'24px 32px' }}>
+      <div style={{ maxWidth: 1232, margin: '0 auto', padding: '24px 32px' }}>
         <div style={S.layout}>
 
-          {/* ── GAUCHE ── */}
+          {/* Colonne gauche : Liste des timelines */}
           <div style={S.left}>
-
             {boursesLoading && (
               <div style={S.loadingBox}>
-                <div style={S.spinner}/>
-                <span style={{ color:'#64748b', fontSize:14 }}>Chargement de vos bourses…</span>
+                <div style={S.spinner} />
+                <span style={{ color: '#64748b', fontSize: 14 }}>Chargement de vos bourses…</span>
               </div>
             )}
 
             {!boursesLoading && bourses.length === 0 && (
               <div style={S.emptyBox}>
-                <div style={{ fontSize:48, marginBottom:16 }}>🗺️</div>
-                <div style={{ color:'#1a3a6b', fontWeight:700, fontSize:16, marginBottom:8 }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🗺️</div>
+                <div style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
                   Aucune candidature en cours
                 </div>
-                <div style={{ color:'#64748b', fontSize:13, lineHeight:1.6, maxWidth:360, textAlign:'center' }}>
-                  Allez dans <strong style={{ color:'#1a3a6b' }}>Recommandations</strong> et cliquez sur{' '}
-                  <strong style={{ color:'#f5a623' }}>🗺️ Postuler</strong> pour démarrer votre roadmap.
+                <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6, maxWidth: 360, textAlign: 'center' }}>
+                  Allez dans <strong style={{ color: '#1a3a6b' }}>Recommandations</strong> et cliquez sur{' '}
+                  <strong style={{ color: '#f5a623' }}>🗺️ Postuler</strong> pour démarrer votre roadmap.
                 </div>
-                <button style={S.btnChat}
-                  onClick={() => handleQuickReply('Recommande moi des bourses')}>
+                <button style={S.btnChat} onClick={() => handleQuickReply('Recommande moi des bourses')}>
                   🎯 Voir les recommandations
                 </button>
               </div>
@@ -389,66 +376,109 @@ export default function RoadmapPage({
             )}
           </div>
 
-          {/* ── CHAT ── */}
-          <div style={S.chatPanel}>
-            <div style={S.chatHead}>
-              <span style={{ fontSize:20 }}>🤖</span>
-              <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Assistant Roadmap</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Conseils personnalisés par étape</div>
+          {/* Chat latéral (comme dans BoursesPage) */}
+          {showChat && (
+            <div style={{ 
+              width: 320, 
+              flexShrink: 0, 
+              background: '#ffffff', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: 10, 
+              position: 'sticky', 
+              top: 110, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              maxHeight: 'calc(100vh - 130px)', 
+              minHeight: 0, 
+              boxShadow: '0 4px 16px rgba(26,58,107,0.08)', 
+              zIndex: 90 
+            }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '14px 16px', borderBottom: '2px solid #f5a623', background: '#1a3a6b', borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+                <span style={{ fontSize: 20 }}>🤖</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Assistant Roadmap</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Conseils personnalisés par étape</div>
+                </div>
+                <button 
+                  onClick={() => setShowChat(false)} 
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 6, cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} ref={chatContainerRef}>
+                {messages.length === 0 && (
+                  <div style={{ padding: 12 }}>
+                    <p style={{ color: '#64748b', fontSize: 13, marginBottom: 12 }}>
+                      Demandez-moi des conseils sur n'importe quelle étape !
+                    </p>
+                    {[
+                      'Comment écrire une lettre de motivation percutante ?',
+                      'Quels documents faut-il pour une bourse en France ?',
+                      "Comment se préparer à l'entretien de sélection ?",
+                    ].map((q, i) => (
+                      <button key={i} style={S.suggestBtn} onClick={() => handleQuickReply(q)}>{q}</button>
+                    ))}
+                  </div>
+                )}
+                {messages.slice(-20).map((msg, i) => (
+                  <div key={i} style={{ ...S.msg, ...(msg.sender === 'user' ? S.msgUser : {}) }}>
+                    {msg.sender === 'ai' && <div style={S.avatar}>🤖</div>}
+                    <div style={{ ...S.bubble, ...(msg.sender === 'user' ? S.bubbleUser : S.bubbleAI) }}>
+                      {msg.text}
+                    </div>
+                    {msg.sender === 'user' && <div style={{ ...S.avatar, ...S.avatarUser }}>👤</div>}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div style={S.msg}>
+                    <div style={S.avatar}>🤖</div>
+                    <div style={{ ...S.bubble, ...S.bubbleAI, display: 'flex', gap: 4, alignItems: 'center' }}>
+                      {[0,1,2].map(i => <span key={i} style={{ ...S.dotAnim, animationDelay: `${i * 0.2}s` }} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ flexShrink: 0, padding: 12, borderTop: '1px solid #f1f5f9' }}>
+                <ChatInput 
+                  input={input} 
+                  setInput={setInput} 
+                  onSend={() => handleSend()} 
+                  loading={chatLoading} 
+                  placeholder="Demandez conseil sur cette étape…" 
+                />
               </div>
             </div>
-
-            <div style={S.chatMessages} ref={chatContainerRef}>
-              {messages.length === 0 && (
-                <div style={{ padding:12 }}>
-                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>
-                    Demandez-moi des conseils sur n'importe quelle étape !
-                  </p>
-                  {[
-                    'Comment écrire une lettre de motivation percutante ?',
-                    'Quels documents faut-il pour une bourse en France ?',
-                    "Comment se préparer à l'entretien de sélection ?",
-                  ].map((q, i) => (
-                    <button key={i} style={S.suggestBtn} onClick={() => handleQuickReply(q)}>{q}</button>
-                  ))}
-                </div>
-              )}
-              {messages.slice(-20).map((msg, i) => (
-                <div key={i} style={{ ...S.msg, ...(msg.sender === 'user' ? S.msgUser : {}) }}>
-                  {msg.sender === 'ai' && <div style={S.avatar}>🤖</div>}
-                  <div style={{ ...S.bubble, ...(msg.sender === 'user' ? S.bubbleUser : S.bubbleAI) }}>
-                    {msg.text}
-                  </div>
-                  {msg.sender === 'user' && <div style={{ ...S.avatar, ...S.avatarUser }}>👤</div>}
-                </div>
-              ))}
-              {loading && (
-                <div style={S.msg}>
-                  <div style={S.avatar}>🤖</div>
-                  <div style={{ ...S.bubble, ...S.bubbleAI, display:'flex', gap:4, alignItems:'center' }}>
-                    {[0,1,2].map(i => <span key={i} style={{ ...S.dotAnim, animationDelay:`${i * 0.2}s` }}/>)}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={{ flexShrink:0 }}>
-              <ChatInput input={input} setInput={setInput}
-                onSend={() => {
-                const b = bourses[activeBourse];
-                const stepKey = b ? `roadmap_step_${b.nom?.replace(/\s+/g, '_') || 'unknown'}` : null;
-                const step = stepKey ? parseInt(localStorage.getItem(stepKey) || '0') : 0;
-                if (b && input.trim()) handleSend(`[Contexte: bourse "${b.nom}", étape ${step + 1}/7] ` + input);
-                else handleSend();
-              }}
-              loading={loading}
-              placeholder="Demandez conseil sur cette étape…"
-            />
-            </div>
-          </div>
+          )}
         </div>
       </div>
+
+      {/* Bouton flottant pour ouvrir/fermer le chat */}
+      <button
+        onClick={() => setShowChat(prev => !prev)}
+        style={{
+          position: 'fixed', 
+          bottom: 24, 
+          right: 24, 
+          width: 56, 
+          height: 56, 
+          borderRadius: '50%', 
+          background: '#f5a623',
+          border: 'none', 
+          boxShadow: '0 4px 12px rgba(26,58,107,0.3)', 
+          cursor: 'pointer', 
+          display: 'flex',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          fontSize: 24, 
+          color: '#1a3a6b', 
+          zIndex: 1000
+        }}
+      >
+        {showChat ? '✕' : '💬'}
+      </button>
 
       <style>{`
         @keyframes spin   { to { transform:rotate(360deg); } }
@@ -463,6 +493,7 @@ export default function RoadmapPage({
   );
 }
 
+// Styles (inchangés)
 const S = {
   layout:       { display:'flex', gap:24, alignItems:'flex-start' },
   left:         { flex:1, display:'flex', flexDirection:'column', gap:14 },
@@ -499,7 +530,6 @@ const S = {
   docItem:      { display:'flex', gap:8, fontSize:12, color:'#475569', marginBottom:5, alignItems:'flex-start' },
   conseils:     { display:'flex', flexDirection:'column', gap:5, marginBottom:10 },
   conseilItem:  { display:'flex', gap:8, fontSize:12, color:'#475569', alignItems:'flex-start' },
-  stepLink:     { display:'inline-block', marginBottom:10, fontSize:12, color:'#1a3a6b', textDecoration:'none', fontWeight:500 },
   stepActions:  { display:'flex', gap:8, marginTop:6, flexWrap:'wrap' },
   btnNext:      { padding:'8px 16px', borderRadius:6, background:'#1a3a6b', color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
   btnAI:        { padding:'8px 14px', borderRadius:6, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
@@ -509,9 +539,7 @@ const S = {
   progressTrack:{ height:6, background:'#e2e8f0', borderRadius:3, overflow:'hidden' },
   progressFill: { height:'100%', background:'linear-gradient(90deg,#1a3a6b,#f5a623)', borderRadius:3, transition:'width .5s ease' },
 
-  chatPanel:    { width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },
-  chatHead:     { display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b' },
-  chatMessages: { flex:1, minHeight:0, overflowY:'auto', padding:12, paddingBottom:96, background:'#fafbfc' },
+  // Styles du chat (similaires à BoursesPage)
   suggestBtn:   { display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6, lineHeight:1.4, fontFamily:'inherit' },
   msg:          { display:'flex', gap:8, marginBottom:12, maxWidth:'92%' },
   msgUser:      { marginLeft:'auto', flexDirection:'row-reverse' },

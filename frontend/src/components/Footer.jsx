@@ -9,7 +9,12 @@ export default function Footer({ setView }) {
         {/* Colonne 1 : Logo & description */}
         <div className="footer-col">
           <div className="footer-logo">
-            <span className="footer-logo-icon">🌍</span>
+              <img 
+              src="logo.png"
+              alt="OppsTrack" 
+              className="footer-logo-img"
+              style={{ height: '28px', width: 'auto' }}
+            />
             <span className="footer-logo-text">OppsTrack</span>
           </div>
           <p className="footer-desc">

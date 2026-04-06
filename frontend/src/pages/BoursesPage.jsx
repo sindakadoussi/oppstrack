@@ -1,10 +1,13 @@
+// BoursesPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import BourseCard from '../components/BourseCard';
 import ChatInput from '../components/ChatInput';
-import ChatMessage from '../components/ChatMessage';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
+import BourseDrawer from '../components/Boursedrawer';
 
-function countryFlag(pays) {
+// Fonction countryFlag (utilisée dans les selects)
+const countryFlag = (pays) => {
   const flags = {
     'France':'🇫🇷','Allemagne':'🇩🇪','Royaume-Uni':'🇬🇧','États-Unis':'🇺🇸',
     'Canada':'🇨🇦','Japon':'🇯🇵','Chine':'🇨🇳','Australie':'🇦🇺',
@@ -14,388 +17,118 @@ function countryFlag(pays) {
     'Roumanie':'🇷🇴','Arabie Saoudite':'🇸🇦','Brunei':'🇧🇳',
   };
   return flags[pays] || '🌍';
-}
-
-function calcMatch(bourse, user) {
-  if (!user) return null;
-  let score = 0, total = 0;
-  if (user.pays) {
-    total += 40;
-    const bp=(bourse.pays||'').toLowerCase(), up=user.pays.toLowerCase();
-    if (bp===up||bp.includes(up)||up.includes(bp)) score += 40;
-  }
-  if (user.niveau) {
-    total += 35;
-    const bn=(bourse.niveau||'').toLowerCase(), un=user.niveau.toLowerCase();
-    const base=un.replace(/\s*\d+$/,'').trim();
-    if (bn.includes(un)||bn.includes(base)) score += 35;
-  }
-  if (user.domaine) {
-    total += 25;
-    const bd=(bourse.domaine||'').toLowerCase(), desc=(bourse.description||'').toLowerCase(), ud=user.domaine.toLowerCase();
-    if (bd.includes(ud)||ud.includes(bd)||desc.includes(ud)) score += 25;
-    else score += 8;
-  }
-  if (total===0) return null;
-  return Math.round((score/total)*100);
-}
-
-function getScoreColor(score) {
-  if (score===null) return '#64748b';
-  if (score>=80) return '#16a34a';
-  if (score>=55) return '#d97706';
-  return '#dc2626';
-}
-function getScoreLabel(score) {
-  if (score===null) return null;
-  if (score>=80) return 'Excellent match';
-  if (score>=55) return 'Bon match';
-  return 'Match partiel';
-}
-
-const daysLeft = (deadline) => {
-  if (!deadline) return null;
-  const diff = Math.round((new Date(deadline)-new Date())/(1000*60*60*24));
-  if (diff<0)   return { label:'Expirée',        color:'#dc2626' };
-  if (diff===0) return { label:"Aujourd'hui !",  color:'#dc2626' };
-  if (diff<=30) return { label:`${diff} jours`,  color:'#d97706' };
-  return               { label:`${diff} jours`,  color:'#16a34a' };
 };
 
-const isUrgent = (deadline) => {
-  if (!deadline) return false;
-  return (new Date(deadline)-new Date())/(1000*60*60*24) < 30;
-};
-
-// ── BourseCard ────────────────────────────────────────────────────────────────
-function BourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply }) {
-  const pct        = calcMatch(bourse, user);
-  const scoreColor = getScoreColor(pct);
-  const dl         = daysLeft(bourse.dateLimite);
-  const urgent     = isUrgent(bourse.dateLimite);
-  const niveaux    = bourse.niveau ? bourse.niveau.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const [starLoading,  setStarLoading]  = useState(false);
-  const [applyLoading, setApplyLoading] = useState(false);
-
-  const formatDate = (d) => {
-    if (!d) return null;
-    try { return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }
-    catch { return d; }
-  };
-
-  return (
-    <div style={{
-      background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10,
-      overflow:'hidden', display:'flex', flexDirection:'column',
-      transition:'transform .2s, box-shadow .2s',
-      boxShadow:'0 2px 8px rgba(26,58,107,0.06)',
-    }}
-      onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(26,58,107,0.12)'; }}
-      onMouseLeave={e=>{ e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 2px 8px rgba(26,58,107,0.06)'; }}
-    >
-      {/* Barre score */}
-      <div style={{ height:4, background: pct!==null ? `linear-gradient(90deg,${scoreColor}88,${scoreColor})` : '#e2e8f0' }}/>
-
-      {/* Header */}
-      <div style={{ padding:'14px 16px 10px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, cursor:'pointer' }} onClick={onClick}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
-          <span style={{ fontSize:20, flexShrink:0 }}>{countryFlag(bourse.pays)}</span>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:11, color:'#64748b', fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
-              {bourse.pays||'International'}
-              {urgent && (
-                <span style={{ fontSize:9, padding:'1px 6px', borderRadius:4, background:'#fef2f2', color:'#dc2626', fontWeight:700, textTransform:'uppercase', border:'1px solid #fecaca' }}>
-                  Urgent
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize:'0.95rem', fontWeight:700, color:'#1a3a6b', lineHeight:1.3, marginTop:2 }}>{bourse.nom}</div>
-          </div>
-        </div>
-        {pct!==null && (
-          <div style={{ textAlign:'right', flexShrink:0 }}>
-            <div style={{ fontSize:'1.2rem', fontWeight:800, color:scoreColor, lineHeight:1 }}>{pct}%</div>
-            <div style={{ fontSize:10, color:'#64748b', marginTop:2 }}>{getScoreLabel(pct)}</div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ height:1, background:'#f1f5f9', margin:'0 16px' }}/>
-
-      {/* Body */}
-      <div style={{ padding:'12px 16px', flex:1, display:'flex', flexDirection:'column', gap:8, cursor:'pointer' }} onClick={onClick}>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-          {niveaux.map((n,i)=>(
-            <span key={i} style={{ fontSize:11, padding:'2px 8px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontWeight:500 }}>{n}</span>
-          ))}
-        </div>
-        {bourse.financement && (
-          <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
-            <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>💰</span>
-            <span style={{ fontSize:12, color:'#475569', lineHeight:1.5 }}>{bourse.financement}</span>
-          </div>
-        )}
-        {bourse.description && (
-          <p style={{ fontSize:12, color:'#64748b', lineHeight:1.5, margin:0, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-            {bourse.description}
-          </p>
-        )}
-        {(formatDate(bourse.dateLimite)||dl) && (
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:2, padding:'8px 10px', borderRadius:6, background:'#f8fafc', border:'1px solid #f1f5f9' }}>
-            {formatDate(bourse.dateLimite) && (
-              <div>
-                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:2 }}>Date limite</div>
-                <div style={{ fontSize:12, color: dl?.color || '#475569', fontWeight:700 }}>{formatDate(bourse.dateLimite)}</div>
-              </div>
-            )}
-            {dl && <div style={{ fontSize:12, color:dl.color, fontWeight:600, padding:'2px 8px', borderRadius:4, background: dl.color + '12', border:`1px solid ${dl.color}30` }}>{dl.label} restants</div>}
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div style={{ padding:'10px 16px 14px', display:'flex', gap:6, borderTop:'1px solid #f1f5f9' }}>
-        <button
-          style={{ flex:1, padding:'9px 10px', borderRadius:6, background:'#1a3a6b', border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .2s' }}
-          onClick={(e)=>{ e.stopPropagation(); onClick(); }}
-          onMouseEnter={e=>{ e.currentTarget.style.background='#0f2654'; }}
-          onMouseLeave={e=>{ e.currentTarget.style.background='#1a3a6b'; }}
-        >Voir les détails</button>
-        <button
-          style={{ flex:1, padding:'9px 10px', borderRadius:6, background: applied ? '#eff6ff' : '#f5a623', border: applied ? '1px solid #bfdbfe' : 'none', color: applied ? '#1a3a6b' : '#1a3a6b', fontSize:12, fontWeight:600, cursor: applied ? 'default' : 'pointer', transition:'all .2s' }}
-          onClick={!applied ? async(e)=>{ e.stopPropagation(); setApplyLoading(true); await onApply(bourse); setApplyLoading(false); } : undefined}
-          disabled={applied||applyLoading}
-          onMouseEnter={e=>{ if(!applied) e.currentTarget.style.background='#e89510'; }}
-          onMouseLeave={e=>{ if(!applied) e.currentTarget.style.background='#f5a623'; }}
-        >{applyLoading ? '⏳' : applied ? '✅ Roadmap' : '🗺️ Postuler'}</button>
-        <button
-          style={{ width:38, height:38, borderRadius:6, flexShrink:0, background: starred ? '#fefce8' : '#f8fafc', border: starred ? '1px solid #fde68a' : '1px solid #e2e8f0', color: starred ? '#d97706' : '#94a3b8', fontSize:16, cursor: starLoading ? 'default' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s' }}
-          onClick={async(e)=>{ e.stopPropagation(); setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }}
-          disabled={starLoading}
-          title={starred ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-        >{starred ? '★' : '☆'}</button>
-        <button
-          style={{ width:38, height:38, borderRadius:6, flexShrink:0, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
-          onClick={(e)=>{ e.stopPropagation(); onAskAI(bourse); }}
-          title="Demander à l'IA"
-        >🤖</button>
-      </div>
-    </div>
-  );
-}
-
-// ── BourseDrawer ──────────────────────────────────────────────────────────────
-function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, applied, onApply }) {
-  if (!bourse) return null;
-  const dl = daysLeft(bourse.dateLimite);
-  const [starLoading,  setStarLoading]  = useState(false);
-  const [applyLoading, setApplyLoading] = useState(false);
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:500, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #f5a623', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', overflowY:'auto', boxShadow:'-8px 0 32px rgba(26,58,107,0.15)' }}>
-
-        {/* Header drawer */}
-        <div style={{ padding:'20px 22px 16px', background:'#1a3a6b', flexShrink:0 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-            <div style={{ fontSize:28, width:52, height:52, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {countryFlag(bourse.pays)}
-            </div>
-            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
-          </div>
-          <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#ffffff', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            <span style={D.tagLight}>{countryFlag(bourse.pays)} {bourse.pays}</span>
-            {bourse.niveau && <span style={D.tagLight}>🎓 {bourse.niveau}</span>}
-            <span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>💰 {bourse.financement||'100% financée'}</span>
-          </div>
-        </div>
-
-        {/* Deadline banner */}
-        {dl && (
-          <div style={{ padding:'10px 22px', background: dl.color === '#dc2626' ? '#fef2f2' : dl.color === '#d97706' ? '#fffbeb' : '#f0fdf4', borderBottom:`2px solid ${dl.color}30`, display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:18 }}>⏰</span>
-            <div>
-              <div style={{ fontSize:12, color:dl.color, fontWeight:700 }}>{dl.label==='Expirée' ? 'Deadline expirée' : `Deadline dans ${dl.label}`}</div>
-              <div style={{ fontSize:11, color:'#64748b' }}>{bourse.dateLimite && new Date(bourse.dateLimite).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Body */}
-        <div style={{ padding:'20px 22px', flex:1 }}>
-          {bourse.description && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>À propos</div>
-              <p style={{ fontSize:13, color:'#475569', lineHeight:1.7, margin:0 }}>{bourse.description}</p>
-            </div>
-          )}
-
-          {bourse.eligibilite && Object.values(bourse.eligibilite).some(v=>v) && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Critères d'éligibilité</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {bourse.eligibilite.nationalitesEligibles && (
-                  <div style={D.infoRow}><span style={D.infoIcon}>🌍</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Nationalités éligibles</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.nationalitesEligibles}</div></div></div>
-                )}
-                {bourse.eligibilite.niveauRequis && (
-                  <div style={D.infoRow}><span style={D.infoIcon}>🎓</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Niveau requis</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.niveauRequis}</div></div></div>
-                )}
-                {bourse.eligibilite.ageMax && (
-                  <div style={D.infoRow}><span style={D.infoIcon}>📅</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Âge maximum</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.ageMax} ans</div></div></div>
-                )}
-                {bourse.eligibilite.conditionsSpeciales && (
-                  <div style={D.infoRow}><span style={D.infoIcon}>📋</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Conditions spéciales</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.conditionsSpeciales}</div></div></div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {bourse.documentsRequis?.length > 0 && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Documents requis ({bourse.documentsRequis.length})</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {bourse.documentsRequis.map((doc,i)=>(
-                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'8px 12px', borderRadius:6, background: doc.obligatoire ? '#eff6ff' : '#f8fafc', border:`1px solid ${doc.obligatoire ? '#bfdbfe' : '#e2e8f0'}` }}>
-                    <span style={{ fontSize:14, flexShrink:0, marginTop:1, color: doc.obligatoire ? '#1a3a6b' : '#94a3b8' }}>{doc.obligatoire ? '✓' : '○'}</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, color: doc.obligatoire ? '#1a3a6b' : '#475569', fontWeight: doc.obligatoire ? 600 : 400 }}>
-                        {doc.nom}
-                        {!doc.obligatoire && <span style={{ fontSize:10, marginLeft:6, color:'#94a3b8' }}>optionnel</span>}
-                      </div>
-                      {doc.description && doc.description!=='empty' && <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{doc.description}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom:20 }}>
-            <div style={D.label}>Détails</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {[{icon:'📍',label:'Pays',val:bourse.pays},{icon:'🎓',label:'Niveau',val:bourse.niveau},{icon:'💰',label:'Financement',val:bourse.financement},{icon:'📚',label:'Domaine',val:bourse.domaine}].filter(r=>r.val).map((row,i)=>(
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' }}>
-                  <span style={{ fontSize:14, width:20, textAlign:'center' }}>{row.icon}</span>
-                  <span style={{ fontSize:12, color:'#94a3b8', width:80 }}>{row.label}</span>
-                  <span style={{ fontSize:13, color:'#1a3a6b', fontWeight:600, flex:1 }}>{row.val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {bourse.lienOfficiel && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Lien officiel</div>
-              <a href={bourse.lienOfficiel} target="_blank" rel="noreferrer"
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:13, textDecoration:'none', wordBreak:'break-all', fontWeight:500 }}>
-                <span>🔗</span><span style={{ flex:1 }}>{bourse.lienOfficiel}</span><span>↗</span>
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div style={{ padding:'16px 22px 24px', borderTop:'1px solid #e2e8f0', flexShrink:0, display:'flex', flexDirection:'column', gap:10, background:'#f8fafc' }}>
-          <button
-            style={{ width:'100%', padding:13, borderRadius:8, border:'none', background: applied ? '#eff6ff' : '#1a3a6b', color: applied ? '#1a3a6b' : '#fff', fontSize:14, fontWeight:700, cursor: applied ? 'default' : 'pointer', boxShadow: applied ? 'none' : '0 4px 12px rgba(26,58,107,0.25)' }}
-            onClick={!applied ? async()=>{ setApplyLoading(true); await onApply(bourse); setApplyLoading(false); onClose(); } : undefined}
-            disabled={applied||applyLoading}
-          >{applyLoading ? '⏳' : applied ? '✅ Déjà dans la roadmap' : '🗺️ Postuler maintenant'}</button>
-          <div style={{ display:'flex', gap:8 }}>
-            <button
-              style={{ flex:1, padding:10, borderRadius:8, background: starred ? '#fefce8' : '#ffffff', border: starred ? '1px solid #fde68a' : '1px solid #e2e8f0', color: starred ? '#d97706' : '#475569', fontSize:13, cursor:'pointer', fontWeight:500 }}
-              onClick={async()=>{ setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }}
-            >{starLoading ? '⏳' : starred ? '★ Favori' : '☆ Ajouter aux favoris'}</button>
-            <button
-              style={{ flex:1, padding:10, borderRadius:8, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:13, cursor:'pointer', fontWeight:700 }}
-              onClick={()=>{ onAskAI(bourse); onClose(); }}
-            >🤖 Demander à l'IA</button>
-          </div>
-        </div>
-      </div>
-      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-    </>
-  );
-}
-
-const D = {
-  tag:      { fontSize:11, padding:'3px 10px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b' },
-  tagLight: { fontSize:11, padding:'3px 10px', borderRadius:4, background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff' },
-  label:    { fontSize:10, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10, paddingBottom:6, borderBottom:'2px solid #f5a623', display:'inline-block' },
-  infoRow:  { display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' },
-  infoIcon: { fontSize:16, flexShrink:0, marginTop:2, color:'#1a3a6b' },
-};
-
-// ── BoursesPage ───────────────────────────────────────────────────────────────
 export default function BoursesPage({
-  bourses, askAboutScholarship, handleSend, messages, input, setInput,
-  loading, chatContainerRef, handleQuickReply, user,
-  initialSelected, onClearInitialSelected
+  bourses,
+  handleSend,
+  messages,
+  input,
+  setInput,
+  loading,
+  chatContainerRef,
+  handleQuickReply,
+  user,
+  initialSelected,
+  onClearInitialSelected,
 }) {
-  const [search,       setSearch]       = useState('');
+  const [search, setSearch] = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
-  const [filterPays,   setFilterPays]   = useState('');
-  const [showChat,     setShowChat]     = useState(false);
-  const [selected,     setSelected]     = useState(null);
-  const [starredNoms,  setStarredNoms]  = useState(new Set());
-  const [appliedNoms,  setAppliedNoms]  = useState(new Set());
+  const [filterPays, setFilterPays] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [selected, setSelected] = useState(null);
 
+  const [starredNoms, setStarredNoms] = useState(new Set());
+  const [appliedNoms, setAppliedNoms] = useState(new Set());
+
+  // Chargement des favoris et candidatures
+  const loadUserData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const resFav = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
+      setStarredNoms(new Set((resFav.data.docs?.[0]?.bourses || []).map(b => b.nom?.trim().toLowerCase())));
+
+      const resRM = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id));
+      setAppliedNoms(new Set((resRM.data.docs || []).map(b => b.nom?.trim().toLowerCase())));
+    } catch (err) {
+      console.error('[loadUserData]', err);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // Sélection initiale (si on vient d'un lien ou notification)
   useEffect(() => {
     if (!initialSelected || !bourses?.length) return;
     const nomLower = initialSelected.trim().toLowerCase();
     const found = bourses.find(b =>
       b.nom?.trim().toLowerCase() === nomLower ||
-      b.nom?.trim().toLowerCase().includes(nomLower) ||
-      nomLower.includes(b.nom?.trim().toLowerCase())
+      b.nom?.trim().toLowerCase().includes(nomLower)
     );
-    if (found) { setSelected(found); if (onClearInitialSelected) onClearInitialSelected(); }
+    if (found) {
+      setSelected(found);
+      if (onClearInitialSelected) onClearInitialSelected();
+    }
   }, [initialSelected, bourses, onClearInitialSelected]);
-
-  const loadUserData = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const resFav = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
-      setStarredNoms(new Set((resFav.data.docs?.[0]?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
-      const resRM = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id));
-      setAppliedNoms(new Set((resRM.data.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
-    } catch (err) { console.error('[loadUserData]', err); }
-  }, [user?.id]);
-
-  useEffect(() => { loadUserData(); }, [loadUserData]);
 
   const handleStar = async (bourse, isStarred) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) return;
+
     try {
       const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
       const doc = res.data.docs?.[0];
+
       if (isStarred) {
         if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
-        setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); return s; });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, {
+          bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey)
+        });
+        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
       } else {
-        const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
-        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]), nb] });
-        else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
-        setStarredNoms(prev=>new Set([...prev,nomKey]));
+        const nb = {
+          nom: bourse.nom,
+          pays: bourse.pays || '',
+          lienOfficiel: bourse.lienOfficiel || '',
+          financement: bourse.financement || '',
+          dateLimite: bourse.dateLimite || null,
+          ajouteLe: new Date().toISOString()
+        };
+        if (doc?.id) {
+          await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
+        } else {
+          await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
+        }
+        setStarredNoms(prev => new Set([...prev, nomKey]));
       }
-    } catch(err){ console.error('[Star]',err); }
+    } catch (err) {
+      console.error('[handleStar]', err);
+    }
   };
 
   const handleApply = async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id||appliedNoms.has(nomKey)) return;
+    if (!user?.id || appliedNoms.has(nomKey)) return;
+
     try {
       await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId:user.id, userEmail:user.email||'', nom:bourse.nom,
-        pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'',
-        financement:bourse.financement||'', dateLimite:bourse.dateLimite||null,
-        ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0
+        userId: user.id,
+        userEmail: user.email || '',
+        nom: bourse.nom,
+        pays: bourse.pays || '',
+        lienOfficiel: bourse.lienOfficiel || '',
+        financement: bourse.financement || '',
+        dateLimite: bourse.dateLimite || null,
+        ajouteLe: new Date().toISOString(),
+        statut: 'en_cours',
+        etapeCourante: 0,
       });
-      setAppliedNoms(prev=>new Set([...prev,nomKey]));
-    } catch(err){ console.error('[Apply]',err); }
+      setAppliedNoms(prev => new Set([...prev, nomKey]));
+    } catch (err) {
+      console.error('[handleApply]', err);
+    }
   };
 
   const handleAskAI = useCallback((bourse) => {
@@ -403,133 +136,196 @@ export default function BoursesPage({
     setInput(`Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`);
   }, [setInput]);
 
-  const filtered = bourses.filter(b => {
-    if (b.statut==='expiree') return false;
-    const q = search.toLowerCase();
-    const matchSearch = !q||b.nom?.toLowerCase().includes(q)||b.pays?.toLowerCase().includes(q)||b.domaine?.toLowerCase().includes(q);
-    const matchNiveau = !filterNiveau||b.niveau?.includes(filterNiveau);
-    const matchPays   = !filterPays||b.pays===filterPays;
-    return matchSearch&&matchNiveau&&matchPays;
-  }).sort((a,b)=>(calcMatch(b,user)??0)-(calcMatch(a,user)??0));
+  // Filtrage des bourses
+  const filtered = bourses
+    .filter(b => {
+      if (b.statut === 'expiree') return false;
 
-  const pays    = [...new Set(bourses.map(b=>b.pays).filter(Boolean))];
-  const niveaux = [...new Set(bourses.flatMap(b=>(b.niveau||'').split(',').map(s=>s.trim())).filter(Boolean))];
+      const q = search.toLowerCase();
+      const matchSearch = !q || 
+        b.nom?.toLowerCase().includes(q) || 
+        b.pays?.toLowerCase().includes(q) || 
+        b.domaine?.toLowerCase().includes(q);
+
+      const matchNiveau = !filterNiveau || b.niveau?.includes(filterNiveau);
+      const matchPays = !filterPays || b.pays === filterPays;
+
+      return matchSearch && matchNiveau && matchPays;
+    })
+    // Tri simple (par nom) car le score est maintenant calculé à l'intérieur de BourseCard
+    .sort((a, b) => a.nom?.localeCompare(b.nom));
+
+  const paysList = [...new Set(bourses.map(b => b.pays).filter(Boolean))];
+  const niveauxList = [...new Set(
+    bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean)
+  )];
 
   return (
-    <div style={{ width:'100%', minHeight:'100vh', background:'#f8f9fc', fontFamily:"'Segoe UI', system-ui, sans-serif" }}>
-
-      {/* ── En-tête page ── */}
-     
-
-      {/* ── Filtres ── */}
-      <div style={{ background:'#ffffff', borderBottom:'1px solid #e2e8f0', padding:'16px 32px' }}>
-        <div style={{ maxWidth:1200, margin:'0 auto', display:'flex', gap:10, flexWrap:'wrap' }}>
+    <div style={{ width: '100%', minHeight: '100vh', background: '#f8f9fc', fontFamily: "'Segoe UI', system-ui, sans-serif", position: 'relative' }}>
+      
+      {/* Filtres */}
+      <div style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '16px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
-            placeholder="🔍  Rechercher une bourse, pays, domaine..."
-            value={search} onChange={e=>setSearch(e.target.value)}
-            style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit' }}
+            placeholder="🔍 Rechercher une bourse, pays, domaine..."
+            value={search} 
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex: 1, minWidth: 200, padding: '9px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#1a3a6b', fontSize: 14, outline: 'none' }}
           />
-          <select value={filterNiveau} onChange={e=>setFilterNiveau(e.target.value)}
-            style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none', fontFamily:'inherit' }}>
+          <select 
+            value={filterNiveau} 
+            onChange={e => setFilterNiveau(e.target.value)} 
+            style={{ padding: '9px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 13, cursor: 'pointer', outline: 'none' }}
+          >
             <option value="">Tous niveaux</option>
-            {niveaux.map(n=><option key={n} value={n}>{n}</option>)}
+            {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
-          <select value={filterPays} onChange={e=>setFilterPays(e.target.value)}
-            style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none', fontFamily:'inherit' }}>
+          <select 
+            value={filterPays} 
+            onChange={e => setFilterPays(e.target.value)} 
+            style={{ padding: '9px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 13, cursor: 'pointer', outline: 'none' }}
+          >
             <option value="">Tous pays</option>
-            {pays.map(p=><option key={p} value={p}>{countryFlag(p)} {p}</option>)}
+            {paysList.map(p => <option key={p} value={p}>{countryFlag(p)} {p}</option>)}
           </select>
-          {(search||filterNiveau||filterPays) && (
-            <button
-              style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #fecaca', background:'#fef2f2', color:'#dc2626', fontSize:13, cursor:'pointer', fontWeight:500 }}
-              onClick={()=>{ setSearch(''); setFilterNiveau(''); setFilterPays(''); }}
-            >✕ Effacer</button>
+          {(search || filterNiveau || filterPays) && (
+            <button 
+              style={{ padding: '9px 14px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontWeight: 500 }} 
+              onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}
+            >
+              ✕ Effacer
+            </button>
           )}
         </div>
       </div>
 
-      {/* ── Grille ── */}
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 32px', display:'flex', gap:24, alignItems:'flex-start' }}>
-        <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:16 }}>
-          {filtered.length===0 ? (
-            <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 20px' }}>
-              <div style={{ fontSize:48, marginBottom:16 }}>🔍</div>
-              <div style={{ fontSize:16, fontWeight:600, color:'#1a3a6b', marginBottom:8 }}>Aucune bourse trouvée</div>
-              <p style={{ color:'#64748b', fontSize:14 }}>Essayez d'autres critères de recherche.</p>
+      {/* Grille des cartes + Chat latéral */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 32px', display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+        
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {filtered.length === 0 ? (
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#1a3a6b', marginBottom: 8 }}>Aucune bourse trouvée</div>
+              <p style={{ color: '#64748b', fontSize: 14 }}>Essayez d'autres critères de recherche.</p>
             </div>
-          ) : filtered.map(bourse=>(
-            <BourseCard key={bourse.id} bourse={bourse} user={user}
-              onAskAI={handleAskAI}
-              onClick={()=>setSelected(bourse)}
-              starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-              onStar={handleStar}
-              applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-              onApply={handleApply}
-            />
-          ))}
+          ) : (
+            filtered.map(bourse => (
+              <BourseCard
+                key={bourse.id || bourse.nom}
+                bourse={bourse}
+                user={user}
+                onAskAI={handleAskAI}
+                onClick={() => setSelected(bourse)}
+                starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                onStar={handleStar}
+                applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                onApply={handleApply}
+              />
+            ))
+          )}
         </div>
 
         {/* Chat latéral */}
         {showChat && (
-          <div style={{ width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 4px 16px rgba(26,58,107,0.08)' }}>
-            <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b' }}>
-              <span style={{ fontSize:20 }}>🤖</span>
+          <div style={{ 
+            width: 320, 
+            flexShrink: 0, 
+            background: '#ffffff', 
+            border: '1px solid #e2e8f0', 
+            borderRadius: 10, 
+            position: 'sticky', 
+            top: 110, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            maxHeight: 'calc(100vh - 130px)', 
+            minHeight: 0, 
+            boxShadow: '0 4px 16px rgba(26,58,107,0.08)', 
+            zIndex: 90 
+          }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '14px 16px', borderBottom: '2px solid #f5a623', background: '#1a3a6b', borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+              <span style={{ fontSize: 20 }}>🤖</span>
               <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Assistant Bourses</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Conseils personnalisés</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Assistant Bourses</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Conseils personnalisés</div>
               </div>
-              <button onClick={() => setShowChat(false)} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16, marginLeft:'auto' }} title="Fermer le chat">✕</button>
+              <button 
+                onClick={() => setShowChat(false)} 
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 6, cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ flex:1, minHeight:0, overflowY:'auto', padding:12, paddingBottom:96 }} ref={chatContainerRef}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} ref={chatContainerRef}>
               {messages.length === 0 && (
-                <div style={{ padding:12 }}>
-                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>
-                    Demandez-moi des conseils sur une bourse ou une étape de candidature !
-                  </p>
-                  {[
-                    'Comment écrire une lettre de motivation percutante ?',
-                    'Quels documents faut-il pour une bourse en France ?',
-                    "Comment se préparer à l'entretien de sélection ?",
-                  ].map((q, i) => (
-                    <button key={i} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6 }} onClick={() => handleQuickReply(q)}>{q}</button>
+                <div style={{ padding: 12 }}>
+                  <p style={{ color: '#64748b', fontSize: 13, marginBottom: 12 }}>Demandez-moi des conseils sur une bourse !</p>
+                  {['Lettre de motivation ?', 'Documents requis ?'].map((q, i) => (
+                    <button 
+                      key={i} 
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 6, background: '#fff', border: '1px solid #e2e8f0', color: '#1a3a6b', fontSize: 12, cursor: 'pointer', marginBottom: 6 }} 
+                      onClick={() => handleQuickReply(q)}
+                    >
+                      {q}
+                    </button>
                   ))}
                 </div>
               )}
-
-              {messages.slice(-20).map((msg, i) => (
-                <div key={i} style={{ display:'flex', gap:8, marginBottom:12, maxWidth:'92%', ...(msg.sender === 'user' ? { marginLeft:'auto', flexDirection:'row-reverse' } : {}) }}>
-                  {msg.sender === 'ai' && <div style={{ width:28, height:28, borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div>}
-                  <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, wordBreak:'break-word', ...(msg.sender === 'user' ? { background:'#1a3a6b', color:'#fff', borderTopRightRadius:4 } : { background:'#ffffff', border:'1px solid #e2e8f0', color:'#1a3a6b', borderTopLeftRadius:4 }) }}>
+              {messages.map((msg, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 12, maxWidth: '92%', ...(msg.sender === 'user' ? { marginLeft: 'auto', flexDirection: 'row-reverse' } : {}) }}>
+                  <div style={{ 
+                    padding: '10px 14px', 
+                    borderRadius: 10, 
+                    fontSize: 13, 
+                    lineHeight: 1.5, 
+                    ...(msg.sender === 'user' ? { background: '#1a3a6b', color: '#fff' } : { background: '#f1f5f9', color: '#1a3a6b' }) 
+                  }}>
                     {msg.text}
                   </div>
-                  {msg.sender === 'user' && <div style={{ width:28, height:28, borderRadius:8, background:'#1a3a6b', border:'1px solid #1a3a6b', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>👤</div>}
                 </div>
               ))}
-
-              {loading && (
-                <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div>
-                  <div style={{ padding:'12px 16px', borderRadius:10, background:'#f8fafc', border:'1px solid #e2e8f0', display:'flex', gap:4, alignItems:'center' }}>
-                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out' }} />
-                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out', marginLeft:6 }} />
-                    <span style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:'bounce 1.2s infinite ease-in-out', marginLeft:6 }} />
-                  </div>
-                </div>
-              )}
+              {loading && <div style={{ padding: 12, fontSize: 12, color: '#94a3b8' }}>L'IA réfléchit...</div>}
             </div>
 
-            <div style={{ flexShrink:0 }}>
-              <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={loading} />
+            <div style={{ padding: 12, borderTop: '1px solid #f1f5f9' }}>
+              <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading} />
             </div>
           </div>
         )}
       </div>
 
+      {/* Bouton flottant Chat */}
+      <button
+        onClick={() => setShowChat(prev => !prev)}
+        style={{
+          position: 'fixed', 
+          bottom: 24, 
+          right: 24, 
+          width: 56, 
+          height: 56, 
+          borderRadius: '50%', 
+          background: '#f5a623',
+          border: 'none', 
+          boxShadow: '0 4px 12px rgba(26,58,107,0.3)', 
+          cursor: 'pointer', 
+          display: 'flex',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          fontSize: 24, 
+          color: '#1a3a6b', 
+          zIndex: 1000
+        }}
+      >
+        {showChat ? '✕' : '💬'}
+      </button>
+
+      {/* Drawer */}
       <BourseDrawer
-        bourse={selected} onClose={()=>setSelected(null)}
+        bourse={selected}
+        onClose={() => setSelected(null)}
         onAskAI={handleAskAI}
-        onChoose={(b)=>handleSend(`je choisis ${b.nom}`)}
+        onChoose={(b) => handleSend(`je choisis ${b.nom}`)}
         starred={selected ? starredNoms.has(selected.nom?.trim().toLowerCase()) : false}
         onStar={handleStar}
         applied={selected ? appliedNoms.has(selected.nom?.trim().toLowerCase()) : false}
@@ -537,11 +333,8 @@ export default function BoursesPage({
       />
 
       <style>{`
-        @keyframes bounce{0%,60%,100%{transform:scale(0.7);opacity:0.5}30%{transform:scale(1.1);opacity:1}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
-        input::placeholder{color:#94a3b8;}
-        select option{color:#1a3a6b;background:#fff;}
+        input::placeholder { color: #94a3b8; }
+        select option { color: #1a3a6b; background: #fff; }
       `}</style>
     </div>
   );

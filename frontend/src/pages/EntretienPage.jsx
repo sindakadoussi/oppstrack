@@ -489,11 +489,11 @@ function BoursePicker({ bourses, userId, onSelect }) {
           </div>
         </div>
         <h1 style={P.h1}>Préparez votre<br/><em style={P.em}>entretien de bourse</em></h1>
-        <p style={P.sub}>Le jury IA vous posera <strong style={{color:'#e879f9'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</p>
+        <p style={P.sub}>Le jury IA vous posera <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</p>
         <div style={P.grid}>
           {filtered.length===0&&<div style={P.empty}><span style={{fontSize:36}}>🔎</span><p>Aucune bourse trouvée.</p></div>}
           {filtered.map(b=>(
-            <div key={b.id} style={{...P.card, border:'2px solid rgba(99,102,241,0.12)'}} className="bcard-h">
+            <div key={b.id} style={{...P.card, border:'2px solid rgba(115, 246, 189, 0.12)'}} className="bcard-h">
               <div style={P.cardTop}><span style={{fontSize:24}}>🎓</span><span style={P.finance}>{b.financement}</span></div>
               <div style={P.cardName}>{b.nom}</div>
               <div style={P.cardMeta}>{b.pays} · {b.niveau}</div>

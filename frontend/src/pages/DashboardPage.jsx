@@ -94,7 +94,6 @@ const COUNTRY_META = {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    UTILITAIRE DAYS LEFT
-   FIX: fonction manquante — était appelée mais jamais déclarée
 ═══════════════════════════════════════════════════════════════════════════ */
 function daysLeft(deadline) {
   const diff = Math.round((new Date(deadline) - new Date()) / 86400000);
@@ -105,7 +104,7 @@ function daysLeft(deadline) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   WORLD MAP  —  vraie carte D3 + TopoJSON projection Mercator
+   WORLD MAP — vraie carte D3 + TopoJSON projection Mercator
 ═══════════════════════════════════════════════════════════════════════════ */
 function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
   const containerRef    = useRef(null);
@@ -352,8 +351,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CALENDRIER DES DEADLINES
-   FIX: suppression du double cells.map, correction des JSX non fermés,
-        suppression du double nav header, suppression de la double légende
 ═══════════════════════════════════════════════════════════════════════════ */
 function Calendrier({ deadlines, onSelectBourse }) {
   const today = new Date();
@@ -401,14 +398,11 @@ function Calendrier({ deadlines, onSelectBourse }) {
 
   return (
     <div>
-      {/* Navigation — FIX: suppression du double header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <button onClick={() => setView(v => ({ ...v, year: v.year - 1 }))} style={S.iconBtn}>«</button>
           <button onClick={prev} style={S.navBtn}>‹</button>
         </div>
-
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <select
             value={view.month}
@@ -423,7 +417,6 @@ function Calendrier({ deadlines, onSelectBourse }) {
             style={{ width:84, fontSize:13, padding:'6px 8px', borderRadius:6, border:'1px solid #e6eef8', background:'#fff' }}
           />
         </div>
-
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <button onClick={next} style={S.navBtn}>›</button>
           <button onClick={() => setView(v => ({ ...v, year: v.year + 1 }))} style={S.iconBtn}>»</button>
@@ -436,7 +429,6 @@ function Calendrier({ deadlines, onSelectBourse }) {
         </div>
       </div>
 
-      {/* En-têtes jours */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3, marginBottom:4 }}>
         {DAYS.map(d => (
           <div key={d} style={{ textAlign:'center', fontSize:9, color:'#94a3b8', fontWeight:700, padding:'2px 0' }}>
@@ -445,7 +437,6 @@ function Calendrier({ deadlines, onSelectBourse }) {
         ))}
       </div>
 
-      {/* Cellules — FIX: un seul cells.map, JSX correctement fermé */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
         {cells.map((day, i) => {
           if (!day) return <div key={`e${i}`}/>;
@@ -529,7 +520,6 @@ function Calendrier({ deadlines, onSelectBourse }) {
         })}
       </div>
 
-      {/* Légende — FIX: une seule légende (urgence par couleur) */}
       <div style={{ display:'flex', gap:12, marginTop:12, flexWrap:'wrap' }}>
         {[['#dc2626','Expiré'],['#d97706','≤ 7 jours'],['#2563eb','≤ 30 jours'],['#166534','Planifiée']].map(([c, l]) => (
           <div key={l} style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -557,7 +547,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
     axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
-      .then(r => setRoadmap(r.data.docs || []))
+      .then(r => {
+        const docs = r.data.docs || [];
+        setRoadmap(docs);
+        setAppliedNoms(new Set(docs.map(b => b.nom?.trim().toLowerCase())));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user?.id]);
@@ -569,6 +563,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         const doc  = (r.data && r.data.docs && r.data.docs[0]) || r.data;
         const favs = doc && doc.bourses ? doc.bourses : [];
         setFavorites(favs);
+        setStarredNoms(new Set(favs.map(b => b.nom?.trim().toLowerCase())));
       })
       .catch(() => {});
   }, [user?.id]);
@@ -580,8 +575,8 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     if (code) scholarshipCounts[code] = (scholarshipCounts[code] || 0) + 1;
   });
 
-  const roadmapSet   = new Set((roadmap   || []).map(b => b.nom));
-  const favoritesSet = new Set((favorites || []).map(b => b.nom));
+  const roadmapSet   = new Set((roadmap   || []).map(b => b.nom?.trim().toLowerCase()));
+  const favoritesSet = new Set((favorites || []).map(b => b.nom?.trim().toLowerCase()));
 
   const deadlines = (bourses || [])
     .filter(b => b.dateLimite)
@@ -589,15 +584,13 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       nom:      b.nom,
       deadline: new Date(b.dateLimite),
       pays:     b.pays,
-      isFavori: favoritesSet.has(b.nom),
-      inRoadmap:roadmapSet.has(b.nom),
+      isFavori: favoritesSet.has(b.nom?.trim().toLowerCase()),
+      inRoadmap:roadmapSet.has(b.nom?.trim().toLowerCase()),
     }))
     .sort((a, b) => a.deadline - b.deadline);
 
-  // FIX: subtitle distincte pour le calendrier
   const roadmapDeadlines = deadlines.filter(d => d.inRoadmap);
 
-  /* ── Scores entretiens ── */
   const parseScore = txt => {
     const m = (txt || '').match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
     return m ? parseInt(m[1]) : null;
@@ -607,7 +600,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   const avgScore  = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b.scoreNum, 0) / scores.length) : null;
   const scoreDiff = scores.length >= 2 ? scores[0].scoreNum - scores[1].scoreNum : null;
 
-  /* ── Complétion profil ── */
   const PROFILE_FIELDS = [
     { field: 'name',    label: 'Nom'        },
     { field: 'email',   label: 'Email'      },
@@ -626,7 +618,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     ? (bourses || []).filter(b => b.pays === COUNTRY_META[activeCountry]?.label).slice(0, 6)
     : [];
 
-  /* ── Gate non connecté ── */
   if (!user) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center', padding:40 }}>
       <div style={{ fontSize:48 }}>🔒</div>
@@ -640,7 +631,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 32px' }}>
 
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 }}>
           <div>
             <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#1a3a6b', marginBottom:3, letterSpacing:'-0.01em' }}>
@@ -653,7 +644,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           <button style={S.btnGold} onClick={() => setView('bourses')}>Explorer Bourses</button>
         </div>
 
-        {/* ── BANNER URGENCE ── */}
+        {/* BANNER URGENCE */}
         {urgentDeadlines.length > 0 && (
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', borderRadius:8, background:'#fff3cd', border:'1px solid #fde68a', borderLeft:'4px solid #f5a623', marginBottom:20 }}>
             <span style={{ fontSize:18 }}>⚡</span>
@@ -670,7 +661,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         )}
 
-        {/* ── KPIs ── */}
+        {/* KPIs */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
           {[
             { label:'Bourses disponibles', val:(bourses || []).length,  icon:'🎓', color:'#1a3a6b', bg:'#eff6ff' },
@@ -701,7 +692,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           ))}
         </div>
 
-        {/* ── CARTE MONDIALE ── */}
+        {/* CARTE MONDIALE */}
         <div style={{ ...S.card, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
@@ -786,9 +777,8 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
 
-        {/* ── ALERTES + PROFIL ── */}
+        {/* ALERTES + PROFIL */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-
           {/* Alertes deadlines */}
           <div style={S.card}>
             <div style={S.cardTitle}>🔔 Alertes deadlines</div>
@@ -871,17 +861,14 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
 
-        {/* ── GRILLE PRINCIPALE ── */}
+        {/* GRILLE PRINCIPALE */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-
           {/* LEFT — Calendrier + Prochaines échéances */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
             <div style={S.card}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <div>
                   <div style={S.cardTitle}>📅 Calendrier des deadlines</div>
-                  {/* FIX: subtitles distinctes avec les bons comptes */}
                   <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length !== 1 ? 's' : ''} avec deadline</div>
                   <div style={S.cardSub}>{roadmapDeadlines.length} bourse{roadmapDeadlines.length !== 1 ? 's' : ''} dans ta roadmap</div>
                 </div>
@@ -899,8 +886,8 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 <Calendrier
                   deadlines={deadlines}
                   onSelectBourse={b => {
-                    if (onOpenBourse) onOpenBourse(b.nom);
-                    else setDrawerBourse(b);
+                    const full = (bourses || []).find(x => x.nom?.trim().toLowerCase() === b.nom?.trim().toLowerCase());
+                    setDrawerBourse(full || b);
                   }}
                 />
               )}
@@ -936,7 +923,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
           {/* RIGHT — Progression + Force dossier + Top bourses */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
             {/* Progression entretiens */}
             <div style={S.card}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
@@ -1073,13 +1059,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 </div>
               ))}
             </div>
-
           </div>
         </div>
-
       </div>
 
-      {/* ── DRAWER ── */}
+      {/* ── DRAWER EXTERNALISÉ ── */}
       {drawerBourse && (
         <BourseDrawer
           bourse={drawerBourse}
@@ -1144,7 +1128,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STYLES
-   FIX: ajout de iconBtn manquant
 ═══════════════════════════════════════════════════════════════════════════ */
 const S = {
   card:      { background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'18px 20px', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },

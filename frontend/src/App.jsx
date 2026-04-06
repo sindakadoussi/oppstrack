@@ -15,6 +15,7 @@ import axios from 'axios';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import Footer from './components/Footer';
 
+
 function AppContent() {
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
