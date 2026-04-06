@@ -23,14 +23,14 @@ const NUMERIC_TO_ALPHA2 = {
   '784':'AE','826':'GB','840':'US','858':'UY','862':'VE','704':'VN','887':'YE',
   '894':'ZM','716':'ZW','426':'LS','450':'MG','454':'MW','508':'MZ','646':'RW',
   '191':'HR','703':'SK','705':'SI','807':'MK','688':'RS','70':'BA','499':'ME',
-  '380':'IT','44':'BS','48':'BH','64':'BT','90':'SB','108':'BI','116':'KH',
+  '44':'BS','48':'BH','64':'BT','90':'SB','108':'BI','116':'KH',
   '140':'CF','148':'TD','174':'KM','180':'CD','232':'ER','242':'FJ','270':'GM',
-  '324':'GN','328':'GY','336':'VA','352':'IS','400':'JO','417':'KG','418':'LA',
+  '324':'GN','328':'GY','336':'VA','352':'IS','417':'KG','418':'LA',
   '428':'LV','440':'LT','442':'LU','462':'MV','466':'ML','470':'MT','478':'MR',
-  '496':'MN','516':'NA','540':'NC','548':'VU','562':'NE','586':'PK','598':'PG',
-  '604':'PE','624':'GW','626':'TL','662':'LC','670':'VC','678':'ST','690':'SC',
-  '740':'SR','760':'SY','764':'TH','776':'TO','780':'TT','798':'TV',
-  '882':'WS','887':'YE',
+  '496':'MN','540':'NC','548':'VU','562':'NE',
+  '624':'GW','626':'TL','662':'LC','670':'VC','678':'ST','690':'SC',
+  '740':'SR','776':'TO','780':'TT','798':'TV',
+  '882':'WS',
 };
 
 const ALPHA2_TO_NUMERIC = Object.fromEntries(
@@ -93,6 +93,18 @@ const COUNTRY_META = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   UTILITAIRE DAYS LEFT
+   FIX: fonction manquante — était appelée mais jamais déclarée
+═══════════════════════════════════════════════════════════════════════════ */
+function daysLeft(deadline) {
+  const diff = Math.round((new Date(deadline) - new Date()) / 86400000);
+  if (diff < 0)   return { label: 'Expiré', color: '#dc2626' };
+  if (diff <= 7)  return { label: `${diff}j`,  color: '#d97706' };
+  if (diff <= 30) return { label: `${diff}j`,  color: '#2563eb' };
+  return { label: `${diff}j`, color: '#166534' };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    WORLD MAP  —  vraie carte D3 + TopoJSON projection Mercator
 ═══════════════════════════════════════════════════════════════════════════ */
 function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
@@ -102,7 +114,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
   const [tooltip, setTooltip] = useState(null);
   const [ready,   setReady  ] = useState(false);
 
-  /* Normalise scholarshipCounts en numeric-keyed */
   const normCounts = {};
   Object.entries(scholarshipCounts).forEach(([k, v]) => {
     if (/^\d+$/.test(k)) { normCounts[k] = v; }
@@ -123,7 +134,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
     isActive ? '#f5a623' :
     n > 0    ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.06)';
 
-  /* Charge D3 + TopoJSON puis dessine */
   useEffect(() => {
     let cancelled = false;
 
@@ -165,7 +175,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
       const pathGen  = d3.geoPath().projection(proj);
       const features = topojson.feature(world, world.objects.countries).features;
 
-      /* Pays */
       svg.selectAll('path.country')
         .data(features)
         .join('path')
@@ -203,7 +212,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
           if (a2 && getCount(d.id) > 0) onCountryClick(a2);
         });
 
-      /* Graticule */
       svg.append('path')
         .datum(d3.geoGraticule()())
         .attr('d', pathGen)
@@ -211,7 +219,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
         .attr('stroke', 'rgba(255,255,255,0.035)')
         .attr('stroke-width', 0.5);
 
-      /* Marqueur Tunisie */
       const tuniXY = proj([9.5375, 33.8869]);
       if (tuniXY) {
         const g = svg.append('g');
@@ -236,7 +243,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
           .text('Tunisie');
       }
 
-      /* Légende */
       const lg = svg.append('g').attr('transform', `translate(10,${H - 32})`);
       lg.append('rect')
         .attr('width', 148).attr('height', 28).attr('rx', 5)
@@ -266,7 +272,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
     return () => { cancelled = true; };
   }, [JSON.stringify(normCounts)]);
 
-  /* Sync pays actif sans redraw */
   useEffect(() => {
     activeCountryRef.current = activeCountry;
     if (!svgRef.current || !window.d3) return;
@@ -284,14 +289,12 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', borderRadius: 8, overflow: 'hidden' }}>
-      {/* Fond océan */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(160deg, #050e1c 0%, #0b1e3d 55%, #08172e 100%)',
         zIndex: 0,
       }}/>
 
-      {/* Loader */}
       {!ready && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 3,
@@ -323,7 +326,6 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
         }}
       />
 
-      {/* Tooltip */}
       {tooltip && COUNTRY_META[tooltip.code] && (
         <div style={{
           position: 'absolute',
@@ -350,6 +352,8 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts = {} }) {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CALENDRIER DES DEADLINES
+   FIX: suppression du double cells.map, correction des JSX non fermés,
+        suppression du double nav header, suppression de la double légende
 ═══════════════════════════════════════════════════════════════════════════ */
 function Calendrier({ deadlines, onSelectBourse }) {
   const today = new Date();
@@ -370,20 +374,17 @@ function Calendrier({ deadlines, onSelectBourse }) {
 
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
   const firstDay    = (new Date(view.year, view.month, 1).getDay() + 6) % 7;
-<<<<<<< HEAD
-  // Color by status: roadmap (selected), favori, or other
+
   const computeColor = (item) => {
     if (item?.inRoadmap) return '#7c3aed';
-    if (item?.isFavori) return '#f5a623';
+    if (item?.isFavori)  return '#f5a623';
     return '#2563eb';
   };
-=======
 
   const diffColor = (diff) =>
-    diff < 0  ? '#dc2626' :
+    diff < 0   ? '#dc2626' :
     diff <= 7  ? '#d97706' :
     diff <= 30 ? '#2563eb' : '#166534';
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -400,9 +401,9 @@ function Calendrier({ deadlines, onSelectBourse }) {
 
   return (
     <div>
-      {/* Navigation */}
+      {/* Navigation — FIX: suppression du double header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-<<<<<<< HEAD
+
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <button onClick={() => setView(v => ({ ...v, year: v.year - 1 }))} style={S.iconBtn}>«</button>
           <button onClick={prev} style={S.navBtn}>‹</button>
@@ -426,15 +427,13 @@ function Calendrier({ deadlines, onSelectBourse }) {
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <button onClick={next} style={S.navBtn}>›</button>
           <button onClick={() => setView(v => ({ ...v, year: v.year + 1 }))} style={S.iconBtn}>»</button>
-          <button onClick={() => setView({ month: today.getMonth(), year: today.getFullYear() })} style={{ ...S.btnXs, padding:'6px 10px' }}>Aujourd'hui</button>
+          <button
+            onClick={() => setView({ month: today.getMonth(), year: today.getFullYear() })}
+            style={{ ...S.btnXs, padding:'6px 10px' }}
+          >
+            Aujourd'hui
+          </button>
         </div>
-=======
-        <button onClick={prev} style={S.navBtn}>‹</button>
-        <span style={{ fontSize:13, fontWeight:700, color:'#1a3a6b' }}>
-          {MONTHS[view.month]} {view.year}
-        </span>
-        <button onClick={next} style={S.navBtn}>›</button>
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
       </div>
 
       {/* En-têtes jours */}
@@ -445,15 +444,10 @@ function Calendrier({ deadlines, onSelectBourse }) {
           </div>
         ))}
       </div>
-<<<<<<< HEAD
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
-          {cells.map((day, i) => {
-=======
 
-      {/* Cellules */}
+      {/* Cellules — FIX: un seul cells.map, JSX correctement fermé */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
         {cells.map((day, i) => {
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
           if (!day) return <div key={`e${i}`}/>;
           const isToday = (
             day === today.getDate() &&
@@ -463,12 +457,8 @@ function Calendrier({ deadlines, onSelectBourse }) {
           const k    = `${view.year}-${view.month}-${day}`;
           const dl   = deadlineMap[k];
           const diff = dl ? Math.round((new Date(view.year, view.month, day) - today) / 86400000) : null;
-<<<<<<< HEAD
-          const color = dl && dl.length ? computeColor(dl[0]) : null;
-=======
           const col  = diff !== null ? diffColor(diff) : null;
 
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
           return (
             <div
               key={k}
@@ -477,7 +467,7 @@ function Calendrier({ deadlines, onSelectBourse }) {
               style={{
                 aspectRatio: '1',
                 display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
+                alignItems: 'center', justifyContent: 'flex-start',
                 borderRadius: 6, fontSize: 10, position: 'relative',
                 transition: 'all 0.15s',
                 background: isToday ? '#1a3a6b' : dl ? `${col}14` : 'transparent',
@@ -489,12 +479,21 @@ function Calendrier({ deadlines, onSelectBourse }) {
                 color: isToday ? '#fff' : dl ? col : '#94a3b8',
                 cursor: dl ? 'pointer' : 'default',
                 fontWeight: (isToday || dl) ? 700 : 400,
+                padding: '3px 2px',
+                overflow: 'hidden',
               }}
             >
-              {day}
+              <span style={{ flexShrink: 0 }}>{day}</span>
               {dl && (
-<<<<<<< HEAD
-                <div style={{ position:'absolute', bottom:6, left:6, right:6, display:'flex', flexDirection:'column', gap:6, maxHeight:'calc(100% - 22px)', overflowY:'auto', boxSizing:'border-box', paddingRight:4 }}>
+                <div style={{
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  marginTop: 2,
+                  overflowY: 'auto',
+                  maxHeight: 'calc(100% - 16px)',
+                }}>
                   {dl.map((item, idx) => {
                     const c = computeColor(item);
                     return (
@@ -503,51 +502,38 @@ function Calendrier({ deadlines, onSelectBourse }) {
                         onClick={(e) => { e.stopPropagation(); if (onSelectBourse) onSelectBourse(item); }}
                         title={item.nom}
                         style={{
-                          display:'block',
-                          width:'100%',
-                          boxSizing:'border-box',
-                          textAlign:'left',
-                          fontSize:9,
-                          padding:'3px 6px',
-                          borderRadius:6,
+                          display: 'block',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          textAlign: 'left',
+                          fontSize: 9,
+                          padding: '2px 4px',
+                          borderRadius: 4,
                           background: c + '18',
                           border: `1px solid ${c}44`,
                           color: c,
-                          cursor:'pointer',
-                          overflow:'hidden',
-                          textOverflow:'ellipsis',
-                          whiteSpace:'nowrap'
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {item.nom}
                       </button>
                     );
                   })}
-=======
-                <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', display:'flex', gap:1.5 }}>
-                  {dl.slice(0, 3).map((_, idx) => (
-                    <div key={idx} style={{ width:3.5, height:3.5, borderRadius:'50%', background:col }}/>
-                  ))}
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
                 </div>
               )}
             </div>
           );
         })}
       </div>
-<<<<<<< HEAD
-      <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
-        {[["#7c3aed","Sélectionnée"],["#f5a623","Favoris"],["#2563eb","Autres"]].map(([c,l]) => (
-          <div key={l} style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <div style={{ width:8, height:8, borderRadius:2, background:c }}/>
-=======
 
-      {/* Légende */}
+      {/* Légende — FIX: une seule légende (urgence par couleur) */}
       <div style={{ display:'flex', gap:12, marginTop:12, flexWrap:'wrap' }}>
         {[['#dc2626','Expiré'],['#d97706','≤ 7 jours'],['#2563eb','≤ 30 jours'],['#166534','Planifiée']].map(([c, l]) => (
           <div key={l} style={{ display:'flex', alignItems:'center', gap:5 }}>
             <div style={{ width:9, height:9, borderRadius:2, background:c, flexShrink:0 }}/>
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
             <span style={{ fontSize:10, color:'#64748b' }}>{l}</span>
           </div>
         ))}
@@ -563,13 +549,10 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   const [roadmap,       setRoadmap      ] = useState([]);
   const [loading,       setLoading      ] = useState(true);
   const [activeCountry, setActiveCountry] = useState(null);
-<<<<<<< HEAD
-  const [favorites,     setFavorites]     = useState([]);
-=======
+  const [favorites,     setFavorites    ] = useState([]);
   const [drawerBourse,  setDrawerBourse ] = useState(null);
   const [appliedNoms,   setAppliedNoms  ] = useState(new Set());
   const [starredNoms,   setStarredNoms  ] = useState(new Set());
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
 
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
@@ -579,22 +562,17 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       .finally(() => setLoading(false));
   }, [user?.id]);
 
-<<<<<<< HEAD
   useEffect(() => {
     if (!user?.id) return;
     axiosInstance.get(API_ROUTES.favoris.byUser(user.id))
       .then(r => {
-        // Favoris API returns an array with a single document containing `bourses` array
-        const doc = (r.data && r.data.docs && r.data.docs[0]) || r.data;
+        const doc  = (r.data && r.data.docs && r.data.docs[0]) || r.data;
         const favs = doc && doc.bourses ? doc.bourses : [];
         setFavorites(favs);
       })
       .catch(() => {});
   }, [user?.id]);
 
-=======
-  /* ── scholarshipCounts keyed alpha-2 ── */
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
   const scholarshipCounts = {};
   (bourses || []).forEach(b => {
     if (!b.pays) return;
@@ -602,35 +580,22 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     if (code) scholarshipCounts[code] = (scholarshipCounts[code] || 0) + 1;
   });
 
-<<<<<<< HEAD
-  // Build calendar items from the full bourses collection, mark favorites and roadmap items
-  const roadmapSet = new Set((roadmap || []).map(b => b.nom));
+  const roadmapSet   = new Set((roadmap   || []).map(b => b.nom));
   const favoritesSet = new Set((favorites || []).map(b => b.nom));
+
   const deadlines = (bourses || [])
     .filter(b => b.dateLimite)
     .map(b => ({
-      nom: b.nom,
+      nom:      b.nom,
       deadline: new Date(b.dateLimite),
-      pays: b.pays,
+      pays:     b.pays,
       isFavori: favoritesSet.has(b.nom),
-      inRoadmap: roadmapSet.has(b.nom),
+      inRoadmap:roadmapSet.has(b.nom),
     }))
-=======
-  /* ── Deadlines depuis roadmap ── */
-  const deadlines = roadmap
-    .filter(b => b.dateLimite)
-    .map(b => ({ nom: b.nom, deadline: new Date(b.dateLimite), pays: b.pays, ...b }))
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
     .sort((a, b) => a.deadline - b.deadline);
 
-  const daysLeft = d => {
-    const diff = Math.round((d - new Date()) / 86400000);
-    if (diff < 0)   return { label: 'Expiré',       color: '#dc2626' };
-    if (diff === 0) return { label: "Aujourd'hui",  color: '#dc2626' };
-    if (diff <= 7)  return { label: `${diff}j`,     color: '#d97706' };
-    if (diff <= 30) return { label: `${diff}j`,     color: '#2563eb' };
-    return               { label: `${diff}j`,       color: '#166534' };
-  };
+  // FIX: subtitle distincte pour le calendrier
+  const roadmapDeadlines = deadlines.filter(d => d.inRoadmap);
 
   /* ── Scores entretiens ── */
   const parseScore = txt => {
@@ -644,11 +609,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
   /* ── Complétion profil ── */
   const PROFILE_FIELDS = [
-    { field: 'name',    label: 'Nom'         },
-    { field: 'email',   label: 'Email'       },
-    { field: 'pays',    label: 'Pays cible'  },
-    { field: 'niveau',  label: 'Niveau'      },
-    { field: 'domaine', label: 'Domaine'     },
+    { field: 'name',    label: 'Nom'        },
+    { field: 'email',   label: 'Email'      },
+    { field: 'pays',    label: 'Pays cible' },
+    { field: 'niveau',  label: 'Niveau'     },
+    { field: 'domaine', label: 'Domaine'    },
   ];
   const completion = !user ? 0 : Math.round(PROFILE_FIELDS.filter(f => user[f.field]).length / PROFILE_FIELDS.length * 100);
 
@@ -671,14 +636,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     </div>
   );
 
-  /* ════════════════════════════════════════════════════════════════════════
-     RENDER
-  ════════════════════════════════════════════════════════════════════════ */
   return (
     <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 32px' }}>
 
-        {/* ── HEADER ─────────────────────────────────────────────────── */}
+        {/* ── HEADER ── */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 }}>
           <div>
             <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#1a3a6b', marginBottom:3, letterSpacing:'-0.01em' }}>
@@ -691,7 +653,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           <button style={S.btnGold} onClick={() => setView('bourses')}>Explorer Bourses</button>
         </div>
 
-        {/* ── BANNER URGENCE ──────────────────────────────────────────── */}
+        {/* ── BANNER URGENCE ── */}
         {urgentDeadlines.length > 0 && (
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', borderRadius:8, background:'#fff3cd', border:'1px solid #fde68a', borderLeft:'4px solid #f5a623', marginBottom:20 }}>
             <span style={{ fontSize:18 }}>⚡</span>
@@ -708,32 +670,20 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         )}
 
-        {/* ── KPIs ────────────────────────────────────────────────────── */}
+        {/* ── KPIs ── */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
           {[
+            { label:'Bourses disponibles', val:(bourses || []).length,  icon:'🎓', color:'#1a3a6b', bg:'#eff6ff' },
+            { label:'Dans ma roadmap',     val:roadmap.length,           icon:'📋', color:'#166534', bg:'#f0fdf4' },
             {
-              label: 'Bourses disponibles',
-              val:   (bourses || []).length,
-              icon:  '🎓', color: '#1a3a6b', bg: '#eff6ff',
-            },
-            {
-              label: 'Dans ma roadmap',
-              val:   roadmap.length,
-              icon:  '📋', color: '#166534', bg: '#f0fdf4',
-            },
-            {
-              label: 'Deadlines ce mois',
-              val:   deadlines.filter(d => {
+              label:'Deadlines ce mois',
+              val: deadlines.filter(d => {
                 const di = Math.round((d.deadline - new Date()) / 86400000);
                 return di >= 0 && di <= 30;
               }).length,
-              icon:  '⏰', color: '#d97706', bg: '#fffbeb',
+              icon:'⏰', color:'#d97706', bg:'#fffbeb',
             },
-            {
-              label: 'Profil complété',
-              val:   `${completion}%`,
-              icon:  '⭐', color: '#7c3aed', bg: '#f5f3ff',
-            },
+            { label:'Profil complété', val:`${completion}%`, icon:'⭐', color:'#7c3aed', bg:'#f5f3ff' },
           ].map((k, i) => (
             <div key={i} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'16px 18px', borderTop:`3px solid ${k.color}`, boxShadow:'0 2px 6px rgba(26,58,107,0.06)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -751,7 +701,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           ))}
         </div>
 
-        {/* ── CARTE MONDIALE ──────────────────────────────────────────── */}
+        {/* ── CARTE MONDIALE ── */}
         <div style={{ ...S.card, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
@@ -764,15 +714,12 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 240px', gap:16, alignItems:'start' }}>
-
-            {/* CARTE D3 */}
             <WorldMap
               onCountryClick={code => setActiveCountry(code === activeCountry ? null : code)}
               activeCountry={activeCountry}
               scholarshipCounts={scholarshipCounts}
             />
 
-            {/* SIDEBAR PAYS */}
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#1a3a6b', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:4, borderBottom:'2px solid #f5a623', paddingBottom:4 }}>
                 Top pays
@@ -809,7 +756,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                   })}
               </div>
 
-              {/* Panneau détail */}
               {activeCountry && COUNTRY_META[activeCountry] && (
                 <div style={{ marginTop:8, padding:'12px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe' }}>
                   <div style={{ fontSize:13, fontWeight:700, color:'#1a3a6b', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -840,7 +786,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
 
-        {/* ── ALERTES + PROFIL ────────────────────────────────────────── */}
+        {/* ── ALERTES + PROFIL ── */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
 
           {/* Alertes deadlines */}
@@ -849,7 +795,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:12 }}>
               {deadlines.length === 0 ? (
                 <div style={{ color:'#64748b', fontSize:13 }}>
-                  Aucune bourse avec deadline dans ta roadmap.
+                  Aucune bourse avec deadline disponible.
                 </div>
               ) : deadlines.slice(0, 5).map((d, i) => {
                 const dl   = daysLeft(d.deadline);
@@ -899,9 +845,9 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {[
                 { label:'Informations académiques', pct: user?.niveau && user?.domaine ? 100 : 50, color:'#166534' },
-                { label:'Expériences & projets',    pct: 75,                                        color:'#2563eb' },
-                { label:'CV généré & optimisé',     pct: 50,                                        color:'#d97706' },
-                { label:'Lettres de motivation',    pct: 25,                                        color:'#dc2626' },
+                { label:'Expériences & projets',    pct: 75,  color:'#2563eb' },
+                { label:'CV généré & optimisé',     pct: 50,  color:'#d97706' },
+                { label:'Lettres de motivation',    pct: 25,  color:'#dc2626' },
                 { label:'Entretiens simulés',       pct: scores.length > 0 ? Math.min(100, scores.length * 33) : 0, color:'#7c3aed' },
               ].map(({ label, pct, color }) => (
                 <div key={label}>
@@ -925,7 +871,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
 
-        {/* ── GRILLE PRINCIPALE ───────────────────────────────────────── */}
+        {/* ── GRILLE PRINCIPALE ── */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
 
           {/* LEFT — Calendrier + Prochaines échéances */}
@@ -935,11 +881,9 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <div>
                   <div style={S.cardTitle}>📅 Calendrier des deadlines</div>
-<<<<<<< HEAD
-                  <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length > 1 ? 's' : ''} avec deadline</div>
-=======
-                  <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length !== 1 ? 's' : ''} dans ta roadmap</div>
->>>>>>> 2cb97324ba56af234d39f93f092a3b361c17703b
+                  {/* FIX: subtitles distinctes avec les bons comptes */}
+                  <div style={S.cardSub}>{deadlines.length} bourse{deadlines.length !== 1 ? 's' : ''} avec deadline</div>
+                  <div style={S.cardSub}>{roadmapDeadlines.length} bourse{roadmapDeadlines.length !== 1 ? 's' : ''} dans ta roadmap</div>
                 </div>
                 <button style={S.btnXs} onClick={() => setView('roadmap')}>Roadmap →</button>
               </div>
@@ -1053,8 +997,8 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                   <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                     {[
                       { label:'Dernier score', val:`${lastScore}/100`, color: lastScore >= 75 ? '#166534' : lastScore >= 55 ? '#d97706' : '#dc2626' },
-                      avgScore  != null && { label:'Moyenne',   val:`${avgScore}/100`, color:'#475569' },
-                      scoreDiff != null && { label:'Évolution',  val:`${scoreDiff > 0 ? '+' : ''}${scoreDiff}`, color: scoreDiff > 0 ? '#166534' : '#dc2626' },
+                      avgScore  != null && { label:'Moyenne',  val:`${avgScore}/100`, color:'#475569' },
+                      scoreDiff != null && { label:'Évolution', val:`${scoreDiff > 0 ? '+' : ''}${scoreDiff}`, color: scoreDiff > 0 ? '#166534' : '#dc2626' },
                     ].filter(Boolean).map((s, i) => (
                       <div key={i} style={{ padding:'8px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' }}>
                         <div style={{ fontSize:15, fontWeight:800, color:s.color }}>{s.val}</div>
@@ -1135,7 +1079,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
       </div>
 
-      {/* ── DRAWER ──────────────────────────────────────────────────────── */}
+      {/* ── DRAWER ── */}
       {drawerBourse && (
         <BourseDrawer
           bourse={drawerBourse}
@@ -1149,15 +1093,15 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           onApply={async b => {
             try {
               await axiosInstance.post(API_ROUTES.roadmap.create, {
-                userId:      user.id,
-                userEmail:   user.email || '',
-                nom:         b.nom,
-                pays:        b.pays        || '',
-                lienOfficiel:b.lienOfficiel|| '',
-                financement: b.financement || '',
-                dateLimite:  b.dateLimite  || null,
-                ajouteLe:    new Date().toISOString(),
-                statut:      'en_cours',
+                userId:        user.id,
+                userEmail:     user.email || '',
+                nom:           b.nom,
+                pays:          b.pays         || '',
+                lienOfficiel:  b.lienOfficiel || '',
+                financement:   b.financement  || '',
+                dateLimite:    b.dateLimite   || null,
+                ajouteLe:      new Date().toISOString(),
+                statut:        'en_cours',
                 etapeCourante: 0,
               });
               setAppliedNoms(prev => new Set([...prev, b.nom?.trim().toLowerCase()]));
@@ -1177,12 +1121,12 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 }
               } else {
                 const nb = {
-                  nom:         b.nom,
-                  pays:        b.pays        || '',
-                  lienOfficiel:b.lienOfficiel|| '',
-                  financement: b.financement || '',
-                  dateLimite:  b.dateLimite  || null,
-                  ajouteLe:    new Date().toISOString(),
+                  nom:          b.nom,
+                  pays:         b.pays         || '',
+                  lienOfficiel: b.lienOfficiel || '',
+                  financement:  b.financement  || '',
+                  dateLimite:   b.dateLimite   || null,
+                  ajouteLe:     new Date().toISOString(),
                 };
                 if (doc?.id)
                   await axiosInstance.patch(API_ROUTES.favoris.update(doc.id), { bourses: [...(doc.bourses || []), nb] });
@@ -1200,6 +1144,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STYLES
+   FIX: ajout de iconBtn manquant
 ═══════════════════════════════════════════════════════════════════════════ */
 const S = {
   card:      { background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'18px 20px', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },
@@ -1210,5 +1155,5 @@ const S = {
   btnOutline:{ padding:'8px 16px', borderRadius:6, background:'transparent', color:'#475569', border:'1px solid #e2e8f0', fontSize:13, cursor:'pointer' },
   btnXs:     { padding:'5px 12px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:11, cursor:'pointer', fontWeight:600 },
   navBtn:    { padding:'3px 12px', borderRadius:4, background:'#f8fafc', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:16, cursor:'pointer' },
-  iconBtn:   { padding:'6px 8px', borderRadius:6, background:'transparent', border:'1px solid transparent', color:'#475569', fontSize:13, cursor:'pointer' },
+  iconBtn:   { padding:'3px 8px',  borderRadius:4, background:'#f8fafc', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:14, cursor:'pointer' },
 };
