@@ -361,7 +361,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           height: 46px;
           object-fit: contain;
           border-radius: 6px;
-          background: #fff;
+         
           padding: 2px;
         }
         .brand-text {

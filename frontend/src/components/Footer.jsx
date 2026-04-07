@@ -13,7 +13,7 @@ export default function Footer({ setView }) {
               src="logo.png"
               alt="OppsTrack" 
               className="footer-logo-img"
-              style={{ height: '28px', width: 'auto' }}
+              style={{ height: '28px', width: 'auto', background:'none'}}
             />
             <span className="footer-logo-text">OppsTrack</span>
           </div>
