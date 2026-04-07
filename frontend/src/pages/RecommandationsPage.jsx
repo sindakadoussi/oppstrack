@@ -402,6 +402,7 @@ export default function RecommandationsPage({
           onStar={handleStar}
           applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}
           onApply={handleApply}
+          user={user}
         />
       )}
 

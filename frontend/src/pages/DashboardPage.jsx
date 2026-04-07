@@ -1120,6 +1120,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               }
             } catch(e) { console.error(e); }
           }}
+          user={user}
         />
       )}
     </div>
