@@ -353,19 +353,14 @@ export interface Bourse {
   id: string;
   nom: string;
   pays: string;
-  domaine?:
-    | (
-        | 'Sciences'
-        | 'Ingénierie'
-        | 'Médecine'
-        | 'Droit'
-        | 'Économie'
-        | 'Arts'
-        | 'Informatique'
-        | 'Agriculture'
-        | 'Tous domaines'
-      )
-    | null;
+  /**
+   * Domaines d'études couverts par la bourse (rempli automatiquement par le workflow)
+   */
+  domaine?: string | null;
+  /**
+   * URL directe vers la page de candidature officielle
+   */
+  lienPostuler?: string | null;
   langue?: ('Anglais' | 'Français' | 'Arabe' | 'Autre') | null;
   tunisienEligible?: ('oui' | 'non' | 'inconnu') | null;
   statut?: ('active' | 'expiree' | 'a_venir') | null;
@@ -788,6 +783,7 @@ export interface BoursesSelect<T extends boolean = true> {
   nom?: T;
   pays?: T;
   domaine?: T;
+  lienPostuler?: T;
   langue?: T;
   tunisienEligible?: T;
   statut?: T;
