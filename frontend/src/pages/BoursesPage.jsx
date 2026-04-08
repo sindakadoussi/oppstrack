@@ -18,6 +18,101 @@ const countryFlag = (pays) => {
   return flags[pays] || '🌍';
 };
 
+// ── Modal de connexion (magic link) ─────────────────────────────────────────
+function LoginModal({ onClose }) {
+  const [email,  setEmail]  = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+
+  const send = async () => {
+  if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+  setStatus('sending');
+  try {
+    // ✅ Pour DEMANDER un magic link (envoi d'email)
+    await axiosInstance.post('/api/users/request-magic-link', {
+      email: email.trim().toLowerCase(),
+    });
+    setStatus('success');
+  } catch (err) {
+    setStatus('error');
+    setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
+  }
+};
+
+  return (
+    <div style={M.overlay}>
+      <div style={M.box}>
+        <div style={M.head}>
+          <span style={{ fontSize: 22 }}>🔐</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <button style={M.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <div style={M.body}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+              </p>
+              <input
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={M.input}
+              />
+              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
+              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={M.spinner} />
+              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
+              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                Vérifiez votre boîte mail (et les spams).<br/>
+                Cliquez sur le lien pour vous connecter.
+              </p>
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
+                ✓ Fermer
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
+                Réessayer
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={M.backdrop} onClick={onClose} />
+    </div>
+  );
+}
+
+const M = {
+  overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
+  backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
+  box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
+  body:     { padding:'24px' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+};
+
 export default function BoursesPage({
   bourses,
   handleSend,
@@ -31,6 +126,7 @@ export default function BoursesPage({
   initialSelected,
   onClearInitialSelected,
 }) {
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [search,       setSearch]       = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
   const [filterPays,   setFilterPays]   = useState('');
@@ -119,6 +215,9 @@ export default function BoursesPage({
       return matchSearch && matchNiveau && matchPays;
     })
     .sort((a, b) => a.nom?.localeCompare(b.nom));
+  
+  const visibleBourses = !user ? filtered.slice(0, 9) : filtered;
+  const hasHiddenBourses = !user && filtered.length > 9;
 
   const paysList    = [...new Set(bourses.map(b => b.pays).filter(Boolean))];
   const niveauxList = [...new Set(bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean))];
@@ -151,25 +250,75 @@ export default function BoursesPage({
       {/* Grille + Chat */}
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 32px', display:'flex', gap:24, alignItems:'flex-start' }}>
         <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:16 }}>
-          {filtered.length === 0 ? (
+          {visibleBourses.length === 0 ? (
             <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 20px' }}>
               <div style={{ fontSize:48, marginBottom:16 }}>🔍</div>
               <div style={{ fontSize:16, fontWeight:600, color:'#1a3a6b', marginBottom:8 }}>Aucune bourse trouvée</div>
               <p style={{ color:'#64748b', fontSize:14 }}>Essayez d'autres critères de recherche.</p>
             </div>
-          ) : filtered.map(bourse => (
-            <BourseCard
-              key={bourse.id || bourse.nom}
-              bourse={bourse}
-              user={user}
-              onAskAI={handleAskAI}
-              onClick={() => setSelected(bourse)}
-              starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-              onStar={handleStar}
-              applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-              onApply={handleApply}
-            />
-          ))}
+          ) : (
+            visibleBourses.map(bourse => (
+              <BourseCard
+                key={bourse.id || bourse.nom}
+                bourse={bourse}
+                user={user}
+                onAskAI={handleAskAI}
+                onClick={() => setSelected(bourse)}
+                starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                onStar={handleStar}
+                applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                onApply={handleApply}
+              />
+            ))
+          )}
+
+          {/* Message pour les bourses cachées */}
+          {hasHiddenBourses && (
+            <div 
+              onClick={() => setShowLoginModal(true)}
+              style={{ 
+                gridColumn:'1/-1', 
+                textAlign:'center', 
+                padding:'32px 20px',
+                marginTop:8,
+                background:'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                borderRadius:12,
+                border:'1px dashed #cbd5e1',
+                cursor:'pointer',
+                transition:'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#eff6ff';
+                e.currentTarget.style.borderColor = '#f5a623';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+              }}
+            >
+              <div style={{ fontSize:36, marginBottom:8 }}>🔒</div>
+              <div style={{ fontSize:14, fontWeight:600, color:'#1a3a6b', marginBottom:4 }}>
+                {filtered.length - 9} bourse{filtered.length - 9 > 1 ? 's' : ''} supplémentaire{filtered.length - 9 > 1 ? 's' : ''}
+              </div>
+              <div style={{ fontSize:12, color:'#64748b', marginBottom:12 }}>
+                Connectez-vous pour voir toutes les bourses disponibles
+              </div>
+              <button 
+                style={{ 
+                  padding:'8px 20px', 
+                  borderRadius:6, 
+                  background:'#f5a623', 
+                  border:'none', 
+                  color:'#1a3a6b', 
+                  fontSize:12, 
+                  fontWeight:600, 
+                  cursor:'pointer' 
+                }}
+              >
+                🔐 Se connecter
+              </button>
+            </div>
+          )}
         </div>
 
         {showChat && (
@@ -223,6 +372,9 @@ export default function BoursesPage({
         onApply={handleApply}
         user={user}
       />
+
+      {/* Modal de connexion */}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
       <style>{`input::placeholder{color:#94a3b8} select option{color:#1a3a6b;background:#fff}`}</style>
     </div>

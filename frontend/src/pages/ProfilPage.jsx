@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '@/config/axiosInstance';
+import { WEBHOOK_ROUTES } from '@/config/routes';
 
 const emptyProfile = {
   name: '', email: '', phone: '', dateOfBirth: '',
@@ -18,11 +19,113 @@ const emptyProfile = {
   motivationSummary: '',
 };
 
+// ── Modal de connexion (magic link) ─────────────────────────────────────────
+function LoginModal({ onClose }) {
+  const [email,  setEmail]  = useState('');
+  const [status, setStatus] = useState('idle'); // idle | sending | success | error
+  const [errMsg, setErrMsg] = useState('');
+
+  const send = async () => {
+    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+    setStatus('sending');
+    try {
+      const res = await axiosInstance.post('/api/users/request-magic-link', {
+        email: email.trim().toLowerCase(),
+      });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
+    }
+  };
+
+  return (
+    <div style={M.overlay}>
+      <div style={M.box}>
+        {/* Header */}
+        <div style={M.head}>
+          <span style={{ fontSize: 22 }}>🔐</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <button style={M.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={M.body}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+              </p>
+              <input
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={M.input}
+              />
+              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
+              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+            </>
+          )}
+
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={M.spinner} />
+              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+            </div>
+          )}
+
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
+              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                Vérifiez votre boîte mail (et les spams).<br/>
+                Cliquez sur le lien pour vous connecter.
+              </p>
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
+                ✓ Fermer
+              </button>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
+                Réessayer
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={M.backdrop} onClick={onClose} />
+    </div>
+  );
+}
+
+const M = {
+  overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
+  backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
+  box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
+  body:     { padding:'24px' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+};
+
+// ── Page Profil ───────────────────────────────────────────────────────────────
 export default function ProfilPage({ user, setUser, handleLogout, handleQuickReply }) {
-  const [tab,     setTab]     = useState('personal');
-  const [profile, setProfile] = useState(emptyProfile);
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
+  const [tab,          setTab]          = useState('personal');
+  const [profile,      setProfile]      = useState(emptyProfile);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [showLogin,    setShowLogin]    = useState(false);  // ← modal connexion
 
   useEffect(() => {
     const sp = (() => { try { return JSON.parse(localStorage.getItem('opps_profile') || '{}'); } catch { return {}; } })();
@@ -121,13 +224,26 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   ];
   const score = Math.round(scoreItems.filter(Boolean).length / scoreItems.length * 100);
 
+  // ── Mode invité — affiche le modal directement ───────────────────────────
   if (!user) return (
-    <div style={S.locked}>
-      <span style={{ fontSize: 48 }}>👤</span>
-      <h3 style={{ color: '#1a3a6b', fontWeight: 700 }}>Profil non disponible</h3>
-      <p style={{ color: '#64748b' }}>Connectez-vous pour accéder à votre profil</p>
-      <button style={S.lockBtn} onClick={() => handleQuickReply('Je veux me connecter')}>🔐 Se connecter</button>
-    </div>
+    <>
+      <div style={S.locked}>
+        <div style={S.lockedCard}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>👤</div>
+          <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
+            Profil non disponible
+          </h3>
+          <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
+            Connectez-vous pour accéder à votre profil et gérer vos candidatures de bourses.
+          </p>
+          <button style={S.lockBtn} onClick={() => setShowLogin(true)}>
+            🔐 Se connecter
+          </button>
+        </div>
+      </div>
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </>
   );
 
   const upd = (field) => (i, key, val) =>
@@ -146,17 +262,11 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     { id: 'goals',      label: 'Objectifs',   icon: '🎯' },
   ];
 
-  const scoreColor = score >= 80 ? '#166534' : score >= 50 ? '#d97706' : '#1a3a6b';
-
   return (
     <div style={S.page}>
-
-      {/* ── EN-TÊTE PAGE ── */}
-
-
       <div style={S.body}>
 
-        {/* ── TABS ── */}
+        {/* Tabs */}
         <div style={S.tabBar}>
           {tabs.map(t => (
             <button key={t.id}
@@ -347,9 +457,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
             {profile.academicProjects.map((p, i) => (
               <div key={i} style={S.card}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                  <div style={{ fontWeight:700, color:'#1a3a6b', fontSize:13 }}>
-                    Projet #{i + 1} {p.title ? `— ${p.title}` : ''}
-                  </div>
+                  <div style={{ fontWeight:700, color:'#1a3a6b', fontSize:13 }}>Projet #{i+1} {p.title ? `— ${p.title}` : ''}</div>
                   <button style={S.rmBtn} onClick={() => del('academicProjects')(i)}>✕ Supprimer</button>
                 </div>
                 <div style={S.g2}>
@@ -388,10 +496,10 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                       placeholder="Objectif, fonctionnalités développées, problème résolu, résultats obtenus..."/>
                   </div>
                   <div style={{ gridColumn:'1/-1' }}>
-                    <F label="Langages & outils utilisés" v={p.technologies} s={v => upd('academicProjects')(i, 'technologies', v)} ph="Ex: HTML, CSS, JavaScript, PHP, MySQL, Laravel, Spring Boot..." />
+                    <F label="Langages & outils utilisés" v={p.technologies} s={v => upd('academicProjects')(i, 'technologies', v)} ph="Ex: HTML, CSS, JavaScript, PHP, MySQL..." />
                   </div>
                   <F label="Lien GitHub / Démo" v={p.link}   s={v => upd('academicProjects')(i, 'link', v)}   ph="https://github.com/..." />
-                  <F label="Impact / Résultats"  v={p.impact} s={v => upd('academicProjects')(i, 'impact', v)} ph="Ex: Déployé en production, prix reçu, 100 utilisateurs..." />
+                  <F label="Impact / Résultats"  v={p.impact} s={v => upd('academicProjects')(i, 'impact', v)} ph="Ex: Déployé en production, prix reçu..." />
                 </div>
               </div>
             ))}
@@ -525,18 +633,15 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           <button style={S.logoutBtn} onClick={handleLogout}>↩ Déconnexion</button>
         </div>
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
 
 function T({ children }) {
   return (
-    <div style={{
-      color: '#1a3a6b', fontSize:'0.88rem', fontWeight:700,
-      paddingBottom:8, borderBottom:'2px solid #f5a623',
-      letterSpacing:'0.02em', marginTop:8, display:'flex',
-      alignItems:'center', gap:8,
-    }}>
+    <div style={{ color:'#1a3a6b', fontSize:'0.88rem', fontWeight:700, paddingBottom:8, borderBottom:'2px solid #f5a623', letterSpacing:'0.02em', marginTop:8, display:'flex', alignItems:'center', gap:8 }}>
       {children}
     </div>
   );
@@ -557,22 +662,23 @@ function F({ label, v, s, ph, type = 'text', readOnly = false }) {
 }
 
 const S = {
-  page:        { width:'100%', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#1a3a6b', background:'#f8f9fc', minHeight:'100vh' },
-  locked:      { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center', padding:40, background:'#f8f9fc' },
-  lockBtn:     { padding:'12px 24px', borderRadius:6, background:'#1a3a6b', color:'white', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' },
-  body:        { maxWidth:880, margin:'0 auto', padding:'24px 20px' },
-  tabBar:      { display:'flex', gap:3, marginBottom:22, background:'#ffffff', padding:4, borderRadius:8, border:'1px solid #e2e8f0', flexWrap:'wrap', boxShadow:'0 1px 4px rgba(26,58,107,0.06)' },
-  tabBtn:      { flex:1, minWidth:80, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background:'transparent', color:'#64748b', fontWeight:500, fontSize:'0.78rem', transition:'all 0.2s', whiteSpace:'nowrap', fontFamily:'inherit' },
-  tabOn:       { background:'#1a3a6b', color:'#fff', fontWeight:700 },
-  sec:         { display:'flex', flexDirection:'column', gap:14 },
-  g2:          { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 },
-  lbl:         { color:'#64748b', fontSize:'0.72rem', fontWeight:700, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' },
-  inp:         { width:'100%', padding:'9px 13px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#ffffff', color:'#1a3a6b', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', fontFamily:'inherit', transition:'border .15s' },
-  card:        { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:8, padding:16, marginBottom:6, boxShadow:'0 1px 4px rgba(26,58,107,0.04)' },
-  addBtn:      { background:'transparent', border:'1.5px dashed #bfdbfe', color:'#1a3a6b', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:'0.82rem', fontWeight:600, transition:'all .15s', fontFamily:'inherit' },
-  rmBtn:       { background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', padding:'4px 10px', borderRadius:4, cursor:'pointer', fontSize:'0.75rem', marginTop:8, fontFamily:'inherit' },
-  footer:      { display:'flex', gap:10, marginTop:24, paddingTop:18, borderTop:'2px solid #f5a623', flexWrap:'wrap' },
-  saveBtn:     { flex:2, padding:11, borderRadius:6, border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.3s', fontFamily:'inherit' },
-  chatBtn:     { flex:1, padding:11, borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
-  logoutBtn:   { padding:'11px 16px', borderRadius:6, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
+  page:      { width:'100%', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#1a3a6b', background:'#f8f9fc', minHeight:'100vh' },
+  locked:    { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8f9fc', padding:24 },
+  lockedCard:{ display:'flex', flexDirection:'column', alignItems:'center', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:12, padding:'48px 40px', boxShadow:'0 4px 20px rgba(26,58,107,0.08)', maxWidth:380, width:'100%' },
+  lockBtn:   { padding:'12px 32px', borderRadius:6, background:'#1a3a6b', color:'white', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' },
+  body:      { maxWidth:880, margin:'0 auto', padding:'24px 20px' },
+  tabBar:    { display:'flex', gap:3, marginBottom:22, background:'#ffffff', padding:4, borderRadius:8, border:'1px solid #e2e8f0', flexWrap:'wrap', boxShadow:'0 1px 4px rgba(26,58,107,0.06)' },
+  tabBtn:    { flex:1, minWidth:80, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background:'transparent', color:'#64748b', fontWeight:500, fontSize:'0.78rem', transition:'all 0.2s', whiteSpace:'nowrap', fontFamily:'inherit' },
+  tabOn:     { background:'#1a3a6b', color:'#fff', fontWeight:700 },
+  sec:       { display:'flex', flexDirection:'column', gap:14 },
+  g2:        { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 },
+  lbl:       { color:'#64748b', fontSize:'0.72rem', fontWeight:700, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' },
+  inp:       { width:'100%', padding:'9px 13px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#ffffff', color:'#1a3a6b', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', fontFamily:'inherit', transition:'border .15s' },
+  card:      { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:8, padding:16, marginBottom:6, boxShadow:'0 1px 4px rgba(26,58,107,0.04)' },
+  addBtn:    { background:'transparent', border:'1.5px dashed #bfdbfe', color:'#1a3a6b', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:'0.82rem', fontWeight:600, transition:'all .15s', fontFamily:'inherit' },
+  rmBtn:     { background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', padding:'4px 10px', borderRadius:4, cursor:'pointer', fontSize:'0.75rem', marginTop:8, fontFamily:'inherit' },
+  footer:    { display:'flex', gap:10, marginTop:24, paddingTop:18, borderTop:'2px solid #f5a623', flexWrap:'wrap' },
+  saveBtn:   { flex:2, padding:11, borderRadius:6, border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.3s', fontFamily:'inherit' },
+  chatBtn:   { flex:1, padding:11, borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
+  logoutBtn: { padding:'11px 16px', borderRadius:6, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
 };

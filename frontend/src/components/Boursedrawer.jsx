@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import MatchDrawerIA from './MatchDrawerIA';
+import axiosInstance from '@/config/axiosInstance';  
+
+
 const countryFlag = (pays) => {
   const flags = {
     'France':'🇫🇷','Allemagne':'🇩🇪','Royaume-Uni':'🇬🇧','États-Unis':'🇺🇸',
@@ -405,6 +408,100 @@ function MatchDrawer({ bourse, user, onBack }) {
   );
 }
 
+// ── Modal de connexion (magic link) ─────────────────────────────────────────
+function LoginModal({ onClose }) {
+  const [email,  setEmail]  = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+
+  const send = async () => {
+    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', {
+        email: email.trim().toLowerCase(),
+      });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
+    }
+  };
+
+  return (
+    <div style={M.overlay}>
+      <div style={M.box}>
+        <div style={M.head}>
+          <span style={{ fontSize: 22 }}>🔐</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <button style={M.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <div style={M.body}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+              </p>
+              <input
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={M.input}
+              />
+              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
+              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={M.spinner} />
+              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
+              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                Vérifiez votre boîte mail (et les spams).<br/>
+                Cliquez sur le lien pour vous connecter.
+              </p>
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
+                ✓ Fermer
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
+                Réessayer
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={M.backdrop} onClick={onClose} />
+    </div>
+  );
+}
+
+const M = {
+  overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
+  backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
+  box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
+  body:     { padding:'24px' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+};
+
 // ── BourseDrawer principal ────────────────────────────────────────────────────
 export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, applied, onApply, user }) {
   if (!bourse) return null;
@@ -412,10 +509,62 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
   const [starLoading,  setStarLoading]  = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
   const [showMatch,    setShowMatch]    = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const pct = user ? calcMatch(bourse, user) : null;
   const scoreColor = getScoreColor(pct);
 
+  // 🔒 Si utilisateur non connecté, afficher un drawer vide avec bouton connexion
+  // 🔒 Si utilisateur non connecté, afficher un drawer vide avec bouton connexion
+if (!user) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
+      
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:500, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #f5a623', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', boxShadow:'-8px 0 32px rgba(26,58,107,0.15)' }}>
+        
+        {/* Header simple */}
+        <div style={{ padding:'20px 22px', background:'#1a3a6b', flexShrink:0 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+            <div style={{ fontSize:28, width:52, height:52, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {countryFlag(bourse.pays)}
+            </div>
+            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
+          </div>
+          <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#ffffff', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <span style={D.tagLight}>{countryFlag(bourse.pays)} {bourse.pays}</span>
+            {bourse.niveau && <span style={D.tagLight}>🎓 {bourse.niveau}</span>}
+            <span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>💰 {bourse.financement || '100% financée'}</span>
+          </div>
+        </div>
+
+        {/* Body vide avec message de connexion */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', textAlign:'center' }}>
+          <div style={{ fontSize:56, marginBottom:16 }}>🔒</div>
+          <h3 style={{ color:'#1a3a6b', fontSize:18, fontWeight:700, marginBottom:8 }}>Contenu réservé</h3>
+          <p style={{ color:'#64748b', fontSize:13, lineHeight:1.6, marginBottom:24 }}>
+            Connectez-vous pour voir les détails complets de cette bourse,<br/>
+            votre score de compatibilité et postuler directement.
+          </p>
+          <button
+            onClick={() => setShowLoginModal(true)}
+            style={{ padding:'12px 32px', borderRadius:8, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:14, fontWeight:700, cursor:'pointer' }}
+          >
+            🔐 Se connecter
+          </button>
+        </div>
+
+        <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+      </div>
+
+      {/* Modal de connexion */}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+    </>
+  );
+}
+
+  // Reste du code pour les utilisateurs connectés (inchangé)
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
@@ -454,7 +603,7 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
           </div>
         )}
 
-        {/* Body */}
+        {/* Body complet pour utilisateur connecté */}
         <div style={{ padding:'20px 22px', flex:1 }}>
           {bourse.description && (
             <div style={{ marginBottom:20 }}>
@@ -511,7 +660,7 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer pour utilisateur connecté */}
         <div style={{ padding:'16px 22px 24px', borderTop:'1px solid #e2e8f0', flexShrink:0, display:'flex', flexDirection:'column', gap:10, background:'#f8fafc' }}>
           <button
             style={{ width:'100%', padding:13, borderRadius:8, border:'none', background:applied?'#eff6ff':'#1a3a6b', color:applied?'#1a3a6b':'#fff', fontSize:14, fontWeight:700, cursor:applied?'default':'pointer', boxShadow:applied?'none':'0 4px 12px rgba(26,58,107,0.25)' }}
@@ -531,13 +680,14 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
           <button onClick={() => setShowMatch(true)}
             style={{ width:'100%', padding:'10px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:13, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
             <span>🤖</span>
-            <span>Analyse IA complète du match{pct !== null ? ` — ${pct}%` : ''}</span>
+            <span>Analyse IA complète du match — {pct}%</span>
             <span style={{ marginLeft:'auto', color:'#94a3b8' }}>→</span>
           </button>
         </div>
       </div>
 
       {showMatch && <MatchDrawerIA bourse={bourse} user={user} onBack={() => setShowMatch(false)} />}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
       <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
     </>

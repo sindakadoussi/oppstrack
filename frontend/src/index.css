@@ -1,1 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #1a3a6b;
+  --color-primary: #f5a623;
+  --color-primary-foreground: #1a3a6b;
+  --color-secondary: #1a3a6b;
+  --color-secondary-foreground: #ffffff;
+  --color-border: #e2e8f0;
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #64748b;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+  }
+}

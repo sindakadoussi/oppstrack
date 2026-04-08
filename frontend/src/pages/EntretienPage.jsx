@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import axios from 'axios';
 import { WEBHOOK_ROUTES } from '@/config/routes';
+import { API_ROUTES } from '@/config/routes';
+
 
 
 const TOTAL_Q = 8;
@@ -1123,7 +1125,7 @@ const T = {
 // ── Composant LoginModal ──────────────────────────────────────────────────────
 function LoginModal({ onClose }) {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle'); // idle, sending, success, error
+  const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   const sendMagicLink = async () => {
@@ -1133,21 +1135,14 @@ function LoginModal({ onClose }) {
     }
     setStatus('sending');
     try {
-      const res = await fetch(`${API_BASE}/users/request-magic-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      // Pour DEMANDER un magic link, on envoie seulement l'email
+      await axiosInstance.post('/api/users/request-magic-link', {
+        email: email.trim().toLowerCase(),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setStatus('success');
-      } else {
-        setStatus('error');
-        setErrorMsg(data.message || 'Erreur d\'envoi');
-      }
+      setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrorMsg('Impossible de contacter le serveur');
+      setErrorMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
     }
   };
 
@@ -1172,7 +1167,7 @@ function LoginModal({ onClose }) {
                 autoFocus
               />
               {errorMsg && <div style={{ color: '#f87171', fontSize: 13, marginTop: 8 }}>{errorMsg}</div>}
-              <button onClick={sendMagicLink} style={modalButton}>Envoyer le lien</button>
+              <button onClick={sendMagicLink} style={modalButton}>✉️ Envoyer le lien magique</button>
             </>
           )}
           {status === 'sending' && (
@@ -1252,22 +1247,30 @@ const modalBackdrop = {
 };
 
 // ── PAGE PRINCIPALE ──────────────────────────────────────────────────────────
+// ── PAGE PRINCIPALE ──────────────────────────────────────────────────────────
 export default function EntretienPage({ user, bourses=[], conversationId, setView, handleQuickReply }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // 🔒 Si non connecté, afficher le message verrouillé avec modal
+  // 🔒 Si non connecté, afficher le message verrouillé IDENTIQUE à ProfilPage
   if (!user) {
     return (
       <>
         <div style={S.locked}>
-          <span style={{ fontSize: 48 }}>👤</span>
-          <h3 style={{ color: '#e2e8f0' }}>Profil non disponible</h3>
-          <p style={{ color: '#64748b' }}>Connectez-vous pour accéder à votre profil</p>
-          <button style={S.lockBtn} onClick={() => setShowLoginModal(true)}>
-            🔐 Se connecter
-          </button>
+          <div style={S.lockedCard}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🧑‍⚖️</div>
+            <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
+              Entretien virtuel non disponible
+            </h3>
+            <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
+              Connectez-vous pour pratiquer vos entretiens de bourse avec notre jury IA et obtenir une évaluation personnalisée.
+            </p>
+            <button style={S.lockBtn} onClick={() => setShowLoginModal(true)}>
+              🔐 Se connecter
+            </button>
+          </div>
         </div>
         {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </>
     );
   }
@@ -1278,16 +1281,36 @@ export default function EntretienPage({ user, bourses=[], conversationId, setVie
   return <EntretienSession bourse={selected} user={user} conversationId={conversationId} onFinish={()=>setSelected(null)}/>;
 }
 
+// Styles identiques à ProfilPage
 const S = {
   locked: {
-    minHeight: '60vh',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', textAlign: 'center',
-    background: '#f8f9fc', padding: '40px 24px', gap: '16px',
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#f8f9fc',
+    padding: 24,
+  },
+  lockedCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 12,
+    padding: '48px 40px',
+    boxShadow: '0 4px 20px rgba(26,58,107,0.08)',
+    maxWidth: 380,
+    width: '100%',
   },
   lockBtn: {
-    marginTop: '16px', padding: '12px 28px', borderRadius: '6px',
-    background: '#1a3a6b', border: 'none', color: '#fff',
-    fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+    padding: '12px 32px',
+    borderRadius: 6,
+    background: '#1a3a6b',
+    color: 'white',
+    border: 'none',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
   },
 };

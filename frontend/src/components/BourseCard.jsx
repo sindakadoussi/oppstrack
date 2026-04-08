@@ -1,6 +1,6 @@
 // components/BourseCard.jsx
 import React, { useState } from 'react';
-import { calcMatch, getScoreColor, getScoreLabel, countryFlag } from '../utils/Calcmatch';
+import { calcMatch, getScoreColor, getScoreLabel, countryFlag } from '../utils/calcMatch';
 
 const daysLeft = (deadline) => {
   if (!deadline) return null;

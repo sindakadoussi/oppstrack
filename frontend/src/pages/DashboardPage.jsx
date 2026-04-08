@@ -2,10 +2,103 @@ import React, { useState, useEffect, useRef } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
+import ChatInput from '../components/ChatInput';
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ISO MAPPINGS + COUNTRY META
-═══════════════════════════════════════════════════════════════════════════ */
+// ── Modal de connexion (magic link) ─────────────────────────────────────────
+function LoginModal({ onClose }) {
+  const [email,  setEmail]  = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+
+  const send = async () => {
+    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', {
+        email: email.trim().toLowerCase(),
+      });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
+    }
+  };
+
+  return (
+    <div style={M.overlay}>
+      <div style={M.box}>
+        <div style={M.head}>
+          <span style={{ fontSize: 22 }}>🔐</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <button style={M.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <div style={M.body}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+              </p>
+              <input
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={M.input}
+              />
+              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
+              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={M.spinner} />
+              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
+              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                Vérifiez votre boîte mail (et les spams).<br/>
+                Cliquez sur le lien pour vous connecter.
+              </p>
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
+                ✓ Fermer
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
+                Réessayer
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={M.backdrop} onClick={onClose} />
+    </div>
+  );
+}
+
+const M = {
+  overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
+  backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
+  box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
+  body:     { padding:'24px' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+};
+
+
 const NUMERIC_TO_ALPHA2 = {
   '4':'AF','8':'AL','12':'DZ','24':'AO','32':'AR','36':'AU','40':'AT','50':'BD',
   '56':'BE','68':'BO','76':'BR','100':'BG','120':'CM','124':'CA','152':'CL',
@@ -535,26 +628,29 @@ function Calendrier({ deadlines, onSelectBourse }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    DASHBOARD PAGE
 ═══════════════════════════════════════════════════════════════════════════ */
-export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse }) {
+export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse,  messages,
+  input,setInput,loading,chatContainerRef,handleSend, }) {
+    const [showLoginModal, setShowLoginModal] = useState(false); 
   const [roadmap,       setRoadmap      ] = useState([]);
-  const [loading,       setLoading      ] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [activeCountry, setActiveCountry] = useState(null);
   const [favorites,     setFavorites    ] = useState([]);
   const [drawerBourse,  setDrawerBourse ] = useState(null);
   const [appliedNoms,   setAppliedNoms  ] = useState(new Set());
   const [starredNoms,   setStarredNoms  ] = useState(new Set());
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) { setLoading(false); return; }
-    axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
-      .then(r => {
-        const docs = r.data.docs || [];
-        setRoadmap(docs);
-        setAppliedNoms(new Set(docs.map(b => b.nom?.trim().toLowerCase())));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+  if (!user?.id) { setDataLoading(false); return; }
+  axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
+    .then(r => {
+      const docs = r.data.docs || [];
+      setRoadmap(docs);
+      setAppliedNoms(new Set(docs.map(b => b.nom?.trim().toLowerCase())));
+    })
+    .catch(() => {})
+    .finally(() => setDataLoading(false));
+}, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -618,14 +714,29 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     ? (bourses || []).filter(b => b.pays === COUNTRY_META[activeCountry]?.label).slice(0, 6)
     : [];
 
-  if (!user) return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, gap:16, textAlign:'center', padding:40 }}>
-      <div style={{ fontSize:48 }}>🔒</div>
-      <h3 style={{ fontSize:'1.1rem', color:'#1a3a6b', fontWeight:700 }}>Dashboard personnel</h3>
-      <p style={{ fontSize:13, color:'#64748b' }}>Connectez-vous pour accéder à votre tableau de bord</p>
-      <button onClick={() => handleQuickReply('Je veux me connecter')} style={S.btnPrimary}>Se connecter</button>
-    </div>
+  // 🔒 Si non connecté, afficher le message verrouillé
+if (!user) {
+  return (
+    <>
+      <div style={S.locked}>
+        <div style={S.lockedCard}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>📊</div>
+          <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
+            Tableau de bord non disponible
+          </h3>
+          <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
+            Connectez-vous pour accéder à votre tableau de bord personnalisé et suivre vos candidatures.
+          </p>
+          <button style={S.lockBtn} onClick={() => setShowLoginModal(true)}>
+            🔐 Se connecter
+          </button>
+        </div>
+      </div>
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </>
   );
+}
 
   return (
     <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
@@ -1062,6 +1173,39 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           </div>
         </div>
       </div>
+      {/* Chat latéral */}
+{showChat && (
+  <div style={{
+    position: 'fixed',
+    top: 80,
+    right: 24,
+    width: 360,
+    height: 'calc(100vh - 100px)',
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    zIndex: 1000,
+  }}>
+    <div style={{ padding: '12px 16px', background: '#1a3a6b', borderTopLeftRadius: 12, borderTopRightRadius: 12, color: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+      <span>🤖 Assistant</span>
+      <button onClick={() => setShowChat(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer' }}>✕</button>
+    </div>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 12 }} ref={chatContainerRef}>
+      {messages.map((msg, i) => (
+        <div key={i} style={{ textAlign: msg.sender === 'user' ? 'right' : 'left', marginBottom: 8 }}>
+          <div style={{ display: 'inline-block', background: msg.sender === 'user' ? '#1a3a6b' : '#e2e8f0', color: msg.sender === 'user' ? '#fff' : '#000', padding: '8px 12px', borderRadius: 12 }}>{msg.text}</div>
+        </div>
+      ))}
+      {loading && <div>...</div>}
+    </div>
+    <div style={{ padding: 12, borderTop: '1px solid #e2e8f0' }}>
+      <ChatInput input={input} setInput={setInput} onSend={handleSend} loading={loading} />
+    </div>
+  </div>
+)}
 
       {/* ── DRAWER EXTERNALISÉ ── */}
       {drawerBourse && (
@@ -1123,8 +1267,29 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           user={user}
         />
       )}
+      <button
+  onClick={() => setShowChat(prev => !prev)}
+  style={{
+    position: 'fixed',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: '50%',
+    background: '#f5a623',
+    border: 'none',
+    boxShadow: '0 4px 12px rgba(26,58,107,0.3)',
+    cursor: 'pointer',
+    fontSize: 24,
+    color: '#1a3a6b',
+    zIndex: 1000,
+  }}
+>
+  {showChat ? '✕' : '💬'}
+</button>
     </div>
   );
+
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1140,4 +1305,35 @@ const S = {
   btnXs:     { padding:'5px 12px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:11, cursor:'pointer', fontWeight:600 },
   navBtn:    { padding:'3px 12px', borderRadius:4, background:'#f8fafc', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:16, cursor:'pointer' },
   iconBtn:   { padding:'3px 8px',  borderRadius:4, background:'#f8fafc', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:14, cursor:'pointer' },
+  locked: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#f8f9fc',
+    padding: 24,
+  },
+  lockedCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 12,
+    padding: '48px 40px',
+    boxShadow: '0 4px 20px rgba(26,58,107,0.08)',
+    maxWidth: 380,
+    width: '100%',
+  },
+  lockBtn: {
+    padding: '12px 32px',
+    borderRadius: 6,
+    background: '#1a3a6b',
+    color: 'white',
+    border: 'none',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  
 };
