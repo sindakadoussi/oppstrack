@@ -15,6 +15,7 @@ export const API_ROUTES = {
     list:   '/api/roadmap',
     byUser: (userId) => `/api/roadmap?where[userId][equals]=${userId}&limit=200&depth=0`,
     create: '/api/roadmap',
+      byId:   (id) => `/api/roadmap/${id}`,   // ← ajouter cette ligne
     update: (id) => `/api/roadmap/${id}`,
     delete: (id) => `/api/roadmap/${id}`,
   },
@@ -38,4 +39,5 @@ export const WEBHOOK_ROUTES = {
   cv:        `${WEBHOOK}/webhook/cv`,
   entretien: `${WEBHOOK}/webhook/entretien`,
   chat:      `${WEBHOOK}/webhook/chat`,
+  generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
 };

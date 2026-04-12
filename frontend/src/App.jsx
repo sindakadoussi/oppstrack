@@ -136,7 +136,7 @@ function AppContent() {
     }).catch(e => console.warn('Save user msg:', e.message));
 
     try {
-      const n8nRes = await axios.post('http://localhost:5678/webhook-test/webhook', {
+      const n8nRes = await axios.post('http://localhost:5678/webhook/webhook', {
         text: textToSend, conversationId: conversationId.current,
         id: user?.id || null, email: user?.email || null,
         context: options.context || null,

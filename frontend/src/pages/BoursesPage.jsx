@@ -5,6 +5,7 @@ import ChatInput from '../components/ChatInput';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
+import {WEBHOOK_ROUTES } from '@/config/routes';
 
 const countryFlag = (pays) => {
   const flags = {
@@ -187,18 +188,51 @@ export default function BoursesPage({
   };
 
   const handleApply = async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id || appliedNoms.has(nomKey)) return;
-    try {
-      await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id, userEmail: user.email || '', nom: bourse.nom,
-        pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '',
-        financement: bourse.financement || '', dateLimite: bourse.dateLimite || null,
-        ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
-      });
-      setAppliedNoms(prev => new Set([...prev, nomKey]));
-    } catch (err) { console.error('[handleApply]', err); }
-  };
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id || appliedNoms.has(nomKey)) return;
+
+  try {
+    // ÉTAPE 1 : Création du document dans Payload
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId: user.id,
+      userEmail: user.email || '',
+      nom: bourse.nom,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || null,
+      ajouteLe: new Date().toISOString(),
+      statut: 'en_cours',
+      etapeCourante: 0,
+    });
+
+    // On récupère l'ID que Payload vient de générer
+    const newRoadmapId = res.data.doc.id;
+
+    // ÉTAPE 2 : Appel du Webhook n8n (L'AJOUT CRUCIAL)
+    // C'est ici qu'on prévient l'IA qu'elle doit travailler
+    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+      roadmapId: newRoadmapId,
+      bourse: {
+        nom: bourse.nom,
+        pays: bourse.pays,
+        url: bourse.lienOfficiel || bourse.url,
+        // On peut aussi passer le profil utilisateur pour que l'IA personnalise la roadmap
+        userProfile: user 
+      }
+    });
+
+    // ÉTAPE 3 : Mise à jour de l'interface
+    setAppliedNoms(prev => new Set([...prev, nomKey]));
+    
+    // Optionnel : Rediriger l'utilisateur pour qu'il voie le résultat
+    // navigate('/roadmap'); 
+
+  } catch (err) {
+    console.error('[handleApply Error]', err);
+    alert("Erreur lors de l'initialisation de la roadmap.");
+  }
+};
 
   const handleAskAI = useCallback((bourse) => {
     setShowChat(true);

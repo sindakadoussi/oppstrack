@@ -15,6 +15,11 @@ services:
       # - postgres
     env_file:
       - .env
+    environment:
+      # ✅ CORS pour autoriser le frontend Vite + n8n
+      - PAYLOAD_PUBLIC_SERVER_URL=http://localhost:3000
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:5678
+
 
   # Ensure your DATABASE_URL uses 'mongo' as the hostname ie. mongodb://mongo/my-db-name
   mongo:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 
-const WEBHOOK_ANALYSE = 'http://localhost:5678/webhook-test/analyse-match';
+const WEBHOOK_ANALYSE = 'http://localhost:5678/webhook/analyse-match';
 
 const scoreColor = (s) =>
   s >= 85 ? '#16a34a' : s >= 70 ? '#2563eb' : s >= 55 ? '#d97706' : s >= 40 ? '#f97316' : '#ef4444';

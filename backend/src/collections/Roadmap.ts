@@ -63,6 +63,22 @@ const Roadmap: CollectionConfig = {
       name: 'notes',
       type: 'textarea',
     },
+    {
+  name: 'etapes',
+  type: 'json',   // stocke le tableau d'étapes généré par l'IA
+},
+{
+  name: 'conseilGlobal',
+  type: 'textarea',
+},
+{
+  name: 'langue',
+  type: 'text',
+},
+{
+  name: 'deadlineFinale',
+  type: 'text',
+},
   ],
 };
 
