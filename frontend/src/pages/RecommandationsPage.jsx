@@ -5,6 +5,7 @@ import BourseCard from '../components/BourseCard';
 import BourseDrawer from '../components/Boursedrawer';
 import ChatInput from '../components/ChatInput';
 import { API_ROUTES } from '@/config/routes';
+import {  WEBHOOK_ROUTES } from '@/config/routes';
 
 // ── Modal de connexion (magic link) ─────────────────────────────────────────
 function LoginModal({ onClose }) {
@@ -310,28 +311,55 @@ if (!user) {
   };
 
   const handleApply = async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id || appliedNoms.has(nomKey)) return;
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id || appliedNoms.has(nomKey)) return;
 
-    try {
-      await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id,
-        userEmail: user.email || '',
+  try {
+    // ÉTAPE 1 : Création dans Payload CMS
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId: user.id,
+      userEmail: user.email || '',
+      nom: bourse.nom,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || null,
+      ajouteLe: new Date().toISOString(),
+      statut: 'en_cours',
+      etapeCourante: 0,
+    });
+
+    // On récupère l'ID généré par Payload
+    const newRoadmapId = res.data.doc.id;
+
+    // ÉTAPE 2 : Déclenchement de n8n pour générer la roadmap avec l'IA
+    // On envoie l'ID pour que n8n puisse faire un PATCH plus tard
+    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+      roadmapId: newRoadmapId,
+      user: {
+        id: user.id,
+        email: user.email,
+        niveau: user.niveau, // Optionnel : aide l'IA à personnaliser
+        domaine: user.domaine
+      },
+      bourse: {
         nom: bourse.nom,
-        pays: bourse.pays || '',
-        lienOfficiel: bourse.lienOfficiel || '',
-        financement: bourse.financement || '',
-        dateLimite: bourse.dateLimite || null,
-        ajouteLe: new Date().toISOString(),
-        statut: 'en_cours',
-        etapeCourante: 0,
-      });
-      setAppliedNoms(prev => new Set([...prev, nomKey]));
-      setTimeout(() => setView?.('roadmap'), 1000);
-    } catch (err) {
-      console.error('[handleApply]', err);
-    }
-  };
+        pays: bourse.pays,
+        lien: bourse.lienOfficiel
+      }
+    });
+
+    // ÉTAPE 3 : Mise à jour de l'UI
+    setAppliedNoms(prev => new Set([...prev, nomKey]));
+    
+    // Petit feedback visuel avant redirection
+    setTimeout(() => setView?.('roadmap'), 1000);
+    
+  } catch (err) {
+    console.error('[handleApply Error]', err);
+    alert("Erreur lors de l'initialisation de votre candidature.");
+  }
+};
 
   const handleAskAI = useCallback((bourse) => {
     setShowChat(true);

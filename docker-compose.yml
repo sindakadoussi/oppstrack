@@ -15,7 +15,13 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_HOST=localhost
+      -  N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Europe/Paris
+      # ✅ Autoriser CORS pour le frontend
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
     volumes:
       - n8n_data:/home/node/.n8n
 

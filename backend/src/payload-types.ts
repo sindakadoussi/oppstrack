@@ -457,6 +457,18 @@ export interface Roadmap {
   statut?: ('en_cours' | 'soumis' | 'accepte' | 'refuse') | null;
   etapeCourante?: number | null;
   notes?: string | null;
+  etapes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  conseilGlobal?: string | null;
+  langue?: string | null;
+  deadlineFinale?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -873,6 +885,10 @@ export interface RoadmapSelect<T extends boolean = true> {
   statut?: T;
   etapeCourante?: T;
   notes?: T;
+  etapes?: T;
+  conseilGlobal?: T;
+  langue?: T;
+  deadlineFinale?: T;
   updatedAt?: T;
   createdAt?: T;
 }
