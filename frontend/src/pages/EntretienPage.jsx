@@ -389,7 +389,7 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
 
 const D = {
   container:       {flex:1,overflowY:'auto',padding:'20px 24px',display:'flex',flexDirection:'column',gap:20,animation:'slideIn 0.3s ease'},
-  backBtn:         {alignSelf:'flex-start',background:'#ffffff',border:'1px solid rgba(15,23,42,0.06)',color:'#475569',padding:'8px 16px',borderRadius:10,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6,transition:'all 0.2s'},
+  backBtn:         {alignSelf:'flex-start',background:'#eff6ff',border:'1px solid #bfdbfe',color:'#1a3a6b',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',gap:6},
   header:          {background:'#f8fafc',borderRadius:20,padding:'20px',border:'1px solid rgba(15,23,42,0.04)'},
   headerTop:       {display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12},
   bourseTag:       {display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'#f8fafc',borderRadius:20,fontSize:13,fontWeight:600,color:'#475569'},
@@ -402,8 +402,8 @@ const D = {
   scoreGrade:      {fontSize:20,fontWeight:700,marginBottom:4},
   scoreVerdict:    {fontSize:14,color:'#475569'},
   tabs:            {display:'flex',gap:8,borderBottom:'1px solid rgba(15,23,42,0.04)',paddingBottom:12},
-  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#475569',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:20,transition:'all 0.2s'},
-  tabActive:       {background:'rgba(99,102,241,0.08)',color:'#4f46e5'},
+  tab:             {padding:'8px 20px',background:'transparent',border:'none',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',borderRadius:4,transition:'all 0.2s'},
+  tabActive:       {background:'#eff6ff',color:'#1a3a6b',borderBottom:'2px solid #f5a623'},
   content:         {flex:1,overflowY:'auto',minHeight:300},
   summaryContent:  {display:'flex',flexDirection:'column',gap:24},
   statsGrid:       {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12},
@@ -412,7 +412,7 @@ const D = {
   statLabel:       {fontSize:11,color:'#475569',textTransform:'uppercase',letterSpacing:1,marginBottom:4},
   statValue:       {fontSize:18,fontWeight:700,color:'#0f172a'},
   section:         {background:'#ffffff',borderRadius:14,padding:'16px',border:'1px solid rgba(15,23,42,0.04)'},
-  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#6366f1',marginBottom:12,textTransform:'uppercase'},
+  sectionTitle:    {fontSize:12,fontWeight:700,letterSpacing:1,color:'#1a3a6b',marginBottom:12,textTransform:'uppercase',borderBottom:'2px solid #f5a623',paddingBottom:4,display:'inline-block'},
   list:            {margin:0,paddingLeft:0,listStyle:'none'},
   listItem:        {fontSize:13,color:'#334155',lineHeight:1.6,marginBottom:10,display:'flex',alignItems:'flex-start'},
   strengthsContent:{display:'flex',flexDirection:'column'},
@@ -434,10 +434,6 @@ const D = {
   rawLine:         {marginBottom:4,color:'#475569'},
   actions:         {display:'flex',gap:12,paddingTop:16,borderTop:'1px solid rgba(15,23,42,0.04)',marginTop:8},
   actionBtn:       {flex:1,padding:'10px',borderRadius:10,background:'#ffffff',border:'1px solid rgba(15,23,42,0.04)',color:'#475569',fontSize:13,cursor:'pointer',transition:'all 0.2s'},
-    backBtn: { alignSelf:'flex-start', background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', gap:6 },
-  tab:     { padding:'8px 20px', background:'transparent', border:'none', color:'#64748b', fontSize:13, fontWeight:600, cursor:'pointer', borderRadius:4, transition:'all 0.2s' },
-  tabActive:{ background:'#eff6ff', color:'#1a3a6b', borderBottom:'2px solid #f5a623' },
-  sectionTitle: { fontSize:12, fontWeight:700, letterSpacing:1, color:'#1a3a6b', marginBottom:12, textTransform:'uppercase', borderBottom:'2px solid #f5a623', paddingBottom:4, display:'inline-block' },
 };
 
 const H = {
