@@ -14,7 +14,7 @@ import axiosInstance from '@/config/axiosInstance';
 import axios from 'axios';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import Footer from './components/Footer';
-
+import ContactPage from "./pages/ContactPage";
 
 function AppContent() {
   const location = useLocation();
@@ -224,7 +224,10 @@ function AppContent() {
   }
 
   return (
-    <div className="app-root">
+  
+  <div className={`app-root ${view === 'contact' ? 'no-navbar' : ''}`}>
+    {/* Navbar - cachée sur la page contact */}
+    {view !== 'contact' && (
       <Navbar
         view={view}
         setView={setView}
@@ -233,30 +236,34 @@ function AppContent() {
         serverStatus={serverStatus}
         onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
       />
+    )}
 
-      {serverStatus.payload === false && (
-        <div className="server-alert">
-          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
-          &nbsp;·&nbsp;
-          <button onClick={() => window.location.reload()}
-            style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', textDecoration:'underline', fontWeight:600 }}>
-            Réessayer
-          </button>
-        </div>
-      )}
+    {/* Alerte serveur - cachée sur la page contact */}
+    {serverStatus.payload === false && view !== 'contact' && (
+      <div className="server-alert">
+        ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
+        &nbsp;·&nbsp;
+        <button onClick={() => window.location.reload()}
+          style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', textDecoration:'underline', fontWeight:600 }}>
+          Réessayer
+        </button>
+      </div>
+    )}
 
-      <main className="main-content">
-        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
-        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
-        {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
-        {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
-        {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
-        {view === 'profil'          && <ProfilPage           {...sharedProps} />}
-        {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
-        {view === 'cv'              && <CVPage               {...sharedProps} />}
-      </main>
+    <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
+      {view === 'accueil'         && <ChatPage             {...sharedProps} />}
+      {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+      {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
+      {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
+      {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
+      {view === 'profil'          && <ProfilPage           {...sharedProps} />}
+      {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
+      {view === 'cv'              && <CVPage               {...sharedProps} />}
+      {view === "contact"         && <ContactPage setView={setView} />}
+    </main>
 
-      <Footer setView={setView} />
+    {/* Footer - caché sur la page contact */}
+    {view !== 'contact' && <Footer setView={setView} />}
 
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -381,6 +388,21 @@ function AppContent() {
           .footer-bottom { flex-direction: column; text-align: center; }
           .footer-legal { justify-content: center; }
         }
+          /* Styles pour la page contact - supprime le padding-top */
+.app-root.no-navbar {
+  padding-top: 0 !important;
+}
+
+.main-content.contact-main {
+  padding-top: 0 !important;
+}
+
+/* Alternative: Cacher navbar et footer par CSS si la classe existe */
+.no-navbar .navbar,
+.no-navbar .footer,
+.no-navbar .server-alert {
+  display: none !important;
+}
       `}</style>
     </div>
   );

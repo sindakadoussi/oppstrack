@@ -89,27 +89,30 @@ export default function Footer({ setView }) {
           </ul>
         </div>
 
-        {/* Colonne 4 : Contact */}
-        <div className="footer-col">
-          <h4 className="footer-heading">Contact</h4>
-          <ul className="footer-links">
-            <li><a href="mailto:contact@oppstrack.com">contact@oppstrack.com</a></li>
-            <li><a href="#">+216 12 345 678</a></li>
-            <li><a href="#">Nous écrire</a></li>
-          </ul>
-        </div>
+        // Footer.jsx - Mettez à jour la colonne Contact
+{/* Colonne 4 : Contact */}
+<div className="footer-col">
+  <h4 className="footer-heading">Contact</h4>
+  <ul className="footer-links">
+    <li><a href="mailto:contact@oppstrack.com">contact@oppstrack.com</a></li>
+    <li><a href="#">+216 51 551 456</a></li>
+    <li>
+      <a
+        href="#"
+        onClick={(e) => { 
+          e.preventDefault(); 
+          if (setView) setView('contact'); 
+          window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        }}
+      >
+        Nous écrire
+      </a>
+    </li>
+  </ul>
+</div>
       </div>
 
-      <div className="footer-bottom">
-        <p>© {currentYear} OppsTrack – Tous droits réservés.</p>
-        <div className="footer-legal">
-          <a href="#">Mentions légales</a>
-          <span>•</span>
-          <a href="#">Confidentialité</a>
-          <span>•</span>
-          <a href="#">CGU</a>
-        </div>
-      </div>
+     
     </footer>
   );
 }

@@ -437,7 +437,7 @@ if (!user) {
             <button style={{ padding: '6px 14px', borderRadius: 6, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }} onClick={loadRecommandations}>Réessayer</button>
           </div>
         )}
-
+          
         {/* Contenu principal : Grille + Chat à gauche */}
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', marginTop: 16 }}>
 

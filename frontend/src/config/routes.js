@@ -37,7 +37,7 @@ export const API_ROUTES = {
 
 export const WEBHOOK_ROUTES = {
   cv:        `${WEBHOOK}/webhook/cv`,
-  entretien: `${WEBHOOK}/webhook/entretien`,
+  entretien: `${WEBHOOK}/webhook/webhook`,
   chat:      `${WEBHOOK}/webhook/chat`,
   generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
 };

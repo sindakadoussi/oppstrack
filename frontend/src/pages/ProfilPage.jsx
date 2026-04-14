@@ -19,10 +19,228 @@ const emptyProfile = {
   motivationSummary: '',
 };
 
+// Suggestions pour l'autocomplete
+const LANGUAGE_SUGGESTIONS = [
+  'Anglais', 'Français', 'Arabe', 'Espagnol', 'Allemand', 'Italien', 
+  'Chinois', 'Russe', 'Portugais', 'Japonais', 'Coréen', 'Néerlandais',
+  'Turc', 'Polonais', 'Suédois', 'Grec', 'Vietnamien', 'Hindi'
+];
+
+const COUNTRY_SUGGESTIONS = [
+  'France', 'Canada', 'Belgique', 'Suisse', 'Allemagne', 'Italie', 'Espagne',
+  'Royaume-Uni', 'États-Unis', 'Australie', 'Suède', 'Norvège', 'Danemark',
+  'Pays-Bas', 'Irlande', 'Autriche', 'Portugal', 'Finlande', 'Tunisie',
+  'Maroc', 'Algérie', 'Sénégal', 'Côte d\'Ivoire', 'Cameroun', 'Liban', 'Égypte'
+];
+
+const FIELD_SUGGESTIONS = [
+  'Informatique', 'Génie logiciel', 'Intelligence Artificielle', 'Data Science',
+  'Cybersécurité', 'Réseaux et Télécommunications', 'Systèmes embarqués',
+  'Gestion', 'Marketing', 'Finance', 'Comptabilité', 'Ressources Humaines',
+  'Droit', 'Sciences politiques', 'Relations internationales',
+  'Médecine', 'Pharmacie', 'Biologie', 'Chimie', 'Physique', 'Mathématiques',
+  'Architecture', 'Génie civil', 'Génie mécanique', 'Génie électrique',
+  'Design', 'Arts', 'Lettres', 'Philosophie', 'Sociologie', 'Psychologie'
+];
+
+const SKILL_SUGGESTIONS = {
+  language: ['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Rust', 'Swift', 'Kotlin'],
+  framework: ['React', 'Angular', 'Vue.js', 'Django', 'Flask', 'Spring Boot', 'Laravel', 'Express.js', 'Next.js', 'Node.js', 'TensorFlow', 'PyTorch'],
+  database: ['MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Oracle', 'SQL Server', 'Firebase', 'Cassandra', 'Elasticsearch'],
+  tool: ['Git', 'Docker', 'Kubernetes', 'Jenkins', 'Jira', 'Trello', 'Figma', 'Adobe XD', 'Photoshop', 'Premiere Pro'],
+  devops: ['AWS', 'Azure', 'Google Cloud', 'Terraform', 'Ansible', 'Prometheus', 'Grafana', 'Linux'],
+  method: ['Agile', 'Scrum', 'Kanban', 'Waterfall', 'DevOps', 'CI/CD', 'TDD', 'BDD'],
+  design: ['UI/UX Design', 'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator', 'InDesign'],
+  other: ['Microsoft Office', 'Excel', 'PowerPoint', 'Word', 'Google Suite', 'Salesforce', 'SAP', 'Oracle']
+};
+
+// ── Composant Autocomplete ─────────────────────────────────────────────────
+function AutocompleteInput({ value, onChange, suggestions, placeholder, label, type = 'text' }) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [inputValue, setInputValue] = useState(value || '');
+
+  useEffect(() => {
+    setInputValue(value || '');
+  }, [value]);
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onChange(newValue);
+    
+    if (newValue.trim()) {
+      const filtered = suggestions.filter(s => 
+        s.toLowerCase().includes(newValue.toLowerCase())
+      );
+      setFilteredSuggestions(filtered.slice(0, 8));
+      setShowSuggestions(true);
+    } else {
+      setFilteredSuggestions(suggestions.slice(0, 8));
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setInputValue(suggestion);
+    onChange(suggestion);
+    setShowSuggestions(false);
+  };
+
+  if (type === 'date') {
+    return (
+      <div style={{ position: 'relative', width: '100%' }}>
+        <div style={S.lbl}>{label}</div>
+        <input
+          style={S.inp}
+          type="date"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <div style={S.lbl}>{label}</div>
+      <input
+        style={S.inp}
+        type="text"
+        value={inputValue}
+        onChange={handleInputChange}
+        onFocus={() => {
+          setFilteredSuggestions(suggestions.slice(0, 8));
+          setShowSuggestions(true);
+        }}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+        placeholder={placeholder}
+      />
+      {showSuggestions && filteredSuggestions.length > 0 && (
+        <div style={S.suggestionsDropdown}>
+          {filteredSuggestions.map((s, idx) => (
+            <div
+              key={idx}
+              style={S.suggestionItem}
+              onClick={() => handleSelectSuggestion(s)}
+              onMouseEnter={(e) => e.target.style.background = '#eff6ff'}
+              onMouseLeave={(e) => e.target.style.background = 'white'}
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Composant SkillInput avec suggestions dynamiques ──────────────────────
+function SkillInput({ skill, category, onSkillChange, onCategoryChange, onLevelChange, onDelete }) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [inputValue, setInputValue] = useState(skill || '');
+
+  useEffect(() => {
+    setInputValue(skill || '');
+  }, [skill]);
+
+  const getSuggestionsForCategory = () => {
+    if (!category) return SKILL_SUGGESTIONS.other || [];
+    return SKILL_SUGGESTIONS[category] || SKILL_SUGGESTIONS.other || [];
+  };
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onSkillChange(newValue);
+    
+    const suggestions = getSuggestionsForCategory();
+    if (newValue.trim()) {
+      const filtered = suggestions.filter(s => 
+        s.toLowerCase().includes(newValue.toLowerCase())
+      );
+      setFilteredSuggestions(filtered.slice(0, 8));
+      setShowSuggestions(true);
+    } else {
+      setFilteredSuggestions(suggestions.slice(0, 8));
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setInputValue(suggestion);
+    onSkillChange(suggestion);
+    setShowSuggestions(false);
+  };
+
+  return (
+    <div style={{ ...S.card, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end', position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <div style={S.lbl}>Compétence / Outil</div>
+        <input
+          style={S.inp}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => {
+            const suggestions = getSuggestionsForCategory();
+            setFilteredSuggestions(suggestions.slice(0, 8));
+            setShowSuggestions(true);
+          }}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          placeholder="Ex: Python, React, MySQL..."
+        />
+        {showSuggestions && filteredSuggestions.length > 0 && (
+          <div style={{ ...S.suggestionsDropdown, position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10 }}>
+            {filteredSuggestions.map((s, idx) => (
+              <div
+                key={idx}
+                style={S.suggestionItem}
+                onClick={() => handleSelectSuggestion(s)}
+                onMouseEnter={(e) => e.target.style.background = '#eff6ff'}
+                onMouseLeave={(e) => e.target.style.background = 'white'}
+              >
+                {s}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <div style={S.lbl}>Catégorie</div>
+        <select style={S.inp} value={category || ''} onChange={(e) => onCategoryChange(e.target.value)}>
+          <option value="">Catégorie...</option>
+          <option value="language">Langage de programmation</option>
+          <option value="framework">Framework / Librairie</option>
+          <option value="database">Base de données</option>
+          <option value="tool">Outil / Logiciel</option>
+          <option value="devops">DevOps / Cloud</option>
+          <option value="method">Méthode / Agilité</option>
+          <option value="design">Design / UI</option>
+          <option value="other">Autre</option>
+        </select>
+      </div>
+      <div>
+        <div style={S.lbl}>Niveau</div>
+        <select style={S.inp} value={skill.level || ''} onChange={(e) => onLevelChange(e.target.value)}>
+          <option value="">Niveau...</option>
+          <option value="beginner">Débutant</option>
+          <option value="intermediate">Intermédiaire</option>
+          <option value="advanced">Avancé</option>
+          <option value="expert">Expert</option>
+        </select>
+      </div>
+      <button style={{ ...S.rmBtn, marginTop: 0 }} onClick={onDelete}>✕</button>
+    </div>
+  );
+}
+
 // ── Modal de connexion (magic link) ─────────────────────────────────────────
 function LoginModal({ onClose }) {
   const [email,  setEmail]  = useState('');
-  const [status, setStatus] = useState('idle'); // idle | sending | success | error
+  const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
 
   const send = async () => {
@@ -42,14 +260,11 @@ function LoginModal({ onClose }) {
   return (
     <div style={M.overlay}>
       <div style={M.box}>
-        {/* Header */}
         <div style={M.head}>
           <span style={{ fontSize: 22 }}>🔐</span>
           <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
           <button style={M.closeBtn} onClick={onClose}>✕</button>
         </div>
-
-        {/* Body */}
         <div style={M.body}>
           {status === 'idle' && (
             <>
@@ -69,14 +284,12 @@ function LoginModal({ onClose }) {
               <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
             </>
           )}
-
           {status === 'sending' && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={M.spinner} />
               <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
             </div>
           )}
-
           {status === 'success' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
@@ -90,7 +303,6 @@ function LoginModal({ onClose }) {
               </button>
             </div>
           )}
-
           {status === 'error' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
@@ -125,7 +337,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   const [profile,      setProfile]      = useState(emptyProfile);
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(false);
-  const [showLogin,    setShowLogin]    = useState(false);  // ← modal connexion
+  const [showLogin,    setShowLogin]    = useState(false);
 
   useEffect(() => {
     const sp = (() => { try { return JSON.parse(localStorage.getItem('opps_profile') || '{}'); } catch { return {}; } })();
@@ -224,7 +436,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   ];
   const score = Math.round(scoreItems.filter(Boolean).length / scoreItems.length * 100);
 
-  // ── Mode invité — affiche le modal directement ───────────────────────────
   if (!user) return (
     <>
       <div style={S.locked}>
@@ -265,8 +476,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   return (
     <div style={S.page}>
       <div style={S.body}>
-
-        {/* Tabs */}
         <div style={S.tabBar}>
           {tabs.map(t => (
             <button key={t.id}
@@ -277,7 +486,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           ))}
         </div>
 
-        {/* ── PERSONNEL ── */}
         {tab === 'personal' && (
           <div style={S.sec}>
             <T>Informations personnelles</T>
@@ -285,9 +493,28 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
               <F label="Nom complet"       v={profile.name}               s={v => setProfile(p => ({ ...p, name: v }))}               ph="Prénom Nom" />
               <F label="Email"             v={profile.email}              readOnly />
               <F label="Téléphone"         v={profile.phone}              s={v => setProfile(p => ({ ...p, phone: v }))}              ph="+216 XX XXX XXX" />
-              <F label="Date de naissance" v={profile.dateOfBirth}        s={v => setProfile(p => ({ ...p, dateOfBirth: v }))}        type="date" />
-              <F label="Nationalité"       v={profile.nationality}        s={v => setProfile(p => ({ ...p, nationality: v }))}        ph="Ex: Tunisienne" />
-              <F label="Pays de résidence" v={profile.countryOfResidence} s={v => setProfile(p => ({ ...p, countryOfResidence: v }))} ph="Ex: Tunisie" />
+              <AutocompleteInput 
+                label="Date de naissance"
+                value={profile.dateOfBirth}
+                onChange={v => setProfile(p => ({ ...p, dateOfBirth: v }))}
+                suggestions={[]}
+                placeholder=""
+                type="date"
+              />
+              <AutocompleteInput
+                label="Nationalité"
+                value={profile.nationality}
+                onChange={v => setProfile(p => ({ ...p, nationality: v }))}
+                suggestions={COUNTRY_SUGGESTIONS}
+                placeholder="Ex: Tunisienne"
+              />
+              <AutocompleteInput
+                label="Pays de résidence"
+                value={profile.countryOfResidence}
+                onChange={v => setProfile(p => ({ ...p, countryOfResidence: v }))}
+                suggestions={COUNTRY_SUGGESTIONS}
+                placeholder="Ex: Tunisie"
+              />
             </div>
             <T>Liens professionnels</T>
             <div style={S.g2}>
@@ -315,7 +542,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           </div>
         )}
 
-        {/* ── FORMATION ── */}
         {tab === 'academic' && (
           <div style={S.sec}>
             <T>Formation actuelle</T>
@@ -327,7 +553,13 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   {['Licence 1','Licence 2','Licence 3','Master 1','Master 2','Doctorat','Ingénieur 1','Ingénieur 2','Ingénieur 3'].map(v => <option key={v}>{v}</option>)}
                 </select>
               </div>
-              <F label="Domaine d'études" v={profile.fieldOfStudy}   s={v => setProfile(p => ({ ...p, fieldOfStudy: v }))}   ph="Ex: Informatique de Gestion" />
+              <AutocompleteInput
+                label="Domaine d'études"
+                value={profile.fieldOfStudy}
+                onChange={v => setProfile(p => ({ ...p, fieldOfStudy: v }))}
+                suggestions={FIELD_SUGGESTIONS}
+                placeholder="Ex: Informatique de Gestion"
+              />
               <div style={{ gridColumn:'1/-1' }}>
                 <F label="Établissement" v={profile.institution}    s={v => setProfile(p => ({ ...p, institution: v }))}    ph="Ex: ISIMA Mahdia" />
               </div>
@@ -340,7 +572,13 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <div style={S.g2}>
                   <F label="Diplôme"         v={h.degree}      s={v => upd('academicHistory')(i, 'degree', v)}      ph="Ex: Baccalauréat, Licence..." />
                   <F label="Établissement"   v={h.institution} s={v => upd('academicHistory')(i, 'institution', v)} ph="Ex: Lycée Mixte Mahdia" />
-                  <F label="Domaine"         v={h.field}       s={v => upd('academicHistory')(i, 'field', v)}       ph="Ex: Mathématiques" />
+                  <AutocompleteInput
+                    label="Domaine"
+                    value={h.field}
+                    onChange={v => upd('academicHistory')(i, 'field', v)}
+                    suggestions={FIELD_SUGGESTIONS}
+                    placeholder="Ex: Mathématiques"
+                  />
                   <F label="Année"           v={h.year}        s={v => upd('academicHistory')(i, 'year', v)}        ph="2022" />
                   <div style={{ gridColumn:'1/-1' }}>
                     <F label="Mention / Note" v={h.grade}      s={v => upd('academicHistory')(i, 'grade', v)}      ph="Ex: Bien, Très bien, 15/20" />
@@ -356,7 +594,14 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <div style={S.g2}>
                   <F label="Certification"       v={c.name}       s={v => upd('certifications')(i, 'name', v)}       ph="Ex: AWS, Google Analytics..." />
                   <F label="Organisme émetteur"  v={c.issuer}     s={v => upd('certifications')(i, 'issuer', v)}     ph="Ex: Coursera, Amazon..." />
-                  <F label="Date d'obtention"    v={c.date}       s={v => upd('certifications')(i, 'date', v)}       ph="2024" />
+                  <AutocompleteInput
+                    label="Date d'obtention"
+                    value={c.date}
+                    onChange={v => upd('certifications')(i, 'date', v)}
+                    suggestions={[]}
+                    placeholder="2024"
+                    type="date"
+                  />
                   <F label="ID / Lien vérif."    v={c.credential} s={v => upd('certifications')(i, 'credential', v)} ph="URL ou identifiant" />
                 </div>
                 <button style={S.rmBtn} onClick={() => del('certifications')(i)}>✕ Supprimer</button>
@@ -383,7 +628,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           </div>
         )}
 
-        {/* ── EXPÉRIENCE ── */}
         {tab === 'experience' && (
           <div style={S.sec}>
             <T>Expériences professionnelles & stages</T>
@@ -401,9 +645,29 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   </div>
                   <F label="Poste"       v={w.position}    s={v => upd('workExperience')(i, 'position', v)}    ph="Ex: Développeur Web Full Stack" />
                   <F label="Entreprise"  v={w.company}     s={v => upd('workExperience')(i, 'company', v)}     ph="Ex: TechCorp Tunis" />
-                  <F label="Ville"       v={w.city}        s={v => upd('workExperience')(i, 'city', v)}        ph="Ex: Tunis, Sfax..." />
-                  <F label="Date début"  v={w.startDate}   s={v => upd('workExperience')(i, 'startDate', v)}   type="date" />
-                  <F label="Date fin"    v={w.endDate}     s={v => upd('workExperience')(i, 'endDate', v)}     type="date" />
+                  <AutocompleteInput
+                    label="Ville"
+                    value={w.city}
+                    onChange={v => upd('workExperience')(i, 'city', v)}
+                    suggestions={['Tunis', 'Sfax', 'Sousse', 'Mahdia', 'Monastir', 'Nabeul', 'Bizerte', 'Paris', 'Montreal', 'Casablanca', 'Dakar']}
+                    placeholder="Ex: Tunis, Sfax..."
+                  />
+                  <AutocompleteInput
+                    label="Date début"
+                    value={w.startDate}
+                    onChange={v => upd('workExperience')(i, 'startDate', v)}
+                    suggestions={[]}
+                    placeholder=""
+                    type="date"
+                  />
+                  <AutocompleteInput
+                    label="Date fin"
+                    value={w.endDate}
+                    onChange={v => upd('workExperience')(i, 'endDate', v)}
+                    suggestions={[]}
+                    placeholder=""
+                    type="date"
+                  />
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description des missions & réalisations</div>
                     <textarea style={{ ...S.inp, minHeight:90, resize:'vertical' }}
@@ -424,8 +688,22 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                 <div style={S.g2}>
                   <F label="Rôle"         v={v.role}         s={val => upd('volunteerWork')(i, 'role', val)}         ph="Ex: Team Manager, Membre actif..." />
                   <F label="Organisation" v={v.organization} s={val => upd('volunteerWork')(i, 'organization', val)} ph="Ex: JCI, Club Microsoft ISIMA..." />
-                  <F label="Début"        v={v.startDate}    s={val => upd('volunteerWork')(i, 'startDate', val)}    ph="2022" />
-                  <F label="Fin"          v={v.endDate}      s={val => upd('volunteerWork')(i, 'endDate', val)}      ph="2024 ou En cours" />
+                  <AutocompleteInput
+                    label="Début"
+                    value={v.startDate}
+                    onChange={val => upd('volunteerWork')(i, 'startDate', val)}
+                    suggestions={[]}
+                    placeholder="2022"
+                    type="date"
+                  />
+                  <AutocompleteInput
+                    label="Fin"
+                    value={v.endDate}
+                    onChange={val => upd('volunteerWork')(i, 'endDate', val)}
+                    suggestions={[]}
+                    placeholder="2024 ou En cours"
+                    type="date"
+                  />
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description</div>
                     <textarea style={{ ...S.inp, minHeight:70, resize:'vertical' }}
@@ -440,7 +718,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           </div>
         )}
 
-        {/* ── PROJETS ── */}
         {tab === 'projects' && (
           <div style={S.sec}>
             <T>Projets académiques</T>
@@ -487,8 +764,22 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                   </div>
                   <F label="Encadrant / Professeur" v={p.supervisor}   s={v => upd('academicProjects')(i, 'supervisor', v)}   ph="Ex: Prof. Ben Ali" />
                   <F label="Année"                  v={p.year}         s={v => upd('academicProjects')(i, 'year', v)}         ph="2024" />
-                  <F label="Date début"             v={p.startDate}    s={v => upd('academicProjects')(i, 'startDate', v)}    ph="Ex: 2023-09" />
-                  <F label="Date fin"               v={p.endDate}      s={v => upd('academicProjects')(i, 'endDate', v)}      ph="Ex: 2024-06 ou En cours" />
+                  <AutocompleteInput
+                    label="Date début"
+                    value={p.startDate}
+                    onChange={v => upd('academicProjects')(i, 'startDate', v)}
+                    suggestions={[]}
+                    placeholder="Ex: 2023-09"
+                    type="date"
+                  />
+                  <AutocompleteInput
+                    label="Date fin"
+                    value={p.endDate}
+                    onChange={v => upd('academicProjects')(i, 'endDate', v)}
+                    suggestions={[]}
+                    placeholder="Ex: 2024-06 ou En cours"
+                    type="date"
+                  />
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={S.lbl}>Description du projet</div>
                     <textarea style={{ ...S.inp, minHeight:100, resize:'vertical' }}
@@ -509,13 +800,18 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           </div>
         )}
 
-        {/* ── COMPÉTENCES ── */}
         {tab === 'skills' && (
           <div style={S.sec}>
             <T>Langues</T>
             {profile.languages.map((l, i) => (
-              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, alignItems:'end' }}>
-                <F label="Langue"     v={l.language}    s={v => upd('languages')(i, 'language', v)}    ph="Ex: Anglais, Français..." />
+              <div key={i} style={{ ...S.card, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+                <AutocompleteInput
+                  label="Langue"
+                  value={l.language}
+                  onChange={(v) => upd('languages')(i, 'language', v)}
+                  suggestions={LANGUAGE_SUGGESTIONS}
+                  placeholder="Ex: Anglais, Français..."
+                />
                 <div>
                   <div style={S.lbl}>Niveau CECRL</div>
                   <select style={S.inp} value={l.level} onChange={e => upd('languages')(i, 'level', e.target.value)}>
@@ -523,8 +819,14 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
                     {['A1','A2','B1','B2','C1','C2','Natif'].map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
-                <F label="Certificat" v={l.certificate} s={v => upd('languages')(i, 'certificate', v)} ph="Ex: IELTS 7.5, TOEIC 900" />
-                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={() => del('languages')(i)}>✕</button>
+                <AutocompleteInput
+                  label="Certificat"
+                  value={l.certificate}
+                  onChange={(v) => upd('languages')(i, 'certificate', v)}
+                  suggestions={['IELTS', 'TOEIC', 'TOEFL', 'DELF', 'DALF', 'Cambridge', 'Goethe', 'DELE', 'HSK', 'TEF', 'TCF']}
+                  placeholder="Ex: IELTS 7.5, TOEIC 900"
+                />
+                <button style={{ ...S.rmBtn, marginTop: 0 }} onClick={() => del('languages')(i)}>✕</button>
               </div>
             ))}
             <button style={S.addBtn} onClick={add('languages', { language:'', level:'', certificate:'' })}>+ Ajouter une langue</button>
@@ -533,40 +835,20 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
               💡 Regroupez par catégorie : Langages de programmation, Frameworks, Bases de données, Outils DevOps...
             </div>
             {profile.skills.map((sk, i) => (
-              <div key={i} style={{ ...S.card, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:12, alignItems:'end' }}>
-                <F label="Compétence / Outil" v={sk.skill}    s={v => upd('skills')(i, 'skill', v)}    ph="Ex: Python, React, MySQL..." />
-                <div>
-                  <div style={S.lbl}>Catégorie</div>
-                  <select style={S.inp} value={sk.category || ''} onChange={e => upd('skills')(i, 'category', e.target.value)}>
-                    <option value="">Catégorie...</option>
-                    <option value="language">Langage de programmation</option>
-                    <option value="framework">Framework / Librairie</option>
-                    <option value="database">Base de données</option>
-                    <option value="tool">Outil / Logiciel</option>
-                    <option value="devops">DevOps / Cloud</option>
-                    <option value="method">Méthode / Agilité</option>
-                    <option value="design">Design / UI</option>
-                    <option value="other">Autre</option>
-                  </select>
-                </div>
-                <div>
-                  <div style={S.lbl}>Niveau</div>
-                  <select style={S.inp} value={sk.level} onChange={e => upd('skills')(i, 'level', e.target.value)}>
-                    <option value="">Niveau...</option>
-                    <option value="beginner">Débutant</option>
-                    <option value="intermediate">Intermédiaire</option>
-                    <option value="advanced">Avancé</option>
-                    <option value="expert">Expert</option>
-                  </select>
-                </div>
-                <button style={{ ...S.rmBtn, marginTop:0 }} onClick={() => del('skills')(i)}>✕</button>
-              </div>
+              <SkillInput
+                key={i}
+                skill={sk.skill}
+                category={sk.category}
+                onSkillChange={(v) => upd('skills')(i, 'skill', v)}
+                onCategoryChange={(v) => upd('skills')(i, 'category', v)}
+                onLevelChange={(v) => upd('skills')(i, 'level', v)}
+                onDelete={() => del('skills')(i)}
+              />
             ))}
             <button style={S.addBtn} onClick={add('skills', { skill:'', level:'', category:'' })}>+ Ajouter une compétence</button>
           </div>
         )}
 
-        {/* ── OBJECTIFS ── */}
         {tab === 'goals' && (
           <div style={S.sec}>
             <T>Projet d'études à l'étranger</T>
@@ -584,9 +866,13 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
               <div style={S.lbl}>Pays cibles</div>
               {profile.targetCountries.map((c, i) => (
                 <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                  <input style={{ ...S.inp, flex:1 }} value={c.country}
-                    onChange={e => upd('targetCountries')(i, 'country', e.target.value)}
-                    placeholder="Ex: France, Canada, Belgique, Allemagne..."/>
+                  <AutocompleteInput
+                    label=""
+                    value={c.country}
+                    onChange={v => upd('targetCountries')(i, 'country', v)}
+                    suggestions={COUNTRY_SUGGESTIONS}
+                    placeholder="Ex: France, Canada, Belgique, Allemagne..."
+                  />
                   <button style={S.rmBtn} onClick={() => del('targetCountries')(i)}>✕</button>
                 </div>
               ))}
@@ -596,9 +882,13 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
               <div style={S.lbl}>Domaines visés</div>
               {profile.targetFields.map((f, i) => (
                 <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                  <input style={{ ...S.inp, flex:1 }} value={f.field}
-                    onChange={e => upd('targetFields')(i, 'field', e.target.value)}
-                    placeholder="Ex: Intelligence Artificielle, Data Science, Génie logiciel..."/>
+                  <AutocompleteInput
+                    label=""
+                    value={f.field}
+                    onChange={v => upd('targetFields')(i, 'field', v)}
+                    suggestions={FIELD_SUGGESTIONS}
+                    placeholder="Ex: Intelligence Artificielle, Data Science, Génie logiciel..."
+                  />
                   <button style={S.rmBtn} onClick={() => del('targetFields')(i)}>✕</button>
                 </div>
               ))}
@@ -620,7 +910,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           </div>
         )}
 
-        {/* ── FOOTER ── */}
         <div style={S.footer}>
           <button style={S.chatBtn} onClick={() => handleQuickReply('Je veux mettre à jour mon profil')}>
             🤖 Mettre à jour via l'IA
@@ -633,7 +922,6 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
           <button style={S.logoutBtn} onClick={handleLogout}>↩ Déconnexion</button>
         </div>
       </div>
-
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -681,4 +969,25 @@ const S = {
   saveBtn:   { flex:2, padding:11, borderRadius:6, border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.3s', fontFamily:'inherit' },
   chatBtn:   { flex:1, padding:11, borderRadius:6, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
   logoutBtn: { padding:'11px 16px', borderRadius:6, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
+  suggestionsDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    background: 'white',
+    border: '1px solid #e2e8f0',
+    borderRadius: 6,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    maxHeight: 200,
+    overflowY: 'auto',
+    zIndex: 1000,
+    marginTop: 2
+  },
+  suggestionItem: {
+    padding: '8px 12px',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    color: '#1a3a6b',
+    transition: 'background 0.15s'
+  },
 };
