@@ -3,6 +3,7 @@ import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import ChatInput from '../components/ChatInput';
+import { useT } from '../i18n';
 
 /* ─── LOGIN MODAL ─────────────────────────────────────────────────────────── */
 function LoginModal({ onClose }) {
@@ -1087,6 +1088,8 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts={} }) {
 
 /* ─── MAIN DASHBOARD ──────────────────────────────────────────────────────── */
 export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse, messages, input, setInput, loading, chatContainerRef, handleSend }) {
+    const { t, lang } = useT();  // ← Réagit au changement
+
   const [showLoginModal,setShowLoginModal]=useState(false);
   const [roadmap,setRoadmap]=useState([]);
   const [favorites,setFavorites]=useState([]);
@@ -1206,6 +1209,7 @@ const streak = useMemo(() => {
   );
 
   return (
+     <h1>{t('dashboard', 'title')}</h1>,
     <div style={{ width:'100%',background:'#f0f4f9',minHeight:'100vh',fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.dash-card{animation:fadeSlideUp 0.4s ease both}.hover-lift{transition:transform 0.2s,box-shadow 0.2s}.hover-lift:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,107,0.12)!important}`}</style>
       <div style={{ maxWidth:1200,margin:'0 auto',padding:'24px 32px' }}>

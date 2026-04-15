@@ -15,8 +15,11 @@ import axios from 'axios';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import Footer from './components/Footer';
 import ContactPage from "./pages/ContactPage";
+import { AppProviders, useT } from './i18n';
+
 
 function AppContent() {
+  const { t, lang, setLang } = useT();
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
   const [bourses, setBourses]                 = useState([]);
@@ -211,7 +214,7 @@ function AppContent() {
     chatContainerRef, currentStep, setCurrentStep,
     bourses, askAboutScholarship, entretienScores,
     fetchEntretienScores, conversationId: conversationId.current,
-    view, setView, serverStatus,
+    view, setView, serverStatus,lang,setLang,
     onOpenBourse: (nom) => { setInitialSelected(nom); setView('bourses'); },
   };
 
@@ -407,11 +410,12 @@ function AppContent() {
     </div>
   );
 }
-
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <AppProviders>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AppProviders>
   );
 }

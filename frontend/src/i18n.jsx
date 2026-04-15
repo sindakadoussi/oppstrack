@@ -137,7 +137,6 @@ export const TRANSLATIONS = {
       added: '✓ Ajouté',
       showMore: 'Voir',
       moreScholarships: 'bourses de plus ↓',
-      // Features
       featTitle: 'Tout ce dont vous avez besoin pour',
       featTitleAccent: ' décrocher votre bourse',
       featEyebrow: 'Pourquoi OppsTrack ?',
@@ -191,7 +190,6 @@ export const TRANSLATIONS = {
       added: '✓ Added',
       showMore: 'Show',
       moreScholarships: 'more scholarships ↓',
-      // Features
       featTitle: 'Everything you need to',
       featTitleAccent: ' land your scholarship',
       featEyebrow: 'Why OppsTrack?',
@@ -611,7 +609,7 @@ export const TRANSLATIONS = {
   },
 };
 
-/* ─── Context ────────────────────────────────────────────────────────────── */
+/* ─── Context Langue ────────────────────────────────────────────────────── */
 const LangContext = createContext({ lang: 'fr', setLang: () => {} });
 
 export function LanguageProvider({ children }) {
@@ -668,4 +666,57 @@ export function LanguageToggle({ style = {} }) {
   );
 }
 
-export default { TRANSLATIONS, LanguageProvider, useT, LanguageToggle };
+/* ─── Dark Mode Context ──────────────────────────────────────────────────── */
+const DarkContext = createContext({ darkMode: false, toggleDarkMode: () => {} });
+
+export function DarkModeProvider({ children }) {
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('oppstrack_dark') === 'true'; } catch { return false; }
+  });
+
+  const toggleDarkMode = () => {
+    setDarkMode(d => {
+      const next = !d;
+      try { localStorage.setItem('oppstrack_dark', String(next)); } catch {}
+      document.body.classList.toggle('dark-mode', next);
+      document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  }, []);
+
+  return (
+    <DarkContext.Provider value={{ darkMode, toggleDarkMode }}>
+      {children}
+    </DarkContext.Provider>
+  );
+}
+
+export function useDark() {
+  return useContext(DarkContext);
+}
+
+/* ─── Combined Provider ──────────────────────────────────────────────────── */
+export function AppProviders({ children }) {
+  return (
+    <LanguageProvider>
+      <DarkModeProvider>
+        {children}
+      </DarkModeProvider>
+    </LanguageProvider>
+  );
+}
+
+export default { 
+  TRANSLATIONS, 
+  LanguageProvider, 
+  useT, 
+  LanguageToggle, 
+  DarkModeProvider, 
+  useDark, 
+  AppProviders 
+};

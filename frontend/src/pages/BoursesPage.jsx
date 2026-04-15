@@ -6,6 +6,7 @@ import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import {WEBHOOK_ROUTES } from '@/config/routes';
+import { useT } from '../i18n';
 
 const countryFlag = (pays) => {
   const flags = {
@@ -19,44 +20,47 @@ const countryFlag = (pays) => {
   return flags[pays] || '🌍';
 };
 
-// ── Modal de connexion (magic link) ─────────────────────────────────────────
-function LoginModal({ onClose }) {
+// ── Modal de connexion (magic link) avec traduction ─────────────────────────
+function LoginModal({ onClose, lang }) {
   const [email,  setEmail]  = useState('');
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
 
   const send = async () => {
-  if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
-  setStatus('sending');
-  try {
-    // ✅ Pour DEMANDER un magic link (envoi d'email)
-    await axiosInstance.post('/api/users/request-magic-link', {
-      email: email.trim().toLowerCase(),
-    });
-    setStatus('success');
-  } catch (err) {
-    setStatus('error');
-    setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
-  }
-};
+    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', {
+        email: email.trim().toLowerCase(),
+      });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot contact server'));
+    }
+  };
 
   return (
     <div style={M.overlay}>
       <div style={M.box}>
         <div style={M.head}>
           <span style={{ fontSize: 22 }}>🔐</span>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>
+            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
+          </span>
           <button style={M.closeBtn} onClick={onClose}>✕</button>
         </div>
         <div style={M.body}>
           {status === 'idle' && (
             <>
               <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
-                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+                {lang === 'fr' 
+                  ? 'Entrez votre email pour recevoir un <strong>lien de connexion magique</strong>.'
+                  : 'Enter your email to receive a <strong>magic login link</strong>.'}
               </p>
               <input
                 type="email"
-                placeholder="votre@email.com"
+                placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
                 value={email}
                 autoFocus
                 onChange={e => setEmail(e.target.value)}
@@ -64,25 +68,32 @@ function LoginModal({ onClose }) {
                 style={M.input}
               />
               {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
-              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+              <button style={M.btn} onClick={send}>
+                ✉️ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
             </>
           )}
           {status === 'sending' && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={M.spinner} />
-              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+              <p style={{ color: '#64748b', marginTop: 14 }}>
+                {lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}
+              </p>
             </div>
           )}
           {status === 'success' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>
+                {lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}
+              </div>
               <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-                Vérifiez votre boîte mail (et les spams).<br/>
-                Cliquez sur le lien pour vous connecter.
+                {lang === 'fr' 
+                  ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.'
+                  : 'Check your inbox (and spam).<br/>Click the link to sign in.'}
               </p>
               <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
-                ✓ Fermer
+                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
               </button>
             </div>
           )}
@@ -91,7 +102,7 @@ function LoginModal({ onClose }) {
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
               <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
               <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
-                Réessayer
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
               </button>
             </div>
           )}
@@ -127,6 +138,7 @@ export default function BoursesPage({
   initialSelected,
   onClearInitialSelected,
 }) {
+  const { t, lang } = useT();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [search,       setSearch]       = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
@@ -148,7 +160,6 @@ export default function BoursesPage({
 
   useEffect(() => { loadUserData(); }, [loadUserData]);
 
-  // ✅ Ouvrir automatiquement le drawer si initialSelected est fourni
   useEffect(() => {
     if (!initialSelected || !bourses?.length) return;
     const nomLower = initialSelected.trim().toLowerCase();
@@ -188,56 +199,48 @@ export default function BoursesPage({
   };
 
   const handleApply = async (bourse) => {
-  const nomKey = bourse.nom?.trim().toLowerCase();
-  if (!user?.id || appliedNoms.has(nomKey)) return;
+    const nomKey = bourse.nom?.trim().toLowerCase();
+    if (!user?.id || appliedNoms.has(nomKey)) return;
 
-  try {
-    // ÉTAPE 1 : Création du document dans Payload
-    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-      userId: user.id,
-      userEmail: user.email || '',
-      nom: bourse.nom,
-      pays: bourse.pays || '',
-      lienOfficiel: bourse.lienOfficiel || '',
-      financement: bourse.financement || '',
-      dateLimite: bourse.dateLimite || null,
-      ajouteLe: new Date().toISOString(),
-      statut: 'en_cours',
-      etapeCourante: 0,
-    });
-
-    // On récupère l'ID que Payload vient de générer
-    const newRoadmapId = res.data.doc.id;
-
-    // ÉTAPE 2 : Appel du Webhook n8n (L'AJOUT CRUCIAL)
-    // C'est ici qu'on prévient l'IA qu'elle doit travailler
-    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-      roadmapId: newRoadmapId,
-      bourse: {
+    try {
+      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+        userId: user.id,
+        userEmail: user.email || '',
         nom: bourse.nom,
-        pays: bourse.pays,
-        url: bourse.lienOfficiel || bourse.url,
-        // On peut aussi passer le profil utilisateur pour que l'IA personnalise la roadmap
-        userProfile: user 
-      }
-    });
+        pays: bourse.pays || '',
+        lienOfficiel: bourse.lienOfficiel || '',
+        financement: bourse.financement || '',
+        dateLimite: bourse.dateLimite || null,
+        ajouteLe: new Date().toISOString(),
+        statut: 'en_cours',
+        etapeCourante: 0,
+      });
 
-    // ÉTAPE 3 : Mise à jour de l'interface
-    setAppliedNoms(prev => new Set([...prev, nomKey]));
-    
-    // Optionnel : Rediriger l'utilisateur pour qu'il voie le résultat
-    // navigate('/roadmap'); 
+      const newRoadmapId = res.data.doc.id;
 
-  } catch (err) {
-    console.error('[handleApply Error]', err);
-    alert("Erreur lors de l'initialisation de la roadmap.");
-  }
-};
+      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+        roadmapId: newRoadmapId,
+        bourse: {
+          nom: bourse.nom,
+          pays: bourse.pays,
+          url: bourse.lienOfficiel || bourse.url,
+          userProfile: user 
+        }
+      });
+
+      setAppliedNoms(prev => new Set([...prev, nomKey]));
+    } catch (err) {
+      console.error('[handleApply Error]', err);
+      alert(lang === 'fr' ? "Erreur lors de l'initialisation de la roadmap." : "Error initializing roadmap.");
+    }
+  };
 
   const handleAskAI = useCallback((bourse) => {
     setShowChat(true);
-    setInput(`Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`);
-  }, [setInput]);
+    setInput(lang === 'fr' 
+      ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`
+      : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`);
+  }, [setInput, lang]);
 
   const filtered = bourses
     .filter(b => {
@@ -256,27 +259,38 @@ export default function BoursesPage({
   const paysList    = [...new Set(bourses.map(b => b.pays).filter(Boolean))];
   const niveauxList = [...new Set(bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean))];
 
+  // Quick questions traduites
+  const quickQuestions = lang === 'fr' 
+    ? ['Lettre de motivation ?', 'Documents requis ?']
+    : ['Motivation letter?', 'Required documents?'];
+
   return (
     <div style={{ width:'100%', minHeight:'100vh', background:'#f8f9fc', fontFamily:"'Segoe UI', system-ui, sans-serif", position:'relative' }}>
 
       {/* Filtres */}
       <div style={{ background:'#ffffff', borderBottom:'1px solid #e2e8f0', padding:'16px 32px' }}>
         <div style={{ maxWidth:1200, margin:'0 auto', display:'flex', gap:10, flexWrap:'wrap' }}>
-          <input placeholder="🔍 Rechercher une bourse, pays, domaine..." value={search} onChange={e => setSearch(e.target.value)}
-            style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none' }}/>
+          <input 
+            placeholder={t('bourses', 'searchPlaceholder')} 
+            value={search} 
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex:1, minWidth:200, padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none' }}
+          />
           <select value={filterNiveau} onChange={e => setFilterNiveau(e.target.value)}
             style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none' }}>
-            <option value="">Tous niveaux</option>
+            <option value="">{t('bourses', 'filterNiveau')}</option>
             {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
           <select value={filterPays} onChange={e => setFilterPays(e.target.value)}
             style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none' }}>
-            <option value="">Tous pays</option>
+            <option value="">{t('bourses', 'filterPays')}</option>
             {paysList.map(p => <option key={p} value={p}>{countryFlag(p)} {p}</option>)}
           </select>
           {(search || filterNiveau || filterPays) && (
             <button style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #fecaca', background:'#fef2f2', color:'#dc2626', fontSize:13, cursor:'pointer', fontWeight:500 }}
-              onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}>✕ Effacer</button>
+              onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}>
+              ✕ {lang === 'fr' ? 'Effacer' : 'Clear'}
+            </button>
           )}
         </div>
       </div>
@@ -287,8 +301,8 @@ export default function BoursesPage({
           {visibleBourses.length === 0 ? (
             <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 20px' }}>
               <div style={{ fontSize:48, marginBottom:16 }}>🔍</div>
-              <div style={{ fontSize:16, fontWeight:600, color:'#1a3a6b', marginBottom:8 }}>Aucune bourse trouvée</div>
-              <p style={{ color:'#64748b', fontSize:14 }}>Essayez d'autres critères de recherche.</p>
+              <div style={{ fontSize:16, fontWeight:600, color:'#1a3a6b', marginBottom:8 }}>{t('bourses', 'noResult')}</div>
+              <p style={{ color:'#64748b', fontSize:14 }}>{t('bourses', 'noResultSub')}</p>
             </div>
           ) : (
             visibleBourses.map(bourse => (
@@ -332,10 +346,13 @@ export default function BoursesPage({
             >
               <div style={{ fontSize:36, marginBottom:8 }}>🔒</div>
               <div style={{ fontSize:14, fontWeight:600, color:'#1a3a6b', marginBottom:4 }}>
-                {filtered.length - 9} bourse{filtered.length - 9 > 1 ? 's' : ''} supplémentaire{filtered.length - 9 > 1 ? 's' : ''}
+                {filtered.length - 9} {lang === 'fr' ? 'bourse supplémentaire' : 'additional scholarship'}
+                {filtered.length - 9 > 1 ? (lang === 'fr' ? 's' : 's') : ''}
               </div>
               <div style={{ fontSize:12, color:'#64748b', marginBottom:12 }}>
-                Connectez-vous pour voir toutes les bourses disponibles
+                {lang === 'fr' 
+                  ? 'Connectez-vous pour voir toutes les bourses disponibles'
+                  : 'Sign in to see all available scholarships'}
               </div>
               <button 
                 style={{ 
@@ -349,7 +366,7 @@ export default function BoursesPage({
                   cursor:'pointer' 
                 }}
               >
-                🔐 Se connecter
+                🔐 {t('navbar', 'login')}
               </button>
             </div>
           )}
@@ -360,16 +377,22 @@ export default function BoursesPage({
             <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b', borderTopLeftRadius:10, borderTopRightRadius:10 }}>
               <span style={{ fontSize:20 }}>🤖</span>
               <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Assistant Bourses</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Conseils personnalisés</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>
+                  {lang === 'fr' ? 'Assistant Bourses' : 'Scholarship Assistant'}
+                </div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                  {lang === 'fr' ? 'Conseils personnalisés' : 'Personalized advice'}
+                </div>
               </div>
               <button onClick={() => setShowChat(false)} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16, marginLeft:'auto' }}>✕</button>
             </div>
             <div style={{ flex:1, minHeight:0, overflowY:'auto', padding:12 }} ref={chatContainerRef}>
               {messages.length === 0 && (
                 <div style={{ padding:12 }}>
-                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>Demandez-moi des conseils sur une bourse !</p>
-                  {['Lettre de motivation ?', 'Documents requis ?'].map((q, i) => (
+                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>
+                    {lang === 'fr' ? 'Demandez-moi des conseils sur une bourse !' : 'Ask me for advice on a scholarship!'}
+                  </p>
+                  {quickQuestions.map((q, i) => (
                     <button key={i} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6 }} onClick={() => handleQuickReply(q)}>{q}</button>
                   ))}
                 </div>
@@ -379,7 +402,7 @@ export default function BoursesPage({
                   <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, ...(msg.sender==='user'?{background:'#1a3a6b',color:'#fff'}:{background:'#f1f5f9',color:'#1a3a6b'}) }}>{msg.text}</div>
                 </div>
               ))}
-              {loading && <div style={{ padding:12, fontSize:12, color:'#94a3b8' }}>L'IA réfléchit...</div>}
+              {loading && <div style={{ padding:12, fontSize:12, color:'#94a3b8' }}>{lang === 'fr' ? "L'IA réfléchit..." : "AI is thinking..."}</div>}
             </div>
             <div style={{ padding:12, borderTop:'1px solid #f1f5f9' }}>
               <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading}/>
@@ -394,7 +417,7 @@ export default function BoursesPage({
         {showChat ? '✕' : '💬'}
       </button>
 
-      {/* ✅ BourseDrawer avec user pour la logique de match */}
+      {/* BourseDrawer avec user pour la logique de match */}
       <BourseDrawer
         bourse={selected}
         onClose={() => setSelected(null)}
@@ -407,10 +430,10 @@ export default function BoursesPage({
         user={user}
       />
 
-      {/* Modal de connexion */}
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+      {/* Modal de connexion avec traduction */}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} />}
 
-      <style>{`input::placeholder{color:#94a3b8} select option{color:#1a3a6b;background:#fff}`}</style>
+      <style>{`input::placeholder{color:#94a3b8} select option{color:#1a3a6b;background:#fff} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }

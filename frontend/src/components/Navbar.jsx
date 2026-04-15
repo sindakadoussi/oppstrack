@@ -2,16 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
+import { useT } from '../i18n';
 
-const navItems = [
-  { id: 'accueil',         label: 'IA Chat'         },
-  { id: 'bourses',         label: 'Bourses'         },
+// Nav items avec traduction
+const getNavItems = (t) => [
+  { id: 'accueil',         label: t('navbar', 'chat') },
+  { id: 'bourses',         label: t('navbar', 'bourses') },
   { id: 'recommandations', label: 'Recommandations' },
-  { id: 'roadmap',         label: 'Roadmap'         },
-  { id: 'entretien',       label: 'Entretien'       },
-  { id: 'cv',              label: 'CV & LM'         },
-  { id: 'dashboard',       label: 'Dashboard'       },
-  { id: 'profil',          label: 'Profil'          },
+  { id: 'roadmap',         label: t('navbar', 'roadmap') },
+  { id: 'entretien',       label: t('navbar', 'entretien') },
+  { id: 'cv',              label: 'CV & LM' },
+  { id: 'dashboard',       label: t('navbar', 'dashboard') },
+  { id: 'profil',          label: t('navbar', 'profil') },
 ];
 
 function useDeadlineAlerts(user) {
@@ -70,17 +72,17 @@ function useStarredBourses(user) {
   return { starred, reload };
 }
 
-function StarPanel({ starred, onClose, setView }) {
+function StarPanel({ starred, onClose, setView, lang }) {
   return (
     <div style={P.panel}>
       <div style={P.head}>
-        <span style={P.title}>★ Mes favoris ({starred.length})</span>
+        <span style={P.title}>★ {lang === 'fr' ? 'Mes favoris' : 'My favorites'} ({starred.length})</span>
         <button style={P.closeBtn} onClick={onClose}>✕</button>
       </div>
       {starred.length === 0 ? (
         <div style={{ padding:'28px 20px', textAlign:'center', color:'#64748b', fontSize:13 }}>
           <div style={{ fontSize:28, marginBottom:8 }}>☆</div>
-          Aucun favori pour l'instant
+          {lang === 'fr' ? 'Aucun favori pour l\'instant' : 'No favorites yet'}
         </div>
       ) : (
         <div style={{ padding:'8px 0', maxHeight:300, overflowY:'auto' }}>
@@ -98,7 +100,7 @@ function StarPanel({ starred, onClose, setView }) {
                 <a href={b.lienOfficiel} target="_blank" rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
                   style={{ fontSize:11, color:'#1a3a6b', textDecoration:'none', padding:'3px 8px', background:'rgba(26,58,107,0.08)', borderRadius:6, border:'1px solid rgba(26,58,107,0.15)' }}>
-                  Voir
+                  {lang === 'fr' ? 'Voir' : 'View'}
                 </a>
               )}
             </div>
@@ -109,17 +111,17 @@ function StarPanel({ starred, onClose, setView }) {
   );
 }
 
-function NotifPanel({ alerts, onClose, setView, onSelectBourse }) {
+function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang }) {
   return (
     <div style={{ ...P.panel, width:340 }}>
       <div style={P.head}>
-        <span style={P.title}>🔔 Deadlines urgentes {alerts.length > 0 ? `(${alerts.length})` : ''}</span>
+        <span style={P.title}>🔔 {lang === 'fr' ? 'Deadlines urgentes' : 'Urgent deadlines'} {alerts.length > 0 ? `(${alerts.length})` : ''}</span>
         <button style={P.closeBtn} onClick={onClose}>✕</button>
       </div>
       {alerts.length === 0 ? (
         <div style={{ padding:'32px 20px', textAlign:'center', color:'#64748b' }}>
           <div style={{ fontSize:32, marginBottom:10 }}>✅</div>
-          <div style={{ fontSize:13 }}>Aucune deadline dans les 30 prochains jours</div>
+          <div style={{ fontSize:13 }}>{lang === 'fr' ? 'Aucune deadline dans les 30 prochains jours' : 'No deadline in the next 30 days'}</div>
         </div>
       ) : (
         <>
@@ -127,7 +129,7 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse }) {
             {alerts.map((a, i) => {
               const color = a.days <= 1 ? '#dc2626' : a.days <= 7 ? '#ea580c' : a.days <= 14 ? '#d97706' : '#1a3a6b';
               const bg    = a.days <= 1 ? 'rgba(220,38,38,0.06)' : a.days <= 7 ? 'rgba(234,88,12,0.06)' : a.days <= 14 ? 'rgba(217,119,6,0.06)' : 'rgba(26,58,107,0.06)';
-              const label = a.days === 0 ? "Aujourd'hui !" : a.days === 1 ? 'Demain !' : `${a.days} jours restants`;
+              const label = a.days === 0 ? (lang === 'fr' ? "Aujourd'hui !" : 'Today!') : a.days === 1 ? (lang === 'fr' ? 'Demain !' : 'Tomorrow!') : `${a.days} ${lang === 'fr' ? 'jours restants' : 'days left'}`;
               return (
                 <div key={i}
                   onClick={() => { onSelectBourse(a.nom); setView('bourses'); onClose(); }}
@@ -138,12 +140,12 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse }) {
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, color:'#1a3a6b', fontWeight:600, lineHeight:1.3 }}>{a.nom}</div>
                     <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>
-                      {a.pays} · {a.deadline.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })}
+                      {a.pays} · {a.deadline.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day:'2-digit', month:'short', year:'numeric' })}
                     </div>
                   </div>
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <div style={{ fontSize:12, fontWeight:700, color, lineHeight:1 }}>{label}</div>
-                    <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>→ voir détails</div>
+                    <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>→ {lang === 'fr' ? 'voir détails' : 'view details'}</div>
                   </div>
                 </div>
               );
@@ -151,7 +153,7 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse }) {
           </div>
           <div style={{ padding:'10px 14px', borderTop:'1px solid #e8ecf0' }}>
             <button style={P.actionBtn} onClick={() => { setView('roadmap'); onClose(); }}>
-              Voir la Roadmap →
+              {lang === 'fr' ? 'Voir la Roadmap →' : 'See Roadmap →'}
             </button>
           </div>
         </>
@@ -170,12 +172,14 @@ const P = {
 };
 
 export default function Navbar({ view, setView, user, onLogout, serverStatus, starCount, onOpenBourse }) {
+  const { t, lang } = useT();
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [starOpen,  setStarOpen]  = useState(false);
 
   const alerts              = useDeadlineAlerts(user);
   const { starred, reload } = useStarredBourses(user);
+  const navItems = getNavItems(t);
 
   const notifBadge = alerts.length;
   const badge      = starCount ?? starred.length;
@@ -195,10 +199,6 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
 
   return (
     <nav className="navbar">
-
-      {/* Barre utilitaire supérieure */}
-      
-
       {/* Barre principale */}
       <div className="mainbar">
         {/* Logo + Nom */}
@@ -211,7 +211,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           />
           <div className="brand-text">
             <span className="brand-name">OPPSTRACK</span>
-            <span className="brand-tagline">Etudiez sans limites Vivez sans dettes </span>
+            <span className="brand-tagline">{t('navbar', 'tagline')}</span>
           </div>
         </div>
 
@@ -231,18 +231,18 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           {user && (
             <div className="star-wrapper" style={{ position:'relative' }}>
               <button onClick={() => { setStarOpen(o => !o); setNotifOpen(false); }}
-                className="icon-btn" title={`${badge} favori(s)`}>
+                className="icon-btn" title={`${badge} ${lang === 'fr' ? 'favori(s)' : 'favorite(s)'}`}>
                 ★
                 {badge > 0 && <span className="badge badge-gold">{badge > 9 ? '9+' : badge}</span>}
               </button>
-              {starOpen && <StarPanel starred={starred} onClose={() => setStarOpen(false)} setView={setView} />}
+              {starOpen && <StarPanel starred={starred} onClose={() => setStarOpen(false)} setView={setView} lang={lang} />}
             </div>
           )}
 
           {user && (
             <div className="notif-wrapper" style={{ position:'relative' }}>
               <button onClick={() => { setNotifOpen(o => !o); setStarOpen(false); }}
-                className="icon-btn" title="Notifications">
+                className="icon-btn" title={lang === 'fr' ? 'Notifications' : 'Notifications'}>
                 🔔
                 {notifBadge > 0 && (
                   <span className="badge badge-red" style={{ animation:'pulse 2s infinite' }}>
@@ -252,7 +252,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
               </button>
               {notifOpen && (
                 <NotifPanel alerts={alerts} onClose={() => setNotifOpen(false)} setView={setView}
-                  onSelectBourse={(nom) => { if (onOpenBourse) onOpenBourse(nom); else setView('bourses'); }} />
+                  onSelectBourse={(nom) => { if (onOpenBourse) onOpenBourse(nom); else setView('bourses'); }} lang={lang} />
               )}
             </div>
           )}
@@ -261,12 +261,12 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
             <div className="user-pill">
               <div className="user-avatar">{(user.name || user.email || 'U')[0].toUpperCase()}</div>
               <span className="user-name">{user.name || user.email?.split('@')[0]}</span>
-              <button className="logout-btn" onClick={onLogout} title="Déconnexion">↩</button>
+              <button className="logout-btn" onClick={onLogout} title={lang === 'fr' ? 'Déconnexion' : 'Sign out'}>↩</button>
             </div>
           ) : (
             <div className="guest-pill">
               <span className="guest-dot" />
-              <span>Invité</span>
+              <span>{t('navbar', 'guest')}</span>
             </div>
           )}
         </div>
@@ -288,37 +288,13 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           ))}
           {user && (
             <button className="mobile-nav-item logout" onClick={() => { onLogout(); setMenuOpen(false); }}>
-              ↩ Déconnexion
+              ↩ {t('navbar', 'logout')}
             </button>
           )}
         </div>
       )}
 
       <style>{`
-        /* ── TOPBAR ─────────────────────────────── */
-        .topbar {
-          width: 100%;
-          background: #f5a623;
-          color: #1a3a6b;
-          font-size: 12px;
-          font-weight: 500;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 101;
-        }
-        .topbar-inner {
-          max-width: 1300px;
-          margin: 0 auto;
-          padding: 6px 24px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .topbar-left { display: flex; align-items: center; gap: 6px; }
-        .topbar-right { display: flex; align-items: center; gap: 10px; font-size: 11px; }
-
         /* ── MAINBAR ────────────────────────────── */
         .navbar {
           position: fixed;
@@ -361,7 +337,6 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           height: 46px;
           object-fit: contain;
           border-radius: 6px;
-         
           padding: 2px;
         }
         .brand-text {
@@ -490,7 +465,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
         /* ── MOBILE MENU ────────────────────────── */
         .mobile-menu {
           display: none; position: fixed;
-          top: 97px; left: 0; right: 0;
+          top: 68px; left: 0; right: 0;
           background: #1a3a6b;
           padding: 12px; border-bottom: 3px solid #f5a623;
           flex-direction: column; gap: 2px; z-index: 99;
@@ -517,11 +492,3 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
     </nav>
   );
 }
-
-const badgeSt = (bg) => ({
-  position:'absolute', top:1, right:1, width:15, height:15,
-  borderRadius:'50%', background:bg, color: bg === '#f5a623' ? '#1a3a6b' : '#fff',
-  fontSize:8, fontWeight:800, display:'flex',
-  alignItems:'center', justifyContent:'center',
-  border:'1.5px solid #1a3a6b',
-});
