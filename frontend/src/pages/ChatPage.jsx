@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ChatInput from '../components/ChatInput';
 import axiosInstance from '@/config/axiosInstance';
 import BourseDrawer from '../components/Boursedrawer';
@@ -374,11 +374,118 @@ export default function ChatPage({user,messages,input,setInput,loading,handleSen
   const quickReplies=getQuickReplies(lang);
   const [drawer,setDrawer]=useState(null);
   const appliedSet=useMemo(()=>appliedNoms instanceof Set?appliedNoms:new Set((appliedNoms||[]).map(n=>n?.trim().toLowerCase())),[appliedNoms]);
-
+  const [starredNoms, setStarredNoms] = useState(new Set());
+const [appliedNomsLocal, setAppliedNomsLocal] = useState(new Set());
   const scrollToBottom=()=>{if(containerRef.current)containerRef.current.scrollTop=containerRef.current.scrollHeight;};
   useEffect(()=>{scrollToBottom();},[messages,loading]);
   useEffect(()=>{setTimeout(scrollToBottom,100);},[]);
   useEffect(()=>{const el=containerRef.current;if(!el)return;const check=()=>setShowScroll(el.scrollHeight-el.scrollTop-el.clientHeight>100);el.addEventListener('scroll',check);check();return()=>el.removeEventListener('scroll',check);},[]);
+  // ✅ Handler Favoris - appelle l'IA + met à jour l'état local
+/* ═══════════════════════════════════════════════════════════════════════════
+   HANDLERS FAVORIS & ROADMAP - APPELS API RÉELS
+═══════════════════════════════════════════════════════════════════════════ */
+
+// ✅ Favoris : Appel API + mise à jour état local
+const handleStar = useCallback(async (bourse, isStarred) => {
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id) return;
+
+  try {
+    // ✅ 1. Récupérer le doc favoris existant (destructuring CORRECT)
+    const { data: favData } = await axiosInstance.get('/api/favoris', {
+      params: { 'where[user][equals]': user.id, limit: 1, depth: 0 }
+    });
+    const favDoc = favData.docs?.[0];
+
+    const bourseData = {
+      nom: bourse.nom,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || null,
+      ajouteLe: new Date().toISOString()
+    };
+
+    if (isStarred) {
+      // ❌ Retirer des favoris
+      if (favDoc?.id) {
+        await axiosInstance.patch(`/api/favoris/${favDoc.id}`, {
+          bourses: (favDoc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey)
+        });
+      }
+      setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
+    } else {
+      // ✅ Ajouter aux favoris
+      if (favDoc?.id) {
+        await axiosInstance.patch(`/api/favoris/${favDoc.id}`, {
+          bourses: [...(favDoc.bourses || []), bourseData]
+        });
+      } else {
+        await axiosInstance.post('/api/favoris', {
+          user: user.id,
+          userEmail: user.email || '',
+          bourses: [bourseData]
+        });
+      }
+      setStarredNoms(prev => new Set([...prev, nomKey]));
+    }
+  } catch (err) {
+    console.error('[handleStar]', err);
+    alert(lang === 'fr' ? 'Erreur lors de la mise à jour des favoris' : 'Error updating favorites');
+  }
+}, [user, lang]);
+
+// ✅ Postuler : Appel API roadmap + webhook + mise à jour état
+const handleApply = useCallback(async (bourse) => {
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id || appliedSet.has(nomKey) || appliedNomsLocal.has(nomKey)) return;
+
+  try {
+    // 1. Créer l'entrée roadmap
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId: user.id,
+      userEmail: user.email || '',
+      nom: bourse.nom,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || null,
+      ajouteLe: new Date().toISOString(),
+      statut: 'en_cours',
+      etapeCourante: 0,
+    });
+
+    // 2. Déclencher le webhook pour générer les étapes (si disponible)
+    try {
+      await axiosInstance.post('/api/webhooks/generate-roadmap', {
+        roadmapId: res.data.doc?.id || res.data.id,
+        user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
+        bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
+      });
+    } catch (webhookErr) {
+      console.warn('Webhook roadmap non disponible, continuation...', webhookErr);
+      // Continue même si le webhook échoue
+    }
+
+    // 3. Mettre à jour l'état local
+    setAppliedNomsLocal(prev => new Set([...prev, nomKey]));
+
+    // 4. Optionnel : notifier le parent
+    if (typeof onApplyBourse === 'function') {
+      await onApplyBourse(bourse);
+    }
+
+  } catch (err) {
+    console.error('[handleApply]', err);
+    alert(lang === 'fr' ? "Erreur lors de l'initialisation de la candidature." : "Error initializing application.");
+  }
+}, [user, appliedSet, appliedNomsLocal, onApplyBourse, lang]);
+
+// ✅ Ask AI : juste pour info
+const handleAskAI = useCallback((bourse) => {
+  handleQuickReply?.(`Donne-moi tous les détails sur "${bourse.nom}" : conditions, financement, processus de candidature`);
+}, [handleQuickReply]);
+
 
   return(<div className="chat-page">
     <div className="language-selector-container"><LanguageToggle/></div>
@@ -386,7 +493,7 @@ export default function ChatPage({user,messages,input,setInput,loading,handleSen
     <div className="chat-box">
       <div className="chat-messages" ref={containerRef}>
         {messages.length===0&&<div className="welcome-screen"><div className="welcome-avatar"><img src="/logo.png" alt="OppsTrack" style={{width:36,height:36,objectFit:'contain',borderRadius:6}} onError={e=>{e.target.style.display='none';e.target.parentNode.innerHTML='🤖';}}/></div><div className="welcome-bubble"><p><strong>{lang==='fr'?'Bonjour':'Hello'}{user?.name?` ${user.name}`:''}!</strong> 👋</p><p>{lang==='fr'?'Je suis votre assistant OppsTrack. Je peux :':'I am your OppsTrack assistant. I can:'}</p><ul><li>{lang==='fr'?'🎓 Recommander des bourses selon votre profil':'🎓 Recommend scholarships matching your profile'}</li><li>{lang==='fr'?'📋 Vous guider sur les démarches à suivre':'📋 Guide you through the application process'}</li><li>{lang==='fr'?'🎙️ Vous préparer à vos entretiens':'🎙️ Prepare you for scholarship interviews'}</li><li>{lang==='fr'?'📄 Analyser votre CV et lettre de motivation':'📄 Analyze your CV and cover letter'}</li></ul><p>{lang==='fr'?'Par où voulez-vous commencer ?':'Where would you like to start?'}</p></div></div>}
-        {messages.map((msg,i)=><ChatMessage key={i} msg={msg} index={i} appliedNoms={appliedSet} onApply={onApplyBourse} onDetails={setDrawer} allBourses={bourses} handleQuickReply={handleQuickReply} lang={lang}/>)}
+        {messages.map((msg,i)=><ChatMessage key={i} msg={msg} index={i} appliedNoms={appliedSet} onApply={handleApply}  onDetails={setDrawer} allBourses={bourses} handleQuickReply={handleQuickReply} lang={lang}/>)}
         {loading&&<div className="msg ai"><div className="msg-avatar">🤖</div><div className="msg-bubble typing-bubble"><span className="dot"/><span className="dot"/><span className="dot"/></div></div>}
         <ScrollToBottomButton onClick={scrollToBottom} visible={showScroll}/>
       </div>
@@ -395,8 +502,30 @@ export default function ChatPage({user,messages,input,setInput,loading,handleSen
     </div>
     <div className="hero-stats"><div className="stat"><StatNumber value={heroStats.totalBourses} suffix={heroStats.totalBourses>=500?'+':''} loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Bourses':'Scholarships'}</span></div><div className="stat-divider"/><div className="stat"><StatNumber value={heroStats.pctFinancees} suffix="%" loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Financées':'Funded'}</span></div><div className="stat-divider"/><div className="stat"><span className="stat-num">24/7</span><span className="stat-label">{lang==='fr'?'IA active':'AI active'}</span></div></div>
     <div className="features-section"><div className="features-header"><div className="features-eyebrow"><span className="features-eyebrow-line"/>{lang==='fr'?'Pourquoi OppsTrack ?':'Why OppsTrack?'}<span className="features-eyebrow-line"/></div><h2 className="features-title">{lang==='fr'?'Tout ce dont vous avez besoin pour':'Everything you need to'}<span className="features-title-gradient"> {lang==='fr'?'décrocher votre bourse':'land your scholarship'}</span></h2></div><div className="features-grid">{[{icon:'🔍',titleFr:'Matching intelligent',titleEn:'Smart Matching',descFr:"L'IA analyse votre profil et recommande les bourses avec les meilleures chances de succès.",descEn:"The AI analyzes your profile and recommends scholarships with the best success chances.",ctaFr:'Trouver mes bourses',ctaEn:'Find my scholarships',view:'bourses',accent:'#1a3a6b',bg:'#eff6ff'},{icon:'📋',titleFr:'Roadmap personnalisée',titleEn:'Personalized Roadmap',descFr:"Chaque candidature décomposée étape par étape : documents, lettre, soumission, résultat.",descEn:"Each application broken down step by step: documents, letter, submission, result.",ctaFr:'Voir la roadmap',ctaEn:'See the roadmap',view:'roadmap',accent:'#166534',bg:'#f0fdf4'},{icon:'🎙️',titleFr:'Entretiens simulés IA',titleEn:'AI Mock Interviews',descFr:"Notre IA joue le rôle du jury. Obtenez un score et des conseils personnalisés.",descEn:"Our AI plays the role of the jury. Get a score and personalized feedback.",ctaFr:'Préparer mon entretien',ctaEn:'Prepare my interview',view:'entretien',accent:'#f5a623',bg:'#fffbeb'},{icon:'📄',titleFr:'Analyse de documents',titleEn:'Document Analysis',descFr:"CV, lettre de motivation — l'IA identifie vos points forts et propose des améliorations.",descEn:"CV, cover letter — the AI identifies your strengths and suggests improvements.",ctaFr:'Analyser mon CV',ctaEn:'Analyze my CV',view:'cv',accent:'#0891b2',bg:'#ecfeff'},{icon:'🌍',titleFr:'Carte mondiale',titleEn:'World Map',descFr:"Explorez les bourses dans le monde entier. Filtrez par pays, niveau et domaine.",descEn:"Explore scholarships worldwide. Filter by country, level and field.",ctaFr:'Explorer la carte',ctaEn:'Explore the map',view:'bourses',accent:'#7c3aed',bg:'#f5f3ff'},{icon:'📊',titleFr:'Tableau de bord',titleEn:'Dashboard',descFr:"Suivez vos candidatures, alertes de deadlines et score de préparation en temps réel.",descEn:"Track your applications, deadline alerts and preparation score in real time.",ctaFr:'Voir le dashboard',ctaEn:'See the dashboard',view:'dashboard',accent:'#dc2626',bg:'#fef2f2'}].map((feat,i)=><div key={i} className="feat-card" style={{animationDelay:`${i*0.07}s`}} onClick={()=>setView&&setView(feat.view)} role="button" tabIndex={0} onKeyDown={e=>e.key==='Enter'&&setView&&setView(feat.view)}><div className="feat-icon-circle" style={{background:feat.bg,color:feat.accent}}>{feat.icon}</div><h3 className="feat-title">{lang==='fr'?feat.titleFr:feat.titleEn}</h3><p className="feat-desc">{lang==='fr'?feat.descFr:feat.descEn}</p><div className="feat-cta" style={{color:feat.accent}}>{lang==='fr'?feat.ctaFr:feat.ctaEn}<svg className="feat-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div><div className="feat-hover-bar" style={{background:feat.accent}}/></div>)}</div></div>
-    {drawer&&<BourseDrawer bourse={drawer} onClose={()=>setDrawer(null)} onAskAI={b=>{handleQuickReply(`Donne-moi tous les détails sur "${b.nom}" : conditions, financement, processus`);setDrawer(null);}} onChoose={b=>{handleQuickReply('je choisis '+b.nom);setDrawer(null);}} applied={appliedSet.has(drawer.nom?.trim().toLowerCase())} onApply={async b=>{await onApplyBourse?.(b);}} starred={false} onStar={()=>{}} user={user}/>}
-    <style>{`
+{/* ✅ DRAWER BOURSE - VERSION CORRIGÉE */}
+{drawer && (
+  <BourseDrawer
+    bourse={drawer}
+    onClose={() => setDrawer(null)}
+    
+    // ✅ Favoris : état combiné + handler API
+    starred={starredNoms.has(drawer.nom?.trim().toLowerCase()) || appliedSet.has(drawer.nom?.trim().toLowerCase())}
+    onStar={handleStar}
+    
+    // ✅ Roadmap / Choisir : handler API direct
+    onChoose={handleApply}
+    
+    // ✅ Postuler : état combiné + handler API
+    applied={appliedSet.has(drawer.nom?.trim().toLowerCase()) || appliedNomsLocal.has(drawer.nom?.trim().toLowerCase())}
+    onApply={handleApply}
+    
+    // ✅ Ask AI
+    onAskAI={handleAskAI}
+    
+    user={user}
+  />
+)}   
+<style>{`
       .chat-page{display:flex;flex-direction:column;align-items:center;width:100%;max-width:800px;margin:0 auto;padding:40px 16px 32px;font-family:'Segoe UI',system-ui,sans-serif}
       .chat-hero{text-align:center;margin-bottom:28px;width:100%}
       .hero-badge{display:inline-block;padding:5px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:40px;color:#1a3a6b;font-size:12px;font-weight:600;letter-spacing:.5px;margin-bottom:20px}

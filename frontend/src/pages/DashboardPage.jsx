@@ -5,38 +5,96 @@ import BourseDrawer from '../components/Boursedrawer';
 import ChatInput from '../components/ChatInput';
 import { useT } from '../i18n';
 
-/* ─── LOGIN MODAL ─────────────────────────────────────────────────────────── */
+/* ─── LOGIN MODAL (traduit) ───────────────────────────────────────────────── */
 function LoginModal({ onClose }) {
+  const { lang } = useT();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
+  
   const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+    if (!email || !email.includes('@')) { 
+      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); 
+      return; 
+    }
     setStatus('sending');
     try {
       await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
       setStatus('success');
-    } catch (err) { setStatus('error'); setErrMsg(err.response?.data?.message || 'Erreur serveur'); }
+    } catch (err) { 
+      setStatus('error'); 
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error')); 
+    }
   };
+  
   return (
     <div style={M.overlay}>
       <div style={M.box}>
         <div style={M.head}>
           <span style={{ fontSize:22 }}>🔐</span>
-          <span style={{ color:'#fff', fontWeight:700, fontSize:16 }}>Connexion à OppsTrack</span>
+          <span style={{ color:'#fff', fontWeight:700, fontSize:16 }}>
+            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
+          </span>
           <button style={M.closeBtn} onClick={onClose}>✕</button>
         </div>
         <div style={M.body}>
-          {status==='idle'&&(<><p style={{ color:'#64748b',fontSize:14,marginBottom:20,lineHeight:1.6 }}>Entrez votre email pour recevoir un <strong style={{ color:'#1a3a6b' }}>lien magique</strong>.</p><input type="email" placeholder="votre@email.com" value={email} autoFocus onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} style={M.input}/>{errMsg&&<div style={{ color:'#dc2626',fontSize:12,marginTop:8 }}>{errMsg}</div>}<button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button></>)}
-          {status==='sending'&&<div style={{ textAlign:'center',padding:'24px 0' }}><div style={M.spinner}/><p style={{ color:'#64748b',marginTop:14 }}>Envoi...</p></div>}
-          {status==='success'&&<div style={{ textAlign:'center',padding:'16px 0' }}><div style={{ fontSize:52,marginBottom:12 }}>✉️</div><div style={{ fontSize:16,fontWeight:700,color:'#166534',marginBottom:8 }}>Lien envoyé !</div><p style={{ color:'#64748b',fontSize:13 }}>Vérifiez votre boîte mail.</p><button style={{ ...M.btn,background:'#166534',marginTop:20 }} onClick={onClose}>✓ Fermer</button></div>}
-          {status==='error'&&<div style={{ textAlign:'center',padding:'16px 0' }}><div style={{ fontSize:40,marginBottom:12 }}>⚠️</div><p style={{ color:'#dc2626',marginBottom:12 }}>{errMsg}</p><button style={{ ...M.btn,background:'#dc2626' }} onClick={()=>{setStatus('idle');setErrMsg('');}}>Réessayer</button></div>}
+          {status==='idle' && (
+            <>
+              <p style={{ color:'#64748b',fontSize:14,marginBottom:20,lineHeight:1.6 }}>
+                {lang === 'fr' 
+                  ? 'Entrez votre email pour recevoir un ' 
+                  : 'Enter your email to receive a '}
+                <strong style={{ color:'#1a3a6b' }}>
+                  {lang === 'fr' ? 'lien magique' : 'magic link'}
+                </strong>.
+              </p>
+              <input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} 
+                value={email} autoFocus onChange={e=>setEmail(e.target.value)} 
+                onKeyDown={e=>e.key==='Enter'&&send()} style={M.input}/>
+              {errMsg && <div style={{ color:'#dc2626',fontSize:12,marginTop:8 }}>{errMsg}</div>}
+              <button style={M.btn} onClick={send}>
+                ✉️ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
+            </>
+          )}
+          {status==='sending' && (
+            <div style={{ textAlign:'center',padding:'24px 0' }}>
+              <div style={M.spinner}/>
+              <p style={{ color:'#64748b',marginTop:14 }}>
+                {lang === 'fr' ? 'Envoi...' : 'Sending...'}
+              </p>
+            </div>
+          )}
+          {status==='success' && (
+            <div style={{ textAlign:'center',padding:'16px 0' }}>
+              <div style={{ fontSize:52,marginBottom:12 }}>✉️</div>
+              <div style={{ fontSize:16,fontWeight:700,color:'#166534',marginBottom:8 }}>
+                {lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}
+              </div>
+              <p style={{ color:'#64748b',fontSize:13 }}>
+                {lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}
+              </p>
+              <button style={{ ...M.btn,background:'#166534',marginTop:20 }} onClick={onClose}>
+                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+          )}
+          {status==='error' && (
+            <div style={{ textAlign:'center',padding:'16px 0' }}>
+              <div style={{ fontSize:40,marginBottom:12 }}>⚠️</div>
+              <p style={{ color:'#dc2626',marginBottom:12 }}>{errMsg}</p>
+              <button style={{ ...M.btn,background:'#dc2626' }} onClick={()=>{setStatus('idle');setErrMsg('');}}>
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div style={M.backdrop} onClick={onClose}/>
     </div>
   );
 }
+
 const M = {
   overlay:{ position:'fixed',inset:0,zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center' },
   backdrop:{ position:'absolute',inset:0,background:'rgba(26,58,107,0.45)',backdropFilter:'blur(6px)' },
@@ -56,14 +114,12 @@ const COUNTRY_META = {
   FR:{label:'France',flag:'🇫🇷'},DE:{label:'Allemagne',flag:'🇩🇪'},GB:{label:'Royaume-Uni',flag:'🇬🇧'},US:{label:'États-Unis',flag:'🇺🇸'},CA:{label:'Canada',flag:'🇨🇦'},AU:{label:'Australie',flag:'🇦🇺'},JP:{label:'Japon',flag:'🇯🇵'},CN:{label:'Chine',flag:'🇨🇳'},KR:{label:'Corée du Sud',flag:'🇰🇷'},TR:{label:'Turquie',flag:'🇹🇷'},SA:{label:'Arabie Saoudite',flag:'🇸🇦'},MA:{label:'Maroc',flag:'🇲🇦'},TN:{label:'Tunisie',flag:'🇹🇳'},IN:{label:'Inde',flag:'🇮🇳'},BR:{label:'Brésil',flag:'🇧🇷'},ZA:{label:'Afrique du Sud',flag:'🇿🇦'},NG:{label:'Nigéria',flag:'🇳🇬'},EG:{label:'Égypte',flag:'🇪🇬'},BE:{label:'Belgique',flag:'🇧🇪'},NL:{label:'Pays-Bas',flag:'🇳🇱'},CH:{label:'Suisse',flag:'🇨🇭'},SE:{label:'Suède',flag:'🇸🇪'},NO:{label:'Norvège',flag:'🇳🇴'},HU:{label:'Hongrie',flag:'🇭🇺'},PL:{label:'Pologne',flag:'🇵🇱'},IT:{label:'Italie',flag:'🇮🇹'},ES:{label:'Espagne',flag:'🇪🇸'},RU:{label:'Russie',flag:'🇷🇺'},MX:{label:'Mexique',flag:'🇲🇽'},NZ:{label:'Nouvelle-Zélande',flag:'🇳🇿'},PT:{label:'Portugal',flag:'🇵🇹'},AT:{label:'Autriche',flag:'🇦🇹'},FI:{label:'Finlande',flag:'🇫🇮'},DK:{label:'Danemark',flag:'🇩🇰'},IE:{label:'Irlande',flag:'🇮🇪'},GR:{label:'Grèce',flag:'🇬🇷'},CZ:{label:'Tchéquie',flag:'🇨🇿'},RO:{label:'Roumanie',flag:'🇷🇴'},UA:{label:'Ukraine',flag:'🇺🇦'},AE:{label:'Émirats arabes unis',flag:'🇦🇪'},QA:{label:'Qatar',flag:'🇶🇦'},KE:{label:'Kenya',flag:'🇰🇪'},GH:{label:'Ghana',flag:'🇬🇭'},PK:{label:'Pakistan',flag:'🇵🇰'},ID:{label:'Indonésie',flag:'🇮🇩'},MY:{label:'Malaisie',flag:'🇲🇾'},TH:{label:'Thaïlande',flag:'🇹🇭'},VN:{label:'Vietnam',flag:'🇻🇳'},AR:{label:'Argentine',flag:'🇦🇷'},CL:{label:'Chili',flag:'🇨🇱'},CO:{label:'Colombie',flag:'🇨🇴'},PE:{label:'Pérou',flag:'🇵🇪'},
 };
 
-/* ─── ✅ FIX CRITIQUE : lire le vrai total depuis item.etapes ─────────────── */
+/* ─── HELPERS ─────────────────────────────────────────────────────────────── */
 function getTotal(item) {
-  // Priorité 1 : champ etapes (JSON array généré par IA)
   if (Array.isArray(item.etapes)) return item.etapes.length;
   if (typeof item.etapes === 'string' && item.etapes.trim().startsWith('[')) {
     try { const p = JSON.parse(item.etapes); if (Array.isArray(p)) return p.length; } catch {}
   }
-  // Priorité 2 : fallback 5
   return 5;
 }
 
@@ -79,13 +135,12 @@ function isItemDone(item) {
   return total > 0 && step >= total - 1;
 }
 
-/* ─── HELPERS ─────────────────────────────────────────────────────────────── */
-function daysLeft(deadline) {
+function daysLeft(deadline, lang = 'fr') {  // ✅ Ajout du paramètre
   const diff = Math.round((new Date(deadline) - new Date()) / 86400000);
-  if (diff < 0)   return { label:'Expiré', color:'#dc2626' };
-  if (diff <= 7)  return { label:`${diff}j`, color:'#d97706' };
-  if (diff <= 30) return { label:`${diff}j`, color:'#2563eb' };
-  return { label:`${diff}j`, color:'#166534' };
+  if (diff < 0)   return { label: lang === 'fr' ? 'Expiré' : 'Expired', color:'#dc2626' };
+  if (diff <= 7)  return { label:`${diff}${lang === 'fr' ? 'j' : 'd'}`, color:'#d97706' };
+  if (diff <= 30) return { label:`${diff}${lang === 'fr' ? 'j' : 'd'}`, color:'#2563eb' };
+  return { label:`${diff}${lang === 'fr' ? 'j' : 'd'}`, color:'#166534' };
 }
 
 function useAnimatedCounter(target, duration=1000) {
@@ -113,11 +168,10 @@ function AnimatedRing({ pct, size=90, strokeWidth=7, color='#1a3a6b', children }
   );
 }
 
-function Sparkline({ data, color='#1a3a6b', height=60 }) {
-  const ref=useRef(null);
+function Sparkline({ data, color='#1a3a6b', height=60, lang = 'fr' }) {  // ✅ Ajout du paramètre  const ref=useRef(null);
   const [w,setW]=useState(200);
   useEffect(()=>{ if(ref.current)setW(ref.current.offsetWidth||200); },[]);
-  if(!data||data.length<2) return <div ref={ref} style={{ display:'flex',alignItems:'center',justifyContent:'center',height,color:'#94a3b8',fontSize:12 }}>Données insuffisantes</div>;
+  if(!data||data.length<2) return <div ref={ref} style={{ display:'flex',alignItems:'center',justifyContent:'center',height,color:'#94a3b8',fontSize:12 }}>{lang === 'fr' ? 'Données insuffisantes' : 'Insufficient data'}</div>;
   const min=Math.min(...data),max=Math.max(...data),range=max-min||1,pad=6;
   const pts=data.map((v,i)=>`${pad+(i/(data.length-1))*(w-pad*2)},${height-pad-((v-min)/range)*(height-pad*2)}`).join(' ');
   const area=`${pts} ${pad+(data.length-1)/(data.length-1)*(w-pad*2)},${height} ${pad},${height}`;
@@ -150,6 +204,7 @@ function SkillRadar({ skills }) {
 
 /* ─── ACTIVITY HEATMAP ────────────────────────────────────────────────────── */
 function ActivityHeatmap({ activities }) {
+  const { lang } = useT();
   const weeks=18,today=new Date();
   const actMap={};
   activities.forEach(a=>{ actMap[a.date]=(actMap[a.date]||0)+1; });
@@ -169,24 +224,25 @@ function ActivityHeatmap({ activities }) {
       <div style={{ display:'flex',gap:3,overflowX:'auto' }}>
         {cells.map((week,wi)=>(
           <div key={wi} style={{ display:'flex',flexDirection:'column',gap:3 }}>
-            {week.map(cell=><div key={cell.key} title={`${cell.key} · ${cell.count} action${cell.count>1?'s':''}`} style={{ width:11,height:11,borderRadius:2,background:colorFor(cell.count),border:cell.isToday?'1.5px solid #f5a623':'none',flexShrink:0 }}/>)}
+            {week.map(cell=><div key={cell.key} title={`${cell.key} · ${cell.count} ${lang === 'fr' ? 'action' : 'action'}${cell.count>1?(lang === 'fr' ? 's' : 's'):''}`} style={{ width:11,height:11,borderRadius:2,background:colorFor(cell.count),border:cell.isToday?'1.5px solid #f5a623':'none',flexShrink:0 }}/>)}
           </div>
         ))}
       </div>
       <div style={{ display:'flex',alignItems:'center',gap:4,marginTop:8,justifyContent:'flex-end' }}>
-        <span style={{ fontSize:9,color:'#94a3b8' }}>Moins</span>
+        <span style={{ fontSize:9,color:'#94a3b8' }}>{lang === 'fr' ? 'Moins' : 'Less'}</span>
         {['#f1f5f9','#bfdbfe','#3b82f6','#1a3a6b'].map((c,i)=><div key={i} style={{ width:9,height:9,borderRadius:2,background:c }}/>)}
-        <span style={{ fontSize:9,color:'#94a3b8' }}>Plus</span>
+        <span style={{ fontSize:9,color:'#94a3b8' }}>{lang === 'fr' ? 'Plus' : 'More'}</span>
       </div>
     </div>
   );
 }
-/* ─── TODAY BLOCK ────────────────────────────────────────────────────────── */
+
+/* ─── TODAY BLOCK (traduit) ───────────────────────────────────────────────── */
 function TodayBlock({ roadmap, deadlines, scores, setView }) {
+  const { lang } = useT();
   const today = new Date();
   const items = [];
   
-  // Vérifier les deadlines urgentes (dans les 7 jours)
   deadlines.slice(0, 2).forEach(d => {
     const diff = Math.round((d.deadline - today) / 86400000);
     if (diff >= 0 && diff <= 7) {
@@ -194,34 +250,32 @@ function TodayBlock({ roadmap, deadlines, scores, setView }) {
         icon: '⚡', 
         color: '#dc2626', 
         bg: '#fef2f2', 
-        text: `Deadline: ${d.nom}`, 
-        sub: `Dans ${diff}j`, 
+        text: `${lang === 'fr' ? 'Deadline' : 'Deadline'}: ${d.nom}`, 
+        sub: `${lang === 'fr' ? 'Dans' : 'In'} ${diff}${lang === 'fr' ? 'j' : 'd'}`, 
         action: () => setView('roadmap') 
       });
     }
   });
   
-  // Prochaine étape roadmap
   const nextRm = roadmap.find(r => !isItemDone(r) && getProgress(r) > 0);
   if (nextRm) {
     items.push({ 
       icon: '📋', 
       color: '#2563eb', 
       bg: '#eff6ff', 
-      text: `Avancer: ${nextRm.nom}`, 
-      sub: `Étape ${getProgress(nextRm)}/${getTotal(nextRm)}`, 
+      text: `${lang === 'fr' ? 'Avancer' : 'Continue'}: ${nextRm.nom}`, 
+      sub: `${lang === 'fr' ? 'Étape' : 'Step'} ${getProgress(nextRm)}/${getTotal(nextRm)}`, 
       action: () => setView('roadmap') 
     });
   }
   
-  // Entretien IA
   if (scores.length === 0) {
     items.push({ 
       icon: '🎙️', 
       color: '#166534', 
       bg: '#f0fdf4', 
-      text: 'Ton 1er entretien IA', 
-      sub: '15 min · Booste ton profil', 
+      text: lang === 'fr' ? 'Ton 1er entretien IA' : 'Your 1st AI interview', 
+      sub: lang === 'fr' ? '15 min · Booste ton profil' : '15 min · Boost your profile', 
       action: () => setView('entretien') 
     });
   } else if (scores.length < 3) {
@@ -229,20 +283,19 @@ function TodayBlock({ roadmap, deadlines, scores, setView }) {
       icon: '🎙️', 
       color: '#166534', 
       bg: '#f0fdf4', 
-      text: `Entretien #${scores.length + 1}`, 
-      sub: `Dernier: ${scores[0]?.scoreNum}/100`, 
+      text: `${lang === 'fr' ? 'Entretien' : 'Interview'} #${scores.length + 1}`, 
+      sub: `${lang === 'fr' ? 'Dernier' : 'Last'}: ${scores[0]?.scoreNum||'?'}/100`, 
       action: () => setView('entretien') 
     });
   }
   
-  // Message par défaut si tout est fait
   if (items.length === 0) {
     items.push({ 
       icon: '✅', 
       color: '#166534', 
       bg: '#f0fdf4', 
-      text: 'Tout est à jour !', 
-      sub: 'Continue comme ça 💪' 
+      text: lang === 'fr' ? 'Tout est à jour !' : 'All up to date!', 
+      sub: lang === 'fr' ? 'Continue comme ça 💪' : 'Keep it up 💪' 
     });
   }
   
@@ -299,12 +352,12 @@ function TodayBlock({ roadmap, deadlines, scores, setView }) {
   );
 }
 
-/* ─── STREAK WIDGET ───────────────────────────────────────────────────────── */
+/* ─── STREAK WIDGET (traduit) ────────────────────────────────────────────── */
 function StreakWidget({ activities }) {
+  const { lang } = useT();
   const today = new Date();
   let streak = 0;
   
-  // Calculer la série actuelle
   for (let i = 0; i < 60; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
@@ -316,10 +369,9 @@ function StreakWidget({ activities }) {
     }
   }
   
-  const days = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+  const days = lang === 'fr' ? ['D', 'L', 'M', 'M', 'J', 'V', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const weekDays = [];
   
-  // Générer les 7 derniers jours
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - (6 - i));
@@ -334,7 +386,9 @@ function StreakWidget({ activities }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: 28, fontWeight: 900, color: '#1a3a6b', lineHeight: 1 }}>{streak}</div>
-          <div style={{ fontSize: 10, color: '#64748b' }}>jours consécutifs</div>
+          <div style={{ fontSize: 10, color: '#64748b' }}>
+            {lang === 'fr' ? 'jours consécutifs' : 'days streak'}
+          </div>
         </div>
         <div style={{ fontSize: 34 }}>
           {streak >= 7 ? '🔥' : streak >= 3 ? '⚡' : '💤'}
@@ -372,14 +426,16 @@ function StreakWidget({ activities }) {
           textAlign: 'center', 
           fontWeight: 600 
         }}>
-          {streak >= 7 ? `🔥 Série de ${streak} jours !` : `⚡ ${streak} jours de suite`}
+          {streak >= 7 
+            ? (lang === 'fr' ? `🔥 Série de ${streak} jours !` : `🔥 ${streak}-day streak!`) 
+            : (lang === 'fr' ? `⚡ ${streak} jours de suite` : `⚡ ${streak} days in a row`)}
         </div>
       )}
     </div>
   );
 }
 
-/* ─── MINI BAR CHART (activité 7 derniers jours) ─────────────────────────── */
+/* ─── MINI BAR CHART ─────────────────────────────────────────────────────── */
 function MiniBarChart({ data, color = '#1a3a6b', height = 48 }) {
   const max = Math.max(...data.map(d => d.val), 1);
   return (
@@ -400,27 +456,23 @@ function MiniBarChart({ data, color = '#1a3a6b', height = 48 }) {
     </div>
   );
 }
-/* ─── CONSEILS PERSONNALISÉS AMÉLIORÉ ────────────────────────────────────── */
+
+/* ─── SMART TIPS (traduit) ───────────────────────────────────────────────── */
 function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
+  const { lang } = useT();
   const [currentTip, setCurrentTip] = useState(0);
   const [fade, setFade] = useState(true);
   
-  // Catégories de conseils avec priorités
   const getTipsByPriority = useMemo(() => {
-    const tips = {
-      urgent: [],    // Priorité haute
-      medium: [],    // Priorité moyenne
-      low: []        // Priorité basse
-    };
+    const tips = { urgent: [], medium: [], low: [] };
     
-    // URGENT : Deadlines proches
     if (urgentDeadlines.length > 0) {
       tips.urgent.push({
         id: 'deadline',
         icon: '⚡',
-        title: `${urgentDeadlines.length} deadline${urgentDeadlines.length > 1 ? 's' : ''} urgente${urgentDeadlines.length > 1 ? 's' : ''}`,
-        description: `${urgentDeadlines.slice(0, 2).map(d => d.nom).join(', ')} à rendre sous ${Math.min(...urgentDeadlines.map(d => Math.round((d.deadline - new Date()) / 86400000)))}j`,
-        action: 'Voir les deadlines',
+        title: `${urgentDeadlines.length} ${lang === 'fr' ? 'deadline' : 'deadline'}${urgentDeadlines.length > 1 ? (lang === 'fr' ? 's urgente' : 's urgent') : (lang === 'fr' ? ' urgente' : ' urgent')}`,
+        description: `${urgentDeadlines.slice(0, 2).map(d => d.nom).join(', ')} ${lang === 'fr' ? 'à rendre sous' : 'due in'} ${Math.min(...urgentDeadlines.map(d => Math.round((d.deadline - new Date()) / 86400000)))}${lang === 'fr' ? 'j' : 'd'}`,
+        action: lang === 'fr' ? 'Voir les deadlines' : 'View deadlines',
         view: 'roadmap',
         color: '#dc2626',
         bg: '#fef2f2',
@@ -428,14 +480,15 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       });
     }
     
-    // HAUTE PRIORITÉ : Éléments manquants critiques
     if (!user?.motivationSummary) {
       tips.medium.push({
         id: 'motivation',
         icon: '✍️',
-        title: 'Lettre de motivation manquante',
-        description: 'C\'est souvent le 1er critère des jurys. Rédige une lettre personnalisée pour chaque bourse.',
-        action: 'Rédiger ma lettre',
+        title: lang === 'fr' ? 'Lettre de motivation manquante' : 'Missing motivation letter',
+        description: lang === 'fr' 
+          ? 'C\'est souvent le 1er critère des jurys. Rédige une lettre personnalisée pour chaque bourse.'
+          : 'This is often the #1 criterion for juries. Write a personalized letter for each scholarship.',
+        action: lang === 'fr' ? 'Rédiger ma lettre' : 'Write my letter',
         view: 'profil',
         color: '#7c3aed',
         bg: '#f5f3ff',
@@ -447,9 +500,11 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.medium.push({
         id: 'gpa',
         icon: '🎓',
-        title: 'Moyenne académique non renseignée',
-        description: 'Ta moyenne est un critère clé pour l\'éligibilité aux bourses.',
-        action: 'Ajouter ma moyenne',
+        title: lang === 'fr' ? 'Moyenne académique non renseignée' : 'Academic GPA not set',
+        description: lang === 'fr' 
+          ? 'Ta moyenne est un critère clé pour l\'éligibilité aux bourses.'
+          : 'Your GPA is a key criterion for scholarship eligibility.',
+        action: lang === 'fr' ? 'Ajouter ma moyenne' : 'Add my GPA',
         view: 'profil',
         color: '#d97706',
         bg: '#fffbeb',
@@ -461,9 +516,11 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.medium.push({
         id: 'languages',
         icon: '🌍',
-        title: 'Ajoute tes langues',
-        description: 'Les bourses internationales exigent souvent B2 en anglais.',
-        action: 'Ajouter mes langues',
+        title: lang === 'fr' ? 'Ajoute tes langues' : 'Add your languages',
+        description: lang === 'fr' 
+          ? 'Les bourses internationales exigent souvent B2 en anglais.'
+          : 'International scholarships often require B2 level in English.',
+        action: lang === 'fr' ? 'Ajouter mes langues' : 'Add my languages',
         view: 'profil',
         color: '#0891b2',
         bg: '#ecfeff',
@@ -471,14 +528,15 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       });
     }
     
-    // PRIORITÉ MOYENNE : Actions recommandées
     if (scores.length === 0) {
       tips.medium.push({
         id: 'interview',
         icon: '🎙️',
-        title: 'Prépare tes entretiens',
-        description: 'Les candidats qui s\'entraînent obtiennent 23% de meilleures évaluations.',
-        action: 'Démarrer un entretien',
+        title: lang === 'fr' ? 'Prépare tes entretiens' : 'Prepare your interviews',
+        description: lang === 'fr' 
+          ? 'Les candidats qui s\'entraînent obtiennent 23% de meilleures évaluations.'
+          : 'Candidates who practice get 23% better evaluations on average.',
+        action: lang === 'fr' ? 'Démarrer un entretien' : 'Start an interview',
         view: 'entretien',
         color: '#166534',
         bg: '#f0fdf4',
@@ -488,9 +546,11 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.medium.push({
         id: 'interview-more',
         icon: '🎙️',
-        title: `Entretien #${scores.length + 1}`,
-        description: `Ton dernier score: ${scores[0]?.scoreNum || '?'}/100. Continue à t'entraîner !`,
-        action: 'Nouvel entretien',
+        title: `${lang === 'fr' ? 'Entretien' : 'Interview'} #${scores.length + 1}`,
+        description: lang === 'fr' 
+          ? `Ton dernier score: ${scores[0]?.scoreNum || '?'}/100. Continue à t'entraîner !`
+          : `Your last score: ${scores[0]?.scoreNum || '?'}/100. Keep practicing!`,
+        action: lang === 'fr' ? 'Nouvel entretien' : 'New interview',
         view: 'entretien',
         color: '#2563eb',
         bg: '#eff6ff',
@@ -502,9 +562,11 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.medium.push({
         id: 'roadmap-empty',
         icon: '📋',
-        title: 'Crée ta roadmap',
-        description: 'Ajoute des bourses à ta roadmap pour suivre tes candidatures.',
-        action: 'Explorer les bourses',
+        title: lang === 'fr' ? 'Crée ta roadmap' : 'Create your roadmap',
+        description: lang === 'fr' 
+          ? 'Ajoute des bourses à ta roadmap pour suivre tes candidatures.'
+          : 'Add scholarships to your roadmap to track your applications.',
+        action: lang === 'fr' ? 'Explorer les bourses' : 'Explore scholarships',
         view: 'bourses',
         color: '#1a3a6b',
         bg: '#eff6ff',
@@ -512,13 +574,14 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       });
     }
     
-    // PRIORITÉ BASSE : Conseils bonus
     if (tips.urgent.length === 0 && tips.medium.length < 3) {
       tips.low.push({
         id: 'star-method',
         icon: '🗣️',
-        title: 'Méthode STAR',
-        description: 'Structure tes réponses: Situation → Tâche → Action → Résultat.',
+        title: lang === 'fr' ? 'Méthode STAR' : 'STAR Method',
+        description: lang === 'fr' 
+          ? 'Structure tes réponses: Situation → Tâche → Action → Résultat.'
+          : 'Structure your answers: Situation → Task → Action → Result.',
         action: null,
         color: '#475569',
         bg: '#f8fafc',
@@ -528,8 +591,10 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.low.push({
         id: 'recommendations',
         icon: '⏰',
-        title: 'Lettres de recommandation',
-        description: 'Demande-les au moins 6 semaines à l\'avance.',
+        title: lang === 'fr' ? 'Lettres de recommandation' : 'Recommendation letters',
+        description: lang === 'fr' 
+          ? 'Demande-les au moins 6 semaines à l\'avance.'
+          : 'Request them at least 6 weeks in advance.',
         action: null,
         color: '#7c3aed',
         bg: '#f5f3ff',
@@ -539,9 +604,11 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       tips.low.push({
         id: 'countries',
         icon: '🗺️',
-        title: 'Diversifie tes cibles',
-        description: 'Ne te limite pas à un seul pays. Regarde l\'Allemagne, les Pays-Bas, la Suisse.',
-        action: 'Voir la carte',
+        title: lang === 'fr' ? 'Diversifie tes cibles' : 'Diversify your targets',
+        description: lang === 'fr' 
+          ? 'Ne te limite pas à un seul pays. Regarde l\'Allemagne, les Pays-Bas, la Suisse.'
+          : 'Don\'t limit yourself to one country. Check Germany, Netherlands, Switzerland.',
+        action: lang === 'fr' ? 'Voir la carte' : 'View map',
         view: 'dashboard',
         color: '#0891b2',
         bg: '#ecfeff',
@@ -549,11 +616,9 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
       });
     }
     
-    // Fusionner par ordre de priorité
     return [...tips.urgent, ...tips.medium, ...tips.low];
-  }, [user, scores, roadmap, urgentDeadlines]);
+  }, [user, scores, roadmap, urgentDeadlines, lang]);
   
-  // Rotation automatique des conseils
   useEffect(() => {
     if (getTipsByPriority.length <= 1) return;
     const interval = setInterval(() => {
@@ -625,7 +690,6 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
         </div>
       </div>
       
-      {/* Indicateurs de pagination */}
       {getTipsByPriority.length > 1 && (
         <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'center' }}>
           {getTipsByPriority.map((_, i) => (
@@ -653,29 +717,32 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
     </div>
   );
 }
-/* ─── FORCE DU DOSSIER - COMPOSANT SÉPARÉ ────────────────────────────────── */
+
+/* ─── PROFILE STRENGTH (traduit) ─────────────────────────────────────────── */
 function ProfileStrength({ user, scores, setView }) {
+  const { lang } = useT();
+  
   const PROFILE_SECTIONS = useMemo(() => [
-    { label: 'Informations de base', pct: ['name', 'email', 'phone', 'nationality'].filter(f => user?.[f]).length / 4 * 100, color: '#166534', icon: '👤' },
-    { label: 'Formation académique', pct: ['currentLevel', 'fieldOfStudy', 'institution', 'gpa'].filter(f => user?.[f]).length / 4 * 100, color: '#2563eb', icon: '🎓' },
-    { label: 'Expériences & projets', pct: Math.min(100, ((user?.workExperience?.length || 0) * 25) + ((user?.academicProjects?.length || 0) * 25)), color: '#d97706', icon: '💼' },
-    { label: 'Compétences & langues', pct: Math.min(100, ((user?.languages?.length || 0) * 33) + ((user?.skills?.length || 0) * 33)), color: '#7c3aed', icon: '🌍' },
-    { label: 'Entretiens simulés', pct: Math.min(100, (scores?.length || 0) * 33), color: '#f43f5e', icon: '🎙️' },
-    { label: 'Objectifs définis', pct: (['targetDegree', 'motivationSummary'].filter(f => user?.[f]).length / 2 * 100) + (user?.targetCountries?.length > 0 ? 50 : 0), color: '#0891b2', icon: '🎯' },
-  ], [user, scores]);
+    { label: lang === 'fr' ? 'Informations de base' : 'Basic info', pct: ['name', 'email', 'phone', 'nationality'].filter(f => user?.[f]).length / 4 * 100, color: '#166534', icon: '👤' },
+    { label: lang === 'fr' ? 'Formation académique' : 'Academic education', pct: ['currentLevel', 'fieldOfStudy', 'institution', 'gpa'].filter(f => user?.[f]).length / 4 * 100, color: '#2563eb', icon: '🎓' },
+    { label: lang === 'fr' ? 'Expériences & projets' : 'Experience & projects', pct: Math.min(100, ((user?.workExperience?.length || 0) * 25) + ((user?.academicProjects?.length || 0) * 25)), color: '#d97706', icon: '💼' },
+    { label: lang === 'fr' ? 'Compétences & langues' : 'Skills & languages', pct: Math.min(100, ((user?.languages?.length || 0) * 33) + ((user?.skills?.length || 0) * 33)), color: '#7c3aed', icon: '🌍' },
+    { label: lang === 'fr' ? 'Entretiens simulés' : 'Mock interviews', pct: Math.min(100, (scores?.length || 0) * 33), color: '#f43f5e', icon: '🎙️' },
+    { label: lang === 'fr' ? 'Objectifs définis' : 'Goals defined', pct: (['targetDegree', 'motivationSummary'].filter(f => user?.[f]).length / 2 * 100) + (user?.targetCountries?.length > 0 ? 50 : 0), color: '#0891b2', icon: '🎯' },
+  ], [user, scores, lang]);
 
   const completion = useMemo(() => Math.round(PROFILE_SECTIONS.reduce((s, p) => s + p.pct, 0) / PROFILE_SECTIONS.length), [PROFILE_SECTIONS]);
 
-  const gradeInfo = completion >= 80 ? { label: 'Excellent', color: '#166534', icon: '🏆' } :
-                     completion >= 60 ? { label: 'Bon', color: '#2563eb', icon: '👍' } :
-                     completion >= 40 ? { label: 'En progression', color: '#d97706', icon: '📈' } :
-                     { label: 'À renforcer', color: '#dc2626', icon: '⚠️' };
+  const gradeInfo = completion >= 80 ? { label: lang === 'fr' ? 'Excellent' : 'Excellent', color: '#166534', icon: '🏆' } :
+                     completion >= 60 ? { label: lang === 'fr' ? 'Bon' : 'Good', color: '#2563eb', icon: '👍' } :
+                     completion >= 40 ? { label: lang === 'fr' ? 'En progression' : 'In progress', color: '#d97706', icon: '📈' } :
+                     { label: lang === 'fr' ? 'À renforcer' : 'Needs work', color: '#dc2626', icon: '⚠️' };
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: `2px solid ${gradeInfo.color}20` }}>
         <div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>Score global</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{lang === 'fr' ? 'Score global' : 'Overall score'}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: gradeInfo.color }}>{completion}%</div>
           <div style={{ fontSize: 10, color: gradeInfo.color, marginTop: 2 }}>{gradeInfo.icon} {gradeInfo.label}</div>
         </div>
@@ -702,126 +769,59 @@ function ProfileStrength({ user, scores, setView }) {
       </div>
 
       <button onClick={() => setView('profil')} style={{ ...S.btnPrimary, width: '100%', marginTop: 14, fontSize: 11, padding: '8px' }}>
-        {completion < 60 ? '📝 Compléter mon profil' : '✨ Améliorer mon dossier'} →
+        {completion < 60 
+          ? (lang === 'fr' ? '📝 Compléter mon profil' : '📝 Complete my profile') 
+          : (lang === 'fr' ? '✨ Améliorer mon dossier' : '✨ Improve my profile')} →
       </button>
     </div>
   );
 }
 
-/* ─── TIPS WIDGET CONTEXTUEL ─────────────────────────────────────────────── */
-function TipsWidget({ user, scores, roadmap, urgentDeadlines, setView }) {
-  const contextualTips = useMemo(() => {
-    const tips = [];
-    if (!user?.motivationSummary)
-      tips.push({ icon:'✍️', color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', title:'Lettre de motivation manquante', text:'Tu n\'as pas encore rédigé ta motivation. C\'est souvent le 1er critère des jurys.', action:'Compléter mon profil', view:'profil' });
-    if (!user?.languages || user.languages.length === 0)
-      tips.push({ icon:'🌍', color:'#0891b2', bg:'#ecfeff', border:'#a5f3fc', title:'Ajoute tes langues', text:'Les bourses internationales exigent souvent B2 en anglais. Ajoute tes certifications pour maximiser ton score.', action:'Ajouter mes langues', view:'profil' });
-    if (urgentDeadlines.length > 0)
-      tips.push({ icon:'⚡', color:'#dc2626', bg:'#fef2f2', border:'#fecaca', title:`${urgentDeadlines.length} deadline${urgentDeadlines.length>1?'s urgentes':' urgente'}`, text:`${urgentDeadlines.map(d=>d.nom).slice(0,2).join(', ')} — finalise ta lettre de motivation en priorité.`, action:'Voir la roadmap', view:'roadmap' });
-    if (scores.length === 0)
-      tips.push({ icon:'🎙️', color:'#166534', bg:'#f0fdf4', border:'#bbf7d0', title:'Prépare tes entretiens', text:'Aucun entretien simulé. Les candidats qui s\'entraînent obtiennent en moyenne 23% de meilleures évaluations.', action:'Démarrer un entretien', view:'entretien' });
-    if (roadmap.length === 0)
-      tips.push({ icon:'📋', color:'#1a3a6b', bg:'#eff6ff', border:'#bfdbfe', title:'Crée ta roadmap', text:'Ajoute des bourses à ta roadmap pour suivre tes candidatures étape par étape.', action:'Explorer les bourses', view:'bourses' });
-    if (!user?.gpa)
-      tips.push({ icon:'🎓', color:'#d97706', bg:'#fffbeb', border:'#fde68a', title:'Ajoute ta moyenne', text:'Ta moyenne académique est un critère clé pour le calcul de compatibilité avec les bourses.', action:'Compléter mon profil', view:'profil' });
-    if (tips.length === 0) {
-      tips.push({ icon:'💡', color:'#475569', bg:'#f8fafc', border:'#e2e8f0', title:'Méthode STAR', text:'Structurez vos réponses : Situation → Tâche → Action → Résultat.' });
-      tips.push({ icon:'⏰', color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', title:'Lettres de recommandation', text:'Demandez vos lettres de recommandation au moins 6 semaines à l\'avance.' });
-    }
-    return tips;
-  }, [user, scores, roadmap, urgentDeadlines]);
-
-  const [idx, setIdx] = useState(0);
-  const [fade, setFade] = useState(true);
-
-  useEffect(() => {
-    if (contextualTips.length <= 1) return;
-    const t = setInterval(() => {
-      setFade(false);
-      setTimeout(() => { setIdx(i => (i + 1) % contextualTips.length); setFade(true); }, 300);
-    }, 7000);
-    return () => clearInterval(t);
-  }, [contextualTips.length]);
-
-  const tip = contextualTips[Math.min(idx, contextualTips.length - 1)];
-  if (!tip) return null;
-
-  return (
-    <div style={{ opacity:fade?1:0, transition:'opacity 0.3s ease' }}>
-      <div style={{ padding:'14px 16px', background:tip.bg, border:`1px solid ${tip.border}`, borderRadius:10, borderLeft:`4px solid ${tip.color}` }}>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-          <div style={{ fontSize:22, flexShrink:0 }}>{tip.icon}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:tip.color, marginBottom:5 }}>{tip.title}</div>
-            <div style={{ fontSize:11, color:'#475569', lineHeight:1.6 }}>{tip.text}</div>
-          </div>
-        </div>
-        {tip.action && tip.view && (
-          <button onClick={() => setView(tip.view)}
-            style={{ marginTop:10, padding:'6px 12px', borderRadius:5, background:tip.color, color:'#fff', border:'none', fontSize:11, fontWeight:600, cursor:'pointer', width:'100%' }}>
-            {tip.action} →
-          </button>
-        )}
-      </div>
-      {contextualTips.length > 1 && (
-        <div style={{ display:'flex', gap:4, marginTop:10, justifyContent:'center' }}>
-          {contextualTips.map((_,i)=>(
-            <div key={i} onClick={()=>{ setFade(false); setTimeout(()=>{setIdx(i);setFade(true);},200); }}
-              style={{ width:i===idx?18:6, height:5, borderRadius:3, background:i===idx?'#1a3a6b':'#e2e8f0', transition:'all 0.3s', cursor:'pointer' }}/>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── ✅ CHECKLIST WIDGET — FIX TOTAL DYNAMIQUE ──────────────────────────── */
+/* ─── CHECKLIST WIDGET (traduit) ─────────────────────────────────────────── */
 function ChecklistWidget({ user, roadmap, setRoadmap }) {
+  const { lang } = useT();
   const [newText, setNewText] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ Labels d'étapes — s'adapte à n'importe quelle longueur
   const getEtapeLabel = (item, stepIndex) => {
-    // Si on a le vrai tableau d'étapes IA, utiliser son titre
     const etapes = Array.isArray(item.etapes)
       ? item.etapes
       : (typeof item.etapes === 'string' ? (() => { try { return JSON.parse(item.etapes); } catch { return []; } })() : []);
     if (etapes[stepIndex]) {
-      return etapes[stepIndex].titre || etapes[stepIndex].title || etapes[stepIndex].nom || `Étape ${stepIndex + 1}`;
+      return etapes[stepIndex].titre || etapes[stepIndex].title || etapes[stepIndex].nom || `${lang === 'fr' ? 'Étape' : 'Step'} ${stepIndex + 1}`;
     }
-    // Fallback générique
-    const fallbacks = ['🔍 Recherche','📄 Documents','✍️ Lettre Motiv.','📤 Soumission','🏆 Résultat','✅ Étape 6','✅ Étape 7','✅ Étape 8'];
-    return fallbacks[stepIndex] || `Étape ${stepIndex + 1}`;
+    const fallbacksFR = ['🔍 Recherche','📄 Documents','✍️ Lettre Motiv.','📤 Soumission','🏆 Résultat','✅ Étape 6','✅ Étape 7','✅ Étape 8'];
+    const fallbacksEN = ['🔍 Research','📄 Documents','✍️ Motivation Letter','📤 Submission','🏆 Result','✅ Step 6','✅ Step 7','✅ Step 8'];
+    const fallbacks = lang === 'fr' ? fallbacksFR : fallbacksEN;
+    return fallbacks[stepIndex] || `${lang === 'fr' ? 'Étape' : 'Step'} ${stepIndex + 1}`;
   };
 
-  // ✅ Barre globale basée sur les vrais totaux
   const totalSteps = roadmap.reduce((s, item) => s + getTotal(item), 0);
   const completedSteps = roadmap.reduce((s, item) => s + getProgress(item), 0);
   const pct = totalSteps > 0 ? Math.round(Math.min((completedSteps / totalSteps) * 100, 100)) : 0;
   const terminees = roadmap.filter(r => isItemDone(r)).length;
   const enCours   = roadmap.filter(r => { const p = getProgress(r); return p > 0 && !isItemDone(r); }).length;
 
-  // ✅ advanceStep : plafond = getTotal(item)
   const advanceStep = async (item) => {
     const step  = item.etapeCourante || 0;
     const total = getTotal(item);
-    if (step >= total - 1) return; // déjà sur la dernière étape
-    const newStep = step + 1; // avancer l'index
+    if (step >= total - 1) return;
+    const newStep = step + 1;
     try {
       await axiosInstance.patch(API_ROUTES.roadmap.update(item.id), {
         etapeCourante: newStep,
         statut: newStep >= total ? 'terminé' : 'en_cours',
       });
       setRoadmap(prev => prev.map(r =>
-        r.id === item.id ? { ...r, etapeCourante: newStep, statut: newStep >= total ? 'terminé' : 'en_cours' } : r
+        r.id === item.id ? { ...r, etapeCourante: newStep, statut: newStep >= total ? (lang === 'fr' ? 'terminé' : 'completed') : (lang === 'fr' ? 'en_cours' : 'in_progress') } : r
       ));
     } catch (e) { console.error(e); }
   };
 
   const resetItem = async (item) => {
     try {
-      await axiosInstance.patch(API_ROUTES.roadmap.update(item.id), { etapeCourante: 0, statut: 'en_cours' });
-      setRoadmap(prev => prev.map(r => r.id === item.id ? { ...r, etapeCourante: 0, statut: 'en_cours' } : r));
+      await axiosInstance.patch(API_ROUTES.roadmap.update(item.id), { etapeCourante: 0, statut: lang === 'fr' ? 'en_cours' : 'in_progress' });
+      setRoadmap(prev => prev.map(r => r.id === item.id ? { ...r, etapeCourante: 0, statut: lang === 'fr' ? 'en_cours' : 'in_progress' } : r));
     } catch (e) { console.error(e); }
   };
 
@@ -831,8 +831,8 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
     try {
       const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
         userId: user.id, userEmail: user.email || '',
-        nom: newText.trim(), pays: 'À définir',
-        statut: 'en_cours', etapeCourante: 0,
+        nom: newText.trim(), pays: lang === 'fr' ? 'À définir' : 'To be defined',
+        statut: lang === 'fr' ? 'en_cours' : 'in_progress', etapeCourante: 0,
         ajouteLe: new Date().toISOString(),
         dateLimite: null, lienOfficiel: '', financement: '',
       });
@@ -844,13 +844,12 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
 
   return (
     <div>
-      {/* Barre globale */}
       <div style={{ marginBottom:12 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
           <span style={{ fontSize:11, color:'#64748b' }}>
-            <span style={{ color:'#166534', fontWeight:700 }}>{terminees}</span> terminée{terminees>1?'s':''} ·{' '}
-            <span style={{ color:'#2563eb', fontWeight:700 }}>{enCours}</span> en cours ·{' '}
-            <span style={{ color:'#94a3b8', fontWeight:700 }}>{roadmap.length-terminees-enCours}</span> non commencée{roadmap.length-terminees-enCours>1?'s':''}
+            <span style={{ color:'#166534', fontWeight:700 }}>{terminees}</span> {lang === 'fr' ? `terminée${terminees>1?'s':''}` : `completed${terminees>1?'':' (s)'}`} ·{' '}
+            <span style={{ color:'#2563eb', fontWeight:700 }}>{enCours}</span> {lang === 'fr' ? 'en cours' : 'in progress'} ·{' '}
+            <span style={{ color:'#94a3b8', fontWeight:700 }}>{roadmap.length-terminees-enCours}</span> {lang === 'fr' ? `non commencée${roadmap.length-terminees-enCours>1?'s':''}` : 'not started'}
           </span>
           <span style={{ fontSize:11, fontWeight:800, color:pct>=80?'#166534':pct>=50?'#d97706':'#1a3a6b' }}>{pct}%</span>
         </div>
@@ -860,15 +859,15 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
         </div>
       </div>
 
-      {/* Liste */}
       <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:260, overflowY:'auto' }}>
         {roadmap.length === 0 ? (
           <div style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 16px',
             background:'#f8fafc', borderRadius:8, border:'1px dashed #e2e8f0', lineHeight:1.6 }}>
-            Ajoute ta première bourse ci-dessous<br/>pour commencer à suivre ta progression
+            {lang === 'fr' 
+              ? 'Ajoute ta première bourse ci-dessous\npour commencer à suivre ta progression'
+              : 'Add your first scholarship below\nto start tracking your progress'}
           </div>
         ) : roadmap.map(item => {
-          // ✅ CORRECTION PRINCIPALE : utiliser getTotal(item) pas 5 hardcodé
           const total    = getTotal(item);
           const progress = getProgress(item);
           const done     = isItemDone(item);
@@ -882,7 +881,6 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
               transition:'all 0.2s',
             }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                {/* Statut visuel */}
                 <div style={{ width:22, height:22, borderRadius:6, flexShrink:0,
                   border:`2px solid ${done?'#166534':progress>0?'#2563eb':'#e2e8f0'}`,
                   background:done?'#166534':'transparent',
@@ -894,7 +892,6 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
                       : null}
                 </div>
 
-                {/* Infos */}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:12, fontWeight:600,
                     color: done ? '#166534' : '#1e2937',
@@ -903,18 +900,17 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
                     {item.nom}
                   </div>
                   <div style={{ fontSize:10, color:'#64748b', marginTop:1 }}>
-                    {item.pays && item.pays !== 'À définir' ? `${item.pays} · ` : ''}
+                    {item.pays && item.pays !== (lang === 'fr' ? 'À définir' : 'To be defined') ? `${item.pays} · ` : ''}
                     {done
-                      ? <span style={{ color:'#166534', fontWeight:600 }}>✅ Terminée ({total} étapes)</span>
+                      ? <span style={{ color:'#166534', fontWeight:600 }}>{lang === 'fr' ? '✅ Terminée' : '✅ Completed'} ({total} {lang === 'fr' ? 'étapes' : 'steps'})</span>
                       : progress > 0
                         ? <span style={{ color:'#2563eb' }}>
-                            Étape {progress}/{total} : {getEtapeLabel(item, (item.etapeCourante||0))}
+                            {lang === 'fr' ? 'Étape' : 'Step'} {progress}/{total} : {getEtapeLabel(item, (item.etapeCourante||0))}
                           </span>
-                        : <span style={{ color:'#94a3b8' }}>Non commencée · {total} étapes</span>}
+                        : <span style={{ color:'#94a3b8' }}>{lang === 'fr' ? 'Non commencée' : 'Not started'} · {total} {lang === 'fr' ? 'étapes' : 'steps'}</span>}
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div style={{ display:'flex', gap:4, flexShrink:0 }}>
                   {!done && (
                     <button onClick={() => advanceStep(item)}
@@ -924,7 +920,7 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
                     </button>
                   )}
                   {done && (
-                    <button onClick={() => resetItem(item)} title="Réinitialiser"
+                    <button onClick={() => resetItem(item)} title={lang === 'fr' ? 'Réinitialiser' : 'Reset'}
                       style={{ padding:'3px 9px', borderRadius:4, background:'#f1f5f9',
                         border:'1px solid #e2e8f0', color:'#94a3b8', fontSize:11, cursor:'pointer' }}>
                       ↺
@@ -933,13 +929,11 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
                 </div>
               </div>
 
-              {/* Barre de progression item */}
               <div style={{ marginTop:7, height:4, background:'#e2e8f0', borderRadius:99, overflow:'hidden' }}>
                 <div style={{ height:'100%', width:`${pctItem}%`, borderRadius:99,
                   background:done?'#166534':'#2563eb', transition:'width 0.4s ease' }}/>
               </div>
 
-              {/* ✅ Étapes visuelles : s'adapte au vrai total (5 ou 7 ou autre) */}
               {!done && (
                 <div style={{ display:'flex', gap:2, marginTop:5 }}>
                   {Array.from({ length: total }).map((_, i) => (
@@ -956,10 +950,9 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
         })}
       </div>
 
-      {/* Ajouter */}
       <div style={{ display:'flex', gap:7, marginTop:12 }}>
         <input value={newText} onChange={e=>setNewText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addToRoadmap()}
-          placeholder="Nom bourse (ex: Eiffel, DAAD, Erasmus...)"
+          placeholder={lang === 'fr' ? 'Nom bourse (ex: Eiffel, DAAD, Erasmus...)' : 'Scholarship name (ex: Eiffel, DAAD, Erasmus...)'}
           style={{ flex:1, padding:'9px 12px', borderRadius:7, border:'1.5px solid #e2e8f0',
             fontSize:12, background:'#f8fafc', outline:'none', fontFamily:'inherit' }}
           disabled={loading}/>
@@ -974,12 +967,15 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
   );
 }
 
-/* ─── CALENDRIER ──────────────────────────────────────────────────────────── */
+/* ─── CALENDRIER (traduit) ───────────────────────────────────────────────── */
 function Calendrier({ deadlines, onSelectBourse }) {
+  const { lang } = useT();
   const today=new Date();
   const [view,setView]=useState({month:today.getMonth(),year:today.getFullYear()});
-  const MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const DAYS=['Lu','Ma','Me','Je','Ve','Sa','Di'];
+  const MONTHS = lang === 'fr' 
+    ? ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+    : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS = lang === 'fr' ? ['Lu','Ma','Me','Je','Ve','Sa','Di'] : ['Mo','Tu','We','Th','Fr','Sa','Su'];
   const deadlineMap={};
   deadlines.forEach(b=>{ if(!b.deadline)return; const d=new Date(b.deadline); const k=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; if(!deadlineMap[k])deadlineMap[k]=[]; deadlineMap[k].push(b); });
   const daysInMonth=new Date(view.year,view.month+1,0).getDate();
@@ -998,7 +994,7 @@ function Calendrier({ deadlines, onSelectBourse }) {
           </select>
           <input type="number" value={view.year} onChange={e=>setView(v=>({...v,year:parseInt(e.target.value||0)}))} style={{ width:72,fontSize:12,padding:'5px 8px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff' }}/>
         </div>
-        <div style={{ display:'flex', gap:5 }}><button onClick={next} style={S.navBtn}>›</button><button onClick={()=>setView(v=>({...v,year:v.year+1}))} style={S.iconBtn}>»</button><button onClick={()=>setView({month:today.getMonth(),year:today.getFullYear()})} style={S.btnXs}>Auj.</button></div>
+        <div style={{ display:'flex', gap:5 }}><button onClick={next} style={S.navBtn}>›</button><button onClick={()=>setView(v=>({...v,year:v.year+1}))} style={S.iconBtn}>»</button><button onClick={()=>setView({month:today.getMonth(),year:today.getFullYear()})} style={S.btnXs}>{lang === 'fr' ? 'Auj.' : 'Today'}</button></div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
         {DAYS.map(d=><div key={d} style={{ textAlign:'center', fontSize:9, color:'#94a3b8', fontWeight:700 }}>{d}</div>)}
@@ -1028,7 +1024,14 @@ function Calendrier({ deadlines, onSelectBourse }) {
         })}
       </div>
       <div style={{ display:'flex', gap:10, marginTop:10, flexWrap:'wrap' }}>
-        {[['#dc2626','Expiré'],['#d97706','≤ 7j'],['#2563eb','≤ 30j'],['#166534','OK'],['#7c3aed','Roadmap'],['#f5a623','Favori']].map(([c,l])=>(
+        {[
+          ['#dc2626', lang === 'fr' ? 'Expiré' : 'Expired'],
+          ['#d97706', lang === 'fr' ? '≤ 7j' : '≤ 7d'],
+          ['#2563eb', lang === 'fr' ? '≤ 30j' : '≤ 30d'],
+          ['#166534', lang === 'fr' ? 'OK' : 'OK'],
+          ['#7c3aed', lang === 'fr' ? 'Roadmap' : 'Roadmap'],
+          ['#f5a623', lang === 'fr' ? 'Favori' : 'Favorite']
+        ].map(([c,l])=>(
           <div key={l} style={{ display:'flex', alignItems:'center', gap:4 }}><div style={{ width:8, height:8, borderRadius:2, background:c }}/><span style={{ fontSize:9, color:'#64748b' }}>{l}</span></div>
         ))}
       </div>
@@ -1036,8 +1039,8 @@ function Calendrier({ deadlines, onSelectBourse }) {
   );
 }
 
-/* ─── WORLD MAP ───────────────────────────────────────────────────────────── */
-function WorldMap({ onCountryClick, activeCountry, scholarshipCounts={} }) {
+/* ─── WORLD MAP (inchangé - tooltips déjà traduits via COUNTRY_META) ─────── */
+function WorldMap({ onCountryClick, activeCountry, scholarshipCounts={}, lang = 'fr' }) {  // ✅ Ajout du paramètre
   const containerRef=useRef(null),svgRef=useRef(null),activeCountryRef=useRef(activeCountry);
   const [tooltip,setTooltip]=useState(null),[ready,setReady]=useState(false);
   const normCounts={};
@@ -1079,16 +1082,16 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts={} }) {
   return (
     <div ref={containerRef} style={{ position:'relative',width:'100%',borderRadius:8,overflow:'hidden' }}>
       <div style={{ position:'absolute',inset:0,background:'linear-gradient(160deg,#050e1c 0%,#0b1e3d 55%,#08172e 100%)',zIndex:0 }}/>
-      {!ready&&<div style={{ position:'absolute',inset:0,zIndex:3,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:10 }}><div style={{ width:36,height:36,borderRadius:'50%',border:'3px solid rgba(245,166,35,0.15)',borderTopColor:'#f5a623',animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:11,color:'rgba(245,166,35,0.6)',fontFamily:'system-ui' }}>Chargement…</span></div>}
+      {!ready&&<div style={{ position:'absolute',inset:0,zIndex:3,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:10 }}><div style={{ width:36,height:36,borderRadius:'50%',border:'3px solid rgba(245,166,35,0.15)',borderTopColor:'#f5a623',animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:11,color:'rgba(245,166,35,0.6)',fontFamily:'system-ui' }}>{lang === 'fr' ? 'Chargement…' : 'Loading…'}</span></div>}
       <svg ref={svgRef} style={{ position:'relative',zIndex:1,display:'block',width:'100%',border:'1px solid rgba(245,166,35,0.15)',borderRadius:8,opacity:ready?1:0,transition:'opacity 0.5s',minHeight:220 }}/>
-      {tooltip&&COUNTRY_META[tooltip.code]&&(<div style={{ position:'absolute',left:Math.min(tooltip.x+14,(containerRef.current?.offsetWidth||500)-150),top:Math.max(tooltip.y-48,8),background:'#060f1e',border:'1px solid rgba(245,166,35,0.55)',borderRadius:7,padding:'7px 11px',pointerEvents:'none',zIndex:20 }}><div style={{ fontSize:12,fontWeight:700,color:'#f5a623',fontFamily:'system-ui' }}>{COUNTRY_META[tooltip.code].flag}&nbsp;{COUNTRY_META[tooltip.code].label}</div><div style={{ fontSize:10,color:'rgba(255,255,255,0.55)',marginTop:2,fontFamily:'system-ui' }}>{tooltip.count} bourse{tooltip.count>1?'s':''}</div></div>)}
+      {tooltip&&COUNTRY_META[tooltip.code]&&(<div style={{ position:'absolute',left:Math.min(tooltip.x+14,(containerRef.current?.offsetWidth||500)-150),top:Math.max(tooltip.y-48,8),background:'#060f1e',border:'1px solid rgba(245,166,35,0.55)',borderRadius:7,padding:'7px 11px',pointerEvents:'none',zIndex:20 }}><div style={{ fontSize:12,fontWeight:700,color:'#f5a623',fontFamily:'system-ui' }}>{COUNTRY_META[tooltip.code].flag}&nbsp;{COUNTRY_META[tooltip.code].label}</div><div style={{ fontSize:10,color:'rgba(255,255,255,0.55)',marginTop:2,fontFamily:'system-ui' }}>{tooltip.count} {lang === 'fr' ? 'bourse' : 'scholarship'}{tooltip.count>1?'s':''}</div></div>)}
     </div>
   );
 }
 
-/* ─── MAIN DASHBOARD ──────────────────────────────────────────────────────── */
+/* ─── MAIN DASHBOARD (traduit) ───────────────────────────────────────────── */
 export default function DashboardPage({ user, bourses, entretienScores, setView, handleQuickReply, onOpenBourse, messages, input, setInput, loading, chatContainerRef, handleSend }) {
-    const { t, lang } = useT();  // ← Réagit au changement
+  const { t, lang } = useT();
 
   const [showLoginModal,setShowLoginModal]=useState(false);
   const [roadmap,setRoadmap]=useState([]);
@@ -1115,17 +1118,15 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       .catch(()=>{});
   },[user?.id]);
 
-  // Activités réelles
   useEffect(()=>{
     const acts=[];
     roadmap.forEach(item=>{ if(item.ajouteLe)acts.push({date:item.ajouteLe.split('T')[0],icon:'📋',bg:'#eff6ff',label:item.nom}); });
-    (entretienScores||[]).forEach(s=>{ if(s.createdAt)acts.push({date:s.createdAt.split('T')[0],icon:'🎙️',bg:'#f0fdf4',label:`Entretien · ${s.scoreNum||'?'}/100`}); });
+    (entretienScores||[]).forEach(s=>{ if(s.createdAt)acts.push({date:s.createdAt.split('T')[0],icon:'🎙️',bg:'#f0fdf4',label:`${lang === 'fr' ? 'Entretien' : 'Interview'} · ${s.scoreNum||'?'}/100`}); });
     favorites.forEach(f=>{ if(f.ajouteLe)acts.push({date:f.ajouteLe.split('T')[0],icon:'⭐',bg:'#fffbeb',label:f.nom}); });
     acts.sort((a,b)=>b.date.localeCompare(a.date));
     setRealActivities(acts);
-  },[roadmap,entretienScores,favorites]);
+  },[roadmap,entretienScores,favorites,lang]);
 
-  /* Données dérivées */
   const scholarshipCounts=useMemo(()=>{
     const counts={};(bourses||[]).forEach(b=>{if(!b.pays)return;const code=Object.entries(COUNTRY_META).find(([,m])=>m.label===b.pays)?.[0];if(code)counts[code]=(counts[code]||0)+1;});return counts;
   },[bourses]);
@@ -1145,18 +1146,16 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
   const scoreDiff=scores.length>=2?scores[0].scoreNum-scores[1].scoreNum:null;
   const scoreHistory=useMemo(()=>scores.slice().reverse().map(s=>s.scoreNum),[scores]);
 
-  // ✅ Completion dynamique
   const PROFILE_SECTIONS=useMemo(()=>[
-    {label:'Informations de base',pct:['name','email','phone','nationality'].filter(f=>user?.[f]).length/4*100,color:'#166534'},
-    {label:'Formation académique',pct:['currentLevel','fieldOfStudy','institution','gpa'].filter(f=>user?.[f]).length/4*100,color:'#2563eb'},
-    {label:'Expériences & projets',pct:Math.min(100,((user?.workExperience?.length||0)*25)+((user?.academicProjects?.length||0)*25)),color:'#d97706'},
-    {label:'Compétences & langues',pct:Math.min(100,((user?.languages?.length||0)*33)+((user?.skills?.length||0)*33)),color:'#7c3aed'},
-    {label:'Entretiens simulés',pct:Math.min(100,scores.length*33),color:'#f43f5e'},
-    {label:'Objectifs définis',pct:(['targetDegree','motivationSummary'].filter(f=>user?.[f]).length/2*100)+(user?.targetCountries?.length>0?50:0),color:'#0891b2'},
-  ],[user,scores]);
+    {label:lang === 'fr' ? 'Informations de base' : 'Basic info',pct:['name','email','phone','nationality'].filter(f=>user?.[f]).length/4*100,color:'#166534'},
+    {label:lang === 'fr' ? 'Formation académique' : 'Academic education',pct:['currentLevel','fieldOfStudy','institution','gpa'].filter(f=>user?.[f]).length/4*100,color:'#2563eb'},
+    {label:lang === 'fr' ? 'Expériences & projets' : 'Experience & projects',pct:Math.min(100,((user?.workExperience?.length||0)*25)+((user?.academicProjects?.length||0)*25)),color:'#d97706'},
+    {label:lang === 'fr' ? 'Compétences & langues' : 'Skills & languages',pct:Math.min(100,((user?.languages?.length||0)*33)+((user?.skills?.length||0)*33)),color:'#7c3aed'},
+    {label:lang === 'fr' ? 'Entretiens simulés' : 'Mock interviews',pct:Math.min(100,scores.length*33),color:'#f43f5e'},
+    {label:lang === 'fr' ? 'Objectifs définis' : 'Goals defined',pct:(['targetDegree','motivationSummary'].filter(f=>user?.[f]).length/2*100)+(user?.targetCountries?.length>0?50:0),color:'#0891b2'},
+  ],[user,scores,lang]);
   const completion=useMemo(()=>Math.round(PROFILE_SECTIONS.reduce((s,p)=>s+p.pct,0)/PROFILE_SECTIONS.length),[PROFILE_SECTIONS]);
 
-  // ✅ Radar dynamique
   const skillData=useMemo(()=>{
     if(scores.length===0)return[{label:'Comm.',value:0},{label:'Motiv.',value:0},{label:'Technique',value:0},{label:'Confiance',value:0},{label:'Culture',value:0}];
     const allText=(entretienScores||[]).map(s=>s.score||'').join(' ').toLowerCase();
@@ -1171,29 +1170,24 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
     ];
   },[scores,avgScore,entretienScores]);
 
-  // ✅ KPI roadmap basés sur getTotal/getProgress
   const roadmapTerminees=useMemo(()=>roadmap.filter(r=>isItemDone(r)).length,[roadmap]);
   const roadmapEnCours=useMemo(()=>roadmap.filter(r=>{const p=getProgress(r);return p>0&&!isItemDone(r);}).length,[roadmap]);
 
-  const recentActivitiesFlux=useMemo(()=>realActivities.slice(0,5).map(a=>({...a,text:a.label,time:new Date(a.date).toLocaleDateString('fr-FR')})),[realActivities]);
+  const recentActivitiesFlux=useMemo(()=>realActivities.slice(0,5).map(a=>({...a,text:a.label,time:new Date(a.date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')})),[realActivities,lang]);
   const activeCountryBourses=useMemo(()=>activeCountry?(bourses||[]).filter(b=>b.pays===COUNTRY_META[activeCountry]?.label).slice(0,6):[],[activeCountry,bourses]);
- 
 
-// AJOUTEZ ICI
-const streak = useMemo(() => {
-  const today = new Date();
-  let s = 0;
-  for (let i = 0; i < 60; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const k = d.toISOString().split('T')[0];
-    if (realActivities.some(a => a.date === k)) s++;
-    else if (i > 0) break;
-  }
-  return s;
-}, [realActivities]);
-// FIN AJOUT
-
+  const streak = useMemo(() => {
+    const today = new Date();
+    let s = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const k = d.toISOString().split('T')[0];
+      if (realActivities.some(a => a.date === k)) s++;
+      else if (i > 0) break;
+    }
+    return s;
+  }, [realActivities]);
 
   const kpiBourses=useAnimatedCounter((bourses||[]).length);
   const kpiRoadmap=useAnimatedCounter(roadmap.length);
@@ -1202,58 +1196,76 @@ const streak = useMemo(() => {
 
   if(!user) return (
     <>
-      <div style={S.locked}><div style={S.lockedCard}><div style={{ fontSize:56,marginBottom:16 }}>📊</div><h3 style={{ color:'#1a3a6b',fontWeight:700,fontSize:18,margin:'0 0 8px' }}>Tableau de bord non disponible</h3><p style={{ color:'#64748b',fontSize:13,lineHeight:1.6,maxWidth:280,textAlign:'center',margin:'0 0 24px' }}>Connectez-vous pour accéder à votre tableau de bord.</p><button style={S.lockBtn} onClick={()=>setShowLoginModal(true)}>🔐 Se connecter</button></div></div>
+      <div style={S.locked}><div style={S.lockedCard}><div style={{ fontSize:56,marginBottom:16 }}>📊</div><h3 style={{ color:'#1a3a6b',fontWeight:700,fontSize:18,margin:'0 0 8px' }}>{lang === 'fr' ? 'Tableau de bord non disponible' : 'Dashboard unavailable'}</h3><p style={{ color:'#64748b',fontSize:13,lineHeight:1.6,maxWidth:280,textAlign:'center',margin:'0 0 24px' }}>{lang === 'fr' ? 'Connectez-vous pour accéder à votre tableau de bord.' : 'Sign in to access your dashboard.'}</p><button style={S.lockBtn} onClick={()=>setShowLoginModal(true)}>🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}</button></div></div>
       {showLoginModal&&<LoginModal onClose={()=>setShowLoginModal(false)}/>}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </>
   );
 
   return (
-     <h1>{t('dashboard', 'title')}</h1>,
     <div style={{ width:'100%',background:'#f0f4f9',minHeight:'100vh',fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.dash-card{animation:fadeSlideUp 0.4s ease both}.hover-lift{transition:transform 0.2s,box-shadow 0.2s}.hover-lift:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,107,0.12)!important}`}</style>
       <div style={{ maxWidth:1200,margin:'0 auto',padding:'24px 32px' }}>
 
         {/* HEADER */}
-        {/* HEADER */}
-<div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-  <div>
-    <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#1a3a6b', marginBottom:3 }}>Tableau de Bord</h1>
-    <p style={{ fontSize:13, color:'#64748b' }}>Bonjour <strong style={{ color:'#1a3a6b' }}>{user.name||user.email?.split('@')[0]}</strong>, voici l'état de vos bourses.</p>
-  </div>
-  <button style={S.btnGold} onClick={()=>setView('bourses')}>Explorer Bourses</button>
-</div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 }}>
+          <div>
+            <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#1a3a6b', marginBottom:3 }}>
+              {lang === 'fr' ? 'Tableau de Bord' : 'Dashboard'}
+            </h1>
+            <p style={{ fontSize:13, color:'#64748b' }}>
+              {lang === 'fr' ? 'Bonjour' : 'Hello'} <strong style={{ color:'#1a3a6b' }}>{user.name||user.email?.split('@')[0]}</strong>, 
+              {lang === 'fr' ? ' voici l\'état de vos bourses.' : ' here\'s your scholarships status.'}
+            </p>
+          </div>
+          <button style={S.btnGold} onClick={()=>setView('bourses')}>
+            {lang === 'fr' ? 'Explorer Bourses' : 'Explore Scholarships'}
+          </button>
+        </div>
 
-{/* ═══ BLOC AUJOURD'HUI ═══ */}
-<div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'16px 20px', marginBottom:14, borderLeft:'4px solid #f5a623', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' }}>
-  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-    <div>
-      <div style={{ fontSize:14, fontWeight:700, color:'#1a3a6b' }}>🌅 Aujourd'hui — Que faire ?</div>
-      <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
-    </div>
-    <div style={{ fontSize:11, color:'#94a3b8', background:'#f8fafc', padding:'3px 10px', borderRadius:20, border:'1px solid #e2e8f0' }}>
-      {urgentDeadlines.length>0 ? `⚡ ${urgentDeadlines.length} urgent${urgentDeadlines.length>1?'s':''}` : streak>0 ? `🔥 Streak ${streak}j` : '✨ Bonne journée'}
-    </div>
-  </div>
-  <TodayBlock roadmap={roadmap} deadlines={deadlines} scores={scores} setView={setView}/>
-</div>
-        {/* BANDEAU URGENCE */}
+        {/* TODAY BLOCK */}
+        <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'16px 20px', marginBottom:14, borderLeft:'4px solid #f5a623', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#1a3a6b' }}>
+                {lang === 'fr' ? '🌅 Aujourd\'hui — Que faire ?' : '🌅 Today — What to do?'}
+              </div>
+              <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>
+                {new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US',{weekday:'long',day:'numeric',month:'long'})}
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:'#94a3b8', background:'#f8fafc', padding:'3px 10px', borderRadius:20, border:'1px solid #e2e8f0' }}>
+              {urgentDeadlines.length>0 
+                ? `⚡ ${urgentDeadlines.length} ${lang === 'fr' ? 'urgent' : 'urgent'}${urgentDeadlines.length>1?'s':''}` 
+                : streak>0 
+                  ? `🔥 Streak ${streak}${lang === 'fr' ? 'j' : 'd'}` 
+                  : (lang === 'fr' ? '✨ Bonne journée' : '✨ Have a great day')}
+            </div>
+          </div>
+          <TodayBlock roadmap={roadmap} deadlines={deadlines} scores={scores} setView={setView}/>
+        </div>
+
+        {/* URGENT BANNER */}
         {urgentDeadlines.length>0&&(
           <div style={{ display:'flex',alignItems:'center',gap:10,padding:'11px 16px',borderRadius:8,background:'#fff3cd',border:'1px solid #fde68a',borderLeft:'4px solid #f5a623',marginBottom:20 }}>
             <span style={{ fontSize:18 }}>⚡</span>
-            <span style={{ fontSize:12,color:'#856404',flex:1,fontWeight:500 }}><strong>{urgentDeadlines.length} deadline{urgentDeadlines.length>1?'s urgentes':' urgente'} :</strong>{' '}{urgentDeadlines.map(d=>`${d.nom} (${Math.round((d.deadline-new Date())/86400000)}j)`).join(' · ')}</span>
-            <button onClick={()=>setView('roadmap')} style={{ padding:'5px 12px',borderRadius:4,background:'#1a3a6b',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600 }}>Voir</button>
+            <span style={{ fontSize:12,color:'#856404',flex:1,fontWeight:500 }}>
+              <strong>{urgentDeadlines.length} {lang === 'fr' ? 'deadline' : 'deadline'}{urgentDeadlines.length>1?(lang === 'fr' ? 's urgentes' : 's urgent'):(lang === 'fr' ? ' urgente' : ' urgent')} :</strong>{' '}
+              {urgentDeadlines.map(d=>`${d.nom} (${Math.round((d.deadline-new Date())/86400000)}${lang === 'fr' ? 'j' : 'd'})`).join(' · ')}
+            </span>
+            <button onClick={()=>setView('roadmap')} style={{ padding:'5px 12px',borderRadius:4,background:'#1a3a6b',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600 }}>
+              {lang === 'fr' ? 'Voir' : 'View'}
+            </button>
           </div>
         )}
 
-        {/* KPI */}
+        {/* KPI CARDS */}
         <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20 }}>
           {[
-            {label:'Bourses disponibles',val:kpiBourses,icon:'🎓',color:'#1a3a6b',bg:'#eff6ff',trend:`${Object.keys(scholarshipCounts).length} pays`,trendColor:'#166534'},
-            // ✅ KPI roadmap avec vrais totaux
-            {label:'Dans ma roadmap',val:kpiRoadmap,icon:'📋',color:'#166534',bg:'#f0fdf4',trend:`${roadmapTerminees} terminée${roadmapTerminees>1?'s':''} · ${roadmapEnCours} en cours`,trendColor:'#166534'},
-            {label:'Deadlines ce mois',val:kpiDeadlines,icon:'⏰',color:'#d97706',bg:'#fffbeb',trend:`${urgentDeadlines.length} urgente${urgentDeadlines.length>1?'s':''}`,trendColor:urgentDeadlines.length>0?'#dc2626':'#166534'},
-            {label:'Score entretien',val:lastScore!=null?`${kpiScore}/100`:'—',icon:'🎙️',color:'#7c3aed',bg:'#f5f3ff',trend:scoreDiff!=null?`${scoreDiff>0?'+':''}${scoreDiff} vs dernier`:`${scores.length} simulé${scores.length!==1?'s':''}`,trendColor:scoreDiff!=null&&scoreDiff>0?'#166534':'#94a3b8'},
+            {label:lang === 'fr' ? 'Bourses disponibles' : 'Available scholarships',val:kpiBourses,icon:'🎓',color:'#1a3a6b',bg:'#eff6ff',trend:`${Object.keys(scholarshipCounts).length} ${lang === 'fr' ? 'pays' : 'countries'}`,trendColor:'#166534'},
+            {label:lang === 'fr' ? 'Dans ma roadmap' : 'In my roadmap',val:kpiRoadmap,icon:'📋',color:'#166534',bg:'#f0fdf4',trend:`${roadmapTerminees} ${lang === 'fr' ? `terminée${roadmapTerminees>1?'s':''}` : `completed${roadmapTerminees>1?'':' (s)'}`} · ${roadmapEnCours} ${lang === 'fr' ? 'en cours' : 'in progress'}`,trendColor:'#166534'},
+            {label:lang === 'fr' ? 'Deadlines ce mois' : 'Deadlines this month',val:kpiDeadlines,icon:'⏰',color:'#d97706',bg:'#fffbeb',trend:`${urgentDeadlines.length} ${lang === 'fr' ? 'urgente' : 'urgent'}${urgentDeadlines.length>1?'s':''}`,trendColor:urgentDeadlines.length>0?'#dc2626':'#166534'},
+            {label:lang === 'fr' ? 'Score entretien' : 'Interview score',val:lastScore!=null?`${kpiScore}/100`:'—',icon:'🎙️',color:'#7c3aed',bg:'#f5f3ff',trend:scoreDiff!=null?`${scoreDiff>0?'+':''}${scoreDiff} vs ${lang === 'fr' ? 'dernier' : 'last'}`:`${scores.length} ${lang === 'fr' ? `simulé${scores.length!==1?'s':''}` : `simulated${scores.length!==1?'':' (s)'}`}`,trendColor:scoreDiff!=null&&scoreDiff>0?'#166534':'#94a3b8'},
           ].map((k,i)=>(
             <div key={i} className="dash-card hover-lift" style={{ background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'16px 18px',borderTop:`3px solid ${k.color}`,boxShadow:'0 2px 6px rgba(26,58,107,0.06)' }}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' }}>
@@ -1264,79 +1276,80 @@ const streak = useMemo(() => {
           ))}
         </div>
 
-        {/* ROW 1 : 4 cartes clés - Disposition professionnelle */}
-<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
-  
-  {/* Carte 1: Conseils personnalisés */}
-  <div style={S.card} className="hover-lift">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-      <div style={S.cardTitle}>💡 Conseils</div>
-      <div style={{ fontSize: 9, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 4, border: '1px solid #e2e8f0' }}>
-        IA temps réel
-      </div>
-    </div>
-    <SmartTips user={user} scores={scores} roadmap={roadmap} urgentDeadlines={urgentDeadlines} setView={setView}/>
-  </div>
+        {/* ROW 1: 4 Key Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
+          
+          {/* Card 1: Smart Tips */}
+          <div style={S.card} className="hover-lift">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={S.cardTitle}>💡 {lang === 'fr' ? 'Conseils' : 'Tips'}</div>
+              <div style={{ fontSize: 9, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 4, border: '1px solid #e2e8f0' }}>
+                {lang === 'fr' ? 'IA temps réel' : 'Real-time AI'}
+              </div>
+            </div>
+            <SmartTips user={user} scores={scores} roadmap={roadmap} urgentDeadlines={urgentDeadlines} setView={setView}/>
+          </div>
 
-  {/* Carte 2: Force du dossier */}
-  <div style={S.card} className="hover-lift">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-      <div style={S.cardTitle}>📊 Force dossier</div>
-      <button style={S.btnXs} onClick={() => setView('profil')}>→</button>
-    </div>
-    <ProfileStrength user={user} scores={scores} setView={setView}/>
-  </div>
+          {/* Card 2: Profile Strength */}
+          <div style={S.card} className="hover-lift">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={S.cardTitle}>📊 {lang === 'fr' ? 'Force dossier' : 'Profile strength'}</div>
+              <button style={S.btnXs} onClick={() => setView('profil')}>→</button>
+            </div>
+            <ProfileStrength user={user} scores={scores} setView={setView}/>
+          </div>
 
-  {/* Carte 3: Roadmap */}
-  <div style={S.card} className="hover-lift">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-      <div style={S.cardTitle}>✅ Roadmap</div>
-      <button style={S.btnXs} onClick={() => setView('roadmap')}>Voir →</button>
-    </div>
-    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 10 }}>
-      {roadmap.length} bourse{roadmap.length !== 1 ? 's' : ''}
-    </div>
-    <ChecklistWidget user={user} roadmap={roadmap} setRoadmap={setRoadmap}/>
-  </div>
+          {/* Card 3: Roadmap */}
+          <div style={S.card} className="hover-lift">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={S.cardTitle}>✅ {lang === 'fr' ? 'Roadmap' : 'Roadmap'}</div>
+              <button style={S.btnXs} onClick={() => setView('roadmap')}>
+                {lang === 'fr' ? 'Voir →' : 'View →'}
+              </button>
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 10 }}>
+              {roadmap.length} {lang === 'fr' ? `bourse${roadmap.length !== 1 ? 's' : ''}` : `scholarship${roadmap.length !== 1 ? 's' : ''}`}
+            </div>
+            <ChecklistWidget user={user} roadmap={roadmap} setRoadmap={setRoadmap}/>
+          </div>
 
-  {/* Carte 4: Activité */}
-  <div style={S.card} className="hover-lift">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-      <div style={S.cardTitle}>🔥 Activité</div>
-      <div style={{ fontSize: 10, fontWeight: 600, color: streak >= 7 ? '#d97706' : '#64748b' }}>
-        {streak}j 🔥
-      </div>
-    </div>
-    <StreakWidget activities={realActivities}/>
-    {(() => {
-      const today = new Date();
-      const JOURS = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
-      const data7 = Array.from({ length: 7 }).map((_, i) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() - (6 - i));
-        const k = d.toISOString().split('T')[0];
-        return { label: JOURS[d.getDay()], val: realActivities.filter(a => a.date === k).length };
-      });
-      return <MiniBarChart data={data7} color="#1a3a6b" height={36}/>;
-    })()}
-  </div>
+          {/* Card 4: Activity */}
+          <div style={S.card} className="hover-lift">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={S.cardTitle}>🔥 {lang === 'fr' ? 'Activité' : 'Activity'}</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: streak >= 7 ? '#d97706' : '#64748b' }}>
+                {streak}{lang === 'fr' ? 'j' : 'd'} 🔥
+              </div>
+            </div>
+            <StreakWidget activities={realActivities}/>
+            {(() => {
+              const today = new Date();
+              const JOURS = lang === 'fr' ? ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'] : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+              const data7 = Array.from({ length: 7 }).map((_, i) => {
+                const d = new Date(today);
+                d.setDate(today.getDate() - (6 - i));
+                const k = d.toISOString().split('T')[0];
+                return { label: JOURS[d.getDay()], val: realActivities.filter(a => a.date === k).length };
+              });
+              return <MiniBarChart data={data7} color="#1a3a6b" height={36}/>;
+            })()}
+          </div>
 
-</div>
+        </div>
 
-        {/* ROW 2 : Alertes + Entretiens */}
+        {/* ROW 2: Alerts + Interviews */}
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
           <div style={S.card} className="hover-lift">
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div style={S.cardTitle}>🔔 Alertes deadlines</div>
-              {urgentDeadlines.length>0&&<div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:5,padding:'2px 8px',fontSize:11,fontWeight:700,color:'#dc2626' }}>{urgentDeadlines.length} urgente{urgentDeadlines.length>1?'s':''}</div>}
+              <div style={S.cardTitle}>🔔 {lang === 'fr' ? 'Alertes deadlines' : 'Deadline alerts'}</div>
+              {urgentDeadlines.length>0&&<div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:5,padding:'2px 8px',fontSize:11,fontWeight:700,color:'#dc2626' }}>{urgentDeadlines.length} {lang === 'fr' ? 'urgente' : 'urgent'}{urgentDeadlines.length>1?'s':''}</div>}
             </div>
             <div style={{ display:'flex',flexDirection:'column',gap:7,marginTop:12 }}>
-              {deadlines.length===0 ? <div style={{ color:'#64748b',fontSize:13 }}>Aucune bourse avec deadline.</div>
+              {deadlines.length===0 ? <div style={{ color:'#64748b',fontSize:13 }}>{lang === 'fr' ? 'Aucune bourse avec deadline.' : 'No scholarships with deadlines.'}</div>
               : deadlines.slice(0,5).map((d,i)=>{
                 const dl=daysLeft(d.deadline); const diff=Math.round((d.deadline-new Date())/86400000);
                 const bg=diff<0?'#fef2f2':diff<=7?'#fffbeb':diff<=14?'#eff6ff':'#f8fafc';
                 const bl=diff<0?'#dc2626':diff<=7?'#d97706':diff<=14?'#2563eb':'#e2e8f0';
-                // ✅ Afficher étape courante réelle avec vrai total
                 const rmItem=roadmap.find(r=>r.nom?.trim().toLowerCase()===d.nom?.trim().toLowerCase());
                 const rmProgress=rmItem?getProgress(rmItem):0;
                 const rmTotal=rmItem?getTotal(rmItem):0;
@@ -1345,7 +1358,7 @@ const streak = useMemo(() => {
                     <div>
                       <div style={{ fontSize:12,color:'#1a3a6b',fontWeight:600 }}>{d.nom}</div>
                       <div style={{ fontSize:10,color:'#64748b',marginTop:1 }}>
-                        {d.pays} · {d.deadline.toLocaleDateString('fr-FR')}
+                        {d.pays} · {d.deadline.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')}
                         {rmItem&&<span style={{ marginLeft:6,color:'#7c3aed',fontWeight:600 }}>📋 {rmProgress}/{rmTotal}</span>}
                         {d.isFavori&&<span style={{ marginLeft:6,color:'#d97706',fontWeight:600 }}>⭐</span>}
                       </div>
@@ -1359,19 +1372,23 @@ const streak = useMemo(() => {
 
           <div style={S.card} className="hover-lift">
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
-              <div><div style={S.cardTitle}>📊 Progression des scores</div><div style={S.cardSub}>{scores.length} entretien{scores.length!==1?'s':''} simulé{scores.length!==1?'s':''}</div></div>
-              <button style={S.btnXs} onClick={()=>setView('entretien')}>Pratiquer →</button>
+              <div><div style={S.cardTitle}>📊 {lang === 'fr' ? 'Progression des scores' : 'Score progression'}</div><div style={S.cardSub}>{scores.length} {lang === 'fr' ? `entretien${scores.length!==1?'s':''} simulé${scores.length!==1?'s':''}` : `interview${scores.length!==1?'':' (s)'} simulated`}</div></div>
+              <button style={S.btnXs} onClick={()=>setView('entretien')}>
+                {lang === 'fr' ? 'Pratiquer →' : 'Practice →'}
+              </button>
             </div>
             {scores.length===0 ? (
-              <div style={{ textAlign:'center',padding:'32px 0' }}><div style={{ fontSize:40,marginBottom:12 }}>🎙️</div><div style={{ color:'#64748b',fontSize:13,marginBottom:14 }}>Aucun entretien simulé</div><button style={S.btnPrimary} onClick={()=>setView('entretien')}>Démarrer maintenant</button></div>
+              <div style={{ textAlign:'center',padding:'32px 0' }}><div style={{ fontSize:40,marginBottom:12 }}>🎙️</div><div style={{ color:'#64748b',fontSize:13,marginBottom:14 }}>{lang === 'fr' ? 'Aucun entretien simulé' : 'No mock interviews'}</div><button style={S.btnPrimary} onClick={()=>setView('entretien')}>
+                {lang === 'fr' ? 'Démarrer maintenant' : 'Start now'}
+              </button></div>
             ) : (
               <>
-                <Sparkline data={scoreHistory} color="#1a3a6b" height={70}/>
+               <Sparkline data={scoreHistory} color="#1a3a6b" height={70} lang={lang}/>
                 <div style={{ display:'flex',gap:10,marginTop:12,flexWrap:'wrap' }}>
                   {[
-                    {label:'Dernier score',val:`${lastScore}/100`,color:lastScore>=75?'#166534':lastScore>=55?'#d97706':'#dc2626'},
-                    avgScore!=null&&{label:'Moyenne',val:`${avgScore}/100`,color:'#475569'},
-                    scoreDiff!=null&&{label:'Évolution',val:`${scoreDiff>0?'+':''}${scoreDiff}`,color:scoreDiff>0?'#166534':'#dc2626'},
+                    {label:lang === 'fr' ? 'Dernier score' : 'Last score',val:`${lastScore}/100`,color:lastScore>=75?'#166534':lastScore>=55?'#d97706':'#dc2626'},
+                    avgScore!=null&&{label:lang === 'fr' ? 'Moyenne' : 'Average',val:`${avgScore}/100`,color:'#475569'},
+                    scoreDiff!=null&&{label:lang === 'fr' ? 'Évolution' : 'Change',val:`${scoreDiff>0?'+':''}${scoreDiff}`,color:scoreDiff>0?'#166534':'#dc2626'},
                   ].filter(Boolean).map((s,i)=>(
                     <div key={i} style={{ padding:'8px 14px',borderRadius:8,background:'#f8fafc',border:'1px solid #e2e8f0' }}>
                       <div style={{ fontSize:17,fontWeight:800,color:s.color }}>{s.val}</div>
@@ -1384,31 +1401,38 @@ const streak = useMemo(() => {
           </div>
         </div>
 
-        {/* ROW 3 : Calendrier + Échéances */}
+        {/* ROW 3: Calendar + Upcoming */}
         <div style={{ display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:14,marginBottom:14 }}>
           <div style={S.card} className="hover-lift">
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
               <div>
-                <div style={S.cardTitle}>📅 Calendrier des deadlines</div>
-                <div style={S.cardSub}>{deadlines.length} deadline{deadlines.length!==1?'s':''} · <span style={{ color:'#7c3aed',fontWeight:600 }}>{roadmapDeadlines.length} roadmap</span> · <span style={{ color:'#d97706',fontWeight:600 }}>{deadlines.filter(d=>d.isFavori).length} favoris</span></div>
+                <div style={S.cardTitle}>📅 {lang === 'fr' ? 'Calendrier des deadlines' : 'Deadlines calendar'}</div>
+                <div style={S.cardSub}>{deadlines.length} {lang === 'fr' ? `deadline${deadlines.length!==1?'s':''}` : `deadline${deadlines.length!==1?'':' (s)'}`} · <span style={{ color:'#7c3aed',fontWeight:600 }}>{roadmapDeadlines.length} {lang === 'fr' ? 'roadmap' : 'roadmap'}</span> · <span style={{ color:'#d97706',fontWeight:600 }}>{deadlines.filter(d=>d.isFavori).length} {lang === 'fr' ? 'favoris' : 'favorites'}</span></div>
               </div>
-              <button style={S.btnXs} onClick={()=>setView('roadmap')}>Roadmap →</button>
+              <button style={S.btnXs} onClick={()=>setView('roadmap')}>
+                {lang === 'fr' ? 'Roadmap →' : 'Roadmap →'}
+              </button>
             </div>
             {deadlines.length===0 ? (
-              <div style={{ textAlign:'center',padding:'32px 0',color:'#64748b' }}><div style={{ fontSize:40,marginBottom:10 }}>📭</div><div style={{ fontSize:13,marginBottom:14 }}>Aucune bourse avec deadline</div><button style={S.btnPrimary} onClick={()=>setView('bourses')}>Explorer les bourses</button></div>
+              <div style={{ textAlign:'center',padding:'32px 0',color:'#64748b' }}><div style={{ fontSize:40,marginBottom:10 }}>📭</div><div style={{ fontSize:13,marginBottom:14 }}>{lang === 'fr' ? 'Aucune bourse avec deadline' : 'No scholarships with deadlines'}</div><button style={S.btnPrimary} onClick={()=>setView('bourses')}>
+                {lang === 'fr' ? 'Explorer les bourses' : 'Explore scholarships'}
+              </button></div>
             ) : <Calendrier deadlines={deadlines} onSelectBourse={b=>{const full=(bourses||[]).find(x=>x.nom?.trim().toLowerCase()===b.nom?.trim().toLowerCase());setDrawerBourse(full||b);}}/>}
           </div>
 
           <div style={S.card} className="hover-lift">
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
-              <div style={S.cardTitle}>⏳ Prochaines échéances</div>
-              <button style={S.btnXs} onClick={()=>setView('roadmap')}>Roadmap →</button>
+              <div style={S.cardTitle}>⏳ {lang === 'fr' ? 'Prochaines échéances' : 'Upcoming deadlines'}</div>
+              <button style={S.btnXs} onClick={()=>setView('roadmap')}>
+                {lang === 'fr' ? 'Roadmap →' : 'Roadmap →'}
+              </button>
             </div>
             {deadlines.length===0 ? (
-              <div style={{ color:'#64748b',fontSize:13,textAlign:'center',padding:'20px 0' }}><div style={{ fontSize:32,marginBottom:8 }}>📋</div>Ajoute des bourses pour suivre leurs deadlines</div>
+              <div style={{ color:'#64748b',fontSize:13,textAlign:'center',padding:'20px 0' }}><div style={{ fontSize:32,marginBottom:8 }}>📋</div>
+                {lang === 'fr' ? 'Ajoute des bourses pour suivre leurs deadlines' : 'Add scholarships to track their deadlines'}
+              </div>
             ) : deadlines.slice(0,7).map((d,i)=>{
-              const dl=daysLeft(d.deadline);
-              // ✅ Afficher étape réelle avec vrai total
+              const dl = daysLeft(d.deadline, lang);
               const rmItem=roadmap.find(r=>r.nom?.trim().toLowerCase()===d.nom?.trim().toLowerCase());
               const rmProgress=rmItem?getProgress(rmItem):0;
               const rmTotal=rmItem?getTotal(rmItem):0;
@@ -1424,8 +1448,7 @@ const streak = useMemo(() => {
                       {d.isFavori&&<span style={{ fontSize:8,color:'#d97706',flexShrink:0 }}>⭐</span>}
                     </div>
                     <div style={{ fontSize:10,color:'#64748b',marginTop:1 }}>
-                      {d.pays} · {d.deadline.toLocaleDateString('fr-FR')}
-                      {/* ✅ Affiche X/7 ou X/5 selon le vrai total */}
+                      {d.pays} · {d.deadline.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')}
                       {rmItem&&<span style={{ marginLeft:6,color:rmDone?'#166534':'#2563eb',fontWeight:600 }}>· {rmProgress}/{rmTotal}</span>}
                     </div>
                   </div>
@@ -1435,13 +1458,12 @@ const streak = useMemo(() => {
                 </div>
               );
             })}
-            {/* Stats résumé avec vrais totaux */}
             {deadlines.length>0&&(
               <div style={{ marginTop:12,padding:'10px',borderRadius:7,background:'#f8fafc',border:'1px solid #f1f5f9',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6 }}>
                 {[
-                  {val:roadmapDeadlines.length,label:'En suivi',color:'#7c3aed'},
-                  {val:urgentDeadlines.length,label:'Urgentes',color:'#dc2626'},
-                  {val:roadmapTerminees,label:'Terminées',color:'#166534'},
+                  {val:roadmapDeadlines.length,label:lang === 'fr' ? 'En suivi' : 'Tracked',color:'#7c3aed'},
+                  {val:urgentDeadlines.length,label:lang === 'fr' ? 'Urgentes' : 'Urgent',color:'#dc2626'},
+                  {val:roadmapTerminees,label:lang === 'fr' ? 'Terminées' : 'Completed',color:'#166534'},
                 ].map(s=>(
                   <div key={s.label} style={{ textAlign:'center' }}>
                     <div style={{ fontSize:18,fontWeight:800,color:s.color }}>{s.val}</div>
@@ -1453,17 +1475,21 @@ const streak = useMemo(() => {
           </div>
         </div>
 
-        {/* CARTE MONDIALE */}
+        {/* WORLD MAP */}
         <div style={{ marginBottom:14 }}>
           <div style={S.card}>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16 }}>
-              <div><div style={S.cardTitle}>🌍 Carte mondiale des bourses</div><div style={S.cardSub}>{Object.keys(scholarshipCounts).length} pays · {(bourses||[]).length} bourses</div></div>
-              <button style={S.btnXs} onClick={()=>setView('bourses')}>Toutes →</button>
+              <div><div style={S.cardTitle}>🌍 {lang === 'fr' ? 'Carte mondiale des bourses' : 'World scholarship map'}</div><div style={S.cardSub}>{Object.keys(scholarshipCounts).length} {lang === 'fr' ? 'pays' : 'countries'} · {(bourses||[]).length} {lang === 'fr' ? 'bourses' : 'scholarships'}</div></div>
+              <button style={S.btnXs} onClick={()=>setView('bourses')}>
+                {lang === 'fr' ? 'Toutes →' : 'All →'}
+              </button>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 240px',gap:16,alignItems:'start' }}>
-              <WorldMap onCountryClick={code=>setActiveCountry(code===activeCountry?null:code)} activeCountry={activeCountry} scholarshipCounts={scholarshipCounts}/>
-              <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                <div style={{ fontSize:10,fontWeight:700,color:'#1a3a6b',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4,borderBottom:'2px solid #f5a623',paddingBottom:4 }}>Top pays</div>
+                <WorldMap onCountryClick={code=>setActiveCountry(code===activeCountry?null:code)} activeCountry={activeCountry} scholarshipCounts={scholarshipCounts} lang={lang}/>
+                <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
+                <div style={{ fontSize:10,fontWeight:700,color:'#1a3a6b',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4,borderBottom:'2px solid #f5a623',paddingBottom:4 }}>
+                  {lang === 'fr' ? 'Top pays' : 'Top countries'}
+                </div>
                 <div style={{ display:'flex',flexDirection:'column',gap:2,maxHeight:280,overflowY:'auto' }}>
                   {Object.entries(scholarshipCounts).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([code,count])=>{
                     const meta=COUNTRY_META[code];if(!meta)return null;
@@ -1483,10 +1509,12 @@ const streak = useMemo(() => {
                   <div style={{ marginTop:8,padding:'12px',borderRadius:8,background:'#eff6ff',border:'1px solid #bfdbfe' }}>
                     <div style={{ fontSize:13,fontWeight:700,color:'#1a3a6b',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
                       <span>{COUNTRY_META[activeCountry].flag} {COUNTRY_META[activeCountry].label}</span>
-                      <span style={{ fontSize:10,color:'#fff',background:'#1a3a6b',padding:'2px 7px',borderRadius:3,fontWeight:600 }}>{scholarshipCounts[activeCountry]||0} bourses</span>
+                      <span style={{ fontSize:10,color:'#fff',background:'#1a3a6b',padding:'2px 7px',borderRadius:3,fontWeight:600 }}>{scholarshipCounts[activeCountry]||0} {lang === 'fr' ? 'bourses' : 'scholarships'}</span>
                     </div>
-                    {activeCountryBourses.length>0?activeCountryBourses.map((b,i)=><div key={i} style={{ fontSize:11,color:'#334155',padding:'3px 0',borderBottom:i<activeCountryBourses.length-1?'1px solid #dbeafe':'none' }}>{b.nom}</div>):<div style={{ fontSize:11,color:'#94a3b8' }}>Aucune bourse</div>}
-                    <button style={{ ...S.btnGold,width:'100%',marginTop:10,fontSize:11,padding:'7px' }} onClick={()=>handleQuickReply(`Montre-moi les bourses en ${COUNTRY_META[activeCountry].label} pour un étudiant tunisien`)}>Explorer avec l'IA</button>
+                    {activeCountryBourses.length>0?activeCountryBourses.map((b,i)=><div key={i} style={{ fontSize:11,color:'#334155',padding:'3px 0',borderBottom:i<activeCountryBourses.length-1?'1px solid #dbeafe':'none' }}>{b.nom}</div>):<div style={{ fontSize:11,color:'#94a3b8' }}>{lang === 'fr' ? 'Aucune bourse' : 'No scholarships'}</div>}
+                    <button style={{ ...S.btnGold,width:'100%',marginTop:10,fontSize:11,padding:'7px' }} onClick={()=>handleQuickReply(lang === 'fr' ? `Montre-moi les bourses en ${COUNTRY_META[activeCountry].label} pour un étudiant tunisien` : `Show me scholarships in ${COUNTRY_META[activeCountry].label} for a Tunisian student`)}>
+                      {lang === 'fr' ? 'Explorer avec l\'IA' : 'Explore with AI'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1494,11 +1522,17 @@ const streak = useMemo(() => {
           </div>
         </div>
 
-        {/* RADAR + CONSEILS */}
+        {/* RADAR + ADVICE */}
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
           <div style={S.card}>
-            <div style={S.cardTitle}>🕸️ Radar de compétences</div>
-            <div style={S.cardSub}>{scores.length>0?`Basé sur ${scores.length} entretien${scores.length>1?'s':''}`:user?.skills?.length>0?`${user.skills.length} compétence${user.skills.length>1?'s':''} dans le profil`:'Lance un entretien pour des données réelles'}</div>
+            <div style={S.cardTitle}>🕸️ {lang === 'fr' ? 'Radar de compétences' : 'Skills radar'}</div>
+            <div style={S.cardSub}>
+              {scores.length>0 
+                ? (lang === 'fr' ? `Basé sur ${scores.length} entretien${scores.length>1?'s':''}` : `Based on ${scores.length} interview${scores.length>1?'s':''}`)
+                : user?.skills?.length>0 
+                  ? (lang === 'fr' ? `${user.skills.length} compétence${user.skills.length>1?'s':''} dans le profil` : `${user.skills.length} skill${user.skills.length>1?'s':''} in profile`)
+                  : (lang === 'fr' ? 'Lance un entretien pour des données réelles' : 'Start an interview for real data')}
+            </div>
             <div style={{ display:'flex',alignItems:'center',gap:16,marginTop:14 }}>
               <SkillRadar skills={skillData}/>
               <div style={{ display:'flex',flexDirection:'column',gap:8,flex:1 }}>
@@ -1510,16 +1544,18 @@ const streak = useMemo(() => {
                 ))}
               </div>
             </div>
-            <button style={{ ...S.btnPrimary,width:'100%',marginTop:14 }} onClick={()=>setView('entretien')}>🎙️ Lancer un entretien IA</button>
+            <button style={{ ...S.btnPrimary,width:'100%',marginTop:14 }} onClick={()=>setView('entretien')}>
+              🎙️ {lang === 'fr' ? 'Lancer un entretien IA' : 'Start AI interview'}
+            </button>
           </div>
           <div style={S.card}>
-            <div style={S.cardTitle}>💪 Conseils pour ton entretien</div>
+            <div style={S.cardTitle}>💪 {lang === 'fr' ? 'Conseils pour ton entretien' : 'Interview tips'}</div>
             <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:12 }}>
               {[
-                {icon:'🗣️',title:'Méthode STAR',desc:'Situation → Tâche → Action → Résultat. Cite toujours des chiffres.',color:'#eff6ff',border:'#bfdbfe',text:'#1a3a6b'},
-                {icon:'🎯',title:'Projet précis',desc:'Cite le nom de tes profs cibles et laboratoires visés dans le pays.',color:'#f0fdf4',border:'#bbf7d0',text:'#166534'},
-                {icon:'⏱️',title:'Gestion du temps',desc:'2-3 minutes max par réponse.',color:'#fffbeb',border:'#fde68a',text:'#856404'},
-                {icon:'🌍',title:'Contexte culturel',desc:'Montre que tu connais le pays, son système d\'éducation, sa culture.',color:'#f5f3ff',border:'#ddd6fe',text:'#7c3aed'},
+                {icon:'🗣️',title:lang === 'fr' ? 'Méthode STAR' : 'STAR Method',desc:lang === 'fr' ? 'Situation → Tâche → Action → Résultat. Cite toujours des chiffres.' : 'Situation → Task → Action → Result. Always cite numbers.',color:'#eff6ff',border:'#bfdbfe',text:'#1a3a6b'},
+                {icon:'🎯',title:lang === 'fr' ? 'Projet précis' : 'Specific project',desc:lang === 'fr' ? 'Cite le nom de tes profs cibles et laboratoires visés dans le pays.' : 'Mention target professors and labs in the country.',color:'#f0fdf4',border:'#bbf7d0',text:'#166534'},
+                {icon:'⏱️',title:lang === 'fr' ? 'Gestion du temps' : 'Time management',desc:lang === 'fr' ? '2-3 minutes max par réponse.' : '2-3 minutes max per answer.',color:'#fffbeb',border:'#fde68a',text:'#856404'},
+                {icon:'🌍',title:lang === 'fr' ? 'Contexte culturel' : 'Cultural context',desc:lang === 'fr' ? 'Montre que tu connais le pays, son système d\'éducation, sa culture.' : 'Show you know the country, its education system, its culture.',color:'#f5f3ff',border:'#ddd6fe',text:'#7c3aed'},
               ].map((c,i)=>(
                 <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',borderRadius:8,background:c.color,border:`1px solid ${c.border}` }}>
                   <span style={{ fontSize:18,flexShrink:0 }}>{c.icon}</span>
@@ -1536,12 +1572,12 @@ const streak = useMemo(() => {
       {showChat&&(
         <div style={{ position:'fixed',top:80,right:24,width:360,height:'calc(100vh - 100px)',background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,display:'flex',flexDirection:'column',boxShadow:'0 8px 24px rgba(0,0,0,0.12)',zIndex:1000 }}>
           <div style={{ padding:'12px 16px',background:'#1a3a6b',borderTopLeftRadius:12,borderTopRightRadius:12,color:'#fff',display:'flex',justifyContent:'space-between' }}>
-            <span>🤖 Assistant</span>
+            <span>🤖 {lang === 'fr' ? 'Assistant' : 'Assistant'}</span>
             <button onClick={()=>setShowChat(false)} style={{ background:'none',border:'none',color:'#fff',fontSize:18,cursor:'pointer' }}>✕</button>
           </div>
           <div style={{ flex:1,overflowY:'auto',padding:12 }} ref={chatContainerRef}>
             {messages.map((msg,i)=>(<div key={i} style={{ textAlign:msg.sender==='user'?'right':'left',marginBottom:8 }}><div style={{ display:'inline-block',background:msg.sender==='user'?'#1a3a6b':'#e2e8f0',color:msg.sender==='user'?'#fff':'#000',padding:'8px 12px',borderRadius:12 }}>{msg.text}</div></div>))}
-            {loading&&<div style={{ color:'#94a3b8',fontSize:12,padding:8 }}>En train de répondre...</div>}
+            {loading&&<div style={{ color:'#94a3b8',fontSize:12,padding:8 }}>{lang === 'fr' ? 'En train de répondre...' : 'Responding...'}</div>}
           </div>
           <div style={{ padding:12,borderTop:'1px solid #e2e8f0' }}><ChatInput input={input} setInput={setInput} onSend={handleSend} loading={loading}/></div>
         </div>
@@ -1550,10 +1586,10 @@ const streak = useMemo(() => {
       {/* DRAWER */}
       {drawerBourse&&(
         <BourseDrawer bourse={drawerBourse} onClose={()=>setDrawerBourse(null)}
-          onAskAI={b=>{handleQuickReply(`Donne-moi les détails sur "${b.nom}"`);setDrawerBourse(null);}}
-          onChoose={b=>handleQuickReply('je choisis '+b.nom)}
+          onAskAI={b=>{handleQuickReply(lang === 'fr' ? `Donne-moi les détails sur "${b.nom}"` : `Give me details about "${b.nom}"`);setDrawerBourse(null);}}
+          onChoose={b=>handleQuickReply(lang === 'fr' ? 'je choisis '+b.nom : 'I choose '+b.nom)}
           applied={appliedNoms.has(drawerBourse.nom?.trim().toLowerCase())}
-          onApply={async b=>{try{await axiosInstance.post(API_ROUTES.roadmap.create,{userId:user.id,userEmail:user.email||'',nom:b.nom,pays:b.pays||'',lienOfficiel:b.lienOfficiel||'',financement:b.financement||'',dateLimite:b.dateLimite||null,ajouteLe:new Date().toISOString(),statut:'en_cours',etapeCourante:0});setAppliedNoms(prev=>new Set([...prev,b.nom?.trim().toLowerCase()]));}catch(e){console.error(e);}}}
+          onApply={async b=>{try{await axiosInstance.post(API_ROUTES.roadmap.create,{userId:user.id,userEmail:user.email||'',nom:b.nom,pays:b.pays||'',lienOfficiel:b.lienOfficiel||'',financement:b.financement||'',dateLimite:b.dateLimite||null,ajouteLe:new Date().toISOString(),statut:lang === 'fr' ? 'en_cours' : 'in_progress',etapeCourante:0});setAppliedNoms(prev=>new Set([...prev,b.nom?.trim().toLowerCase()]));}catch(e){console.error(e);}}}
           starred={starredNoms.has(drawerBourse.nom?.trim().toLowerCase())}
           onStar={async(b,isStarred)=>{const nomKey=b.nom?.trim().toLowerCase();try{const res=await axiosInstance.get(API_ROUTES.favoris.byUser(user.id)+'&limit=1&depth=0');const doc=res.data.docs?.[0];if(isStarred){if(doc?.id){const newB=(doc.bourses||[]).filter(x=>x.nom?.trim().toLowerCase()!==nomKey);await axiosInstance.patch(API_ROUTES.favoris.update(doc.id),{bourses:newB});setStarredNoms(prev=>{const s=new Set(prev);s.delete(nomKey);return s;});}}else{const nb={nom:b.nom,pays:b.pays||'',lienOfficiel:b.lienOfficiel||'',financement:b.financement||'',dateLimite:b.dateLimite||null,ajouteLe:new Date().toISOString()};if(doc?.id)await axiosInstance.patch(API_ROUTES.favoris.update(doc.id),{bourses:[...(doc.bourses||[]),nb]});else await axiosInstance.post(API_ROUTES.favoris.create,{user:user.id,userEmail:user.email||'',bourses:[nb]});setStarredNoms(prev=>new Set([...prev,nomKey]));}}catch(e){console.error(e);}}}
           user={user}/>

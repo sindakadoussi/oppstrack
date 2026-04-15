@@ -125,17 +125,7 @@ export default function Footer({ setView }) {
         </div>
       </div>
 
-      {/* Footer bottom avec copyright */}
-      <div className="footer-bottom">
-        <p>© {currentYear} OppsTrack. {lang === 'fr' ? 'Tous droits réservés.' : 'All rights reserved.'}</p>
-        <div className="footer-legal">
-          <a href="#">{lang === 'fr' ? 'Mentions légales' : 'Legal notices'}</a>
-          <span>|</span>
-          <a href="#">{lang === 'fr' ? 'Confidentialité' : 'Privacy'}</a>
-          <span>|</span>
-          <a href="#">{lang === 'fr' ? 'CGU' : 'Terms'}</a>
-        </div>
-      </div>
+      
 
       <style>{`
         .footer {
