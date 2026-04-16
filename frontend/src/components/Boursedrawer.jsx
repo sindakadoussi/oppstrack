@@ -1,8 +1,14 @@
+// components/BourseDrawer.jsx
 import React, { useState } from 'react';
 import MatchDrawerIA from './MatchDrawerIA';
-import axiosInstance from '@/config/axiosInstance';  
+import axiosInstance from '@/config/axiosInstance';
+import { useT } from '../i18n';  // ✅ Import pour la traduction
+import { tCountry, tLevel, tFunding, tField, tDescription } from '@/utils/translateDB';
 
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILS & HELPERS (avec support multilingue)
+═══════════════════════════════════════════════════════════════════════════ */
 const countryFlag = (pays) => {
   const flags = {
     'France':'🇫🇷','Allemagne':'🇩🇪','Royaume-Uni':'🇬🇧','États-Unis':'🇺🇸',
@@ -112,7 +118,6 @@ const calcMatch = (bourse, user) => {
   return Math.min(100, Math.round((score / total) * 100));
 };
 
-// Calcul détaillé pour le MatchDrawer
 const calcMatchDetails = (bourse, user) => {
   if (!bourse || !user) return null;
 
@@ -267,165 +272,91 @@ const getScoreColor = (score) => {
   return '#ef4444';
 };
 
-const getScoreLabel = (score) => {
-  if (score === null) return null;
-  if (score >= 85) return 'Excellent match';
-  if (score >= 65) return 'Très bon match';
-  if (score >= 45) return 'Match correct';
-  return 'Match partiel';
+const getScoreLabel = (score, lang = 'fr') => {
+  if (score === null) return lang === 'fr' ? 'Non évalué' : 'Not evaluated';
+  
+  const labels = {
+    fr: { excellent: 'Excellent 🏆', veryGood: 'Très bien 🌟', good: 'Bien 👍', fair: 'Correct ✨', low: 'À améliorer 📈', poor: 'À renforcer ⚠️' },
+    en: { excellent: 'Excellent 🏆', veryGood: 'Very good 🌟', good: 'Good 👍', fair: 'Fair ✨', low: 'To improve 📈', poor: 'Needs work ⚠️' }
+  };
+  
+  const t = labels[lang] || labels.fr;
+  if (score >= 85) return t.excellent;
+  if (score >= 70) return t.veryGood;
+  if (score >= 55) return t.good;
+  if (score >= 40) return t.fair;
+  if (score >= 25) return t.low;
+  return t.poor;
 };
 
-
-const daysLeft = (deadline) => {
+const daysLeft = (deadline, lang = 'fr') => {
   if (!deadline) return null;
   const diff = Math.round((new Date(deadline) - new Date()) / (1000*60*60*24));
-  if (diff < 0)   return { label:'Expirée',      color:'#dc2626' };
-  if (diff === 0) return { label:"Aujourd'hui !", color:'#dc2626' };
-  if (diff <= 30) return { label:`${diff} jours`, color:'#d97706' };
-  return               { label:`${diff} jours`,   color:'#16a34a' };
+  
+  const labels = {
+    fr: { expired: 'Expirée', today: "Aujourd'hui !", days: 'jours', remaining: 'restants' },
+    en: { expired: 'Expired', today: 'Today!', days: 'days', remaining: 'remaining' }
+  };
+  const t = labels[lang] || labels.fr;
+  
+  if (diff < 0)   return { label: t.expired, color: '#dc2626' };
+  if (diff === 0) return { label: t.today, color: '#dc2626' };
+  if (diff <= 30) return { label: `${diff} ${t.days}`, color: '#d97706' };
+  return { label: `${diff} ${t.days}`, color: '#16a34a' };
 };
 
-const D = {
-  tag:      { fontSize:11, padding:'3px 10px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b' },
-  tagLight: { fontSize:11, padding:'3px 10px', borderRadius:4, background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff' },
-  label:    { fontSize:10, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10, paddingBottom:6, borderBottom:'2px solid #f5a623', display:'inline-block' },
-  infoRow:  { display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' },
-  infoIcon: { fontSize:16, flexShrink:0, marginTop:2, color:'#1a3a6b' },
+const formatDate = (d, lang = 'fr') => {
+  if (!d) return null;
+  try { 
+    return new Date(d).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { 
+      day: 'numeric', 
+      month: lang === 'fr' ? 'long' : 'short', 
+      year: 'numeric' 
+    }); 
+  } catch { 
+    return d; 
+  }
 };
 
-// ── MatchDrawer ───────────────────────────────────────────────────────────────
-function MatchDrawer({ bourse, user, onBack }) {
-  const match = calcMatchDetails(bourse, user);
-  const scoreColor = match ? getScoreColor(match.pct) : '#94a3b8';
-
-  return (
-    <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:902, width:500, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #1a3a6b', display:'flex', flexDirection:'column', animation:'slideIn 0.2s ease', overflowY:'auto', boxShadow:'-8px 0 32px rgba(26,58,107,0.2)' }}>
-
-      {/* Header */}
-      <div style={{ padding:'16px 22px', background:'#1a3a6b', flexShrink:0, display:'flex', alignItems:'center', gap:14 }}>
-        <button onClick={onBack} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:34, height:34, borderRadius:8, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Logique du match</div>
-          <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{bourse.nom}</div>
-        </div>
-        {match && (
-          <div style={{ textAlign:'center', flexShrink:0 }}>
-            <div style={{ fontSize:28, fontWeight:800, color:'#f5a623', lineHeight:1 }}>{match.pct}%</div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.6)', marginTop:2 }}>match</div>
-          </div>
-        )}
-      </div>
-
-      {/* Score ring */}
-      {match && (
-        <div style={{ padding:'24px 22px 16px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:20 }}>
-          <div style={{ position:'relative', width:96, height:96, flexShrink:0 }}>
-            <svg width="96" height="96" viewBox="0 0 96 96">
-              <circle cx="48" cy="48" r="40" fill="none" stroke="#e2e8f0" strokeWidth="9"/>
-              <circle cx="48" cy="48" r="40" fill="none" stroke={scoreColor} strokeWidth="9" strokeLinecap="round"
-                strokeDasharray={`${match.pct * 2.513} 251.3`} transform="rotate(-90 48 48)"
-                style={{ transition:'stroke-dasharray 0.8s ease' }}/>
-            </svg>
-            <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-              <span style={{ fontSize:20, fontWeight:800, color:scoreColor, lineHeight:1 }}>{match.pct}%</span>
-              <span style={{ fontSize:9, color:'#94a3b8', marginTop:2 }}>match</span>
-            </div>
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:700, color:'#1a3a6b', marginBottom:4 }}>
-              {match.pct >= 85 ? '🎉 Excellent match !'
-               : match.pct >= 65 ? '👍 Très bon match'
-               : match.pct >= 45 ? '⚠️ Match correct'
-               : '❌ Match partiel'}
-            </div>
-            <div style={{ fontSize:12, color:'#64748b', lineHeight:1.6 }}>
-              Score : <strong>{match.score}</strong> / <strong>{match.total}</strong> pts<br/>
-              {match.details.filter(d => d.matched && !d.isBonus).length} critère{match.details.filter(d => d.matched && !d.isBonus).length > 1 ? 's' : ''} principal{match.details.filter(d => d.matched && !d.isBonus).length > 1 ? 'ux' : ''} correspondent
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Critères */}
-      <div style={{ padding:'16px 22px', flex:1 }}>
-        {!match ? (
-          <div style={{ textAlign:'center', color:'#64748b', padding:'40px 0' }}>Connectez-vous pour voir votre score.</div>
-        ) : (
-          <>
-            <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:14 }}>Analyse critère par critère</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {match.details.map((d, i) => (
-                <div key={i} style={{ borderRadius:10, overflow:'hidden', border:`1px solid ${d.matched ? '#bbf7d0' : '#fee2e2'}` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background: d.matched ? '#f0fdf4' : '#fef2f2' }}>
-                    <span style={{ fontSize:18 }}>{d.icon}</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#1a3a6b' }}>
-                        {d.label}
-                        {d.isBonus && <span style={{ fontSize:10, marginLeft:6, color:'#d97706', background:'#fefce8', padding:'1px 6px', borderRadius:99, border:'1px solid #fde68a' }}>Bonus</span>}
-                      </div>
-                    </div>
-                    <div style={{ padding:'4px 10px', borderRadius:99, flexShrink:0, background: d.matched ? '#16a34a' : '#dc2626', color:'#fff', fontSize:12, fontWeight:800 }}>
-                      {d.matched ? '+' : ''}{d.points}/{d.max}
-                    </div>
-                  </div>
-                  <div style={{ padding:'10px 14px', background:'#fff' }}>
-                    <div style={{ height:6, background:'#e2e8f0', borderRadius:3, marginBottom:10, overflow:'hidden' }}>
-                      <div style={{ height:'100%', borderRadius:3, width:`${d.max > 0 ? (d.points/d.max)*100 : 0}%`, background: d.matched ? '#16a34a' : '#e2e8f0', transition:'width 0.6s ease' }}/>
-                    </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
-                      <div style={{ padding:'6px 10px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' }}>
-                        <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Votre profil</div>
-                        <div style={{ fontSize:12, color:'#1a3a6b', fontWeight:600 }}>{d.userVal}</div>
-                      </div>
-                      <div style={{ padding:'6px 10px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' }}>
-                        <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Cette bourse</div>
-                        <div style={{ fontSize:12, color:'#1a3a6b', fontWeight:600 }}>{d.bourseVal}</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize:12, color: d.matched ? '#15803d' : '#b91c1c', padding:'6px 10px', borderRadius:6, background: d.matched ? '#f0fdf4' : '#fef2f2', display:'flex', alignItems:'flex-start', gap:6 }}>
-                      <span style={{ flexShrink:0 }}>{d.matched ? '✓' : '✗'}</span>
-                      <span>{d.reason}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {match.pct < 100 && match.details.filter(d => !d.matched && !d.isBonus).length > 0 && (
-              <div style={{ marginTop:20, padding:'14px 16px', borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a' }}>
-                <div style={{ fontSize:12, fontWeight:700, color:'#d97706', marginBottom:6 }}>💡 Comment améliorer votre score ?</div>
-                <div style={{ fontSize:12, color:'#92400e', lineHeight:1.8 }}>
-                  {match.details.filter(d => !d.matched && !d.isBonus).map((d, i) => (
-                    <div key={i}>• Complétez "{d.label}" dans votre profil</div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Modal de connexion (magic link) ─────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIN MODAL (traduit)
+═══════════════════════════════════════════════════════════════════════════ */
 function LoginModal({ onClose }) {
-  const [email,  setEmail]  = useState('');
+  const { lang } = useT();
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
 
   const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
+    if (!email || !email.includes('@')) { 
+      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); 
+      return; 
+    }
     setStatus('sending');
     try {
-      await axiosInstance.post('/api/users/request-magic-link', {
-        email: email.trim().toLowerCase(),
-      });
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrMsg(err.response?.data?.message || 'Impossible de contacter le serveur');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot contact server'));
     }
+  };
+
+  // Textes traduits
+  const t = {
+    title: lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack',
+    desc: lang === 'fr' 
+      ? 'Entrez votre email pour recevoir un <strong>lien de connexion magique</strong>.' 
+      : 'Enter your email to receive a <strong>magic login link</strong>.',
+    placeholder: lang === 'fr' ? 'votre@email.com' : 'your@email.com',
+    sendBtn: lang === 'fr' ? '✉️ Envoyer le lien magique' : '✉️ Send magic link',
+    sending: lang === 'fr' ? 'Envoi en cours...' : 'Sending...',
+    sent: lang === 'fr' ? 'Lien envoyé !' : 'Link sent!',
+    sentDesc: lang === 'fr' 
+      ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.' 
+      : 'Check your inbox (and spam).<br/>Click the link to sign in.',
+    close: lang === 'fr' ? '✓ Fermer' : '✓ Close',
+    retry: lang === 'fr' ? 'Réessayer' : 'Retry',
   };
 
   return (
@@ -433,54 +364,37 @@ function LoginModal({ onClose }) {
       <div style={M.box}>
         <div style={M.head}>
           <span style={{ fontSize: 22 }}>🔐</span>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Connexion à OppsTrack</span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>{t.title}</span>
           <button style={M.closeBtn} onClick={onClose}>✕</button>
         </div>
         <div style={M.body}>
           {status === 'idle' && (
             <>
-              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
-                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
-              </p>
-              <input
-                type="email"
-                placeholder="votre@email.com"
-                value={email}
-                autoFocus
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && send()}
-                style={M.input}
-              />
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: t.desc }} />
+              <input type="email" placeholder={t.placeholder} value={email} autoFocus onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} style={M.input} />
               {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
-              <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
+              <button style={M.btn} onClick={send}>{t.sendBtn}</button>
             </>
           )}
           {status === 'sending' && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={M.spinner} />
-              <p style={{ color: '#64748b', marginTop: 14 }}>Envoi en cours...</p>
+              <p style={{ color: '#64748b', marginTop: 14 }}>{t.sending}</p>
             </div>
           )}
           {status === 'success' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
-              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-                Vérifiez votre boîte mail (et les spams).<br/>
-                Cliquez sur le lien pour vous connecter.
-              </p>
-              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
-                ✓ Fermer
-              </button>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{t.sent}</div>
+              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: t.sentDesc }} />
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>{t.close}</button>
             </div>
           )}
           {status === 'error' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
               <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
-              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
-                Réessayer
-              </button>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>{t.retry}</button>
             </div>
           )}
         </div>
@@ -502,69 +416,109 @@ const M = {
   spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
 };
 
-// ── BourseDrawer principal ────────────────────────────────────────────────────
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN BOURSE DRAWER (traduit)
+═══════════════════════════════════════════════════════════════════════════ */
 export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, applied, onApply, user }) {
+  const { lang } = useT();  // ✅ Accès à la langue
+  
   if (!bourse) return null;
-  const dl = daysLeft(bourse.dateLimite);
-  const [starLoading,  setStarLoading]  = useState(false);
+  
+  const dl = daysLeft(bourse.dateLimite, lang);  // ✅ Passer lang
+  const [starLoading, setStarLoading] = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
-  const [showMatch,    setShowMatch]    = useState(false);
+  const [showMatch, setShowMatch] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const pct = user ? calcMatch(bourse, user) : null;
   const scoreColor = getScoreColor(pct);
 
-  // 🔒 Si utilisateur non connecté, afficher un drawer vide avec bouton connexion
-  // 🔒 Si utilisateur non connecté, afficher un drawer vide avec bouton connexion
-if (!user) {
-  return (
-    <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
-      
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:500, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #f5a623', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', boxShadow:'-8px 0 32px rgba(26,58,107,0.15)' }}>
+  // ✅ Textes traduits centralisés
+  const t = {
+    // Header
+    about: lang === 'fr' ? 'À propos' : 'About',
+    eligibility: lang === 'fr' ? "Critères d'éligibilité" : 'Eligibility criteria',
+    requiredDocs: lang === 'fr' ? 'Documents requis' : 'Required documents',
+    optional: lang === 'fr' ? 'optionnel' : 'optional',
+    details: lang === 'fr' ? 'Détails' : 'Details',
+    country: lang === 'fr' ? 'Pays' : 'Country',
+    level: lang === 'fr' ? 'Niveau' : 'Level',
+    funding: lang === 'fr' ? 'Financement' : 'Funding',
+    field: lang === 'fr' ? 'Domaine' : 'Field',
+    officialLink: lang === 'fr' ? 'Lien officiel' : 'Official link',
+    
+    // Footer actions
+    applyNow: lang === 'fr' ? '🗺️ Postuler maintenant' : '🗺️ Apply now',
+    inRoadmap: lang === 'fr' ? '✅ Déjà dans la roadmap' : '✅ Already in roadmap',
+    favorite: lang === 'fr' ? '☆ Ajouter aux favoris' : '☆ Add to favorites',
+    favorited: lang === 'fr' ? '★ Favori' : '★ Favorited',
+    askAI: lang === 'fr' ? "🤖 Demander à l'IA" : '🤖 Ask AI',
+    matchAnalysis: lang === 'fr' ? 'Analyse IA complète du match' : 'Complete AI match analysis',
+    
+    // Guest mode
+    lockedTitle: lang === 'fr' ? 'Contenu réservé' : 'Content reserved',
+    lockedDesc: lang === 'fr' 
+      ? 'Connectez-vous pour voir les détails complets de cette bourse,\nvotre score de compatibilité et postuler directement.' 
+      : 'Sign in to see full scholarship details,\nyour compatibility score and apply directly.',
+    signIn: lang === 'fr' ? '🔐 Se connecter' : '🔐 Sign in',
+    
+    // Deadline
+    deadlineExpired: lang === 'fr' ? 'Deadline expirée' : 'Deadline expired',
+    deadlineIn: lang === 'fr' ? `Deadline dans` : `Deadline in`,
+    
+    // Eligibility labels
+    nationalities: lang === 'fr' ? 'Nationalités éligibles' : 'Eligible nationalities',
+    requiredLevel: lang === 'fr' ? 'Niveau requis' : 'Required level',
+    maxAge: lang === 'fr' ? 'Âge maximum' : 'Maximum age',
+    specialConditions: lang === 'fr' ? 'Conditions spéciales' : 'Special conditions',
+    years: lang === 'fr' ? 'ans' : 'years',
+  };
+
+  // 🔒 Mode invité : drawer simplifié avec bouton connexion
+  if (!user) {
+    return (
+      <>
+        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
         
-        {/* Header simple */}
-        <div style={{ padding:'20px 22px', background:'#1a3a6b', flexShrink:0 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-            <div style={{ fontSize:28, width:52, height:52, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {countryFlag(bourse.pays)}
+        <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:901, width:500, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #f5a623', display:'flex', flexDirection:'column', animation:'slideIn 0.25s ease', boxShadow:'-8px 0 32px rgba(26,58,107,0.15)' }}>
+          
+          {/* Header simple */}
+          <div style={{ padding:'20px 22px', background:'#1a3a6b', flexShrink:0 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+              <div style={{ fontSize:28, width:52, height:52, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {countryFlag(bourse.pays)}
+              </div>
+              <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
             </div>
-            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
+            <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#ffffff', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <span style={D.tagLight}>{countryFlag(bourse.pays)} {tCountry(bourse.pays, lang)}</span>
+{bourse.niveau && <span style={D.tagLight}>🎓 {tLevel(bourse.niveau, lang)}</span>}
+<span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>
+  💰 {tFunding(bourse.financement, lang) || (lang === 'fr' ? '100% financée' : '100% funded')}
+</span>
+            </div>
           </div>
-          <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#ffffff', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            <span style={D.tagLight}>{countryFlag(bourse.pays)} {bourse.pays}</span>
-            {bourse.niveau && <span style={D.tagLight}>🎓 {bourse.niveau}</span>}
-            <span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>💰 {bourse.financement || '100% financée'}</span>
+
+          {/* Body vide avec message de connexion */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', textAlign:'center' }}>
+            <div style={{ fontSize:56, marginBottom:16 }}>🔒</div>
+            <h3 style={{ color:'#1a3a6b', fontSize:18, fontWeight:700, marginBottom:8 }}>{t.lockedTitle}</h3>
+            <p style={{ color:'#64748b', fontSize:13, lineHeight:1.6, marginBottom:24, whiteSpace:'pre-line' }}>{t.lockedDesc}</p>
+            <button onClick={() => setShowLoginModal(true)} style={{ padding:'12px 32px', borderRadius:8, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:14, fontWeight:700, cursor:'pointer' }}>{t.signIn}</button>
           </div>
+
+          <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
         </div>
 
-        {/* Body vide avec message de connexion */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', textAlign:'center' }}>
-          <div style={{ fontSize:56, marginBottom:16 }}>🔒</div>
-          <h3 style={{ color:'#1a3a6b', fontSize:18, fontWeight:700, marginBottom:8 }}>Contenu réservé</h3>
-          <p style={{ color:'#64748b', fontSize:13, lineHeight:1.6, marginBottom:24 }}>
-            Connectez-vous pour voir les détails complets de cette bourse,<br/>
-            votre score de compatibilité et postuler directement.
-          </p>
-          <button
-            onClick={() => setShowLoginModal(true)}
-            style={{ padding:'12px 32px', borderRadius:8, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:14, fontWeight:700, cursor:'pointer' }}
-          >
-            🔐 Se connecter
-          </button>
-        </div>
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+      </>
+    );
+  }
 
-        <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-      </div>
-
-      {/* Modal de connexion */}
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
-    </>
-  );
-}
-
-  // Reste du code pour les utilisateurs connectés (inchangé)
+  // ✅ Utilisateur connecté : drawer complet
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:900, background:'rgba(26,58,107,0.4)', backdropFilter:'blur(4px)', animation:'fadeIn 0.2s ease' }}/>
@@ -580,16 +534,19 @@ if (!user) {
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16 }}>✕</button>
           </div>
           <h2 style={{ fontSize:'1.1rem', fontWeight:700, color:'#ffffff', marginBottom:8, lineHeight:1.3 }}>{bourse.nom}</h2>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            <span style={D.tagLight}>{countryFlag(bourse.pays)} {bourse.pays}</span>
-            {bourse.niveau && <span style={D.tagLight}>🎓 {bourse.niveau}</span>}
-            <span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>💰 {bourse.financement || '100% financée'}</span>
-            {pct !== null && (
-              <span onClick={() => setShowMatch(true)} style={{ ...D.tagLight, background:'rgba(255,255,255,0.2)', fontWeight:700, cursor:'pointer', color: pct >= 65 ? '#4ade80' : pct >= 45 ? '#fbbf24' : '#f87171' }}>
-                🎯 {pct}% match
-              </span>
-            )}
-          </div>
+          {/* ✅ APRÈS - Header pour utilisateur connecté avec traductions */}
+<div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+  <span style={D.tagLight}>{countryFlag(bourse.pays)} {tCountry(bourse.pays, lang)}</span>
+  {bourse.niveau && <span style={D.tagLight}>🎓 {tLevel(bourse.niveau, lang)}</span>}
+  <span style={{ ...D.tagLight, background:'rgba(245,166,35,0.2)', color:'#f5a623', borderColor:'rgba(245,166,35,0.3)' }}>
+    💰 {tFunding(bourse.financement, lang) || (lang === 'fr' ? '100% financée' : '100% funded')}
+  </span>
+  {pct !== null && (
+    <span onClick={() => setShowMatch(true)} style={{ ...D.tagLight, background:'rgba(255,255,255,0.2)', fontWeight:700, cursor:'pointer', color: pct >= 65 ? '#4ade80' : pct >= 45 ? '#fbbf24' : '#f87171' }}>
+      🎯 {pct}% {t.match}
+    </span>
+  )}
+</div>
         </div>
 
         {/* Deadline */}
@@ -597,41 +554,45 @@ if (!user) {
           <div style={{ padding:'10px 22px', background:dl.color==='#dc2626'?'#fef2f2':dl.color==='#d97706'?'#fffbeb':'#f0fdf4', borderBottom:`2px solid ${dl.color}30`, display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:18 }}>⏰</span>
             <div>
-              <div style={{ fontSize:12, color:dl.color, fontWeight:700 }}>{dl.label==='Expirée'?'Deadline expirée':`Deadline dans ${dl.label}`}</div>
-              <div style={{ fontSize:11, color:'#64748b' }}>{bourse.dateLimite && new Date(bourse.dateLimite).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+              <div style={{ fontSize:12, color:dl.color, fontWeight:700 }}>
+                {dl.label === (lang === 'fr' ? 'Expirée' : 'Expired') ? t.deadlineExpired : `${t.deadlineIn} ${dl.label}`}
+              </div>
+              <div style={{ fontSize:11, color:'#64748b' }}>{formatDate(bourse.dateLimite, lang)}</div>
             </div>
           </div>
         )}
 
-        {/* Body complet pour utilisateur connecté */}
+        {/* Body */}
         <div style={{ padding:'20px 22px', flex:1 }}>
           {bourse.description && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>À propos</div>
-              <p style={{ fontSize:13, color:'#475569', lineHeight:1.7, margin:0 }}>{bourse.description}</p>
-            </div>
-          )}
-          {bourse.eligibilite && Object.values(bourse.eligibilite).some(v=>v) && (
-            <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Critères d'éligibilité</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {bourse.eligibilite.nationalitesEligibles && <div style={D.infoRow}><span style={D.infoIcon}>🌍</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Nationalités éligibles</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.nationalitesEligibles}</div></div></div>}
-                {bourse.eligibilite.niveauRequis && <div style={D.infoRow}><span style={D.infoIcon}>🎓</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Niveau requis</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.niveauRequis}</div></div></div>}
-                {bourse.eligibilite.ageMax && <div style={D.infoRow}><span style={D.infoIcon}>📅</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Âge maximum</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.ageMax} ans</div></div></div>}
-                {bourse.eligibilite.conditionsSpeciales && <div style={D.infoRow}><span style={D.infoIcon}>📋</span><div><div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>Conditions spéciales</div><div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>{bourse.eligibilite.conditionsSpeciales}</div></div></div>}
-              </div>
-            </div>
-          )}
+  <div style={{ marginBottom:20 }}>
+    <div style={D.label}>{t.about}</div>
+    <p style={{ fontSize:13, color:'#475569', lineHeight:1.7, margin:0 }}>
+      {tDescription(bourse.description, lang)}  {/* ✅ Traduit */}
+    </p>
+  </div>
+)}
+          {bourse.eligibilite.niveauRequis && (
+  <div style={D.infoRow}>
+    <span style={D.infoIcon}>🎓</span>
+    <div>
+      <div style={{ fontSize:11, color:'#64748b', marginBottom:2 }}>{t.requiredLevel}</div>
+      <div style={{ fontSize:13, color:'#1a3a6b', fontWeight:500 }}>
+        {tLevel(bourse.eligibilite.niveauRequis, lang)}  {/* ✅ Traduit */}
+      </div>
+    </div>
+  </div>
+)}
           {bourse.documentsRequis?.length > 0 && (
             <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Documents requis ({bourse.documentsRequis.length})</div>
+              <div style={D.label}>{t.requiredDocs} ({bourse.documentsRequis.length})</div>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {bourse.documentsRequis.map((doc,i) => (
                   <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'8px 12px', borderRadius:6, background:doc.obligatoire?'#eff6ff':'#f8fafc', border:`1px solid ${doc.obligatoire?'#bfdbfe':'#e2e8f0'}` }}>
                     <span style={{ fontSize:14, flexShrink:0, marginTop:1, color:doc.obligatoire?'#1a3a6b':'#94a3b8' }}>{doc.obligatoire?'✓':'○'}</span>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, color:doc.obligatoire?'#1a3a6b':'#475569', fontWeight:doc.obligatoire?600:400 }}>{doc.nom}{!doc.obligatoire&&<span style={{ fontSize:10, marginLeft:6, color:'#94a3b8' }}>optionnel</span>}</div>
-                      {doc.description&&doc.description!=='empty'&&<div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{doc.description}</div>}
+                      <div style={{ fontSize:13, color:doc.obligatoire?'#1a3a6b':'#475569', fontWeight:doc.obligatoire?600:400 }}>{doc.nom}{!doc.obligatoire && <span style={{ fontSize:10, marginLeft:6, color:'#94a3b8' }}> ({t.optional})</span>}</div>
+                      {doc.description && doc.description!=='empty' && <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{doc.description}</div>}
                     </div>
                   </div>
                 ))}
@@ -639,9 +600,14 @@ if (!user) {
             </div>
           )}
           <div style={{ marginBottom:20 }}>
-            <div style={D.label}>Détails</div>
+            <div style={D.label}>{t.details}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {[{icon:'📍',label:'Pays',val:bourse.pays},{icon:'🎓',label:'Niveau',val:bourse.niveau},{icon:'💰',label:'Financement',val:bourse.financement},{icon:'📚',label:'Domaine',val:bourse.domaine}].filter(r=>r.val).map((row,i)=>(
+              {[
+  {icon:'📍', label: t.country, val: tCountry(bourse.pays, lang)},
+  {icon:'🎓', label: t.level, val: tLevel(bourse.niveau, lang)},
+  {icon:'💰', label: t.funding, val: tFunding(bourse.financement, lang)},
+  {icon:'📚', label: t.field, val: tField(bourse.domaine, lang)}
+].filter(r=>r.val).map((row,i)=>(
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' }}>
                   <span style={{ fontSize:14, width:20, textAlign:'center' }}>{row.icon}</span>
                   <span style={{ fontSize:12, color:'#94a3b8', width:80 }}>{row.label}</span>
@@ -652,7 +618,7 @@ if (!user) {
           </div>
           {bourse.lienOfficiel && (
             <div style={{ marginBottom:20 }}>
-              <div style={D.label}>Lien officiel</div>
+              <div style={D.label}>{t.officialLink}</div>
               <a href={bourse.lienOfficiel} target="_blank" rel="noreferrer" style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:13, textDecoration:'none', wordBreak:'break-all', fontWeight:500 }}>
                 <span>🔗</span><span style={{ flex:1 }}>{bourse.lienOfficiel}</span><span>↗</span>
               </a>
@@ -660,27 +626,29 @@ if (!user) {
           )}
         </div>
 
-        {/* Footer pour utilisateur connecté */}
+        {/* Footer */}
         <div style={{ padding:'16px 22px 24px', borderTop:'1px solid #e2e8f0', flexShrink:0, display:'flex', flexDirection:'column', gap:10, background:'#f8fafc' }}>
           <button
             style={{ width:'100%', padding:13, borderRadius:8, border:'none', background:applied?'#eff6ff':'#1a3a6b', color:applied?'#1a3a6b':'#fff', fontSize:14, fontWeight:700, cursor:applied?'default':'pointer', boxShadow:applied?'none':'0 4px 12px rgba(26,58,107,0.25)' }}
             onClick={!applied?async()=>{ setApplyLoading(true); await onApply(bourse); setApplyLoading(false); onClose(); }:undefined}
             disabled={applied||applyLoading}
-          >{applyLoading?'⏳':applied?'✅ Déjà dans la roadmap':'🗺️ Postuler maintenant'}</button>
+          >
+            {applyLoading ? '⏳' : applied ? t.inRoadmap : t.applyNow}
+          </button>
 
           <div style={{ display:'flex', gap:8 }}>
             <button style={{ flex:1, padding:10, borderRadius:8, background:starred?'#fefce8':'#ffffff', border:starred?'1px solid #fde68a':'1px solid #e2e8f0', color:starred?'#d97706':'#475569', fontSize:13, cursor:'pointer', fontWeight:500 }}
               onClick={async()=>{ setStarLoading(true); await onStar(bourse,starred); setStarLoading(false); }} disabled={starLoading}>
-              {starLoading?'⏳':starred?'★ Favori':'☆ Ajouter aux favoris'}
+              {starLoading?'⏳':starred ? t.favorited : t.favorite}
             </button>
             <button style={{ flex:1, padding:10, borderRadius:8, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:13, cursor:'pointer', fontWeight:700 }}
-              onClick={()=>{ onAskAI(bourse); onClose(); }}>🤖 Demander à l'IA</button>
+              onClick={()=>{ onAskAI(bourse); onClose(); }}>{t.askAI}</button>
           </div>
 
           <button onClick={() => setShowMatch(true)}
             style={{ width:'100%', padding:'10px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:13, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
             <span>🤖</span>
-            <span>Analyse IA complète du match — {pct}%</span>
+            <span>{t.matchAnalysis} — {pct}%</span>
             <span style={{ marginLeft:'auto', color:'#94a3b8' }}>→</span>
           </button>
         </div>
@@ -693,3 +661,14 @@ if (!user) {
     </>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STYLES
+═══════════════════════════════════════════════════════════════════════════ */
+const D = {
+  tag:      { fontSize:11, padding:'3px 10px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b' },
+  tagLight: { fontSize:11, padding:'3px 10px', borderRadius:4, background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff' },
+  label:    { fontSize:10, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10, paddingBottom:6, borderBottom:'2px solid #f5a623', display:'inline-block' },
+  infoRow:  { display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:6, background:'#f8fafc', border:'1px solid #e2e8f0' },
+  infoIcon: { fontSize:16, flexShrink:0, marginTop:2, color:'#1a3a6b' },
+};
