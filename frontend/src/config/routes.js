@@ -33,6 +33,10 @@ export const API_ROUTES = {
     byUser: (userId) => `/api/favoris?where[user][equals]=${userId}&limit=1&depth=0`,
     create: '/api/favoris',
   },
+   feedbacks: {
+    create: '/api/feedbacks',
+    list: '/api/feedbacks',
+  },
 };
 
 export const WEBHOOK_ROUTES = {

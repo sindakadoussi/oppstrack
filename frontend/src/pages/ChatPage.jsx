@@ -377,6 +377,30 @@ export default function ChatPage({user,messages,input,setInput,loading,handleSen
   const [starredNoms, setStarredNoms] = useState(new Set());
 const [appliedNomsLocal, setAppliedNomsLocal] = useState(new Set());
   const scrollToBottom=()=>{if(containerRef.current)containerRef.current.scrollTop=containerRef.current.scrollHeight;};
+  // --- Feedbacks (témoignages) ---
+const [feedbacks, setFeedbacks] = useState([]);
+const [loadingFeedbacks, setLoadingFeedbacks] = useState(true);
+
+useEffect(() => {
+  const fetchFeedbacks = async () => {
+    try {
+      const res = await axiosInstance.get('/api/feedbacks', {
+        params: { sort: '-createdAt', limit: 20 }  // pas de filtre approved
+      });
+      // ✅ Ne garder que les feedbacks avec un commentaire non vide
+      const validFeedbacks = (res.data.docs || []).filter(fb => 
+        fb.comment && fb.comment.trim().length > 0 && fb.name && fb.name.trim().length > 0
+      );
+      setFeedbacks(validFeedbacks);
+    } catch (err) {
+      console.warn('Erreur chargement témoignages', err);
+    } finally {
+      setLoadingFeedbacks(false);
+    }
+  };
+  fetchFeedbacks();
+}, []);
+
   useEffect(()=>{scrollToBottom();},[messages,loading]);
   useEffect(()=>{setTimeout(scrollToBottom,100);},[]);
   useEffect(()=>{const el=containerRef.current;if(!el)return;const check=()=>setShowScroll(el.scrollHeight-el.scrollTop-el.clientHeight>100);el.addEventListener('scroll',check);check();return()=>el.removeEventListener('scroll',check);},[]);
@@ -502,6 +526,70 @@ const handleAskAI = useCallback((bourse) => {
     </div>
     <div className="hero-stats"><div className="stat"><StatNumber value={heroStats.totalBourses} suffix={heroStats.totalBourses>=500?'+':''} loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Bourses':'Scholarships'}</span></div><div className="stat-divider"/><div className="stat"><StatNumber value={heroStats.pctFinancees} suffix="%" loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Financées':'Funded'}</span></div><div className="stat-divider"/><div className="stat"><span className="stat-num">24/7</span><span className="stat-label">{lang==='fr'?'IA active':'AI active'}</span></div></div>
     <div className="features-section"><div className="features-header"><div className="features-eyebrow"><span className="features-eyebrow-line"/>{lang==='fr'?'Pourquoi OppsTrack ?':'Why OppsTrack?'}<span className="features-eyebrow-line"/></div><h2 className="features-title">{lang==='fr'?'Tout ce dont vous avez besoin pour':'Everything you need to'}<span className="features-title-gradient"> {lang==='fr'?'décrocher votre bourse':'land your scholarship'}</span></h2></div><div className="features-grid">{[{icon:'🔍',titleFr:'Matching intelligent',titleEn:'Smart Matching',descFr:"L'IA analyse votre profil et recommande les bourses avec les meilleures chances de succès.",descEn:"The AI analyzes your profile and recommends scholarships with the best success chances.",ctaFr:'Trouver mes bourses',ctaEn:'Find my scholarships',view:'bourses',accent:'#1a3a6b',bg:'#eff6ff'},{icon:'📋',titleFr:'Roadmap personnalisée',titleEn:'Personalized Roadmap',descFr:"Chaque candidature décomposée étape par étape : documents, lettre, soumission, résultat.",descEn:"Each application broken down step by step: documents, letter, submission, result.",ctaFr:'Voir la roadmap',ctaEn:'See the roadmap',view:'roadmap',accent:'#166534',bg:'#f0fdf4'},{icon:'🎙️',titleFr:'Entretiens simulés IA',titleEn:'AI Mock Interviews',descFr:"Notre IA joue le rôle du jury. Obtenez un score et des conseils personnalisés.",descEn:"Our AI plays the role of the jury. Get a score and personalized feedback.",ctaFr:'Préparer mon entretien',ctaEn:'Prepare my interview',view:'entretien',accent:'#f5a623',bg:'#fffbeb'},{icon:'📄',titleFr:'Analyse de documents',titleEn:'Document Analysis',descFr:"CV, lettre de motivation — l'IA identifie vos points forts et propose des améliorations.",descEn:"CV, cover letter — the AI identifies your strengths and suggests improvements.",ctaFr:'Analyser mon CV',ctaEn:'Analyze my CV',view:'cv',accent:'#0891b2',bg:'#ecfeff'},{icon:'🌍',titleFr:'Carte mondiale',titleEn:'World Map',descFr:"Explorez les bourses dans le monde entier. Filtrez par pays, niveau et domaine.",descEn:"Explore scholarships worldwide. Filter by country, level and field.",ctaFr:'Explorer la carte',ctaEn:'Explore the map',view:'bourses',accent:'#7c3aed',bg:'#f5f3ff'},{icon:'📊',titleFr:'Tableau de bord',titleEn:'Dashboard',descFr:"Suivez vos candidatures, alertes de deadlines et score de préparation en temps réel.",descEn:"Track your applications, deadline alerts and preparation score in real time.",ctaFr:'Voir le dashboard',ctaEn:'See the dashboard',view:'dashboard',accent:'#dc2626',bg:'#fef2f2'}].map((feat,i)=><div key={i} className="feat-card" style={{animationDelay:`${i*0.07}s`}} onClick={()=>setView&&setView(feat.view)} role="button" tabIndex={0} onKeyDown={e=>e.key==='Enter'&&setView&&setView(feat.view)}><div className="feat-icon-circle" style={{background:feat.bg,color:feat.accent}}>{feat.icon}</div><h3 className="feat-title">{lang==='fr'?feat.titleFr:feat.titleEn}</h3><p className="feat-desc">{lang==='fr'?feat.descFr:feat.descEn}</p><div className="feat-cta" style={{color:feat.accent}}>{lang==='fr'?feat.ctaFr:feat.ctaEn}<svg className="feat-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div><div className="feat-hover-bar" style={{background:feat.accent}}/></div>)}</div></div>
+     
+     {/* SECTION TÉMOIGNAGES - AVEC ANIMATION GAUCHE/DROITE */}
+{!loadingFeedbacks && feedbacks.length > 0 && (
+  <div className="testimonials-section">
+    <div className="testimonials-header">
+      <div className="testimonials-eyebrow">
+        <span className="testimonials-eyebrow-line" />
+        {lang === 'fr' ? 'Ils nous font confiance' : 'They trust us'}
+        <span className="testimonials-eyebrow-line" />
+      </div>
+      <h2 className="testimonials-title">
+        {lang === 'fr' ? 'Ce que nos étudiants disent' : 'What our students say'}
+      </h2>
+    </div>
+
+    <div className="testimonials-track">
+      {/* LIGNE 1 : moitié des feedbacks (défilement gauche) */}
+      <div className="testimonials-row row-left">
+        {feedbacks.slice(0, Math.ceil(feedbacks.length / 2)).map((fb) => (
+          <div key={fb.id} className="testimonial-card">
+            <div className="testimonial-stars">
+              {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
+            </div>
+            <p className="testimonial-comment">
+              “{fb.comment.length > 180 ? `${fb.comment.slice(0, 180)}…` : fb.comment}”
+            </p>
+            <div className="testimonial-author">
+              <strong>{fb.name}</strong>
+              <span className="testimonial-date">
+                {fb.createdAt ? new Date(fb.createdAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric'
+                }) : (lang === 'fr' ? 'Récent' : 'Recent')}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* LIGNE 2 : autre moitié (défilement droite) */}
+      <div className="testimonials-row row-right">
+        {feedbacks.slice(Math.ceil(feedbacks.length / 2)).map((fb) => (
+          <div key={fb.id} className="testimonial-card">
+            <div className="testimonial-stars">
+              {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
+            </div>
+            <p className="testimonial-comment">
+              “{fb.comment.length > 180 ? `${fb.comment.slice(0, 180)}…` : fb.comment}”
+            </p>
+            <div className="testimonial-author">
+              <strong>{fb.name}</strong>
+              <span className="testimonial-date">
+                {fb.createdAt ? new Date(fb.createdAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric'
+                }) : (lang === 'fr' ? 'Récent' : 'Recent')}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+
 {/* ✅ DRAWER BOURSE - VERSION CORRIGÉE */}
 {drawer && (
   <BourseDrawer
@@ -641,6 +729,201 @@ const handleAskAI = useCallback((bourse) => {
       .feat-card:hover .feat-hover-bar{opacity:1;transform:scaleX(1)}
       @media(max-width:680px){.features-grid{grid-template-columns:1fr 1fr;gap:10px}.feat-card{padding:18px 14px 16px}}
       @media(max-width:420px){.features-grid{grid-template-columns:1fr}}
+     
+/* ========== SECTION TÉMOIGNAGES ========== */
+.testimonials-section {
+  width: 100%;
+  margin-top: 64px;
+  padding: 0 0 40px;
+  overflow: visible;
+}
+
+.testimonials-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.testimonials-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a3a6b;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.testimonials-eyebrow-line {
+  display: block;
+  width: 28px;
+  height: 2px;
+  background: #f5a623;
+  border-radius: 2px;
+}
+
+.testimonials-title {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 800;
+  color: #0f1724;
+  margin: 0;
+}
+
+/* Track pour l'animation */
+.testimonials-track {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  overflow-x: clip;
+}
+
+/* Rangées défilantes */
+.testimonials-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  width: max-content;
+  align-items: stretch;
+}
+
+/* Animation gauche (défile vers la gauche) */
+.row-left {
+  animation-name: scrollLeft;
+  animation-duration: 15s;  /* Modifiez la vitesse ici */
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+}
+
+/* Animation droite (défile vers la droite) */
+.row-right {
+  animation-name: scrollRight;
+  animation-duration: 15s;  /* Modifiez la vitesse ici */
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+}
+
+/* Pause au survol */
+.testimonials-track:hover .testimonials-row {
+  animation-play-state: paused;
+}
+
+@keyframes scrollLeft {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes scrollRight {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Carte de témoignage */
+.testimonial-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px 24px;
+  width: 320px;
+  max-width: 100%;
+  box-shadow: 0 8px 20px rgba(26, 58, 107, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  cursor: pointer;
+  overflow: visible; /* important */
+  height: auto;      /* pas de hauteur fixe */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Supprime toute limitation de hauteur au survol */
+.testimonial-card:hover {
+  border-color: #1a3a6b;
+  box-shadow: 0 15px 35px rgba(26, 58, 107, 0.2);
+  transform: translateY(-5px);
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+/* Le commentaire doit pouvoir s'étendre */
+.testimonial-comment {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1e293b;
+  margin-bottom: 20px;
+  overflow: visible;
+  white-space: normal;
+  word-wrap: break-word;
+  flex: 1;
+}
+
+/* Au survol, on s'assure que tout le texte est lisible */
+.testimonial-card:hover .testimonial-comment {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Étoiles */
+.testimonial-stars {
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: #f5a623;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+
+
+/* Auteur et date */
+.testimonial-author {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  border-top: 1px solid #f0f2f5;
+  padding-top: 12px;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.testimonial-date {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Responsive mobile : désactive le défilement horizontal et utilise une animation simple */
+@media (max-width: 740px) {
+  .testimonials-row {
+    flex-direction: column;
+    align-items: center;
+    animation: none !important;
+  }
+  .testimonial-card {
+    width: 90%;
+    animation: slideFromBottom 0.5s ease both;
+  }
+  @keyframes slideFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
     `}</style>
   </div>);
 }

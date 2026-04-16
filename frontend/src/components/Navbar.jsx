@@ -176,6 +176,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [starOpen,  setStarOpen]  = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   const alerts              = useDeadlineAlerts(user);
   const { starred, reload } = useStarredBourses(user);
@@ -183,6 +184,33 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
 
   const notifBadge = alerts.length;
   const badge      = starCount ?? starred.length;
+
+  // Chargement de l'avatar
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      if (!user?.avatar) {
+        setAvatarUrl(null);
+        return;
+      }
+      try {
+        const avatarId = typeof user.avatar === 'string' ? user.avatar : user.avatar?.id;
+        if (!avatarId) {
+          setAvatarUrl(null);
+          return;
+        }
+        const res = await axiosInstance.get(`/api/media/${avatarId}`);
+        if (res.data?.url) {
+          setAvatarUrl(res.data.url);
+        } else {
+          setAvatarUrl(null);
+        }
+      } catch (err) {
+        console.warn('Erreur chargement avatar', err);
+        setAvatarUrl(null);
+      }
+    };
+    fetchAvatar();
+  }, [user?.avatar]);
 
   useEffect(() => {
     if (!notifOpen && !starOpen) return;
@@ -259,7 +287,13 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
 
           {user ? (
             <div className="user-pill">
-              <div className="user-avatar">{(user.name || user.email || 'U')[0].toUpperCase()}</div>
+              <div className="user-avatar">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  (user.name || user.email || 'U')[0].toUpperCase()
+                )}
+              </div>
               <span className="user-name">{user.name || user.email?.split('@')[0]}</span>
               <button className="logout-btn" onClick={onLogout} title={lang === 'fr' ? 'Déconnexion' : 'Sign out'}>↩</button>
             </div>
@@ -435,10 +469,17 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           border-radius: 24px;
         }
         .user-avatar {
-          width: 28px; height: 28px; border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
           background: #f5a623;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 700; color: #1a3a6b;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 700;
+          color: #1a3a6b;
+          overflow: hidden;
         }
         .user-name { font-size: 13px; color: #fff; font-weight: 500; }
         .logout-btn {

@@ -168,7 +168,8 @@ function AnimatedRing({ pct, size=90, strokeWidth=7, color='#1a3a6b', children }
   );
 }
 
-function Sparkline({ data, color='#1a3a6b', height=60, lang = 'fr' }) {  // ✅ Ajout du paramètre  const ref=useRef(null);
+function Sparkline({ data, color='#1a3a6b', height=60, lang = 'fr' }) {  // ✅ Ajout du paramètre 
+  const ref=useRef(null);
   const [w,setW]=useState(200);
   useEffect(()=>{ if(ref.current)setW(ref.current.offsetWidth||200); },[]);
   if(!data||data.length<2) return <div ref={ref} style={{ display:'flex',alignItems:'center',justifyContent:'center',height,color:'#94a3b8',fontSize:12 }}>{lang === 'fr' ? 'Données insuffisantes' : 'Insufficient data'}</div>;

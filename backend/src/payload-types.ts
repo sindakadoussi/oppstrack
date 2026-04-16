@@ -75,6 +75,7 @@ export interface Config {
     entretiens: Entretien;
     favoris: Favoris;
     roadmap: Roadmap;
+    feedbacks: Feedback;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,6 +91,7 @@ export interface Config {
     entretiens: EntretiensSelect<false> | EntretiensSelect<true>;
     favoris: FavorisSelect<false> | FavorisSelect<true>;
     roadmap: RoadmapSelect<false> | RoadmapSelect<true>;
+    feedbacks: FeedbacksSelect<false> | FeedbacksSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -274,6 +276,7 @@ export interface User {
         id?: string | null;
       }[]
     | null;
+  avatar?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -302,7 +305,7 @@ export interface Media {
   /**
    * Texte alternatif pour l'accessibilité
    */
-  alt: string;
+  alt?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -474,6 +477,20 @@ export interface Roadmap {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedbacks".
+ */
+export interface Feedback {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  comment: string;
+  approved?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -527,6 +544,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'roadmap';
         value: string | Roadmap;
+      } | null)
+    | ({
+        relationTo: 'feedbacks';
+        value: string | Feedback;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -717,6 +738,7 @@ export interface UsersSelect<T extends boolean = true> {
         ajouteLe?: T;
         id?: T;
       };
+  avatar?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -889,6 +911,19 @@ export interface RoadmapSelect<T extends boolean = true> {
   conseilGlobal?: T;
   langue?: T;
   deadlineFinale?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedbacks_select".
+ */
+export interface FeedbacksSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  rating?: T;
+  comment?: T;
+  approved?: T;
   updatedAt?: T;
   createdAt?: T;
 }

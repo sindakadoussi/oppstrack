@@ -16,6 +16,7 @@ import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import Footer from './components/Footer';
 import ContactPage from "./pages/ContactPage";
 import { AppProviders, useT } from './i18n';
+import StudentFeedback from './components/StudentFeedback';
 
 
 function AppContent() {
@@ -228,9 +229,10 @@ function AppContent() {
 
   return (
   
-  <div className={`app-root ${view === 'contact' ? 'no-navbar' : ''}`}>
+  <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''}`}>
+
     {/* Navbar - cachée sur la page contact */}
-    {view !== 'contact' && (
+    {view !== 'contact'  && view !== 'feedback' &&  (
       <Navbar
         view={view}
         setView={setView}
@@ -242,7 +244,7 @@ function AppContent() {
     )}
 
     {/* Alerte serveur - cachée sur la page contact */}
-    {serverStatus.payload === false && view !== 'contact' && (
+    {serverStatus.payload === false && view !== 'contact'  && view !== 'feedback' && (
       <div className="server-alert">
         ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
         &nbsp;·&nbsp;
@@ -263,10 +265,12 @@ function AppContent() {
       {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
       {view === 'cv'              && <CVPage               {...sharedProps} />}
       {view === "contact"         && <ContactPage setView={setView} />}
+      {view === 'feedback' && <StudentFeedback setView={setView} />}
+
     </main>
 
     {/* Footer - caché sur la page contact */}
-    {view !== 'contact' && <Footer setView={setView} />}
+    {view !== 'contact'  && view !== 'feedback' &&  <Footer setView={setView} />}
 
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
