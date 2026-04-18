@@ -36,6 +36,11 @@ function AppContent() {
   const chatContainerRef = useRef(null);
   const historyLoaded    = useRef(false);
 
+  // Chat flottant
+  const [showFloatChat, setShowFloatChat] = useState(false);
+  const [showFloatScroll, setShowFloatScroll] = useState(false);
+  const floatContainerRef = useRef(null);
+
   const conversationId = useRef(null);
   if (!conversationId.current) {
     const saved = sessionStorage.getItem('opps_conv_id');
@@ -191,6 +196,42 @@ function AppContent() {
     }
   };
 
+  // Écouter l'événement pour ouvrir le chat depuis le profil
+  useEffect(() => {
+    const handler = (event) => {
+      const { message } = event.detail;
+      if (!showFloatChat) {
+        setShowFloatChat(true);
+        setTimeout(() => handleSend(message), 200);
+      } else {
+        handleSend(message);
+      }
+    };
+    window.addEventListener('openChatWithMessage', handler);
+    return () => window.removeEventListener('openChatWithMessage', handler);
+  }, [showFloatChat, handleSend]);
+
+  // Scroll automatique en bas du chat flottant à chaque nouveau message
+  useEffect(() => {
+    if (showFloatChat && floatContainerRef.current) {
+      floatContainerRef.current.scrollTop = floatContainerRef.current.scrollHeight;
+    }
+  }, [messages, loading, showFloatChat]);
+
+  // Détecter si l'utilisateur a remonté pour afficher le bouton flèche
+  useEffect(() => {
+    if (!showFloatChat) return;
+    const el = floatContainerRef.current;
+    if (!el) return;
+    const checkScroll = () => {
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+      setShowFloatScroll(!isNearBottom);
+    };
+    el.addEventListener('scroll', checkScroll);
+    checkScroll();
+    return () => el.removeEventListener('scroll', checkScroll);
+  }, [showFloatChat]);
+
   const handleLogout = () => {
     localStorage.removeItem('opps_user');
     localStorage.removeItem('opps_token');
@@ -229,49 +270,139 @@ function AppContent() {
   }
 
   return (
-  
-  <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''}`}>
+    <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''}`}>
+      {/* Navbar - cachée sur la page contact */}
+      {view !== 'contact' && view !== 'feedback' && (
+        <Navbar
+          view={view}
+          setView={setView}
+          user={user}
+          onLogout={handleLogout}
+          serverStatus={serverStatus}
+          onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
+        />
+      )}
 
-    {/* Navbar - cachée sur la page contact */}
-    {view !== 'contact'  && view !== 'feedback' &&  (
-      <Navbar
-        view={view}
-        setView={setView}
-        user={user}
-        onLogout={handleLogout}
-        serverStatus={serverStatus}
-        onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
-      />
-    )}
+      {/* Alerte serveur - cachée sur la page contact */}
+      {serverStatus.payload === false && view !== 'contact' && view !== 'feedback' && (
+        <div className="server-alert">
+          ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
+          &nbsp;·&nbsp;
+          <button onClick={() => window.location.reload()}
+            style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', textDecoration:'underline', fontWeight:600 }}>
+            Réessayer
+          </button>
+        </div>
+      )}
 
-    {/* Alerte serveur - cachée sur la page contact */}
-    {serverStatus.payload === false && view !== 'contact'  && view !== 'feedback' && (
-      <div className="server-alert">
-        ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
-        &nbsp;·&nbsp;
-        <button onClick={() => window.location.reload()}
-          style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', textDecoration:'underline', fontWeight:600 }}>
-          Réessayer
-        </button>
-      </div>
-    )}
+      <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
+        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
+        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+        {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
+        {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
+        {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
+        {view === 'profil'          && <ProfilPage           {...sharedProps} />}
+        {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
+        {view === 'cv'              && <CVPage               {...sharedProps} />}
+        {view === "contact"         && <ContactPage setView={setView} user={user}/>}
+        {view === 'feedback' && <StudentFeedback setView={setView} user={user} />}
+      </main>
 
-    <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
-      {view === 'accueil'         && <ChatPage             {...sharedProps} />}
-      {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
-      {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
-      {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
-      {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
-      {view === 'profil'          && <ProfilPage           {...sharedProps} />}
-      {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
-      {view === 'cv'              && <CVPage               {...sharedProps} />}
-      {view === "contact"         && <ContactPage setView={setView} user={user}/>}
-      {view === 'feedback' && <StudentFeedback setView={setView} user={user} />}
+      {/* Bouton flottant pour ouvrir/fermer le chat */}
+      <button
+        onClick={() => setShowFloatChat(prev => !prev)}
+        style={{
+          position: 'fixed', bottom: 24, right: 24, width: 56, height: 56,
+          borderRadius: '50%', background: '#f5a623', border: 'none',
+          boxShadow: '0 4px 12px rgba(26,58,107,0.3)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 24, color: '#1a3a6b', zIndex: 1000, transition: 'transform 0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        {showFloatChat ? '✕' : '💬'}
+      </button>
 
-    </main>
+      {/* Chat flottant (un seul, qui utilise les messages globaux) */}
+      {showFloatChat && (
+        <div style={{
+          position: 'fixed', bottom: 90, right: 24, width: 380,
+          maxWidth: 'calc(100vw - 48px)', height: 500, background: 'white',
+          borderRadius: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+          display: 'flex', flexDirection: 'column', zIndex: 1000,
+          overflow: 'hidden', border: '1px solid #e2e8f0',
+        }}>
+          <div style={{
+            background: '#1a3a6b', color: 'white', padding: '12px 16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span>🤖 Assistant IA OppsTrack</span>
+            <button onClick={() => setShowFloatChat(false)}
+              style={{ background: 'none', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>
+              ✕
+            </button>
+          </div>
 
-    {/* Footer - caché sur la page contact */}
-    {view !== 'contact'  && view !== 'feedback' &&  <Footer setView={setView} />}
+          <div ref={floatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 12, position: 'relative' }}>
+            {messages.length === 0 && (
+              <div style={{ textAlign: 'center', color: '#94a3b8', marginTop: 40 }}>
+                💬 Commencez une conversation avec l’IA sur vos bourses, votre profil, etc.
+              </div>
+            )}
+            {messages.map((msg, idx) => (
+              <div key={idx} style={{
+                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                background: msg.sender === 'user' ? '#1a3a6b' : '#f1f5f9',
+                color: msg.sender === 'user' ? 'white' : '#1a3a6b',
+                padding: '8px 14px', borderRadius: 18, maxWidth: '80%', fontSize: 13,
+                marginBottom: 8,
+              }}>
+                {msg.text}
+              </div>
+            ))}
+            {loading && (
+              <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '8px 14px', borderRadius: 18, fontSize: 13 }}>
+                L'IA réfléchit...
+              </div>
+            )}
+            {showFloatScroll && (
+              <button
+                onClick={() => floatContainerRef.current?.scrollTo({ top: floatContainerRef.current.scrollHeight, behavior: 'smooth' })}
+                style={{
+                  position: 'absolute', bottom: 16, right: 16, width: 36, height: 36,
+                  borderRadius: '50%', background: '#f5a623', border: 'none', color: '#1a3a6b',
+                  fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 10,
+                }}
+              >
+                ↓
+              </button>
+            )}
+          </div>
+
+          <div style={{ padding: 12, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handleSend(input)}
+              placeholder="Écrivez votre message..."
+              style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 40, outline: 'none' }}
+            />
+            <button
+              onClick={() => handleSend(input)}
+              disabled={loading}
+              style={{ background: '#f5a623', border: 'none', borderRadius: 40, padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Envoyer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer - caché sur la page contact */}
+      {view !== 'contact' && view !== 'feedback' && <Footer setView={setView} />}
 
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -396,25 +527,24 @@ function AppContent() {
           .footer-bottom { flex-direction: column; text-align: center; }
           .footer-legal { justify-content: center; }
         }
-          /* Styles pour la page contact - supprime le padding-top */
-.app-root.no-navbar {
-  padding-top: 0 !important;
-}
-
-.main-content.contact-main {
-  padding-top: 0 !important;
-}
-
-/* Alternative: Cacher navbar et footer par CSS si la classe existe */
-.no-navbar .navbar,
-.no-navbar .footer,
-.no-navbar .server-alert {
-  display: none !important;
-}
+        /* Styles pour la page contact - supprime le padding-top */
+        .app-root.no-navbar {
+          padding-top: 0 !important;
+        }
+        .main-content.contact-main {
+          padding-top: 0 !important;
+        }
+        /* Alternative: Cacher navbar et footer par CSS si la classe existe */
+        .no-navbar .navbar,
+        .no-navbar .footer,
+        .no-navbar .server-alert {
+          display: none !important;
+        }
       `}</style>
     </div>
   );
 }
+
 export default function App() {
   return (
     <AppProviders>

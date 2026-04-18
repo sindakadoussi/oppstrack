@@ -101,13 +101,13 @@ function StarPanel({ starred, onClose, setView, lang }) {
               onMouseLeave={e => e.currentTarget.style.background='transparent'}
             >
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, color:'#1a3a6b', fontWeight:600 }}>{b.nom}</div>
+                <div style={{ fontSize:13, color:'#255cae', fontWeight:600 }}>{b.nom}</div>
                 <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>{b.pays}</div>
               </div>
               {b.lienOfficiel && (
                 <a href={b.lienOfficiel} target="_blank" rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
-                  style={{ fontSize:11, color:'#1a3a6b', textDecoration:'none', padding:'3px 8px', background:'rgba(26,58,107,0.08)', borderRadius:6, border:'1px solid rgba(26,58,107,0.15)' }}>
+                  style={{ fontSize:11, color:'#255cae', textDecoration:'none', padding:'3px 8px', background:'rgba(26,58,107,0.08)', borderRadius:6, border:'1px solid rgba(26,58,107,0.15)' }}>
                   {lang === 'fr' ? 'Voir' : 'View'}
                 </a>
               )}
@@ -135,7 +135,7 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang }) {
         <>
           <div style={{ maxHeight:380, overflowY:'auto' }}>
             {alerts.map((a, i) => {
-              const color = a.days <= 1 ? '#dc2626' : a.days <= 7 ? '#ea580c' : a.days <= 14 ? '#d97706' : '#1a3a6b';
+              const color = a.days <= 1 ? '#dc2626' : a.days <= 7 ? '#ea580c' : a.days <= 14 ? '#d97706' : '#255cae';
               const bg    = a.days <= 1 ? 'rgba(220,38,38,0.06)' : a.days <= 7 ? 'rgba(234,88,12,0.06)' : a.days <= 14 ? 'rgba(217,119,6,0.06)' : 'rgba(26,58,107,0.06)';
               const label = a.days === 0 ? (lang === 'fr' ? "Aujourd'hui !" : 'Today!') : a.days === 1 ? (lang === 'fr' ? 'Demain !' : 'Tomorrow!') : `${a.days} ${lang === 'fr' ? 'jours restants' : 'days left'}`;
               return (
@@ -146,7 +146,7 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang }) {
                   onMouseLeave={e => e.currentTarget.style.filter=''}
                 >
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, color:'#1a3a6b', fontWeight:600, lineHeight:1.3 }}>{a.nom}</div>
+                    <div style={{ fontSize:13, color:'#255cae', fontWeight:600, lineHeight:1.3 }}>{a.nom}</div>
                     <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>
                       {a.pays} · {a.deadline.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day:'2-digit', month:'short', year:'numeric' })}
                     </div>
@@ -173,10 +173,10 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang }) {
 const P = {
   panel:     { position:'absolute', top:'calc(100% + 8px)', right:0, width:300, background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, zIndex:200, boxShadow:'0 8px 30px rgba(0,0,0,0.12)', overflow:'hidden' },
   head:      { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 16px', borderBottom:'1px solid #e8ecf0', background:'#f8fafc' },
-  title:     { fontSize:13, fontWeight:700, color:'#1a3a6b' },
+  title:     { fontSize:13, fontWeight:700, color:'#255cae' },
   closeBtn:  { background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:15 },
   item:      { display:'flex', alignItems:'center', gap:12, padding:'10px 16px', margin:'2px 4px' },
-  actionBtn: { width:'100%', padding:'9px', borderRadius:6, background:'#1a3a6b', border:'none', color:'#fff', fontSize:12, cursor:'pointer', fontWeight:600 },
+  actionBtn: { width:'100%', padding:'9px', borderRadius:6, background:'#255cae', border:'none', color:'#fff', fontSize:12, cursor:'pointer', fontWeight:600 },
 };
 
 export default function Navbar({ view, setView, user, onLogout, serverStatus, starCount, onOpenBourse }) {
@@ -358,8 +358,8 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           gap: 12px;
           padding: 0 24px;
           height: 68px;
-          background: #1a3a6b;
-          border-bottom: 3px solid #f5a623;
+          background: #255cae;
+          border-bottom: 3px solid #f5af3e;
           box-shadow: 0 2px 12px rgba(0,0,0,0.15);
           margin-top: 0;
         }
@@ -408,7 +408,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           border: none;
           border-bottom: 3px solid transparent;
           background: transparent;
-          color: rgba(255,255,255,0.75);
+          color: rgba(255, 255, 255, 0.86);
           font-size: 12.5px;
           font-weight: 500;
           cursor: pointer;
@@ -463,9 +463,9 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           border-radius: 50%;
           font-size: 8px; font-weight: 800;
           display: flex; align-items: center; justify-content: center;
-          border: 1.5px solid #1a3a6b;
+          border: 1.5px solid #255cae;
         }
-        .badge-gold { background: #f5a623; color: #1a3a6b; }
+        .badge-gold { background: #f5a623; color: #255cae; }
         .badge-red  { background: #ef4444; color: #fff; }
 
         /* ── USER PILL ──────────────────────────── */
@@ -486,7 +486,7 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
           justify-content: center;
           font-size: 12px;
           font-weight: 700;
-          color: #1a3a6b;
+          color: #255cae;
           overflow: hidden;
         }
         .user-name { font-size: 13px; color: #fff; font-weight: 500; }
@@ -515,14 +515,14 @@ export default function Navbar({ view, setView, user, onLogout, serverStatus, st
         .mobile-menu {
           display: none; position: fixed;
           top: 68px; left: 0; right: 0;
-          background: #1a3a6b;
+          background: #255cae;
           padding: 12px; border-bottom: 3px solid #f5a623;
           flex-direction: column; gap: 2px; z-index: 99;
         }
         .mobile-nav-item {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 16px; border-radius: 6px; border: none;
-          background: transparent; color: rgba(255,255,255,0.75);
+          background: transparent; color: rgba(255, 255, 255, 0.86);
           font-size: 14px; cursor: pointer; text-align: left; transition: all 0.2s;
         }
         .mobile-nav-item:hover, .mobile-nav-item.active {

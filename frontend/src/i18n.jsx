@@ -649,7 +649,7 @@ export function LanguageToggle({ style = {} }) {
         borderRadius: 8,
         border: '1.5px solid #e2e8f0',
         background: '#fff',
-        color: '#1a3a6b',
+        color: '#255cae',
         fontSize: 13,
         fontWeight: 700,
         cursor: 'pointer',

@@ -42,7 +42,7 @@ function Toast({ message, type = 'success', onClose }) {
   const colors = {
     success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
     error: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
-    info: { bg: '#eff6ff', border: '#bfdbfe', text: '#1a3a6b' },
+    info: { bg: '#eff6ff', border: '#bfdbfe', text: '#255cae' },
   };
   const c = colors[type] || colors.info;
 
@@ -190,12 +190,12 @@ const M = {
   overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
   backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
   box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
-  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#255cae', borderBottom:'1px solid rgba(255,255,255,0.1)' },
   closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
   body:     { padding:'24px' },
-  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
-  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
-  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#255cae', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -222,7 +222,6 @@ export default function BoursesPage({
   const [filterNiveau, setFilterNiveau] = useState('');
   const [filterPays, setFilterPays] = useState('');
   const [sortBy, setSortBy] = useState('relevance');
-  const [showChat, setShowChat] = useState(false);
   const [selected, setSelected] = useState(null);
   const [starredNoms, setStarredNoms] = useState(new Set());
   const [appliedNoms, setAppliedNoms] = useState(new Set());
@@ -326,12 +325,12 @@ export default function BoursesPage({
     }
   };
 
-  const handleAskAI = useCallback((bourse) => {
-    setShowChat(true);
-    setInput(lang === 'fr' 
+ const handleAskAI = (bourse) => {
+    const message = lang === 'fr'
       ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`
-      : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`);
-  }, [setInput, lang]);
+      : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
+    window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
+  };
 
   // Filtrage + tri optimisé
   const filtered = useMemo(() => {
@@ -408,8 +407,8 @@ export default function BoursesPage({
                 placeholder={t('bourses', 'searchPlaceholder')} 
                 value={search} 
                 onChange={e => setSearch(e.target.value)}
-                style={{ width:'100%', padding:'9px 14px 9px 36px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', transition:'border 0.2s' }}
-                onFocus={e => e.target.style.borderColor = '#1a3a6b'}
+                style={{ width:'100%', padding:'9px 14px 9px 36px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', transition:'border 0.2s' }}
+                onFocus={e => e.target.style.borderColor = '#255cae'}
                 onBlur={e => e.target.style.borderColor = '#e2e8f0'}
               />
               <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:14 }}>🔍</span>
@@ -449,7 +448,7 @@ export default function BoursesPage({
                 <span key={f.key} style={{ 
                   display:'inline-flex', alignItems:'center', gap:6,
                   padding:'4px 10px', borderRadius:20, background:'#eff6ff', 
-                  border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:500 
+                  border:'1px solid #bfdbfe', color:'#255cae', fontSize:12, fontWeight:500 
                 }}>
                   {f.label}
                   <button onClick={f.onRemove} style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, marginLeft:2, color:'#64748b' }}>✕</button>
@@ -479,10 +478,10 @@ export default function BoursesPage({
             // État vide
             <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 20px' }}>
               <div style={{ fontSize:48, marginBottom:16 }}>🔍</div>
-              <div style={{ fontSize:16, fontWeight:600, color:'#1a3a6b', marginBottom:8 }}>{t('bourses', 'noResult')}</div>
+              <div style={{ fontSize:16, fontWeight:600, color:'#255cae', marginBottom:8 }}>{t('bourses', 'noResult')}</div>
               <p style={{ color:'#64748b', fontSize:14 }}>{t('bourses', 'noResultSub')}</p>
               <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}
-                style={{ marginTop:16, padding:'10px 24px', borderRadius:6, background:'#1a3a6b', color:'#fff', border:'none', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                style={{ marginTop:16, padding:'10px 24px', borderRadius:6, background:'#255cae', color:'#fff', border:'none', fontSize:13, fontWeight:600, cursor:'pointer' }}>
                 {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
               </button>
             </div>
@@ -516,14 +515,14 @@ export default function BoursesPage({
               onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
             >
               <div style={{ fontSize:36, marginBottom:8 }}>🔒</div>
-              <div style={{ fontSize:14, fontWeight:600, color:'#1a3a6b', marginBottom:4 }}>
+              <div style={{ fontSize:14, fontWeight:600, color:'#255cae', marginBottom:4 }}>
                 {filtered.length - 9} {lang === 'fr' ? 'bourse supplémentaire' : 'additional scholarship'}
                 {filtered.length - 9 > 1 ? (lang === 'fr' ? 's' : 's') : ''}
               </div>
               <div style={{ fontSize:12, color:'#64748b', marginBottom:12 }}>
                 {lang === 'fr' ? 'Connectez-vous pour voir toutes les bourses disponibles' : 'Sign in to see all available scholarships'}
               </div>
-              <button style={{ padding:'8px 20px', borderRadius:6, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              <button style={{ padding:'8px 20px', borderRadius:6, background:'#f5a623', border:'none', color:'#255cae', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                 🔐 {t('navbar', 'login')}
               </button>
             </div>
@@ -531,63 +530,11 @@ export default function BoursesPage({
         </div>
 
         {/* Chat latéral */}
-        {showChat && (
-          <div style={{ width:320, flexShrink:0, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 4px 16px rgba(26,58,107,0.08)', zIndex:90 }}>
-            <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b', borderTopLeftRadius:10, borderTopRightRadius:10 }}>
-              <span style={{ fontSize:20 }}>🤖</span>
-              <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>
-                  {lang === 'fr' ? 'Assistant Bourses' : 'Scholarship Assistant'}
-                </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  {lang === 'fr' ? 'Conseils personnalisés' : 'Personalized advice'}
-                </div>
-              </div>
-              <button onClick={() => setShowChat(false)} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16, marginLeft:'auto' }}>✕</button>
-            </div>
-            <div style={{ flex:1, minHeight:0, overflowY:'auto', padding:12 }} ref={chatContainerRef}>
-              {messages.length === 0 && (
-                <div style={{ padding:12 }}>
-                  <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>
-                    {lang === 'fr' ? 'Demandez-moi des conseils sur une bourse !' : 'Ask me for advice on a scholarship!'}
-                  </p>
-                  {quickQuestions.map((q, i) => (
-                    <button key={i} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#1a3a6b', fontSize:12, cursor:'pointer', marginBottom:6, transition:'background 0.15s' }} 
-                      onClick={() => handleQuickReply(q)}
-                      onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {messages.map((msg, i) => (
-                <div key={i} style={{ display:'flex', gap:8, marginBottom:12, maxWidth:'92%', ...(msg.sender==='user'?{marginLeft:'auto',flexDirection:'row-reverse'}:{}) }}>
-                  <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, ...(msg.sender==='user'?{background:'#1a3a6b',color:'#fff'}:{background:'#f1f5f9',color:'#1a3a6b'}) }}>{msg.text}</div>
-                </div>
-              ))}
-              {loading && <div style={{ padding:12, fontSize:12, color:'#94a3b8' }}>{lang === 'fr' ? "L'IA réfléchit..." : "AI is thinking..."}</div>}
-            </div>
-            <div style={{ padding:12, borderTop:'1px solid #f1f5f9' }}>
-              <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading}/>
-            </div>
-          </div>
-        )}
+        
       </div>
 
       {/* ═════ BOUTON FLOTTANT CHAT ═════ */}
-      <button onClick={() => setShowChat(prev => !prev)}
-        style={{ 
-          position:'fixed', bottom:24, right:24, width:56, height:56, borderRadius:'50%', 
-          background:'#f5a623', border:'none', boxShadow:'0 4px 12px rgba(26,58,107,0.3)', 
-          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', 
-          fontSize:24, color:'#1a3a6b', zIndex:1000, transition:'transform 0.2s'
-        }}
-        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        {showChat ? '✕' : '💬'}
-      </button>
+      
 
       {/* ═════ DRAWER + MODAL ═════ */}
       <BourseDrawer
@@ -610,7 +557,7 @@ export default function BoursesPage({
       {/* Styles globaux */}
       <style>{`
         input::placeholder { color:#94a3b8 }
-        select option { color:#1a3a6b; background:#fff }
+        select option { color:#255cae; background:#fff }
         @keyframes spin { to { transform:rotate(360deg) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }
         @keyframes slideIn { from { transform:translateX(100%); opacity:0 } to { transform:translateX(0); opacity:1 } }

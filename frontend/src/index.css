@@ -4,10 +4,10 @@
 
 @theme {
   --color-background: #ffffff;
-  --color-foreground: #1a3a6b;
+  --color-foreground: #255cae;
   --color-primary: #f5a623;
-  --color-primary-foreground: #1a3a6b;
-  --color-secondary: #1a3a6b;
+  --color-primary-foreground: #255cae;
+  --color-secondary: #255cae;
   --color-secondary-foreground: #ffffff;
   --color-border: #e2e8f0;
   --color-muted: #f8fafc;

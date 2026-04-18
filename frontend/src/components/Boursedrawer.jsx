@@ -422,22 +422,22 @@ const M = {
    MAIN BOURSE DRAWER (traduit)
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starred, onStar, applied, onApply, user }) {
-  const { lang } = useT();  // ✅ Accès à la langue
-  
-  if (!bourse) return null;
-  
-  const dl = daysLeft(bourse.dateLimite, lang);  // ✅ Passer lang
+  // ✅ TOUS les Hooks en premier, avant toute condition
+  const { lang } = useT();
   const [starLoading, setStarLoading] = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
   const [showMatch, setShowMatch] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // ✅ Ensuite, les conditions et le reste de la logique
+  if (!bourse) return null;
+
+  const dl = daysLeft(bourse.dateLimite, lang);
   const pct = user ? calcMatch(bourse, user) : null;
   const scoreColor = getScoreColor(pct);
 
-  // ✅ Textes traduits centralisés
+  // ✅ Textes traduits (objets statiques, pas des Hooks)
   const t = {
-    // Header
     about: lang === 'fr' ? 'À propos' : 'About',
     eligibility: lang === 'fr' ? "Critères d'éligibilité" : 'Eligibility criteria',
     requiredDocs: lang === 'fr' ? 'Documents requis' : 'Required documents',
@@ -448,32 +448,25 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
     funding: lang === 'fr' ? 'Financement' : 'Funding',
     field: lang === 'fr' ? 'Domaine' : 'Field',
     officialLink: lang === 'fr' ? 'Lien officiel' : 'Official link',
-    
-    // Footer actions
     applyNow: lang === 'fr' ? '🗺️ Postuler maintenant' : '🗺️ Apply now',
     inRoadmap: lang === 'fr' ? '✅ Déjà dans la roadmap' : '✅ Already in roadmap',
     favorite: lang === 'fr' ? '☆ Ajouter aux favoris' : '☆ Add to favorites',
     favorited: lang === 'fr' ? '★ Favori' : '★ Favorited',
     askAI: lang === 'fr' ? "🤖 Demander à l'IA" : '🤖 Ask AI',
     matchAnalysis: lang === 'fr' ? 'Analyse IA complète du match' : 'Complete AI match analysis',
-    
-    // Guest mode
     lockedTitle: lang === 'fr' ? 'Contenu réservé' : 'Content reserved',
     lockedDesc: lang === 'fr' 
       ? 'Connectez-vous pour voir les détails complets de cette bourse,\nvotre score de compatibilité et postuler directement.' 
       : 'Sign in to see full scholarship details,\nyour compatibility score and apply directly.',
     signIn: lang === 'fr' ? '🔐 Se connecter' : '🔐 Sign in',
-    
-    // Deadline
     deadlineExpired: lang === 'fr' ? 'Deadline expirée' : 'Deadline expired',
-    deadlineIn: lang === 'fr' ? `Deadline dans` : `Deadline in`,
-    
-    // Eligibility labels
+    deadlineIn: lang === 'fr' ? 'Deadline dans' : 'Deadline in',
     nationalities: lang === 'fr' ? 'Nationalités éligibles' : 'Eligible nationalities',
     requiredLevel: lang === 'fr' ? 'Niveau requis' : 'Required level',
     maxAge: lang === 'fr' ? 'Âge maximum' : 'Maximum age',
     specialConditions: lang === 'fr' ? 'Conditions spéciales' : 'Special conditions',
     years: lang === 'fr' ? 'ans' : 'years',
+    match: lang === 'fr' ? 'Match' : 'Match',
   };
 
   // 🔒 Mode invité : drawer simplifié avec bouton connexion

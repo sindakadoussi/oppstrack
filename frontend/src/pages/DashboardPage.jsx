@@ -44,7 +44,7 @@ function LoginModal({ onClose }) {
                 {lang === 'fr' 
                   ? 'Entrez votre email pour recevoir un ' 
                   : 'Enter your email to receive a '}
-                <strong style={{ color:'#1a3a6b' }}>
+                <strong style={{ color:'#255cae' }}>
                   {lang === 'fr' ? 'lien magique' : 'magic link'}
                 </strong>.
               </p>
@@ -99,12 +99,12 @@ const M = {
   overlay:{ position:'fixed',inset:0,zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center' },
   backdrop:{ position:'absolute',inset:0,background:'rgba(26,58,107,0.45)',backdropFilter:'blur(6px)' },
   box:{ position:'relative',zIndex:2001,width:400,maxWidth:'92vw',background:'#ffffff',borderRadius:10,overflow:'hidden',border:'1px solid #e2e8f0',boxShadow:'0 20px 48px rgba(26,58,107,0.18)',borderTop:'3px solid #f5a623' },
-  head:{ display:'flex',alignItems:'center',gap:10,padding:'16px 20px',background:'#1a3a6b' },
+  head:{ display:'flex',alignItems:'center',gap:10,padding:'16px 20px',background:'#255cae' },
   closeBtn:{ marginLeft:'auto',background:'rgba(255,255,255,0.12)',border:'none',color:'#fff',width:28,height:28,borderRadius:6,cursor:'pointer',fontSize:14 },
   body:{ padding:'24px' },
-  input:{ width:'100%',padding:'11px 14px',borderRadius:6,border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#1a3a6b',fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box',marginBottom:4 },
-  btn:{ width:'100%',marginTop:16,padding:'12px',borderRadius:6,border:'none',background:'#1a3a6b',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit' },
-  spinner:{ width:40,height:40,border:'3px solid #eff6ff',borderTopColor:'#1a3a6b',borderRadius:'50%',animation:'spin 1s linear infinite',margin:'0 auto' },
+  input:{ width:'100%',padding:'11px 14px',borderRadius:6,border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#255cae',fontSize:14,outline:'none',fontFamily:'inherit',boxSizing:'border-box',marginBottom:4 },
+  btn:{ width:'100%',marginTop:16,padding:'12px',borderRadius:6,border:'none',background:'#255cae',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit' },
+  spinner:{ width:40,height:40,border:'3px solid #eff6ff',borderTopColor:'#255cae',borderRadius:'50%',animation:'spin 1s linear infinite',margin:'0 auto' },
 };
 
 /* ─── COUNTRY META ────────────────────────────────────────────────────────── */
@@ -153,7 +153,7 @@ function useAnimatedCounter(target, duration=1000) {
   return val;
 }
 
-function AnimatedRing({ pct, size=90, strokeWidth=7, color='#1a3a6b', children }) {
+function AnimatedRing({ pct, size=90, strokeWidth=7, color='#255cae', children }) {
   const r=(size-strokeWidth*2)/2, circ=2*Math.PI*r;
   const [dash,setDash]=useState(0);
   useEffect(()=>{ const t=setTimeout(()=>setDash((pct/100)*circ),100); return()=>clearTimeout(t); },[pct,circ]);
@@ -168,7 +168,7 @@ function AnimatedRing({ pct, size=90, strokeWidth=7, color='#1a3a6b', children }
   );
 }
 
-function Sparkline({ data, color='#1a3a6b', height=60, lang = 'fr' }) {  // ✅ Ajout du paramètre 
+function Sparkline({ data, color='#255cae', height=60, lang = 'fr' }) {  // ✅ Ajout du paramètre 
   const ref=useRef(null);
   const [w,setW]=useState(200);
   useEffect(()=>{ if(ref.current)setW(ref.current.offsetWidth||200); },[]);
@@ -196,8 +196,8 @@ function SkillRadar({ skills }) {
     <svg width={160} height={160} viewBox="0 0 160 160">
       {[20,40,60,80,100].map(p=><polygon key={p} points={skills.map((_,i)=>toXY(i,p).join(',')).join(' ')} fill="none" stroke="#e2e8f0" strokeWidth="0.8"/>)}
       {skills.map((_,i)=>{ const [x,y]=toXY(i,100); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="0.8"/>; })}
-      <polygon points={innerPts} fill="rgba(26,58,107,0.12)" stroke="#1a3a6b" strokeWidth="1.5"/>
-      {skills.map((s,i)=>{ const [x,y]=toXY(i,s.value); return <circle key={i} cx={x} cy={y} r="4" fill="#f5a623" stroke="#1a3a6b" strokeWidth="1"/>; })}
+      <polygon points={innerPts} fill="rgba(26,58,107,0.12)" stroke="#255cae" strokeWidth="1.5"/>
+      {skills.map((s,i)=>{ const [x,y]=toXY(i,s.value); return <circle key={i} cx={x} cy={y} r="4" fill="#f5a623" stroke="#255cae" strokeWidth="1"/>; })}
       {skills.map((s,i)=>{ const [x,y]=toXY(i,118); return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize="9" fontWeight="600" fill="#475569" fontFamily="system-ui">{s.label}</text>; })}
     </svg>
   );
@@ -219,7 +219,7 @@ function ActivityHeatmap({ activities }) {
     }
     cells.push(week);
   }
-  const colorFor=n=>n===0?'#f1f5f9':n===1?'#bfdbfe':n===2?'#3b82f6':'#1a3a6b';
+  const colorFor=n=>n===0?'#f1f5f9':n===1?'#bfdbfe':n===2?'#3b82f6':'#255cae';
   return (
     <div>
       <div style={{ display:'flex',gap:3,overflowX:'auto' }}>
@@ -231,7 +231,7 @@ function ActivityHeatmap({ activities }) {
       </div>
       <div style={{ display:'flex',alignItems:'center',gap:4,marginTop:8,justifyContent:'flex-end' }}>
         <span style={{ fontSize:9,color:'#94a3b8' }}>{lang === 'fr' ? 'Moins' : 'Less'}</span>
-        {['#f1f5f9','#bfdbfe','#3b82f6','#1a3a6b'].map((c,i)=><div key={i} style={{ width:9,height:9,borderRadius:2,background:c }}/>)}
+        {['#f1f5f9','#bfdbfe','#3b82f6','#255cae'].map((c,i)=><div key={i} style={{ width:9,height:9,borderRadius:2,background:c }}/>)}
         <span style={{ fontSize:9,color:'#94a3b8' }}>{lang === 'fr' ? 'Plus' : 'More'}</span>
       </div>
     </div>
@@ -386,7 +386,7 @@ function StreakWidget({ activities }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#1a3a6b', lineHeight: 1 }}>{streak}</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#255cae', lineHeight: 1 }}>{streak}</div>
           <div style={{ fontSize: 10, color: '#64748b' }}>
             {lang === 'fr' ? 'jours consécutifs' : 'days streak'}
           </div>
@@ -403,7 +403,7 @@ function StreakWidget({ activities }) {
               width: '100%', 
               aspectRatio: '1', 
               borderRadius: 5,
-              background: day.active ? '#1a3a6b' : '#f1f5f9',
+              background: day.active ? '#255cae' : '#f1f5f9',
               border: day.isToday ? '2px solid #f5a623' : 'none',
               display: 'flex', 
               alignItems: 'center', 
@@ -423,7 +423,7 @@ function StreakWidget({ activities }) {
           background: streak >= 7 ? '#fff8e1' : '#eff6ff',
           border: `1px solid ${streak >= 7 ? '#fde68a' : '#bfdbfe'}`,
           fontSize: 10, 
-          color: streak >= 7 ? '#856404' : '#1a3a6b',
+          color: streak >= 7 ? '#856404' : '#255cae',
           textAlign: 'center', 
           fontWeight: 600 
         }}>
@@ -437,7 +437,7 @@ function StreakWidget({ activities }) {
 }
 
 /* ─── MINI BAR CHART ─────────────────────────────────────────────────────── */
-function MiniBarChart({ data, color = '#1a3a6b', height = 48 }) {
+function MiniBarChart({ data, color = '#255cae', height = 48 }) {
   const max = Math.max(...data.map(d => d.val), 1);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
@@ -569,7 +569,7 @@ function SmartTips({ user, scores, roadmap, urgentDeadlines, setView }) {
           : 'Add scholarships to your roadmap to track your applications.',
         action: lang === 'fr' ? 'Explorer les bourses' : 'Explore scholarships',
         view: 'bourses',
-        color: '#1a3a6b',
+        color: '#255cae',
         bg: '#eff6ff',
         border: '#bfdbfe'
       });
@@ -852,11 +852,11 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
             <span style={{ color:'#2563eb', fontWeight:700 }}>{enCours}</span> {lang === 'fr' ? 'en cours' : 'in progress'} ·{' '}
             <span style={{ color:'#94a3b8', fontWeight:700 }}>{roadmap.length-terminees-enCours}</span> {lang === 'fr' ? `non commencée${roadmap.length-terminees-enCours>1?'s':''}` : 'not started'}
           </span>
-          <span style={{ fontSize:11, fontWeight:800, color:pct>=80?'#166534':pct>=50?'#d97706':'#1a3a6b' }}>{pct}%</span>
+          <span style={{ fontSize:11, fontWeight:800, color:pct>=80?'#166534':pct>=50?'#d97706':'#255cae' }}>{pct}%</span>
         </div>
         <div style={{ height:7, background:'#f1f5f9', borderRadius:99, overflow:'hidden' }}>
           <div style={{ height:'100%', width:`${pct}%`, borderRadius:99, transition:'width 0.6s ease',
-            background:pct>=80?'#166534':pct>=50?'#d97706':'#1a3a6b' }}/>
+            background:pct>=80?'#166534':pct>=50?'#d97706':'#255cae' }}/>
         </div>
       </div>
 
@@ -916,7 +916,7 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
                   {!done && (
                     <button onClick={() => advanceStep(item)}
                       style={{ padding:'3px 9px', borderRadius:4, background:'#eff6ff',
-                        border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:11, cursor:'pointer', fontWeight:700 }}>
+                        border:'1px solid #bfdbfe', color:'#255cae', fontSize:11, cursor:'pointer', fontWeight:700 }}>
                       +1
                     </button>
                   )}
@@ -958,7 +958,7 @@ function ChecklistWidget({ user, roadmap, setRoadmap }) {
             fontSize:12, background:'#f8fafc', outline:'none', fontFamily:'inherit' }}
           disabled={loading}/>
         <button onClick={addToRoadmap} disabled={loading||!newText.trim()}
-          style={{ padding:'9px 16px', borderRadius:7, background:'#1a3a6b', color:'#fff',
+          style={{ padding:'9px 16px', borderRadius:7, background:'#255cae', color:'#fff',
             border:'none', fontSize:13, fontWeight:700,
             cursor:loading?'not-allowed':'pointer', opacity:loading?0.7:1 }}>
           {loading?'…':'+'}
@@ -990,7 +990,7 @@ function Calendrier({ deadlines, onSelectBourse }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <div style={{ display:'flex', gap:5 }}><button onClick={()=>setView(v=>({...v,year:v.year-1}))} style={S.iconBtn}>«</button><button onClick={prev} style={S.navBtn}>‹</button></div>
         <div style={{ display:'flex', gap:8 }}>
-          <select value={view.month} onChange={e=>setView(v=>({...v,month:parseInt(e.target.value)}))} style={{ fontSize:12,padding:'5px 8px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',color:'#1a3a6b' }}>
+          <select value={view.month} onChange={e=>setView(v=>({...v,month:parseInt(e.target.value)}))} style={{ fontSize:12,padding:'5px 8px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',color:'#255cae' }}>
             {MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}
           </select>
           <input type="number" value={view.year} onChange={e=>setView(v=>({...v,year:parseInt(e.target.value||0)}))} style={{ width:72,fontSize:12,padding:'5px 8px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff' }}/>
@@ -1010,7 +1010,7 @@ function Calendrier({ deadlines, onSelectBourse }) {
           const col=diff!==null?diffColor(diff):null;
           return (
             <div key={k} onClick={()=>dl?.[0]&&onSelectBourse(dl[0])}
-              style={{ aspectRatio:'1', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', borderRadius:5, fontSize:10, background:isToday?'#1a3a6b':dl?`${col}14`:'transparent', border:isToday?'2px solid #f5a623':dl?`1px solid ${col}50`:'1px solid #f1f5f9', color:isToday?'#fff':dl?col:'#94a3b8', cursor:dl?'pointer':'default', fontWeight:(isToday||dl)?700:400, padding:'2px', overflow:'hidden' }}>
+              style={{ aspectRatio:'1', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', borderRadius:5, fontSize:10, background:isToday?'#255cae':dl?`${col}14`:'transparent', border:isToday?'2px solid #f5a623':dl?`1px solid ${col}50`:'1px solid #f1f5f9', color:isToday?'#fff':dl?col:'#94a3b8', cursor:dl?'pointer':'default', fontWeight:(isToday||dl)?700:400, padding:'2px', overflow:'hidden' }}>
               <span style={{ flexShrink:0 }}>{day}</span>
               {dl&&<div style={{ width:'100%', display:'flex', flexDirection:'column', gap:2, marginTop:2 }}>
                 {dl.slice(0,2).map((item,idx2)=>(
@@ -1048,7 +1048,7 @@ function WorldMap({ onCountryClick, activeCountry, scholarshipCounts={}, lang = 
   Object.entries(scholarshipCounts).forEach(([k,v])=>{ if(/^\d+$/.test(k)){normCounts[k]=v;}else{const num=ALPHA2_TO_NUMERIC[k.toUpperCase()];if(num)normCounts[num]=v;} });
   const getAlpha2=id=>NUMERIC_TO_ALPHA2[String(id)]||null;
   const getCount=id=>normCounts[String(id)]||0;
-  const colorForCount=n=>n===0?'#1e2a3a':n>=10?'#1a3a6b':n>=7?'#2563eb':n>=4?'#3b82f6':'#93c5fd';
+  const colorForCount=n=>n===0?'#1e2a3a':n>=10?'#255cae':n>=7?'#2563eb':n>=4?'#3b82f6':'#93c5fd';
   const strokeForCount=(n,isActive)=>isActive?'#f5a623':n>0?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.06)';
   useEffect(()=>{
     let cancelled=false;
@@ -1197,7 +1197,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
   if(!user) return (
     <>
-      <div style={S.locked}><div style={S.lockedCard}><div style={{ fontSize:56,marginBottom:16 }}>📊</div><h3 style={{ color:'#1a3a6b',fontWeight:700,fontSize:18,margin:'0 0 8px' }}>{lang === 'fr' ? 'Tableau de bord non disponible' : 'Dashboard unavailable'}</h3><p style={{ color:'#64748b',fontSize:13,lineHeight:1.6,maxWidth:280,textAlign:'center',margin:'0 0 24px' }}>{lang === 'fr' ? 'Connectez-vous pour accéder à votre tableau de bord.' : 'Sign in to access your dashboard.'}</p><button style={S.lockBtn} onClick={()=>setShowLoginModal(true)}>🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}</button></div></div>
+      <div style={S.locked}><div style={S.lockedCard}><div style={{ fontSize:56,marginBottom:16 }}>📊</div><h3 style={{ color:'#255cae',fontWeight:700,fontSize:18,margin:'0 0 8px' }}>{lang === 'fr' ? 'Tableau de bord non disponible' : 'Dashboard unavailable'}</h3><p style={{ color:'#64748b',fontSize:13,lineHeight:1.6,maxWidth:280,textAlign:'center',margin:'0 0 24px' }}>{lang === 'fr' ? 'Connectez-vous pour accéder à votre tableau de bord.' : 'Sign in to access your dashboard.'}</p><button style={S.lockBtn} onClick={()=>setShowLoginModal(true)}>🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}</button></div></div>
       {showLoginModal&&<LoginModal onClose={()=>setShowLoginModal(false)}/>}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </>
@@ -1211,11 +1211,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         {/* HEADER */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 }}>
           <div>
-            <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#1a3a6b', marginBottom:3 }}>
+            <h1 style={{ fontSize:'1.5rem', fontWeight:800, color:'#255cae', marginBottom:3 }}>
               {lang === 'fr' ? 'Tableau de Bord' : 'Dashboard'}
             </h1>
             <p style={{ fontSize:13, color:'#64748b' }}>
-              {lang === 'fr' ? 'Bonjour' : 'Hello'} <strong style={{ color:'#1a3a6b' }}>{user.name||user.email?.split('@')[0]}</strong>, 
+              {lang === 'fr' ? 'Bonjour' : 'Hello'} <strong style={{ color:'#255cae' }}>{user.name||user.email?.split('@')[0]}</strong>, 
               {lang === 'fr' ? ' voici l\'état de vos bourses.' : ' here\'s your scholarships status.'}
             </p>
           </div>
@@ -1228,7 +1228,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'16px 20px', marginBottom:14, borderLeft:'4px solid #f5a623', boxShadow:'0 2px 8px rgba(26,58,107,0.06)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
             <div>
-              <div style={{ fontSize:14, fontWeight:700, color:'#1a3a6b' }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'#255cae' }}>
                 {lang === 'fr' ? '🌅 Aujourd\'hui — Que faire ?' : '🌅 Today — What to do?'}
               </div>
               <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>
@@ -1254,7 +1254,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               <strong>{urgentDeadlines.length} {lang === 'fr' ? 'deadline' : 'deadline'}{urgentDeadlines.length>1?(lang === 'fr' ? 's urgentes' : 's urgent'):(lang === 'fr' ? ' urgente' : ' urgent')} :</strong>{' '}
               {urgentDeadlines.map(d=>`${d.nom} (${Math.round((d.deadline-new Date())/86400000)}${lang === 'fr' ? 'j' : 'd'})`).join(' · ')}
             </span>
-            <button onClick={()=>setView('roadmap')} style={{ padding:'5px 12px',borderRadius:4,background:'#1a3a6b',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600 }}>
+            <button onClick={()=>setView('roadmap')} style={{ padding:'5px 12px',borderRadius:4,background:'#255cae',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600 }}>
               {lang === 'fr' ? 'Voir' : 'View'}
             </button>
           </div>
@@ -1263,7 +1263,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         {/* KPI CARDS */}
         <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20 }}>
           {[
-            {label:lang === 'fr' ? 'Bourses disponibles' : 'Available scholarships',val:kpiBourses,icon:'🎓',color:'#1a3a6b',bg:'#eff6ff',trend:`${Object.keys(scholarshipCounts).length} ${lang === 'fr' ? 'pays' : 'countries'}`,trendColor:'#166534'},
+            {label:lang === 'fr' ? 'Bourses disponibles' : 'Available scholarships',val:kpiBourses,icon:'🎓',color:'#255cae',bg:'#eff6ff',trend:`${Object.keys(scholarshipCounts).length} ${lang === 'fr' ? 'pays' : 'countries'}`,trendColor:'#166534'},
             {label:lang === 'fr' ? 'Dans ma roadmap' : 'In my roadmap',val:kpiRoadmap,icon:'📋',color:'#166534',bg:'#f0fdf4',trend:`${roadmapTerminees} ${lang === 'fr' ? `terminée${roadmapTerminees>1?'s':''}` : `completed${roadmapTerminees>1?'':' (s)'}`} · ${roadmapEnCours} ${lang === 'fr' ? 'en cours' : 'in progress'}`,trendColor:'#166534'},
             {label:lang === 'fr' ? 'Deadlines ce mois' : 'Deadlines this month',val:kpiDeadlines,icon:'⏰',color:'#d97706',bg:'#fffbeb',trend:`${urgentDeadlines.length} ${lang === 'fr' ? 'urgente' : 'urgent'}${urgentDeadlines.length>1?'s':''}`,trendColor:urgentDeadlines.length>0?'#dc2626':'#166534'},
             {label:lang === 'fr' ? 'Score entretien' : 'Interview score',val:lastScore!=null?`${kpiScore}/100`:'—',icon:'🎙️',color:'#7c3aed',bg:'#f5f3ff',trend:scoreDiff!=null?`${scoreDiff>0?'+':''}${scoreDiff} vs ${lang === 'fr' ? 'dernier' : 'last'}`:`${scores.length} ${lang === 'fr' ? `simulé${scores.length!==1?'s':''}` : `simulated${scores.length!==1?'':' (s)'}`}`,trendColor:scoreDiff!=null&&scoreDiff>0?'#166534':'#94a3b8'},
@@ -1332,7 +1332,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 const k = d.toISOString().split('T')[0];
                 return { label: JOURS[d.getDay()], val: realActivities.filter(a => a.date === k).length };
               });
-              return <MiniBarChart data={data7} color="#1a3a6b" height={36}/>;
+              return <MiniBarChart data={data7} color="#255cae" height={36}/>;
             })()}
           </div>
 
@@ -1357,7 +1357,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 return (
                   <div key={i} onClick={()=>setDrawerBourse(d)} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',borderRadius:7,background:bg,borderLeft:`3px solid ${bl}`,cursor:'pointer' }}>
                     <div>
-                      <div style={{ fontSize:12,color:'#1a3a6b',fontWeight:600 }}>{d.nom}</div>
+                      <div style={{ fontSize:12,color:'#255cae',fontWeight:600 }}>{d.nom}</div>
                       <div style={{ fontSize:10,color:'#64748b',marginTop:1 }}>
                         {d.pays} · {d.deadline.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')}
                         {rmItem&&<span style={{ marginLeft:6,color:'#7c3aed',fontWeight:600 }}>📋 {rmProgress}/{rmTotal}</span>}
@@ -1384,7 +1384,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               </button></div>
             ) : (
               <>
-               <Sparkline data={scoreHistory} color="#1a3a6b" height={70} lang={lang}/>
+               <Sparkline data={scoreHistory} color="#255cae" height={70} lang={lang}/>
                 <div style={{ display:'flex',gap:10,marginTop:12,flexWrap:'wrap' }}>
                   {[
                     {label:lang === 'fr' ? 'Dernier score' : 'Last score',val:`${lastScore}/100`,color:lastScore>=75?'#166534':lastScore>=55?'#d97706':'#dc2626'},
@@ -1444,7 +1444,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                   <div style={{ width:8,height:8,borderRadius:'50%',background:rmDone?'#166534':dl.color,flexShrink:0 }}/>
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                      <div style={{ fontSize:12,color:rmDone?'#166534':'#1a3a6b',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{d.nom}</div>
+                      <div style={{ fontSize:12,color:rmDone?'#166534':'#255cae',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{d.nom}</div>
                       {d.inRoadmap&&<span style={{ fontSize:8,color:'#7c3aed',flexShrink:0 }}>📋</span>}
                       {d.isFavori&&<span style={{ fontSize:8,color:'#d97706',flexShrink:0 }}>⭐</span>}
                     </div>
@@ -1488,7 +1488,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             <div style={{ display:'grid',gridTemplateColumns:'1fr 240px',gap:16,alignItems:'start' }}>
                 <WorldMap onCountryClick={code=>setActiveCountry(code===activeCountry?null:code)} activeCountry={activeCountry} scholarshipCounts={scholarshipCounts} lang={lang}/>
                 <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                <div style={{ fontSize:10,fontWeight:700,color:'#1a3a6b',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4,borderBottom:'2px solid #f5a623',paddingBottom:4 }}>
+                <div style={{ fontSize:10,fontWeight:700,color:'#255cae',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4,borderBottom:'2px solid #f5a623',paddingBottom:4 }}>
                   {lang === 'fr' ? 'Top pays' : 'Top countries'}
                 </div>
                 <div style={{ display:'flex',flexDirection:'column',gap:2,maxHeight:280,overflowY:'auto' }}>
@@ -1496,11 +1496,11 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                     const meta=COUNTRY_META[code];if(!meta)return null;
                     const isActive=activeCountry===code;
                     const barMax=Math.max(...Object.values(scholarshipCounts));
-                    const barColor=count>=10?'#1a3a6b':count>=7?'#2563eb':count>=4?'#3b82f6':'#93c5fd';
+                    const barColor=count>=10?'#255cae':count>=7?'#2563eb':count>=4?'#3b82f6':'#93c5fd';
                     return (
                       <div key={code} onClick={()=>setActiveCountry(code===activeCountry?null:code)} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,cursor:'pointer',background:isActive?'#eff6ff':'transparent',border:isActive?'1px solid #bfdbfe':'1px solid transparent' }}>
                         <span style={{ fontSize:14,width:20,textAlign:'center' }}>{meta.flag}</span>
-                        <span style={{ flex:1,fontSize:11,color:isActive?'#1a3a6b':'#475569',fontWeight:isActive?700:400 }}>{meta.label}</span>
+                        <span style={{ flex:1,fontSize:11,color:isActive?'#255cae':'#475569',fontWeight:isActive?700:400 }}>{meta.label}</span>
                         <div style={{ display:'flex',alignItems:'center',gap:4 }}><div style={{ width:Math.round(count/barMax*36),height:4,borderRadius:2,background:barColor }}/><span style={{ fontSize:10,fontWeight:700,color:barColor,minWidth:14 }}>{count}</span></div>
                       </div>
                     );
@@ -1508,9 +1508,9 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                 </div>
                 {activeCountry&&COUNTRY_META[activeCountry]&&(
                   <div style={{ marginTop:8,padding:'12px',borderRadius:8,background:'#eff6ff',border:'1px solid #bfdbfe' }}>
-                    <div style={{ fontSize:13,fontWeight:700,color:'#1a3a6b',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+                    <div style={{ fontSize:13,fontWeight:700,color:'#255cae',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
                       <span>{COUNTRY_META[activeCountry].flag} {COUNTRY_META[activeCountry].label}</span>
-                      <span style={{ fontSize:10,color:'#fff',background:'#1a3a6b',padding:'2px 7px',borderRadius:3,fontWeight:600 }}>{scholarshipCounts[activeCountry]||0} {lang === 'fr' ? 'bourses' : 'scholarships'}</span>
+                      <span style={{ fontSize:10,color:'#fff',background:'#255cae',padding:'2px 7px',borderRadius:3,fontWeight:600 }}>{scholarshipCounts[activeCountry]||0} {lang === 'fr' ? 'bourses' : 'scholarships'}</span>
                     </div>
                     {activeCountryBourses.length>0?activeCountryBourses.map((b,i)=><div key={i} style={{ fontSize:11,color:'#334155',padding:'3px 0',borderBottom:i<activeCountryBourses.length-1?'1px solid #dbeafe':'none' }}>{b.nom}</div>):<div style={{ fontSize:11,color:'#94a3b8' }}>{lang === 'fr' ? 'Aucune bourse' : 'No scholarships'}</div>}
                     <button style={{ ...S.btnGold,width:'100%',marginTop:10,fontSize:11,padding:'7px' }} onClick={()=>handleQuickReply(lang === 'fr' ? `Montre-moi les bourses en ${COUNTRY_META[activeCountry].label} pour un étudiant tunisien` : `Show me scholarships in ${COUNTRY_META[activeCountry].label} for a Tunisian student`)}>
@@ -1539,7 +1539,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
               <div style={{ display:'flex',flexDirection:'column',gap:8,flex:1 }}>
                 {skillData.map(s=>(
                   <div key={s.label}>
-                    <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}><span style={{ fontSize:11,color:'#475569' }}>{s.label}</span><span style={{ fontSize:10,fontWeight:700,color:'#1a3a6b' }}>{s.value}%</span></div>
+                    <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}><span style={{ fontSize:11,color:'#475569' }}>{s.label}</span><span style={{ fontSize:10,fontWeight:700,color:'#255cae' }}>{s.value}%</span></div>
                     <div style={{ height:4,borderRadius:99,background:'#f1f5f9',overflow:'hidden' }}><div style={{ height:'100%',width:`${s.value}%`,background:s.value>=80?'#166534':s.value>=60?'#2563eb':'#d97706',borderRadius:99,transition:'width 0.8s ease' }}/></div>
                   </div>
                 ))}
@@ -1553,7 +1553,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             <div style={S.cardTitle}>💪 {lang === 'fr' ? 'Conseils pour ton entretien' : 'Interview tips'}</div>
             <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:12 }}>
               {[
-                {icon:'🗣️',title:lang === 'fr' ? 'Méthode STAR' : 'STAR Method',desc:lang === 'fr' ? 'Situation → Tâche → Action → Résultat. Cite toujours des chiffres.' : 'Situation → Task → Action → Result. Always cite numbers.',color:'#eff6ff',border:'#bfdbfe',text:'#1a3a6b'},
+                {icon:'🗣️',title:lang === 'fr' ? 'Méthode STAR' : 'STAR Method',desc:lang === 'fr' ? 'Situation → Tâche → Action → Résultat. Cite toujours des chiffres.' : 'Situation → Task → Action → Result. Always cite numbers.',color:'#eff6ff',border:'#bfdbfe',text:'#255cae'},
                 {icon:'🎯',title:lang === 'fr' ? 'Projet précis' : 'Specific project',desc:lang === 'fr' ? 'Cite le nom de tes profs cibles et laboratoires visés dans le pays.' : 'Mention target professors and labs in the country.',color:'#f0fdf4',border:'#bbf7d0',text:'#166534'},
                 {icon:'⏱️',title:lang === 'fr' ? 'Gestion du temps' : 'Time management',desc:lang === 'fr' ? '2-3 minutes max par réponse.' : '2-3 minutes max per answer.',color:'#fffbeb',border:'#fde68a',text:'#856404'},
                 {icon:'🌍',title:lang === 'fr' ? 'Contexte culturel' : 'Cultural context',desc:lang === 'fr' ? 'Montre que tu connais le pays, son système d\'éducation, sa culture.' : 'Show you know the country, its education system, its culture.',color:'#f5f3ff',border:'#ddd6fe',text:'#7c3aed'},
@@ -1572,12 +1572,12 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
       {/* CHAT */}
       {showChat&&(
         <div style={{ position:'fixed',top:80,right:24,width:360,height:'calc(100vh - 100px)',background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,display:'flex',flexDirection:'column',boxShadow:'0 8px 24px rgba(0,0,0,0.12)',zIndex:1000 }}>
-          <div style={{ padding:'12px 16px',background:'#1a3a6b',borderTopLeftRadius:12,borderTopRightRadius:12,color:'#fff',display:'flex',justifyContent:'space-between' }}>
+          <div style={{ padding:'12px 16px',background:'#255cae',borderTopLeftRadius:12,borderTopRightRadius:12,color:'#fff',display:'flex',justifyContent:'space-between' }}>
             <span>🤖 {lang === 'fr' ? 'Assistant' : 'Assistant'}</span>
             <button onClick={()=>setShowChat(false)} style={{ background:'none',border:'none',color:'#fff',fontSize:18,cursor:'pointer' }}>✕</button>
           </div>
           <div style={{ flex:1,overflowY:'auto',padding:12 }} ref={chatContainerRef}>
-            {messages.map((msg,i)=>(<div key={i} style={{ textAlign:msg.sender==='user'?'right':'left',marginBottom:8 }}><div style={{ display:'inline-block',background:msg.sender==='user'?'#1a3a6b':'#e2e8f0',color:msg.sender==='user'?'#fff':'#000',padding:'8px 12px',borderRadius:12 }}>{msg.text}</div></div>))}
+            {messages.map((msg,i)=>(<div key={i} style={{ textAlign:msg.sender==='user'?'right':'left',marginBottom:8 }}><div style={{ display:'inline-block',background:msg.sender==='user'?'#255cae':'#e2e8f0',color:msg.sender==='user'?'#fff':'#000',padding:'8px 12px',borderRadius:12 }}>{msg.text}</div></div>))}
             {loading&&<div style={{ color:'#94a3b8',fontSize:12,padding:8 }}>{lang === 'fr' ? 'En train de répondre...' : 'Responding...'}</div>}
           </div>
           <div style={{ padding:12,borderTop:'1px solid #e2e8f0' }}><ChatInput input={input} setInput={setInput} onSend={handleSend} loading={loading}/></div>
@@ -1596,7 +1596,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
           user={user}/>
       )}
 
-      <button onClick={()=>setShowChat(p=>!p)} style={{ position:'fixed',bottom:24,right:24,width:56,height:56,borderRadius:'50%',background:'#f5a623',border:'none',boxShadow:'0 4px 16px rgba(26,58,107,0.35)',cursor:'pointer',fontSize:22,color:'#1a3a6b',zIndex:1000,transition:'transform 0.2s' }}
+      <button onClick={()=>setShowChat(p=>!p)} style={{ position:'fixed',bottom:24,right:24,width:56,height:56,borderRadius:'50%',background:'#f5a623',border:'none',boxShadow:'0 4px 16px rgba(26,58,107,0.35)',cursor:'pointer',fontSize:22,color:'#255cae',zIndex:1000,transition:'transform 0.2s' }}
         onMouseEnter={e=>e.currentTarget.style.transform='scale(1.08)'} onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
         {showChat?'✕':'💬'}
       </button>
@@ -1608,14 +1608,14 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
 
 const S = {
   card:{ background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'18px 20px',boxShadow:'0 2px 8px rgba(26,58,107,0.06)' },
-  cardTitle:{ fontSize:14,fontWeight:700,color:'#1a3a6b' },
+  cardTitle:{ fontSize:14,fontWeight:700,color:'#255cae' },
   cardSub:{ fontSize:11,color:'#64748b',marginTop:2 },
-  btnPrimary:{ padding:'9px 18px',borderRadius:6,background:'#1a3a6b',color:'#fff',border:'none',fontSize:13,fontWeight:600,cursor:'pointer' },
-  btnGold:{ padding:'9px 18px',borderRadius:6,background:'#f5a623',color:'#1a3a6b',border:'none',fontSize:13,fontWeight:700,cursor:'pointer' },
-  btnXs:{ padding:'5px 12px',borderRadius:4,background:'#eff6ff',border:'1px solid #bfdbfe',color:'#1a3a6b',fontSize:11,cursor:'pointer',fontWeight:600 },
-  navBtn:{ padding:'3px 12px',borderRadius:4,background:'#f8fafc',border:'1px solid #e2e8f0',color:'#1a3a6b',fontSize:16,cursor:'pointer' },
-  iconBtn:{ padding:'3px 8px',borderRadius:4,background:'#f8fafc',border:'1px solid #e2e8f0',color:'#1a3a6b',fontSize:14,cursor:'pointer' },
+  btnPrimary:{ padding:'9px 18px',borderRadius:6,background:'#255cae',color:'#fff',border:'none',fontSize:13,fontWeight:600,cursor:'pointer' },
+  btnGold:{ padding:'9px 18px',borderRadius:6,background:'#f5a623',color:'#255cae',border:'none',fontSize:13,fontWeight:700,cursor:'pointer' },
+  btnXs:{ padding:'5px 12px',borderRadius:4,background:'#eff6ff',border:'1px solid #bfdbfe',color:'#255cae',fontSize:11,cursor:'pointer',fontWeight:600 },
+  navBtn:{ padding:'3px 12px',borderRadius:4,background:'#f8fafc',border:'1px solid #e2e8f0',color:'#255cae',fontSize:16,cursor:'pointer' },
+  iconBtn:{ padding:'3px 8px',borderRadius:4,background:'#f8fafc',border:'1px solid #e2e8f0',color:'#255cae',fontSize:14,cursor:'pointer' },
   locked:{ minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f8f9fc',padding:24 },
   lockedCard:{ display:'flex',flexDirection:'column',alignItems:'center',background:'#ffffff',border:'1px solid #e2e8f0',borderRadius:12,padding:'48px 40px',boxShadow:'0 4px 20px rgba(26,58,107,0.08)',maxWidth:380,width:'100%' },
-  lockBtn:{ padding:'12px 32px',borderRadius:6,background:'#1a3a6b',color:'white',border:'none',fontSize:14,fontWeight:700,cursor:'pointer' },
+  lockBtn:{ padding:'12px 32px',borderRadius:6,background:'#255cae',color:'white',border:'none',fontSize:14,fontWeight:700,cursor:'pointer' },
 };

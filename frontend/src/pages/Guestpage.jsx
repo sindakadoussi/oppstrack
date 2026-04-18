@@ -192,7 +192,7 @@ export default function GuestPage({ bourses = [], onSignup, setView }) {
           flex-shrink: 0;
         }
         .avatar.user {
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
         }
         .bubble {
@@ -200,11 +200,11 @@ export default function GuestPage({ bourses = [], onSignup, setView }) {
           background: #f1f5f9;
           border-radius: 20px;
           padding: 10px 16px;
-          color: #1a3a6b;
+          color: #255cae;
           line-height: 1.4;
         }
         .message.user .bubble {
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
         }
         .quick-replies {
@@ -225,7 +225,7 @@ export default function GuestPage({ bourses = [], onSignup, setView }) {
         .quick-replies button:hover {
           background: #f5a623;
           border-color: #f5a623;
-          color: #1a3a6b;
+          color: #255cae;
         }
         .other-btn {
           background: #fef3c7 !important;
@@ -261,7 +261,7 @@ export default function GuestPage({ bourses = [], onSignup, setView }) {
         .card p { margin: 0 0 12px; font-size: 0.8rem; color: #64748b; }
         .cta {
           width: 100%;
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
           border: none;
           border-radius: 40px;

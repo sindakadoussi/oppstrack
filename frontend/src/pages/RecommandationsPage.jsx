@@ -1,13 +1,12 @@
-// RecommandationsPage.jsx
+// RecommandationsPage.jsx (version finale sans chat latéral)
 import React, { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import BourseCard from '../components/BourseCard';
 import BourseDrawer from '../components/Boursedrawer';
-import ChatInput from '../components/ChatInput';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
-import { useT, useDark } from '../i18n';   // ← CONTEXT GLOBAL
+import { useT, useDark } from '../i18n';
 
-/* ─── Modal connexion ───────────────────────────────────────────────────── */
+/* ─── Modal connexion (inchangé) ───────────────────────────────────────── */
 function LoginModal({ onClose }) {
   const { lang } = useT();
   const [email, setEmail] = useState('');
@@ -97,19 +96,17 @@ const M = {
   spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
 };
 
-/* ─── Page principale ───────────────────────────────────────────────────── */
+/* ─── Page principale (sans chat latéral) ───────────────────────────────── */
 export default function RecommandationsPage({
   user, handleSend, messages, input, setInput,
-  loading: chatLoading, chatContainerRef,
+  loading: chatLoading,
   handleQuickReply, setView, onStarChange,
 }) {
-  // ✅ Langue et dark mode depuis le CONTEXT GLOBAL — pas depuis props
   const { t, lang } = useT();
   const { darkMode } = useDark();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loading, setLoading]               = useState(false);
-  const [showChat, setShowChat]             = useState(false);
   const [selected, setSelected]             = useState(null);
   const [filter, setFilter]                 = useState('all');
   const [error, setError]                   = useState(null);
@@ -125,7 +122,7 @@ export default function RecommandationsPage({
   const textMain = darkMode ? '#f1f5f9' : '#1a3a6b';
   const textSoft = darkMode ? '#94a3b8' : '#64748b';
 
-  /* ── État non connecté ── */
+  /* ── État non connecté (inchangé) ── */
   if (!user) {
     return (
       <>
@@ -152,7 +149,7 @@ export default function RecommandationsPage({
     );
   }
 
-  /* ── Chargement ── */
+  /* ── Chargement (inchangé) ── */
   const loadRecommandations = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true); setError(null);
@@ -193,70 +190,66 @@ export default function RecommandationsPage({
   }, [user, onStarChange, lang]);
 
   const handleStar = async (bourse, isStarred) => {
-  const nomKey = bourse.nom?.trim().toLowerCase();
-  if (!user?.id) return;
-  try {
-    const { data } = await axiosInstance.get('/api/favoris', { params:{ 'where[user][equals]':user.id, limit:1, depth:0 } });
-    const doc = data.docs?.[0];
-    if (isStarred) {
-      if (!doc?.id) return;
-      await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
-      setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
-    } else {
-      const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
-      if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]),nb] });
-      else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
-      setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
-    }
-    // ✅ Émettre l'événement
-    window.dispatchEvent(new CustomEvent('favoris-updated'));
-  } catch(err){ console.error('[handleStar]',err); }
-};
-
-const handleApply = async (bourse) => {
-  const nomKey = bourse.nom?.trim().toLowerCase();
-  if (!user?.id||appliedNoms.has(nomKey)) return;
-  try {
-    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-      userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
-      lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
-      dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
-    });
-    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-      roadmapId:res.data.doc.id,
-      user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
-      bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
-    });
-    setAppliedNoms(prev=>new Set([...prev,nomKey]));
-    // ✅ Émettre l'événement
-    window.dispatchEvent(new CustomEvent('roadmap-updated'));
-    setTimeout(()=>setView?.('roadmap'),1000);
-  } catch(err){
-    console.error('[handleApply]',err);
-    alert(lang==='fr'?"Erreur lors de l'initialisation.":"Error initializing application.");
-  }
-};
-
-// Ajouter cet useEffect après la définition de loadRecommandations
-useEffect(() => {
-  const handleFavorisUpdate = () => loadRecommandations();
-  const handleRoadmapUpdate = () => loadRecommandations();
-
-  window.addEventListener('favoris-updated', handleFavorisUpdate);
-  window.addEventListener('roadmap-updated', handleRoadmapUpdate);
-
-  return () => {
-    window.removeEventListener('favoris-updated', handleFavorisUpdate);
-    window.removeEventListener('roadmap-updated', handleRoadmapUpdate);
+    const nomKey = bourse.nom?.trim().toLowerCase();
+    if (!user?.id) return;
+    try {
+      const { data } = await axiosInstance.get('/api/favoris', { params:{ 'where[user][equals]':user.id, limit:1, depth:0 } });
+      const doc = data.docs?.[0];
+      if (isStarred) {
+        if (!doc?.id) return;
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
+        setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
+      } else {
+        const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
+        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]),nb] });
+        else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
+        setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
+      }
+      window.dispatchEvent(new CustomEvent('favoris-updated'));
+    } catch(err){ console.error('[handleStar]',err); }
   };
-}, [loadRecommandations]);
 
+  const handleApply = async (bourse) => {
+    const nomKey = bourse.nom?.trim().toLowerCase();
+    if (!user?.id||appliedNoms.has(nomKey)) return;
+    try {
+      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+        userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
+        lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
+        dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
+      });
+      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+        roadmapId:res.data.doc.id,
+        user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
+        bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
+      });
+      setAppliedNoms(prev=>new Set([...prev,nomKey]));
+      window.dispatchEvent(new CustomEvent('roadmap-updated'));
+      setTimeout(()=>setView?.('roadmap'),1000);
+    } catch(err){
+      console.error('[handleApply]',err);
+      alert(lang==='fr'?"Erreur lors de l'initialisation.":"Error initializing application.");
+    }
+  };
+
+  useEffect(() => {
+    const handleFavorisUpdate = () => loadRecommandations();
+    const handleRoadmapUpdate = () => loadRecommandations();
+    window.addEventListener('favoris-updated', handleFavorisUpdate);
+    window.addEventListener('roadmap-updated', handleRoadmapUpdate);
+    return () => {
+      window.removeEventListener('favoris-updated', handleFavorisUpdate);
+      window.removeEventListener('roadmap-updated', handleRoadmapUpdate);
+    };
+  }, [loadRecommandations]);
+
+  // ✅ Modifié : utilise l'événement global au lieu de setShowChat/setInput
   const handleAskAI = useCallback((bourse) => {
-    setShowChat(true);
-    setInput(lang==='fr'
-      ?`Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`
-      :`Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`);
-  }, [setInput, lang]);
+    const message = lang === 'fr'
+      ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`
+      : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
+    window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
+  }, [lang]);
 
   useEffect(()=>{ loadRecommandations(); }, [loadRecommandations]);
 
@@ -265,7 +258,6 @@ useEffect(() => {
   return (
     <div style={{ width:'100%', background:bg, minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif", position:'relative', paddingBottom:40, transition:'background .25s,color .25s', color:textMain }}>
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 32px' }}>
-
         {/* ── Stats ── */}
         <div style={{ display:'flex', gap:12, padding:'20px 0 0', flexWrap:'wrap' }}>
           {[
@@ -311,9 +303,9 @@ useEffect(() => {
           </div>
         )}
 
-        {/* ── Grille + Chat ── */}
-        <div style={{ display:'flex', gap:24, alignItems:'flex-start', marginTop:16 }}>
-          <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:16 }}>
+        {/* ── Grille (sans chat latéral) ── */}
+        <div style={{ marginTop:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:16 }}>
             {filtered.length===0 ? (
               <div style={{ textAlign:'center', padding:'80px 20px' }}>
                 <div style={{ fontSize:48, marginBottom:16 }}>📭</div>
@@ -329,47 +321,8 @@ useEffect(() => {
                 applied={appliedNoms.has(b.nom?.trim().toLowerCase())} onApply={handleApply}/>
             ))}
           </div>
-
-          {/* Chat latéral */}
-          {showChat && (
-            <div style={{ width:320, flexShrink:0, background:cardBg, border:`1px solid ${border}`, borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 4px 16px rgba(26,58,107,0.08)', zIndex:90 }}>
-              <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b', borderTopLeftRadius:10, borderTopRightRadius:10 }}>
-                <span style={{ fontSize:20 }}>🤖</span>
-                <div>
-                  <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{lang==='fr'?'Assistant Bourses':'Scholarship Assistant'}</div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>{lang==='fr'?'Conseils personnalisés':'Personalized advice'}</div>
-                </div>
-                <button onClick={()=>setShowChat(false)} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', width:32, height:32, borderRadius:6, cursor:'pointer', fontSize:16, marginLeft:'auto' }}>✕</button>
-              </div>
-              <div style={{ flex:1, minHeight:0, overflowY:'auto', padding:12 }} ref={chatContainerRef}>
-                {messages.length===0 && (
-                  <div style={{ padding:12 }}>
-                    <p style={{ color:textSoft, fontSize:13, marginBottom:12 }}>{lang==='fr'?'Demandez-moi des conseils sur une bourse !':'Ask me for advice on a scholarship!'}</p>
-                    {(lang==='fr'?['Lettre de motivation ?','Documents requis ?']:['Motivation letter?','Required documents?']).map((q,i)=>(
-                      <button key={i} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:6, background:cardBg, border:`1px solid ${border}`, color:textMain, fontSize:12, cursor:'pointer', marginBottom:6, fontFamily:'inherit' }}
-                        onClick={()=>handleQuickReply(q)}>{q}</button>
-                    ))}
-                  </div>
-                )}
-                {messages.map((msg,i)=>(
-                  <div key={i} style={{ display:'flex', gap:8, marginBottom:12, maxWidth:'92%', ...(msg.sender==='user'?{ marginLeft:'auto', flexDirection:'row-reverse' }:{}) }}>
-                    <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, ...(msg.sender==='user'?{ background:'#1a3a6b', color:'#fff' }:{ background:darkMode?'#334155':'#f1f5f9', color:textMain }) }}>{msg.text}</div>
-                  </div>
-                ))}
-                {chatLoading&&<div style={{ padding:12, fontSize:12, color:textSoft }}>{lang==='fr'?"L'IA réfléchit...":'AI is thinking...'}</div>}
-              </div>
-              <div style={{ padding:12, borderTop:`1px solid ${border}` }}>
-                <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={chatLoading}/>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-
-      {/* Bouton chat flottant */}
-      <button onClick={()=>setShowChat(p=>!p)} style={{ position:'fixed', bottom:24, right:24, width:56, height:56, borderRadius:'50%', background:'#f5a623', border:'none', boxShadow:'0 4px 12px rgba(26,58,107,0.3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, color:'#1a3a6b', zIndex:1000 }}>
-        {showChat?'✕':'💬'}
-      </button>
 
       {/* Drawer */}
       {selected && (

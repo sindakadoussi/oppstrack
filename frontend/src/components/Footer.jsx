@@ -141,7 +141,7 @@ export default function Footer({ setView }) {
 
       <style>{`
         .footer {
-          background: #1a3a6b;
+          background: #255cae;
           border-top: 3px solid #f5a623;
           padding: 48px 32px 24px;
           margin-top: 0;
@@ -196,7 +196,7 @@ export default function Footer({ setView }) {
         .social-link:hover {
           background: #f5a623;
           border-color: #f5a623;
-          color: #1a3a6b;
+          color: #255cae;
         }
         .footer-heading {
           font-size: 12px;

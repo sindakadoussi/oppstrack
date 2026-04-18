@@ -138,7 +138,7 @@ function LoginModal({ onClose }) {
         <div className="ep-modal-body">
           {status==='idle' && (
             <>
-              <p>{lang==='fr'?<>Entrez votre email pour recevoir un <strong style={{ color:'#1a3a6b' }}>lien de connexion magique</strong>.</>:<>Enter your email to receive a <strong style={{ color:'#1a3a6b' }}>magic login link</strong>.</>}</p>
+              <p>{lang==='fr'?<>Entrez votre email pour recevoir un <strong style={{ color:'#255cae' }}>lien de connexion magique</strong>.</>:<>Enter your email to receive a <strong style={{ color:'#255cae' }}>magic login link</strong>.</>}</p>
               <input type="email" placeholder={lang==='fr'?'votre@email.com':'your@email.com'}
                 value={email} autoFocus onChange={e=>setEmail(e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&send()} className="ep-modal-input"/>
@@ -361,7 +361,7 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
                         <div style={{ fontSize:13, lineHeight:1.7, color:'#334155', whiteSpace:'pre-wrap', maxHeight:400, overflowY:'auto' }}>
               {(content.rawText || parsed.rawText || '').split('\n').map((line, i) =>
                 line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)
-                  ? <div key={i} style={{ fontWeight:700, color:'#1a3a6b', marginTop:12, marginBottom:6, fontSize:12, letterSpacing:1 }}>{line}</div>
+                  ? <div key={i} style={{ fontWeight:700, color:'#255cae', marginTop:12, marginBottom:6, fontSize:12, letterSpacing:1 }}>{line}</div>
                   : line.trim() && line.match(/^[-•*]/)
                     ? <div key={i} style={{ paddingLeft:20, marginBottom:6, color:'#475569' }}>{line}</div>
                     : line.trim()

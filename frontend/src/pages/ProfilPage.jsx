@@ -318,7 +318,7 @@ function AvatarUploader({ avatarId, onUpload, lang }) {
 }
 
 // ==================== PAGE PROFIL PRINCIPALE ====================
-export default function ProfilPage({ user, setUser, handleLogout, handleQuickReply }) {
+export default function ProfilPage({ user, setUser, handleLogout, handleQuickReply, onOpenChatWithMessage }) {
   const { lang } = useT();
   const [tab, setTab] = useState('personal');
   const [profile, setProfile] = useState(emptyProfile);
@@ -570,19 +570,31 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     <div style={S.page}>
       <div style={S.body}>
         <ProfileHeader />
-        {/* Barre de progression + badges */}
 
-        {/* Tabs avec bouton assistant */}
-        <div style={S.tabBar}>
-  {tabs.map(t => (
-    <div key={t.id} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <button style={{ ...S.tabBtn, ...(tab === t.id ? S.tabOn : {}) }} onClick={() => setTab(t.id)} aria-selected={tab === t.id}>
-        <span style={{ marginRight:4 }}>{t.icon}</span>{t.label}
-      </button>
-      <button style={S.assistIcon} onClick={(e) => { e.stopPropagation(); openAssistant(t.id); }} aria-label="Aide">💡</button>
-    </div>
-  ))}
-</div>
+        {/* Grille à deux colonnes */}
+        <div style={S.twoColumns}>
+          {/* COLONNE GAUCHE : FORMULAIRE */}
+          <div style={S.mainForm}>
+            {/* Tabs */}
+            <div style={S.tabBar}>
+              {tabs.map(t => (
+                <div key={t.id} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <button
+                    style={{ ...S.tabBtn, ...(tab === t.id ? S.tabOn : {}) }}
+                    onClick={() => setTab(t.id)}
+                  >
+                    <span style={{ marginRight: 4 }}>{t.icon}</span>
+                    {t.label}
+                  </button>
+                  <button
+                    style={S.assistIcon}
+                    onClick={(e) => { e.stopPropagation(); openAssistant(t.id); }}
+                  >
+                    💡
+                  </button>
+                </div>
+              ))}
+            </div>
 
         {/* ==================== SECTION PERSONNEL ==================== */}
         {tab === 'personal' && (
@@ -869,46 +881,71 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
         
 
         {/* ==================== FOOTER ==================== */}
-        <div style={S.footer}>
-          <button style={S.chatBtn} onClick={() => handleQuickReply(lang === 'fr' ? 'Je veux mettre à jour mon profil' : 'I want to update my profile')}>
-            🤖 {lang === 'fr' ? 'Mettre à jour via l\'IA' : 'Update via AI'}
-          </button>
-          <button style={{ ...S.saveBtn, background: saved ? '#166534' : '#1a3a6b' }} onClick={handleSave} disabled={saving}>
-            {saving ? (lang === 'fr' ? '⏳ Sauvegarde...' : '⏳ Saving...') : saved ? (lang === 'fr' ? '✅ Sauvegardé !' : '✅ Saved!') : (lang === 'fr' ? '💾 Sauvegarder le profil' : '💾 Save profile')}
-          </button>
-          <button style={S.logoutBtn} onClick={handleLogout}>{lang === 'fr' ? '↩ Déconnexion' : '↩ Sign out'}</button>
-        </div>
-      </div>
-
-      {/* Assistant flottant */}
-      {showAssistant && (
-        <div style={S.assistantPopup} role="alert" aria-live="polite">
-          <div style={S.assistantHeader}>🤖 {lang === 'fr' ? 'Assistant IA' : 'AI Assistant'}</div>
-          <div style={S.assistantMessage}>{assistantMessage}</div>
-        </div>
-      )}
-
-
-       {/* Suggestions intelligentes */}
-        {suggestions.length > 0 && (
-          <div style={S.suggestionsBox} role="complementary" aria-label={lang === 'fr' ? 'Suggestions IA' : 'AI suggestions'}>
-            <div style={S.suggestionsTitle}>🤖 {lang === 'fr' ? 'Suggestions personnalisées' : 'Personalized suggestions'}</div>
-            {suggestions.map((s, i) => <div key={i} style={S.suggestionItem}>• {s.text}</div>)}
+       <div style={S.footer}>
+              <button
+  style={S.chatBtn}
+  onClick={() => {
+    const message = lang === 'fr' ? 'Je veux mettre à jour mon profil' : 'I want to update my profile';
+    window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
+  }}
+>
+  🤖 {lang === 'fr' ? 'Mettre à jour via l\'IA' : 'Update via AI'}
+</button>
+              <button
+                style={{ ...S.saveBtn, background: saved ? '#166534' : '#255cae' }}
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? '⏳ Sauvegarde...' : saved ? '✅ Sauvegardé !' : '💾 Sauvegarder le profil'}
+              </button>
+              <button style={S.logoutBtn} onClick={handleLogout}>
+                ↩ {lang === 'fr' ? 'Déconnexion' : 'Sign out'}
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Mode comparaison avec bourses */}
-        {matchedScholarships.length > 0 && (
-          <div style={S.matchBox} aria-label={lang === 'fr' ? 'Bourses qui correspondent' : 'Matching scholarships'}>
-            <div style={S.matchTitle}>🎓 {lang === 'fr' ? 'Bourses qui correspondent à ton profil' : 'Scholarships matching your profile'}</div>
-            {matchedScholarships.map((b, i) => (
-              <div key={i} style={S.matchItem}>
-                <span>{b.nom}</span>
-                <span style={S.matchScore}>{b.score}%</span>
+          {/* COLONNE DROITE : WIDGETS */}
+          <div style={S.sidebar}>
+            {/* Score + badges */}
+            
+
+            {/* Suggestions intelligentes */}
+            {suggestions.length > 0 && (
+              <div style={S.suggestionsBox}>
+                <div style={S.suggestionsTitle}>
+                  🤖 {lang === 'fr' ? 'Suggestions personnalisées' : 'Personalized suggestions'}
+                </div>
+                {suggestions.map((s, i) => (
+                  <div key={i} style={S.suggestionItemText}>• {s.text}</div>
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* Bourses matching */}
+            {matchedScholarships.length > 0 && (
+              <div style={S.matchBox}>
+                <div style={S.matchTitle}>
+                  🎓 {lang === 'fr' ? 'Bourses qui correspondent' : 'Matching scholarships'}
+                </div>
+                {matchedScholarships.map((b, i) => (
+                  <div key={i} style={S.matchItem}>
+                    <span>{b.nom}</span>
+                    <span style={S.matchScore}>{b.score}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div> {/* fin de twoColumns */}
+
+        {/* Assistant flottant */}
+        {showAssistant && (
+          <div style={S.assistantPopup}>
+            <div style={S.assistantHeader}>🤖 {lang === 'fr' ? 'Assistant IA' : 'AI Assistant'}</div>
+            <div style={S.assistantMessage}>{assistantMessage}</div>
           </div>
         )}
+      </div>
         
 
       <style>{`
@@ -1058,6 +1095,120 @@ badge: {
   fontSize: '0.7rem',
   fontWeight: 600,
   color: '#1a3a6b',
+},
+twoColumns: {
+  display: 'grid',
+  gridTemplateColumns: '1fr 280px',
+  gap: 24,
+  alignItems: 'start',
+  '@media (max-width: 880px)': {
+    gridTemplateColumns: '1fr',
+    gap: 32,
+  }
+},
+mainForm: {
+  minWidth: 0, // évite le débordement
+},
+sidebar: {
+  display: 'flex',
+  marginTop: 32,
+  flexDirection: 'column',
+  gap: 20,
+  position: 'sticky',
+  top: 20,
+  '@media (max-width: 880px)': {
+    position: 'static',
+     marginTop: 40,
+  }
+},
+scoreWidget: {
+  background: '#ffffff',
+  borderRadius: 16,
+  padding: '16px',
+  border: '1px solid #e2e8f0',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+},
+scoreHeader: {
+  fontSize: '0.8rem',
+  fontWeight: 600,
+  color: '#255cae',
+  marginBottom: 10,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+},
+progressContainer: {
+  marginBottom: 12,
+},
+progressBarBg: {
+  background: '#e2e8f0',
+  borderRadius: 10,
+  height: 8,
+  overflow: 'hidden',
+},
+progressBarFill: {
+  background: '#f5a623',
+  height: '100%',
+  borderRadius: 10,
+  transition: 'width 0.3s',
+},
+scoreValue: {
+  fontSize: '0.7rem',
+  color: '#64748b',
+  textAlign: 'right',
+  marginTop: 4,
+},
+badgesContainer: {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+  marginTop: 8,
+},
+// Suggestions et matchBox gardent leurs styles mais sans les marges énormes
+suggestionsBox: {
+  background: '#fefce8',
+  border: '1px solid #fde68a',
+  borderRadius: 12,
+  padding: '12px 14px',
+},
+suggestionsTitle: {
+  fontSize: '0.8rem',
+  fontWeight: 700,
+  color: '#d97706',
+  marginBottom: 8,
+},
+suggestionItemText: {
+  fontSize: '0.75rem',
+  color: '#1e293b',
+  marginBottom: 6,
+  lineHeight: 1.4,
+},
+matchBox: {
+  background: '#f0fdf4',
+  border: '1px solid #bbf7d0',
+  borderRadius: 12,
+  padding: '12px 14px',
+},
+matchTitle: {
+  fontSize: '0.8rem',
+  fontWeight: 700,
+  color: '#166534',
+  marginBottom: 8,
+},
+matchItem: {
+  display: 'flex',
+  justifyContent: 'space-between',
+  fontSize: '0.75rem',
+  marginBottom: 6,
+  color: '#14532d',
+},
+matchScore: {
+  fontWeight: 700,
+  color: '#f5a623',
+  background: '#fff7ed',
+  padding: '2px 6px',
+  borderRadius: 12,
+  fontSize: '0.7rem',
 },
 };
 

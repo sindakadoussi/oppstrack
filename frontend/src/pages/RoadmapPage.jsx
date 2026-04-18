@@ -127,7 +127,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
   const pct    = total>1?Math.round((currentStep/(total-1))*100):0;
 
   const STATUT = {
-    en_cours: { bg:'#eff6ff', color:'#1a3a6b', border:'#bfdbfe', labelFr:'En cours',   labelEn:'In progress' },
+    en_cours: { bg:'#eff6ff', color:'#255cae', border:'#bfdbfe', labelFr:'En cours',   labelEn:'In progress' },
     soumis:   { bg:'#fffbeb', color:'#d97706', border:'#fde68a', labelFr:'Soumis',     labelEn:'Submitted'   },
     accepte:  { bg:'#f0fdf4', color:'#166534', border:'#bbf7d0', labelFr:'Accepté ✓',  labelEn:'Accepted ✓'  },
     refuse:   { bg:'#fef2f2', color:'#dc2626', border:'#fecaca', labelFr:'Refusé',     labelEn:'Refused'     },
@@ -137,12 +137,12 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
   const dm   = darkMode;
   const bg   = dm?'#1e293b':'#ffffff';
   const bord = dm?'#334155':'#e2e8f0';
-  const txt  = dm?'#f1f5f9':'#1a3a6b';
+  const txt  = dm?'#f1f5f9':'#255cae';
   const soft = dm?'#94a3b8':'#64748b';
 
   return (
     <div style={{ borderRadius:10, background:bg, border:`1px solid ${bord}`, overflow:'hidden', boxShadow:dm?'0 2px 8px rgba(0,0,0,0.3)':'0 2px 8px rgba(26,58,107,0.06)', transition:'background .25s' }}>
-      <div style={{ height:3, background:`linear-gradient(90deg,#1a3a6b,#f5a623)`, width:`${pct}%`, transition:'width 0.5s ease' }}/>
+      <div style={{ height:3, background:`linear-gradient(90deg,#255cae,#f5a623)`, width:`${pct}%`, transition:'width 0.5s ease' }}/>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', cursor:'pointer' }} onClick={onSelect}>
         <div style={{ flex:1 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', marginBottom:4 }}>
@@ -152,7 +152,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
                 {lang==='fr'?st.labelFr:st.labelEn}
               </span>
               <button onClick={e=>{e.stopPropagation();onDelete();}} style={{ background:'transparent', border:'none', fontSize:16, cursor:'pointer', padding:'5px 7px', borderRadius:4, color:'#dc2626' }} title={lang==='fr'?'Supprimer':'Delete'}>🗑️</button>
-              <button onClick={e=>{e.stopPropagation();onRegenerate();}} style={{ background:'#f5a623', border:'none', fontSize:16, cursor:'pointer', padding:'5px 7px', borderRadius:4, color:'#1a3a6b' }} title={lang==='fr'?'Régénérer':'Regenerate'}>🔄</button>
+              <button onClick={e=>{e.stopPropagation();onRegenerate();}} style={{ background:'#f5a623', border:'none', fontSize:16, cursor:'pointer', padding:'5px 7px', borderRadius:4, color:'#255cae' }} title={lang==='fr'?'Régénérer':'Regenerate'}>🔄</button>
             </div>
           </div>
           <div style={{ display:'flex', gap:14, fontSize:12, color:soft, flexWrap:'wrap' }}>
@@ -163,7 +163,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-          <div style={{ padding:'4px 12px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:12, fontWeight:700 }}>{total>0?`${currentStep+1}/${total}`:'0/0'} · {pct}%</div>
+          <div style={{ padding:'4px 12px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#255cae', fontSize:12, fontWeight:700 }}>{total>0?`${currentStep+1}/${total}`:'0/0'} · {pct}%</div>
           <div style={{ fontSize:22, color:txt, transition:'transform .2s', fontWeight:700, transform:isActive?'rotate(90deg)':'rotate(0deg)' }}>›</div>
         </div>
       </div>
@@ -210,7 +210,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
             <>
               {etapesDisplay.map((etape,i)=>{
                 const isCompleted=i<currentStep, isCurrent=i===currentStep;
-                const color=etape.couleur||(i%2===0?'#1a3a6b':'#2563eb');
+                const color=etape.couleur||(i%2===0?'#255cae':'#2563eb');
                 return (
                   <div key={i} style={{ display:'flex', gap:14, cursor:'pointer' }} onClick={()=>goToStep(i)}>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0, width:44 }}>
@@ -225,7 +225,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
                           <div style={{ fontSize:14, fontWeight:700, marginBottom:2, color:txt }}>{etape.titre}</div>
                           {etape.deadline&&<div style={{ fontSize:11, color:'#d97706', fontWeight:600 }}>📅 {etape.deadline}</div>}
                         </div>
-                        {etape.duree&&<div style={{ padding:'2px 8px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1a3a6b', fontSize:11, fontWeight:500 }}>{etape.duree}</div>}
+                        {etape.duree&&<div style={{ padding:'2px 8px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#255cae', fontSize:11, fontWeight:500 }}>{etape.duree}</div>}
                       </div>
                       {isCurrent&&(
                         <>
@@ -237,11 +237,11 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
                             </div>
                           )}
                           <div style={{ display:'flex', gap:8, marginTop:6, flexWrap:'wrap' }}>
-                            {i<etapesDisplay.length-1&&<button style={{ padding:'8px 16px', borderRadius:6, background:'#1a3a6b', color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
+                            {i<etapesDisplay.length-1&&<button style={{ padding:'8px 16px', borderRadius:6, background:'#255cae', color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
                               onClick={e=>{e.stopPropagation();goToStep(i+1);}}>
                               {lang==='fr'?'Étape suivante →':'Next step →'}
                             </button>}
-                            <button style={{ padding:'8px 14px', borderRadius:6, background:'#f5a623', border:'none', color:'#1a3a6b', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
+                            <button style={{ padding:'8px 14px', borderRadius:6, background:'#f5a623', border:'none', color:'#255cae', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
                               onClick={e=>{e.stopPropagation();if(setShowChat)setShowChat(true);handleQuickReply(`${lang==='fr'?'Aide-moi pour':'Help me with'}: ${etape.titre}`);}}>
                               🤖 {lang==='fr'?'Aide IA':'AI Help'}
                             </button>
@@ -258,7 +258,7 @@ function BourseTimeline({ bourse, isActive, onSelect, onDelete, onRegenerate, ha
                   <span style={{ color:'#f5a623', fontWeight:700 }}>{pct}%</span>
                 </div>
                 <div style={{ height:6, background:bord, borderRadius:3, overflow:'hidden' }}>
-                  <div style={{ height:'100%', background:'linear-gradient(90deg,#1a3a6b,#f5a623)', borderRadius:3, transition:'width .5s ease', width:`${pct}%` }}/>
+                  <div style={{ height:'100%', background:'linear-gradient(90deg,#255cae,#f5a623)', borderRadius:3, transition:'width .5s ease', width:`${pct}%` }}/>
                 </div>
                 <div style={{ fontSize:11, color:soft, marginTop:4 }}>{lang==='fr'?`Étape ${currentStep+1} sur ${total}`:`Step ${currentStep+1} of ${total}`}</div>
               </div>
@@ -284,14 +284,14 @@ function LoginModal({ onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#fff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#255cae' }}>
           <span style={{ fontSize:22 }}>🔐</span>
           <span style={{ color:'#fff', fontWeight:700, fontSize:16 }}>{lang==='fr'?'Connexion à OppsTrack':'Sign in to OppsTrack'}</span>
           <button style={{ marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14 }} onClick={onClose}>✕</button>
         </div>
         <div style={{ padding:'24px' }}>
-          {status==='idle'&&<><p style={{ color:'#64748b', fontSize:14, marginBottom:20, lineHeight:1.6 }}>{lang==='fr'?'Entrez votre email pour recevoir un lien magique.':'Enter your email to receive a magic link.'}</p><input type="email" placeholder={lang==='fr'?'votre@email.com':'your@email.com'} value={email} autoFocus onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} style={{ width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 }}/>{errMsg&&<div style={{ color:'#dc2626', fontSize:12, marginTop:8 }}>{errMsg}</div>}<button style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }} onClick={send}>✉️ {lang==='fr'?'Envoyer le lien magique':'Send magic link'}</button></>}
-          {status==='sending'&&<div style={{ textAlign:'center', padding:'24px 0' }}><div style={{ width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' }}/><p style={{ color:'#64748b', marginTop:14 }}>{lang==='fr'?'Envoi...':'Sending...'}</p></div>}
+          {status==='idle'&&<><p style={{ color:'#64748b', fontSize:14, marginBottom:20, lineHeight:1.6 }}>{lang==='fr'?'Entrez votre email pour recevoir un lien magique.':'Enter your email to receive a magic link.'}</p><input type="email" placeholder={lang==='fr'?'votre@email.com':'your@email.com'} value={email} autoFocus onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} style={{ width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 }}/>{errMsg&&<div style={{ color:'#dc2626', fontSize:12, marginTop:8 }}>{errMsg}</div>}<button style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }} onClick={send}>✉️ {lang==='fr'?'Envoyer le lien magique':'Send magic link'}</button></>}
+          {status==='sending'&&<div style={{ textAlign:'center', padding:'24px 0' }}><div style={{ width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#255cae', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' }}/><p style={{ color:'#64748b', marginTop:14 }}>{lang==='fr'?'Envoi...':'Sending...'}</p></div>}
           {status==='success'&&<div style={{ textAlign:'center', padding:'16px 0' }}><div style={{ fontSize:52, marginBottom:12 }}>✉️</div><div style={{ fontSize:16, fontWeight:700, color:'#166534', marginBottom:8 }}>{lang==='fr'?'Lien envoyé !':'Link sent!'}</div><p style={{ color:'#64748b', fontSize:13 }}>{lang==='fr'?'Vérifiez votre boîte mail.':'Check your inbox.'}</p><button style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#166534', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }} onClick={onClose}>✓ {lang==='fr'?'Fermer':'Close'}</button></div>}
           {status==='error'&&<div style={{ textAlign:'center', padding:'16px 0' }}><div style={{ fontSize:40, marginBottom:12 }}>⚠️</div><p style={{ color:'#dc2626', marginBottom:12 }}>{errMsg}</p><button style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#dc2626', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }} onClick={()=>{setStatus('idle');setErrMsg('');}}>Retry</button></div>}
         </div>
@@ -313,7 +313,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
   const bg   = dm?'#0f172a':'#f8f9fc';
   const cardBg = dm?'#1e293b':'#ffffff';
   const bord = dm?'#334155':'#e2e8f0';
-  const txt  = dm?'#f1f5f9':'#1a3a6b';
+  const txt  = dm?'#f1f5f9':'#255cae';
   const soft = dm?'#94a3b8':'#64748b';
 
   const handleRegenerate = useCallback(async(bourse)=>{
@@ -341,7 +341,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
           <p style={{ color:soft, fontSize:13, lineHeight:1.6, maxWidth:280, textAlign:'center', margin:'0 0 24px' }}>
             {lang==='fr'?'Connectez-vous pour suivre vos candidatures.':'Sign in to track your applications.'}
           </p>
-          <button style={{ padding:'12px 32px', borderRadius:6, background:'#1a3a6b', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' }} onClick={()=>setShowLoginModal(true)}>
+          <button style={{ padding:'12px 32px', borderRadius:6, background:'#255cae', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' }} onClick={()=>setShowLoginModal(true)}>
             🔐 {lang==='fr'?'Se connecter':'Sign in'}
           </button>
         </div>
@@ -358,7 +358,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
           <div style={{ flex:1, display:'flex', flexDirection:'column', gap:14 }}>
             {boursesLoading&&(
               <div style={{ display:'flex', alignItems:'center', gap:12, padding:'24px', color:soft }}>
-                <div style={{ width:28, height:28, borderRadius:'50%', border:'3px solid #e2e8f0', borderTopColor:'#1a3a6b', animation:'spin 1s linear infinite' }}/>
+                <div style={{ width:28, height:28, borderRadius:'50%', border:'3px solid #e2e8f0', borderTopColor:'#255cae', animation:'spin 1s linear infinite' }}/>
                 <span style={{ fontSize:14 }}>{lang==='fr'?'Chargement de vos bourses…':'Loading your scholarships…'}</span>
               </div>
             )}
@@ -372,7 +372,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
                     ?<>Allez dans <strong style={{ color:txt }}>Recommandations</strong> et cliquez sur <strong style={{ color:'#f5a623' }}>🗺️ Postuler</strong> pour démarrer votre roadmap.</>
                     :<>Go to <strong style={{ color:txt }}>Recommendations</strong> and click <strong style={{ color:'#f5a623' }}>🗺️ Apply</strong> to start your roadmap.</>}
                 </div>
-                <button style={{ marginTop:20, padding:'11px 24px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}
+                <button style={{ marginTop:20, padding:'11px 24px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}
                   onClick={()=>handleQuickReply(lang==='fr'?'Recommande moi des bourses':'Recommend me scholarships')}>
                   🎯 {lang==='fr'?'Voir les recommandations':'See recommendations'}
                 </button>
@@ -399,7 +399,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
           {/* Chat latéral */}
           {showChat&&(
             <div style={{ width:320, flexShrink:0, background:cardBg, border:`1px solid ${bord}`, borderRadius:10, position:'sticky', top:110, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 130px)', minHeight:0, boxShadow:'0 4px 16px rgba(26,58,107,0.08)', zIndex:90 }}>
-              <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#1a3a6b', borderTopLeftRadius:10, borderTopRightRadius:10 }}>
+              <div style={{ display:'flex', gap:10, alignItems:'center', padding:'14px 16px', borderBottom:'2px solid #f5a623', background:'#255cae', borderTopLeftRadius:10, borderTopRightRadius:10 }}>
                 <span style={{ fontSize:20 }}>🤖</span>
                 <div>
                   <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{lang==='fr'?'Assistant Roadmap':'Roadmap Assistant'}</div>
@@ -423,11 +423,11 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
                 {messages.slice(-20).map((msg,i)=>(
                   <div key={i} style={{ display:'flex', gap:8, marginBottom:12, maxWidth:'92%', ...(msg.sender==='user'?{ marginLeft:'auto', flexDirection:'row-reverse' }:{}) }}>
                     {msg.sender==='ai'&&<div style={{ width:28, height:28, borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>🤖</div>}
-                    <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, wordBreak:'break-word', ...(msg.sender==='user'?{ background:'#1a3a6b', color:'#fff' }:{ background:dm?'#334155':'#f1f5f9', color:txt }) }}>{msg.text}</div>
-                    {msg.sender==='user'&&<div style={{ width:28, height:28, borderRadius:8, background:'#1a3a6b', border:'1px solid #1a3a6b', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>👤</div>}
+                    <div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, lineHeight:1.5, wordBreak:'break-word', ...(msg.sender==='user'?{ background:'#255cae', color:'#fff' }:{ background:dm?'#334155':'#f1f5f9', color:txt }) }}>{msg.text}</div>
+                    {msg.sender==='user'&&<div style={{ width:28, height:28, borderRadius:8, background:'#255cae', border:'1px solid #255cae', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>👤</div>}
                   </div>
                 ))}
-                {chatLoading&&<div style={{ display:'flex', gap:8, marginBottom:12 }}><div style={{ width:28, height:28, borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div><div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, background:dm?'#334155':'#f1f5f9', display:'flex', gap:4, alignItems:'center' }}>{[0,1,2].map(i=><span key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#1a3a6b', display:'inline-block', animation:`bounce 1.2s infinite ease-in-out`, animationDelay:`${i*0.2}s` }}/>)}</div></div>}
+                {chatLoading&&<div style={{ display:'flex', gap:8, marginBottom:12 }}><div style={{ width:28, height:28, borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div><div style={{ padding:'10px 14px', borderRadius:10, fontSize:13, background:dm?'#334155':'#f1f5f9', display:'flex', gap:4, alignItems:'center' }}>{[0,1,2].map(i=><span key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#255cae', display:'inline-block', animation:`bounce 1.2s infinite ease-in-out`, animationDelay:`${i*0.2}s` }}/>)}</div></div>}
               </div>
               <div style={{ flexShrink:0, padding:12, borderTop:`1px solid ${bord}` }}>
                 <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={chatLoading} placeholder={lang==='fr'?'Demandez conseil sur cette étape…':'Ask advice on this step…'}/>
@@ -437,7 +437,7 @@ export default function RoadmapPage({ user, messages, input, setInput, loading:c
         </div>
       </div>
 
-      <button onClick={()=>setShowChat(p=>!p)} style={{ position:'fixed', bottom:24, right:24, width:56, height:56, borderRadius:'50%', background:'#f5a623', border:'none', boxShadow:'0 4px 12px rgba(26,58,107,0.3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, color:'#1a3a6b', zIndex:1000 }}>
+      <button onClick={()=>setShowChat(p=>!p)} style={{ position:'fixed', bottom:24, right:24, width:56, height:56, borderRadius:'50%', background:'#f5a623', border:'none', boxShadow:'0 4px 12px rgba(26,58,107,0.3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, color:'#255cae', zIndex:1000 }}>
         {showChat?'✕':'💬'}
       </button>
 

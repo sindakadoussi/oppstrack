@@ -209,7 +209,7 @@ function WordCount({ text, min = 500 }) {
 function ScoreRing({ score }) {
   if (!score) return null;
   const r=36, c=2*Math.PI*r;
-  const col = score>=80?'#1a3a6b':score>=60?'#d97706':'#dc2626';
+  const col = score>=80?'#255cae':score>=60?'#d97706':'#dc2626';
   return (
     <div style={{position:'relative',width:88,height:88,flexShrink:0}}>
       <svg width="88" height="88" style={{transform:'rotate(-90deg)'}}>
@@ -234,7 +234,7 @@ function CheckItem({ item }) {
         <span style={{fontSize:11,fontWeight:800,color:cfg.c}}>{cfg.i}</span>
       </div>
       <div>
-        <div style={{fontSize:13,fontWeight:600,color:'#1a3a6b',marginBottom:2}}>{item.title}</div>
+        <div style={{fontSize:13,fontWeight:600,color:'#255cae',marginBottom:2}}>{item.title}</div>
         {item.detail&&<div style={{fontSize:12,color:'#64748b',lineHeight:1.5}}>{item.detail}</div>}
       </div>
     </div>
@@ -245,13 +245,13 @@ function BourseSelector({ bourses, selected, onSelect }) {
   const sel = bourses.find(b=>b.nom===selected);
   return (
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      <label style={{fontSize:11,color:'#1a3a6b',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em'}}>Bourse cible</label>
+      <label style={{fontSize:11,color:'#255cae',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em'}}>Bourse cible</label>
       <select value={selected} onChange={e=>onSelect(e.target.value)}
-        style={{padding:'10px 14px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',color:selected?'#1a3a6b':'#94a3b8',fontSize:14,outline:'none',cursor:'pointer',fontFamily:'inherit'}}>
+        style={{padding:'10px 14px',borderRadius:6,border:'1px solid #e2e8f0',background:'#fff',color:selected?'#255cae':'#94a3b8',fontSize:14,outline:'none',cursor:'pointer',fontFamily:'inherit'}}>
         <option value="">-- Sélectionner une bourse --</option>
         {bourses.map((b,i)=><option key={i} value={b.nom}>{b.nom}{b.pays?` · ${b.pays}`:''}</option>)}
       </select>
-      {sel?.url&&<div style={{fontSize:12,color:'#64748b'}}>🔗 <a href={sel.url} target="_blank" rel="noopener noreferrer" style={{color:'#1a3a6b',textDecoration:'none',fontWeight:500}}>{sel.url}</a></div>}
+      {sel?.url&&<div style={{fontSize:12,color:'#64748b'}}>🔗 <a href={sel.url} target="_blank" rel="noopener noreferrer" style={{color:'#255cae',textDecoration:'none',fontWeight:500}}>{sel.url}</a></div>}
       {selected&&<div style={{fontSize:12,color:'#166534',fontStyle:'italic',padding:'6px 10px',borderRadius:4,background:'#f0fdf4',border:'1px solid #bbf7d0'}}>L'IA consultera le site officiel pour personnaliser votre document</div>}
     </div>
   );
@@ -289,7 +289,7 @@ function LoginModal({ onClose }) {
           {status === 'idle' && (
             <>
               <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
-                Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
+                Entrez votre email pour recevoir un <strong style={{ color: '#255cae' }}>lien de connexion magique</strong>.
               </p>
               <input
                 type="email"
@@ -343,12 +343,12 @@ const M = {
   overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
   backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
   box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
-  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#1a3a6b', borderBottom:'1px solid rgba(255,255,255,0.1)' },
+  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#255cae', borderBottom:'1px solid rgba(255,255,255,0.1)' },
   closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
   body:     { padding:'24px' },
-  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
-  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
-  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
+  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
+  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#255cae', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
 };
 
 // Styles pour l'état non connecté
@@ -376,7 +376,7 @@ const S_locked = {
   lockBtn: {
     padding: '12px 32px',
     borderRadius: 6,
-    background: '#1a3a6b',
+    background: '#255cae',
     color: 'white',
     border: 'none',
     fontSize: 14,
@@ -411,7 +411,7 @@ export default function CVPage({ user, setView }) {
       <div style={S_locked.locked}>
         <div style={S_locked.lockedCard}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>📄</div>
-          <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
+          <h3 style={{ color: '#255cae', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
             CV & Lettre non disponibles
           </h3>
           <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
@@ -549,11 +549,11 @@ export default function CVPage({ user, setView }) {
         return acc;
       }, []);
     return (
-      <div style={{ padding:28, fontFamily:'Georgia,serif', fontSize:14, lineHeight:1.9, color:'#1a3a6b', maxHeight:560, overflowY:'auto', background:'#fff' }}>
+      <div style={{ padding:28, fontFamily:'Georgia,serif', fontSize:14, lineHeight:1.9, color:'#255cae', maxHeight:560, overflowY:'auto', background:'#fff' }}>
         {paragraphs.map((p, i) =>
           !p ? <div key={i} style={{ height:12 }} /> :
           /^(objet|madame|monsieur)/i.test(p)
-            ? <p key={i} style={{ fontWeight:700, margin:'0 0 8px', fontFamily:'system-ui,sans-serif', fontSize:13, color:'#1a3a6b' }}>{p}</p>
+            ? <p key={i} style={{ fontWeight:700, margin:'0 0 8px', fontFamily:'system-ui,sans-serif', fontSize:13, color:'#255cae' }}>{p}</p>
             : /^(veuillez|je vous prie|dans l.attente|cordialement|sincèrement)/i.test(p)
             ? <p key={i} style={{ fontStyle:'italic', margin:'0 0 6px', color:'#475569' }}>{p}</p>
             : <p key={i} style={{ margin:'0 0 16px', textAlign:'justify', color:'#374151' }}>{p}</p>
@@ -565,15 +565,15 @@ export default function CVPage({ user, setView }) {
   // Styles
   const C = {
     card: { padding:'22px', borderRadius:10, background:'#fff', border:'1px solid #e2e8f0', boxShadow:'0 2px 8px rgba(26,58,107,0.06)', display:'flex', flexDirection:'column', gap:14 },
-    cardBlue: { padding:'22px', borderRadius:10, background:'#1a3a6b', border:'none', boxShadow:'0 4px 16px rgba(26,58,107,0.2)', display:'flex', flexDirection:'column', gap:14 },
-    btnP: { padding:'10px 20px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', transition:'background 0.2s', fontFamily:'inherit' },
-    btnGold: { padding:'10px 20px', borderRadius:6, border:'none', background:'#f5a623', color:'#1a3a6b', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
+    cardBlue: { padding:'22px', borderRadius:10, background:'#255cae', border:'none', boxShadow:'0 4px 16px rgba(26,58,107,0.2)', display:'flex', flexDirection:'column', gap:14 },
+    btnP: { padding:'10px 20px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', transition:'background 0.2s', fontFamily:'inherit' },
+    btnGold: { padding:'10px 20px', borderRadius:6, border:'none', background:'#f5a623', color:'#255cae', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
     btnO: { padding:'9px 18px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#475569', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'inherit' },
     btnG: { padding:'10px 20px', borderRadius:6, border:'none', background:'#166534', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
   };
 
   return (
-    <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#1a3a6b' }}>
+    <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#255cae' }}>
 
       {/* ── En-tête page ── */}
       
@@ -584,7 +584,7 @@ export default function CVPage({ user, setView }) {
         <div style={{ display:'flex', gap:0, marginBottom:24, background:'#ffffff', borderRadius:8, border:'1px solid #e2e8f0', width:'fit-content', overflow:'hidden' }}>
           {[{id:'cv',l:'📄 CV'},{id:'lm',l:'✉️ Lettre de motivation'}].map(t=>(
             <button key={t.id}
-              style={{ padding:'10px 24px', border:'none', borderRight: t.id==='cv' ? '1px solid #e2e8f0' : 'none', background: tab===t.id ? '#1a3a6b' : '#fff', color: tab===t.id ? '#fff' : '#64748b', fontSize:13, fontWeight: tab===t.id ? 700 : 400, cursor:'pointer', fontFamily:'inherit' }}
+              style={{ padding:'10px 24px', border:'none', borderRight: t.id==='cv' ? '1px solid #e2e8f0' : 'none', background: tab===t.id ? '#255cae' : '#fff', color: tab===t.id ? '#fff' : '#64748b', fontSize:13, fontWeight: tab===t.id ? 700 : 400, cursor:'pointer', fontFamily:'inherit' }}
               onClick={()=>{setTab(t.id);reset();}}>
               {t.l}
             </button>
@@ -595,7 +595,7 @@ export default function CVPage({ user, setView }) {
         {mode==='incomplete'&&(
           <div style={{ ...C.card, maxWidth:440, margin:'40px auto', textAlign:'center', alignItems:'center', padding:36 }}>
             <div style={{ fontSize:40 }}>⚠️</div>
-            <div style={{ fontSize:17, fontWeight:700, color:'#1a3a6b' }}>Profil incomplet</div>
+            <div style={{ fontSize:17, fontWeight:700, color:'#255cae' }}>Profil incomplet</div>
             <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>Complétez votre profil pour générer un document personnalisé.</div>
             <div style={{ display:'flex', flexDirection:'column', gap:6, width:'100%' }}>
               {pCheck.missing.map((m,i)=>(
@@ -625,7 +625,7 @@ export default function CVPage({ user, setView }) {
               {/* Créer */}
               <div style={C.card}>
                 <div style={{ fontSize:32 }}>✨</div>
-                <div style={{ fontSize:16, fontWeight:700, color:'#1a3a6b', borderBottom:'2px solid #f5a623', paddingBottom:8 }}>Créer avec l'IA</div>
+                <div style={{ fontSize:16, fontWeight:700, color:'#255cae', borderBottom:'2px solid #f5a623', paddingBottom:8 }}>Créer avec l'IA</div>
                 <div style={{ fontSize:13, color:'#475569', lineHeight:1.65, flex:1 }}>
                   {isLM
                     ? <>L'IA rédige une lettre percutante{bourse?` pour "${bourse}"`:''} en <strong>6 paragraphes</strong> : accroche · parcours · expériences · motivation · valeur ajoutée · politesse.</>
@@ -636,7 +636,7 @@ export default function CVPage({ user, setView }) {
                   <div style={{ background:'#f8fafc', borderRadius:8, padding:'12px 16px', fontSize:12, color:'#64748b', lineHeight:1.9, border:'1px solid #e2e8f0' }}>
                     {['§1 — Accroche + présentation','§2 — Parcours académique & résultats','§3 — Expériences & projets',`§4 — Motivation pour ${bourse||'la bourse'}`,'§5 — Valeur ajoutée & impact','§6 — Formule de politesse'].map((s,i)=>(
                       <div key={i} style={{ display:'flex', gap:8, alignItems:'center' }}>
-                        <span style={{ width:5, height:5, borderRadius:'50%', background:'#1a3a6b', flexShrink:0, display:'inline-block' }}/>
+                        <span style={{ width:5, height:5, borderRadius:'50%', background:'#255cae', flexShrink:0, display:'inline-block' }}/>
                         {s}
                       </div>
                     ))}
@@ -652,7 +652,7 @@ export default function CVPage({ user, setView }) {
               {/* Analyser */}
               <div style={C.card}>
                 <div style={{ fontSize:32 }}>🔍</div>
-                <div style={{ fontSize:16, fontWeight:700, color:'#1a3a6b', borderBottom:'2px solid #f5a623', paddingBottom:8 }}>Analyser & améliorer</div>
+                <div style={{ fontSize:16, fontWeight:700, color:'#255cae', borderBottom:'2px solid #f5a623', paddingBottom:8 }}>Analyser & améliorer</div>
                 <div style={{ fontSize:13, color:'#475569', lineHeight:1.65, flex:1 }}>
                   {isLM
                     ? "Uploadez votre lettre — texte extrait automatiquement du PDF. L'IA vérifie structure, argumentation, longueur et adéquation bourse."
@@ -663,7 +663,7 @@ export default function CVPage({ user, setView }) {
                   onDragOver={e=>e.preventDefault()}
                   onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}
                   onClick={()=>fileRef.current?.click()}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor='#1a3a6b';e.currentTarget.style.background='#eff6ff';}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor='#255cae';e.currentTarget.style.background='#eff6ff';}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor='#bfdbfe';e.currentTarget.style.background='#f8fafc';}}
                 >
                   <input type="file" ref={fileRef} style={{display:'none'}} accept=".pdf,.txt" onChange={e=>handleFile(e.target.files[0])}/>
@@ -679,7 +679,7 @@ export default function CVPage({ user, setView }) {
             {/* Tips LM */}
             {isLM && (
               <div style={{ ...C.card, background:'#eff6ff', border:'1px solid #bfdbfe' }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'#1a3a6b' }}>💡 Conseils pour une lettre percutante</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#255cae' }}>💡 Conseils pour une lettre percutante</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
                   {[
                     {icon:'🎯',title:'Soyez spécifique',desc:'Mentionnez la bourse par son nom et citez ses valeurs officielles'},
@@ -688,7 +688,7 @@ export default function CVPage({ user, setView }) {
                   ].map((tip,i)=>(
                     <div key={i} style={{ padding:'12px 14px', borderRadius:8, background:'#fff', border:'1px solid #bfdbfe', display:'flex', flexDirection:'column', gap:4 }}>
                       <div style={{fontSize:20}}>{tip.icon}</div>
-                      <div style={{fontSize:12,fontWeight:700,color:'#1a3a6b'}}>{tip.title}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:'#255cae'}}>{tip.title}</div>
                       <div style={{fontSize:11,color:'#64748b',lineHeight:1.5}}>{tip.desc}</div>
                     </div>
                   ))}
@@ -702,11 +702,11 @@ export default function CVPage({ user, setView }) {
         {mode==='pdf_scan'&&(
           <div style={{ ...C.card, maxWidth:540, margin:'0 auto' }}>
             <div style={{fontSize:36,textAlign:'center'}}>🖼️</div>
-            <div style={{fontSize:15,fontWeight:700,color:'#1a3a6b',textAlign:'center'}}>PDF scanné ou DOCX détecté</div>
+            <div style={{fontSize:15,fontWeight:700,color:'#255cae',textAlign:'center'}}>PDF scanné ou DOCX détecté</div>
             <div style={{fontSize:13,color:'#64748b',lineHeight:1.7}}>Ce fichier ne contient pas de texte extractible. Collez le texte ci-dessous.</div>
             <BourseSelector bourses={bourses} selected={bourse} onSelect={setBourse}/>
             <textarea
-              style={{ width:'100%', padding:14, borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:13, fontFamily:'monospace', lineHeight:1.65, outline:'none', resize:'vertical', boxSizing:'border-box', minHeight:280 }}
+              style={{ width:'100%', padding:14, borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:13, fontFamily:'monospace', lineHeight:1.65, outline:'none', resize:'vertical', boxSizing:'border-box', minHeight:280 }}
               value={content} onChange={e=>setContent(e.target.value)}
               placeholder={`Collez le texte de votre ${docType} ici...`} rows={14}/>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -721,12 +721,12 @@ export default function CVPage({ user, setView }) {
         {mode==='upload'&&(
           <div style={C.card}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div style={{fontSize:14,fontWeight:600,color:'#1a3a6b'}}>{fileName?`📄 ${fileName}`:`Votre ${docType}`}{bourse?` — ${bourse}`:''}</div>
+              <div style={{fontSize:14,fontWeight:600,color:'#255cae'}}>{fileName?`📄 ${fileName}`:`Votre ${docType}`}{bourse?` — ${bourse}`:''}</div>
               {fileName&&<span style={{fontSize:11,color:'#166534',fontWeight:500,padding:'3px 10px',borderRadius:4,background:'#f0fdf4',border:'1px solid #bbf7d0'}}>✅ Texte extrait</span>}
             </div>
             <BourseSelector bourses={bourses} selected={bourse} onSelect={setBourse}/>
             <textarea
-              style={{ width:'100%', padding:14, borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#1a3a6b', fontSize:13, fontFamily:'monospace', lineHeight:1.65, outline:'none', resize:'vertical', boxSizing:'border-box', minHeight:360 }}
+              style={{ width:'100%', padding:14, borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:13, fontFamily:'monospace', lineHeight:1.65, outline:'none', resize:'vertical', boxSizing:'border-box', minHeight:360 }}
               value={content} onChange={e=>setContent(e.target.value)}
               placeholder={`Contenu de votre ${docType}...`} rows={18}/>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -740,8 +740,8 @@ export default function CVPage({ user, setView }) {
         {/* ── Loading ── */}
         {mode==='loading'&&(
           <div style={{ ...C.card, alignItems:'center', padding:'72px 24px', gap:16, textAlign:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', border:'3px solid #e2e8f0', borderTopColor:'#1a3a6b', animation:'spin 1s linear infinite' }}/>
-            <div style={{ fontSize:15, fontWeight:600, color:'#1a3a6b' }}>{step||'Traitement...'}</div>
+            <div style={{ width:44, height:44, borderRadius:'50%', border:'3px solid #e2e8f0', borderTopColor:'#255cae', animation:'spin 1s linear infinite' }}/>
+            <div style={{ fontSize:15, fontWeight:600, color:'#255cae' }}>{step||'Traitement...'}</div>
             <div style={{ fontSize:13, color:'#94a3b8' }}>Cela peut prendre 15 à 30 secondes</div>
           </div>
         )}
@@ -751,9 +751,9 @@ export default function CVPage({ user, setView }) {
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div style={{ ...C.card, flexDirection:'row', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
               <div>
-                <div style={{ fontSize:16, fontWeight:700, color:'#1a3a6b' }}>{docType} généré ✅</div>
+                <div style={{ fontSize:16, fontWeight:700, color:'#255cae' }}>{docType} généré ✅</div>
                 <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:4 }}>
-                  {bourse&&<span style={{ fontSize:12, color:'#1a3a6b', fontWeight:500, padding:'2px 8px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe' }}>{bourse}</span>}
+                  {bourse&&<span style={{ fontSize:12, color:'#255cae', fontWeight:500, padding:'2px 8px', borderRadius:4, background:'#eff6ff', border:'1px solid #bfdbfe' }}>{bourse}</span>}
                   {isLM && <WordCount text={content} />}
                   {!isLM && <span style={{ fontSize:12, color:'#64748b' }}>{content.split(/\s+/).filter(Boolean).length} mots</span>}
                 </div>
@@ -766,17 +766,17 @@ export default function CVPage({ user, setView }) {
 
             <div style={{ ...C.card, padding:0, overflow:'hidden' }}>
               <div style={{ padding:'12px 20px', borderBottom:'1px solid #e2e8f0', background:'#f8fafc', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#255cae', textTransform:'uppercase', letterSpacing:'0.08em' }}>
                   {isLM ? 'Aperçu — rendu lettre' : 'Aperçu'}
                 </span>
                 {isLM && (
                   <div style={{ display:'flex', gap:4 }}>
                     {[{id:'rendered',l:'Rendu'},{id:'raw',l:'Texte brut'}].map(m=>(
                       <button key={m.id}
-                        style={{ padding:'4px 12px', borderRadius:4, border:'none', background: lmPreviewMode===m.id ? '#1a3a6b' : '#e2e8f0', color: lmPreviewMode===m.id ? '#fff' : '#64748b', fontSize:11, cursor:'pointer', fontWeight:500 }}
+                        style={{ padding:'4px 12px', borderRadius:4, border:'none', background: lmPreviewMode===m.id ? '#255cae' : '#e2e8f0', color: lmPreviewMode===m.id ? '#fff' : '#64748b', fontSize:11, cursor:'pointer', fontWeight:500 }}
                         onClick={()=>setLmPreviewMode(m.id)}>{m.l}</button>
                     ))}
-                    <button style={{ padding:'4px 12px', borderRadius:4, border:'none', background:'#f5a623', color:'#1a3a6b', fontSize:11, cursor:'pointer', fontWeight:700, marginLeft:4 }}
+                    <button style={{ padding:'4px 12px', borderRadius:4, border:'none', background:'#f5a623', color:'#255cae', fontSize:11, cursor:'pointer', fontWeight:700, marginLeft:4 }}
                       onClick={()=>dlPDF(content,'')}>⬇️ PDF</button>
                   </div>
                 )}
@@ -802,7 +802,7 @@ export default function CVPage({ user, setView }) {
         {/* ── IMPROVED ── */}
         {mode==='improved'&&improved&&(
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-            <div style={{ padding:24, borderRadius:10, background:'#1a3a6b', borderBottom:'3px solid #f5a623', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16, boxShadow:'0 4px 16px rgba(26,58,107,0.2)' }}>
+            <div style={{ padding:24, borderRadius:10, background:'#255cae', borderBottom:'3px solid #f5a623', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16, boxShadow:'0 4px 16px rgba(26,58,107,0.2)' }}>
               <div>
                 <div style={{ fontSize:20, fontWeight:800, color:'#fff' }}>✅ {docType} amélioré !</div>
                 <div style={{ display:'flex', gap:8, marginTop:4, alignItems:'center' }}>
@@ -811,7 +811,7 @@ export default function CVPage({ user, setView }) {
                 </div>
               </div>
               <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                <button style={{ padding:'12px 28px', borderRadius:6, border:'none', background:'#f5a623', color:'#1a3a6b', fontSize:14, fontWeight:800, cursor:'pointer' }}
+                <button style={{ padding:'12px 28px', borderRadius:6, border:'none', background:'#f5a623', color:'#255cae', fontSize:14, fontWeight:800, cursor:'pointer' }}
                   onClick={()=>dlPDF(improved,'_ameliore')}>⬇️ Télécharger PDF amélioré</button>
                 <button style={{ padding:'10px 18px', borderRadius:6, border:'1px solid rgba(255,255,255,0.3)', background:'transparent', color:'#fff', fontSize:13, cursor:'pointer' }}
                   onClick={()=>setMode('analyzed')}>← Voir l'analyse</button>
@@ -820,8 +820,8 @@ export default function CVPage({ user, setView }) {
 
             <div style={{ borderRadius:10, background:'#fff', border:'1px solid #e2e8f0', overflow:'hidden', borderTop:'3px solid #f5a623' }}>
               <div style={{ padding:'12px 20px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <div style={{ fontSize:12, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>Aperçu du {docType} amélioré</div>
-                <button style={{ padding:'6px 16px', borderRadius:4, border:'none', background:'#f5a623', color:'#1a3a6b', fontSize:12, fontWeight:700, cursor:'pointer' }}
+                <div style={{ fontSize:12, fontWeight:700, color:'#255cae', textTransform:'uppercase', letterSpacing:'0.08em' }}>Aperçu du {docType} amélioré</div>
+                <button style={{ padding:'6px 16px', borderRadius:4, border:'none', background:'#f5a623', color:'#255cae', fontSize:12, fontWeight:700, cursor:'pointer' }}
                   onClick={()=>dlPDF(improved,'_ameliore')}>⬇️ PDF</button>
               </div>
               {isLM ? <LMPreview text={improved} /> : <div style={{ padding:20, fontSize:13, color:'#374151', lineHeight:1.8, whiteSpace:'pre-wrap', fontFamily:'monospace', maxHeight:600, overflowY:'auto' }}>{improved}</div>}
@@ -835,8 +835,8 @@ export default function CVPage({ user, setView }) {
             <div style={{ ...C.card, flexDirection:'row', alignItems:'center', gap:20, flexWrap:'wrap' }}>
               <ScoreRing score={analysis.score}/>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:16, fontWeight:700, color:'#1a3a6b' }}>Analyse de votre {docType}</div>
-                {bourse&&<div style={{ fontSize:12, color:'#f5a623', marginTop:2, fontWeight:600, background:'#1a3a6b', display:'inline-block', padding:'2px 8px', borderRadius:4 }}>Évalué pour {bourse}</div>}
+                <div style={{ fontSize:16, fontWeight:700, color:'#255cae' }}>Analyse de votre {docType}</div>
+                {bourse&&<div style={{ fontSize:12, color:'#f5a623', marginTop:2, fontWeight:600, background:'#255cae', display:'inline-block', padding:'2px 8px', borderRadius:4 }}>Évalué pour {bourse}</div>}
                 <div style={{ fontSize:13, color:'#64748b', marginTop:6 }}>
                   {analysis.score>=80?'🎉 Excellent — prêt à soumettre !':analysis.score>=60?'👍 Bon niveau — quelques ajustements':'⚠️ Des améliorations nécessaires'}
                 </div>
@@ -852,13 +852,13 @@ export default function CVPage({ user, setView }) {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16 }}>
               {analysis.checklist?.length>0&&(
                 <div style={C.card}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'2px solid #f5a623', paddingBottom:6, display:'inline-block' }}>Checklist{bourse?` — ${bourse}`:''}</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#255cae', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'2px solid #f5a623', paddingBottom:6, display:'inline-block' }}>Checklist{bourse?` — ${bourse}`:''}</div>
                   {analysis.checklist.map((item,i)=><CheckItem key={i} item={item}/>)}
                 </div>
               )}
               {analysis.conclusion&&(
                 <div style={{ ...C.card, background:'#eff6ff', border:'1px solid #bfdbfe' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conclusion de l'IA</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#255cae', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conclusion de l'IA</div>
                   <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0 }}>{analysis.conclusion}</p>
                 </div>
               )}
@@ -884,10 +884,10 @@ export default function CVPage({ user, setView }) {
               )}
               {analysis.toAdd?.length>0&&(
                 <div style={{ ...C.card, border:'1px solid #bfdbfe' }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>À ajouter</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#255cae', textTransform:'uppercase', letterSpacing:'0.08em' }}>À ajouter</div>
                   {analysis.toAdd.map((s,i)=>(
                     <div key={i} style={{ display:'flex', gap:10, padding:'5px 0', borderBottom:'1px solid #eff6ff', fontSize:13, color:'#1e40af', alignItems:'flex-start' }}>
-                      <span style={{ color:'#1a3a6b', fontWeight:700, flexShrink:0 }}>+</span><span>{s}</span>
+                      <span style={{ color:'#255cae', fontWeight:700, flexShrink:0 }}>+</span><span>{s}</span>
                     </div>
                   ))}
                 </div>

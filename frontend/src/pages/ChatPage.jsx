@@ -537,7 +537,7 @@ const handleAskAI = useCallback((bourse) => {
       <ChatInput input={input} setInput={setInput} onSend={()=>handleSend()} loading={loading}/>
     </div>
     <div className="hero-stats"><div className="stat"><StatNumber value={heroStats.totalBourses} suffix={heroStats.totalBourses>=500?'+':''} loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Bourses':'Scholarships'}</span></div><div className="stat-divider"/><div className="stat"><StatNumber value={heroStats.pctFinancees} suffix="%" loading={!heroStats.loaded}/><span className="stat-label">{lang==='fr'?'Financées':'Funded'}</span></div><div className="stat-divider"/><div className="stat"><span className="stat-num">24/7</span><span className="stat-label">{lang==='fr'?'IA active':'AI active'}</span></div></div>
-    <div className="features-section"><div className="features-header"><div className="features-eyebrow"><span className="features-eyebrow-line"/>{lang==='fr'?'Pourquoi OppsTrack ?':'Why OppsTrack?'}<span className="features-eyebrow-line"/></div><h2 className="features-title">{lang==='fr'?'Tout ce dont vous avez besoin pour':'Everything you need to'}<span className="features-title-gradient"> {lang==='fr'?'décrocher votre bourse':'land your scholarship'}</span></h2></div><div className="features-grid">{[{icon:'🔍',titleFr:'Matching intelligent',titleEn:'Smart Matching',descFr:"L'IA analyse votre profil et recommande les bourses avec les meilleures chances de succès.",descEn:"The AI analyzes your profile and recommends scholarships with the best success chances.",ctaFr:'Trouver mes bourses',ctaEn:'Find my scholarships',view:'bourses',accent:'#1a3a6b',bg:'#eff6ff'},{icon:'📋',titleFr:'Roadmap personnalisée',titleEn:'Personalized Roadmap',descFr:"Chaque candidature décomposée étape par étape : documents, lettre, soumission, résultat.",descEn:"Each application broken down step by step: documents, letter, submission, result.",ctaFr:'Voir la roadmap',ctaEn:'See the roadmap',view:'roadmap',accent:'#166534',bg:'#f0fdf4'},{icon:'🎙️',titleFr:'Entretiens simulés IA',titleEn:'AI Mock Interviews',descFr:"Notre IA joue le rôle du jury. Obtenez un score et des conseils personnalisés.",descEn:"Our AI plays the role of the jury. Get a score and personalized feedback.",ctaFr:'Préparer mon entretien',ctaEn:'Prepare my interview',view:'entretien',accent:'#f5a623',bg:'#fffbeb'},{icon:'📄',titleFr:'Analyse de documents',titleEn:'Document Analysis',descFr:"CV, lettre de motivation — l'IA identifie vos points forts et propose des améliorations.",descEn:"CV, cover letter — the AI identifies your strengths and suggests improvements.",ctaFr:'Analyser mon CV',ctaEn:'Analyze my CV',view:'cv',accent:'#0891b2',bg:'#ecfeff'},{icon:'🌍',titleFr:'Carte mondiale',titleEn:'World Map',descFr:"Explorez les bourses dans le monde entier. Filtrez par pays, niveau et domaine.",descEn:"Explore scholarships worldwide. Filter by country, level and field.",ctaFr:'Explorer la carte',ctaEn:'Explore the map',view:'bourses',accent:'#7c3aed',bg:'#f5f3ff'},{icon:'📊',titleFr:'Tableau de bord',titleEn:'Dashboard',descFr:"Suivez vos candidatures, alertes de deadlines et score de préparation en temps réel.",descEn:"Track your applications, deadline alerts and preparation score in real time.",ctaFr:'Voir le dashboard',ctaEn:'See the dashboard',view:'dashboard',accent:'#dc2626',bg:'#fef2f2'}].map((feat,i)=><div key={i} className="feat-card" style={{animationDelay:`${i*0.07}s`}} onClick={()=>setView&&setView(feat.view)} role="button" tabIndex={0} onKeyDown={e=>e.key==='Enter'&&setView&&setView(feat.view)}><div className="feat-icon-circle" style={{background:feat.bg,color:feat.accent}}>{feat.icon}</div><h3 className="feat-title">{lang==='fr'?feat.titleFr:feat.titleEn}</h3><p className="feat-desc">{lang==='fr'?feat.descFr:feat.descEn}</p><div className="feat-cta" style={{color:feat.accent}}>{lang==='fr'?feat.ctaFr:feat.ctaEn}<svg className="feat-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div><div className="feat-hover-bar" style={{background:feat.accent}}/></div>)}</div></div>
+    <div className="features-section"><div className="features-header"><div className="features-eyebrow"><span className="features-eyebrow-line"/>{lang==='fr'?'Pourquoi OppsTrack ?':'Why OppsTrack?'}<span className="features-eyebrow-line"/></div><h2 className="features-title">{lang==='fr'?'Tout ce dont vous avez besoin pour':'Everything you need to'}<span className="features-title-gradient"> {lang==='fr'?'décrocher votre bourse':'land your scholarship'}</span></h2></div><div className="features-grid">{[{icon:'🔍',titleFr:'Matching intelligent',titleEn:'Smart Matching',descFr:"L'IA analyse votre profil et recommande les bourses avec les meilleures chances de succès.",descEn:"The AI analyzes your profile and recommends scholarships with the best success chances.",ctaFr:'Trouver mes bourses',ctaEn:'Find my scholarships',view:'bourses',accent:'#255cae',bg:'#eff6ff'},{icon:'📋',titleFr:'Roadmap personnalisée',titleEn:'Personalized Roadmap',descFr:"Chaque candidature décomposée étape par étape : documents, lettre, soumission, résultat.",descEn:"Each application broken down step by step: documents, letter, submission, result.",ctaFr:'Voir la roadmap',ctaEn:'See the roadmap',view:'roadmap',accent:'#166534',bg:'#f0fdf4'},{icon:'🎙️',titleFr:'Entretiens simulés IA',titleEn:'AI Mock Interviews',descFr:"Notre IA joue le rôle du jury. Obtenez un score et des conseils personnalisés.",descEn:"Our AI plays the role of the jury. Get a score and personalized feedback.",ctaFr:'Préparer mon entretien',ctaEn:'Prepare my interview',view:'entretien',accent:'#f5a623',bg:'#fffbeb'},{icon:'📄',titleFr:'Analyse de documents',titleEn:'Document Analysis',descFr:"CV, lettre de motivation — l'IA identifie vos points forts et propose des améliorations.",descEn:"CV, cover letter — the AI identifies your strengths and suggests improvements.",ctaFr:'Analyser mon CV',ctaEn:'Analyze my CV',view:'cv',accent:'#0891b2',bg:'#ecfeff'},{icon:'🌍',titleFr:'Carte mondiale',titleEn:'World Map',descFr:"Explorez les bourses dans le monde entier. Filtrez par pays, niveau et domaine.",descEn:"Explore scholarships worldwide. Filter by country, level and field.",ctaFr:'Explorer la carte',ctaEn:'Explore the map',view:'bourses',accent:'#7c3aed',bg:'#f5f3ff'},{icon:'📊',titleFr:'Tableau de bord',titleEn:'Dashboard',descFr:"Suivez vos candidatures, alertes de deadlines et score de préparation en temps réel.",descEn:"Track your applications, deadline alerts and preparation score in real time.",ctaFr:'Voir le dashboard',ctaEn:'See the dashboard',view:'dashboard',accent:'#dc2626',bg:'#fef2f2'}].map((feat,i)=><div key={i} className="feat-card" style={{animationDelay:`${i*0.07}s`}} onClick={()=>setView&&setView(feat.view)} role="button" tabIndex={0} onKeyDown={e=>e.key==='Enter'&&setView&&setView(feat.view)}><div className="feat-icon-circle" style={{background:feat.bg,color:feat.accent}}>{feat.icon}</div><h3 className="feat-title">{lang==='fr'?feat.titleFr:feat.titleEn}</h3><p className="feat-desc">{lang==='fr'?feat.descFr:feat.descEn}</p><div className="feat-cta" style={{color:feat.accent}}>{lang==='fr'?feat.ctaFr:feat.ctaEn}<svg className="feat-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div><div className="feat-hover-bar" style={{background:feat.accent}}/></div>)}</div></div>
      
      {/* SECTION TÉMOIGNAGES - AVEC ANIMATION GAUCHE/DROITE */}
 {!loadingFeedbacks && feedbacks.length > 0 && (
@@ -628,18 +628,18 @@ const handleAskAI = useCallback((bourse) => {
 <style>{`
       .chat-page{display:flex;flex-direction:column;align-items:center;width:100%;max-width:800px;margin:0 auto;padding:40px 16px 32px;font-family:'Segoe UI',system-ui,sans-serif}
       .chat-hero{text-align:center;margin-bottom:28px;width:100%}
-      .hero-badge{display:inline-block;padding:5px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:40px;color:#1a3a6b;font-size:12px;font-weight:600;letter-spacing:.5px;margin-bottom:20px}
-      .hero-title{font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;line-height:1.2;color:#1a3a6b;margin-bottom:16px;letter-spacing:-.02em}
+      .hero-badge{display:inline-block;padding:5px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:40px;color:#255cae;font-size:12px;font-weight:600;letter-spacing:.5px;margin-bottom:20px}
+      .hero-title{font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;line-height:1.2;color:#255cae;margin-bottom:16px;letter-spacing:-.02em}
       .hero-accent{background:linear-gradient(135deg,#f5a623,#e89510);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
       .hero-sub{color:#475569;font-size:15px;max-width:520px;margin:0 auto;line-height:1.6}
-      .chat-box{width:100%;background:#fff;border-radius:12px;border:1px solid #e2e8f0;border-top:3px solid #1a3a6b;box-shadow:0 4px 20px rgba(26,58,107,.08);overflow:hidden}
+      .chat-box{width:100%;background:#fff;border-radius:12px;border:1px solid #e2e8f0;border-top:3px solid #255cae;box-shadow:0 4px 20px rgba(26,58,107,.08);overflow:hidden}
       .chat-messages{position:relative;height:500px;overflow-y:auto;padding:20px;scroll-behavior:smooth;background:#fafbfc}
       .chat-messages::-webkit-scrollbar{width:5px}
       .chat-messages::-webkit-scrollbar-track{background:#f1f5f9}
       .chat-messages::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
       .welcome-screen{display:flex;gap:12px;align-items:flex-start;padding:8px 0}
       .welcome-avatar{width:42px;height:42px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-      .welcome-bubble{background:#fff;border:1px solid #e2e8f0;border-radius:0 12px 12px 12px;padding:16px 20px;color:#1a3a6b;font-size:14px;line-height:1.6;box-shadow:0 2px 8px rgba(26,58,107,.06)}
+      .welcome-bubble{background:#fff;border:1px solid #e2e8f0;border-radius:0 12px 12px 12px;padding:16px 20px;color:#255cae;font-size:14px;line-height:1.6;box-shadow:0 2px 8px rgba(26,58,107,.06)}
       .welcome-bubble ul{padding-left:20px;margin:8px 0}
       .welcome-bubble li{margin-bottom:4px;color:#475569}
       .msg-with-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;animation:msgIn .3s ease both;width:100%}
@@ -653,35 +653,35 @@ const handleAskAI = useCallback((bourse) => {
       .msg.ai.msg-has-cards .msg-content{max-width:100%}
       .msg.user .msg-content{align-items:flex-end}
       .msg-avatar{width:34px;height:34px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px}
-      .msg-avatar-user{background:#1a3a6b;border-color:#1a3a6b;color:#fff;font-size:13px;font-weight:700}
+      .msg-avatar-user{background:#255cae;border-color:#255cae;color:#fff;font-size:13px;font-weight:700}
       .msg-bubble{padding:11px 16px;border-radius:12px;font-size:14px;line-height:1.55;word-break:break-word}
-      .msg.ai .msg-bubble{background:#fff;border:1px solid #e2e8f0;color:#1a3a6b;border-top-left-radius:4px;box-shadow:0 1px 4px rgba(26,58,107,.05)}
-      .msg.user .msg-bubble{background:#1a3a6b;color:#fff;border-top-right-radius:4px;box-shadow:0 2px 8px rgba(26,58,107,.2)}
+      .msg.ai .msg-bubble{background:#fff;border:1px solid #e2e8f0;color:#255cae;border-top-left-radius:4px;box-shadow:0 1px 4px rgba(26,58,107,.05)}
+      .msg.user .msg-bubble{background:#255cae;color:#fff;border-top-right-radius:4px;box-shadow:0 2px 8px rgba(26,58,107,.2)}
       .msg-text{display:flex;flex-direction:column;gap:2px}
       .msg-list-item{padding-left:8px;color:#475569;font-size:13px}
       .msg.user .msg-list-item{color:rgba(255,255,255,0.9)}
-      .voice-badge{margin-top:8px;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(26,58,107,.08);color:#1a3a6b;font-weight:600}
+      .voice-badge{margin-top:8px;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(26,58,107,.08);color:#255cae;font-weight:600}
       .typing-bubble{display:flex;gap:5px;align-items:center;padding:12px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;border-top-left-radius:4px}
-      .dot{width:7px;height:7px;border-radius:50%;background:#1a3a6b;animation:dotBounce 1.2s infinite ease-in-out}
+      .dot{width:7px;height:7px;border-radius:50%;background:#255cae;animation:dotBounce 1.2s infinite ease-in-out}
       .dot:nth-child(1){animation-delay:0s}.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
       @keyframes dotBounce{0%,60%,100%{transform:scale(.7);opacity:.5}30%{transform:scale(1.1);opacity:1}}
       .bc-grid-wrap{width:100%;margin-top:4px;animation:fadeIn .4s ease}
       @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-      .bc-grid-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 16px;background:linear-gradient(135deg,#1a3a6b08,#f5a62308);border-radius:10px;border:1px solid #e2e8f0}
+      .bc-grid-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 16px;background:linear-gradient(135deg,#255cae08,#f5a62308);border-radius:10px;border:1px solid #e2e8f0}
       .bc-grid-icon{font-size:20px}
-      .bc-grid-title{font-size:14px;font-weight:700;color:#1a3a6b}
+      .bc-grid-title{font-size:14px;font-weight:700;color:#255cae}
       .bc-grid-sub{margin-left:auto;font-size:11px;color:#94a3b8;background:#f8fafc;padding:3px 10px;border-radius:20px;border:1px solid #e2e8f0}
       .bc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
       .bourse-card{position:relative;background:#fff;border:1.5px solid #e8edf5;border-radius:12px;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;animation:cardIn .35s ease both;display:flex;flex-direction:column}
       @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
       .bourse-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(26,58,107,.12);border-color:#bfdbfe}
       .bourse-card-bar{height:3px;width:100%;flex-shrink:0}
-      .bourse-card-0 .bourse-card-bar{background:linear-gradient(90deg,#1a3a6b,#2563eb)}.bourse-card-1 .bourse-card-bar{background:linear-gradient(90deg,#166534,#16a34a)}.bourse-card-2 .bourse-card-bar{background:linear-gradient(90deg,#7c3aed,#2563eb)}.bourse-card-3 .bourse-card-bar{background:linear-gradient(90deg,#f5a623,#d97706)}.bourse-card-4 .bourse-card-bar{background:linear-gradient(90deg,#0891b2,#2563eb)}.bourse-card-5 .bourse-card-bar{background:linear-gradient(90deg,#dc2626,#7c3aed)}
+      .bourse-card-0 .bourse-card-bar{background:linear-gradient(90deg,#255cae,#2563eb)}.bourse-card-1 .bourse-card-bar{background:linear-gradient(90deg,#166534,#16a34a)}.bourse-card-2 .bourse-card-bar{background:linear-gradient(90deg,#7c3aed,#2563eb)}.bourse-card-3 .bourse-card-bar{background:linear-gradient(90deg,#f5a623,#d97706)}.bourse-card-4 .bourse-card-bar{background:linear-gradient(90deg,#0891b2,#2563eb)}.bourse-card-5 .bourse-card-bar{background:linear-gradient(90deg,#dc2626,#7c3aed)}
       .bourse-card-0:hover .bourse-card-bar,.bourse-card-1:hover .bourse-card-bar,.bourse-card-2:hover .bourse-card-bar,.bourse-card-3:hover .bourse-card-bar,.bourse-card-4:hover .bourse-card-bar,.bourse-card-5:hover .bourse-card-bar{background:linear-gradient(90deg,#f5a623,#e89510)}
       .bc-header{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 10px}
       .bc-flag{font-size:26px;line-height:1;flex-shrink:0}
       .bc-title-wrap{flex:1;min-width:0;cursor:pointer}
-      .bc-title{font-size:13px;font-weight:700;color:#1a3a6b;margin:0 0 3px;line-height:1.35;transition:color .15s}
+      .bc-title{font-size:13px;font-weight:700;color:#255cae;margin:0 0 3px;line-height:1.35;transition:color .15s}
       .bc-title-wrap:hover .bc-title{color:#2563eb}
       .bc-pays{font-size:11px;color:#64748b}
       .bc-badges{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 10px}
@@ -692,43 +692,43 @@ const handleAskAI = useCallback((bourse) => {
       .bc-deadline{padding:0 16px 10px;font-size:11px;font-weight:600}
       .bc-actions{display:flex;gap:6px;padding:10px 14px 14px;border-top:1px solid #f1f5f9;margin-top:auto}
       .bc-btn{flex:1;padding:8px 6px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid;transition:all .18s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;font-family:inherit;white-space:nowrap}
-      .bc-btn-primary{background:#1a3a6b;color:#fff;border-color:#1a3a6b}
+      .bc-btn-primary{background:#255cae;color:#fff;border-color:#255cae}
       .bc-btn-primary:hover:not(:disabled){background:#15314f;transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,58,107,.25)}
       .bc-btn-primary:disabled{opacity:.6;cursor:default}
       .bc-btn-done{background:#166534!important;border-color:#166534!important}
-      .bc-btn-secondary{background:#fff;color:#1a3a6b;border-color:#bfdbfe}
+      .bc-btn-secondary{background:#fff;color:#255cae;border-color:#bfdbfe}
       .bc-btn-secondary:hover{background:#eff6ff;transform:translateY(-1px)}
       .bc-btn-outline{background:#fff;color:#64748b;border-color:#e2e8f0}
-      .bc-btn-outline:hover{background:#f8fafc;color:#1a3a6b}
-      .bc-show-more{width:100%;margin-top:10px;padding:10px;border:1.5px dashed #bfdbfe;border-radius:8px;background:#f8fafc;color:#1a3a6b;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit}
+      .bc-btn-outline:hover{background:#f8fafc;color:#255cae}
+      .bc-show-more{width:100%;margin-top:10px;padding:10px;border:1.5px dashed #bfdbfe;border-radius:8px;background:#f8fafc;color:#255cae;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit}
       .bc-show-more:hover{background:#eff6ff;border-color:#93c5fd}
       .quick-replies{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;border-top:1px solid #f1f5f9;justify-content:center;background:#f8fafc}
-      .quick-reply-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#1a3a6b;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
-      .quick-reply-btn:hover:not(:disabled){background:#1a3a6b;color:#fff;border-color:#1a3a6b;transform:translateY(-1px);box-shadow:0 3px 8px rgba(26,58,107,.2)}
+      .quick-reply-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#255cae;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+      .quick-reply-btn:hover:not(:disabled){background:#255cae;color:#fff;border-color:#255cae;transform:translateY(-1px);box-shadow:0 3px 8px rgba(26,58,107,.2)}
       .quick-reply-btn:disabled{opacity:.45;cursor:not-allowed}
-      .hero-stats{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;background:#1a3a6b;padding:20px 36px;border-radius:10px;margin-top:20px;width:100%;border-bottom:3px solid #f5a623}
+      .hero-stats{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;background:#255cae;padding:20px 36px;border-radius:10px;margin-top:20px;width:100%;border-bottom:3px solid #f5a623}
       .stat{display:flex;flex-direction:column;align-items:center;gap:4px}
       .stat-num{font-size:1.8rem;font-weight:800;color:#f5a623;min-width:60px;text-align:center}
       .stat-loading{background:rgba(255,255,255,.1)!important;-webkit-text-fill-color:transparent;border-radius:6px;animation:shimmer 1.4s infinite}
       @keyframes shimmer{0%,100%{opacity:.4}50%{opacity:1}}
       .stat-label{font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;font-weight:600}
       .stat-divider{width:1px;height:36px;background:rgba(255,255,255,.15)}
-      .scroll-btn{position:sticky;bottom:10px;right:10px;float:right;width:36px;height:36px;border-radius:999px;background:#1a3a6b;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(26,58,107,.25);transition:all .18s;z-index:20;margin-top:4px}
+      .scroll-btn{position:sticky;bottom:10px;right:10px;float:right;width:36px;height:36px;border-radius:999px;background:#255cae;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(26,58,107,.25);transition:all .18s;z-index:20;margin-top:4px}
       .scroll-btn:hover{background:#15314f;transform:scale(1.06)}
       @media(max-width:640px){.chat-messages{height:400px}.bc-grid{grid-template-columns:1fr 1fr;gap:8px}.hero-stats{gap:20px;padding:16px 20px}.stat-num{font-size:1.4rem}.bc-actions{flex-direction:column}.bc-btn{flex:none}}
       @media(max-width:400px){.bc-grid{grid-template-columns:1fr}}
       .features-section{width:100%;margin-top:48px}
       .features-header{text-align:center;margin-bottom:32px}
-      .features-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:700;color:#1a3a6b;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px}
+      .features-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:700;color:#255cae;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px}
       .features-eyebrow-line{display:block;width:24px;height:2px;background:#f5a623;border-radius:2px}
       .features-title{font-size:clamp(1.4rem,3vw,2rem);font-weight:800;color:#0f1724;line-height:1.25;margin:0;letter-spacing:-.02em}
-      .features-title-gradient{color:#1a3a6b}
+      .features-title-gradient{color:#255cae}
       .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
       .feat-card{position:relative;background:#fff;border:1.5px solid #e8edf5;border-radius:14px;padding:24px 20px 20px;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;animation:featIn .4s ease both;overflow:hidden;display:flex;flex-direction:column;gap:10px;outline:none;user-select:none}
       @keyframes featIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
       .feat-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(26,58,107,.13);border-color:#bfdbfe}
       .feat-card:active{transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,58,107,.1)}
-      .feat-card:focus-visible{border-color:#1a3a6b;box-shadow:0 0 0 3px rgba(26,58,107,.15)}
+      .feat-card:focus-visible{border-color:#255cae;box-shadow:0 0 0 3px rgba(26,58,107,.15)}
       .feat-icon-circle{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;transition:transform .2s ease}
       .feat-card:hover .feat-icon-circle{transform:scale(1.1) rotate(-4deg)}
       .feat-title{font-size:14px;font-weight:700;color:#0f1724;margin:0;line-height:1.3}
@@ -761,7 +761,7 @@ const handleAskAI = useCallback((bourse) => {
   gap: 10px;
   font-size: 11px;
   font-weight: 700;
-  color: #1a3a6b;
+  color: #255cae;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   margin-bottom: 16px;
@@ -860,7 +860,7 @@ const handleAskAI = useCallback((bourse) => {
 
 /* Supprime toute limitation de hauteur au survol */
 .testimonial-card:hover {
-  border-color: #1a3a6b;
+  border-color: #255cae;
   box-shadow: 0 15px 35px rgba(26, 58, 107, 0.2);
   transform: translateY(-5px);
   height: auto;

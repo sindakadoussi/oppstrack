@@ -280,7 +280,7 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .feedback-hero {
-          background: #1a3a6b;
+          background: #255cae;
           padding: 60px 20px;
           text-align: center;
           color: white;
@@ -311,7 +311,7 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .form-header {
-          background: #1a3a6b;
+          background: #255cae;
           padding: 40px;
           text-align: center;
           color: white;
@@ -426,7 +426,7 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         .submit-btn {
           width: 100%;
           padding: 14px;
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
           border: none;
           border-radius: 10px;
@@ -471,7 +471,7 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         .success-icon {
           width: 80px;
           height: 80px;
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
           font-size: 3rem;
           border-radius: 50%;

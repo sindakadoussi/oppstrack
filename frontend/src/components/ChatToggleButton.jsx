@@ -19,7 +19,7 @@ const ChatToggleButton = ({ isOpen, onClick }) => {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 24,
-        color: '#1a3a6b',
+        color: '#255cae',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         zIndex: 1000,
       }}

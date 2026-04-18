@@ -120,14 +120,14 @@ export default function ChatMessage({ msg, index, showVoiceBadge }) {
         }
         .bourse-card:hover {
           transform: translateY(-3px);
-          border-color: #1a3a6b;
+          border-color: #255cae;
           box-shadow: 0 6px 16px rgba(26,58,107,0.1);
         }
 
         .card-tag {
           font-size: 10px;
           font-weight: 700;
-          color: #1a3a6b;
+          color: #255cae;
           background: #eff6ff;
           padding: 3px 8px;
           border-radius: 4px;
@@ -166,7 +166,7 @@ export default function ChatMessage({ msg, index, showVoiceBadge }) {
         .card-action-btn {
           margin-top: auto;
           text-align: center;
-          background: #1a3a6b;
+          background: #255cae;
           color: white;
           text-decoration: none;
           font-size: 13px;
@@ -192,8 +192,8 @@ export default function ChatMessage({ msg, index, showVoiceBadge }) {
           border: 1px solid rgba(16, 185, 129, 0.3);
         }
         
-        .msg-link { color: #1a3a6b; text-decoration: underline; font-weight: 600; }
-        strong { color: #1a3a6b; font-weight: 700; }
+        .msg-link { color: #255cae; text-decoration: underline; font-weight: 600; }
+        strong { color: #255cae; font-weight: 700; }
         
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
