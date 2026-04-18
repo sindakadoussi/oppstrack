@@ -17,6 +17,7 @@ import Footer from './components/Footer';
 import ContactPage from "./pages/ContactPage";
 import { AppProviders, useT } from './i18n';
 import StudentFeedback from './components/StudentFeedback';
+import GuestPage from './pages/GuestPage';
 
 
 function AppContent() {
@@ -264,8 +265,8 @@ function AppContent() {
       {view === 'profil'          && <ProfilPage           {...sharedProps} />}
       {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
       {view === 'cv'              && <CVPage               {...sharedProps} />}
-      {view === "contact"         && <ContactPage setView={setView} />}
-      {view === 'feedback' && <StudentFeedback setView={setView} />}
+      {view === "contact"         && <ContactPage setView={setView} user={user}/>}
+      {view === 'feedback' && <StudentFeedback setView={setView} user={user} />}
 
     </main>
 

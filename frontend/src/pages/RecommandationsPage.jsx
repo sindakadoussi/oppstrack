@@ -193,45 +193,63 @@ export default function RecommandationsPage({
   }, [user, onStarChange, lang]);
 
   const handleStar = async (bourse, isStarred) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) return;
-    try {
-      const { data } = await axiosInstance.get('/api/favoris', { params:{ 'where[user][equals]':user.id, limit:1, depth:0 } });
-      const doc = data.docs?.[0];
-      if (isStarred) {
-        if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
-        setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
-      } else {
-        const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
-        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]),nb] });
-        else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
-        setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
-      }
-    } catch(err){ console.error('[handleStar]',err); }
-  };
-
-  const handleApply = async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id||appliedNoms.has(nomKey)) return;
-    try {
-      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
-        lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
-        dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
-      });
-      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-        roadmapId:res.data.doc.id,
-        user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
-        bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
-      });
-      setAppliedNoms(prev=>new Set([...prev,nomKey]));
-      setTimeout(()=>setView?.('roadmap'),1000);
-    } catch(err){
-      console.error('[handleApply]',err);
-      alert(lang==='fr'?"Erreur lors de l'initialisation.":"Error initializing application.");
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id) return;
+  try {
+    const { data } = await axiosInstance.get('/api/favoris', { params:{ 'where[user][equals]':user.id, limit:1, depth:0 } });
+    const doc = data.docs?.[0];
+    if (isStarred) {
+      if (!doc?.id) return;
+      await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
+      setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
+    } else {
+      const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
+      if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]),nb] });
+      else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
+      setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
     }
+    // ✅ Émettre l'événement
+    window.dispatchEvent(new CustomEvent('favoris-updated'));
+  } catch(err){ console.error('[handleStar]',err); }
+};
+
+const handleApply = async (bourse) => {
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id||appliedNoms.has(nomKey)) return;
+  try {
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
+      lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
+      dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
+    });
+    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+      roadmapId:res.data.doc.id,
+      user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
+      bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
+    });
+    setAppliedNoms(prev=>new Set([...prev,nomKey]));
+    // ✅ Émettre l'événement
+    window.dispatchEvent(new CustomEvent('roadmap-updated'));
+    setTimeout(()=>setView?.('roadmap'),1000);
+  } catch(err){
+    console.error('[handleApply]',err);
+    alert(lang==='fr'?"Erreur lors de l'initialisation.":"Error initializing application.");
+  }
+};
+
+// Ajouter cet useEffect après la définition de loadRecommandations
+useEffect(() => {
+  const handleFavorisUpdate = () => loadRecommandations();
+  const handleRoadmapUpdate = () => loadRecommandations();
+
+  window.addEventListener('favoris-updated', handleFavorisUpdate);
+  window.addEventListener('roadmap-updated', handleRoadmapUpdate);
+
+  return () => {
+    window.removeEventListener('favoris-updated', handleFavorisUpdate);
+    window.removeEventListener('roadmap-updated', handleRoadmapUpdate);
   };
+}, [loadRecommandations]);
 
   const handleAskAI = useCallback((bourse) => {
     setShowChat(true);

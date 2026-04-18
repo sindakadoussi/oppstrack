@@ -300,25 +300,19 @@ function AvatarUploader({ avatarId, onUpload, lang }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       <div style={S.avatarContainer}>
-        {preview ? (
-          <img src={preview} alt="Avatar" style={S.avatarImg} />
-        ) : (
-          <span style={{ fontSize: 40 }}>👤</span>
-        )}
+        {preview ? <img src={preview} alt="Avatar" style={S.avatarImg} /> : <span style={{ fontSize: 48 }}>👤</span>}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <label style={S.uploadBtn}>
-          {uploading ? (lang === 'fr' ? 'Envoi...' : 'Uploading...') : (lang === 'fr' ? 'Changer la photo' : 'Change photo')}
-          <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} disabled={uploading} />
-        </label>
-        {preview && (
-          <button style={S.deleteAvatarBtn} onClick={handleDelete}>
-            ✕ {lang === 'fr' ? 'Supprimer' : 'Remove'}
-          </button>
-        )}
-      </div>
+      <label style={{ ...S.uploadBtn, fontSize: 12, padding: '4px 12px' }}>
+        {uploading ? (lang === 'fr' ? 'Envoi...' : 'Uploading...') : (lang === 'fr' ? 'Changer la photo' : 'Change photo')}
+        <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} disabled={uploading} />
+      </label>
+      {preview && (
+        <button style={{ ...S.deleteAvatarBtn, fontSize: 12, padding: '4px 12px' }} onClick={handleDelete}>
+          ✕ {lang === 'fr' ? 'Supprimer' : 'Remove'}
+        </button>
+      )}
     </div>
   );
 }
@@ -437,6 +431,35 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
   fetchMatches();
 }, [profile.fieldOfStudy, profile.currentLevel, profile.targetCountries, profile.targetDegree]);
 
+ const ProfileHeader = () => (
+    <div style={headerStyles.container}>
+      <div style={headerStyles.avatarWrapper}>
+        <AvatarUploader
+          avatarId={profile.avatar}
+          onUpload={(mediaId) => setProfile(p => ({ ...p, avatar: mediaId }))}
+          lang={lang}
+          compact // optionnel : on peut passer un prop pour un style plus intégré
+        />
+      </div>
+      <div style={headerStyles.info}>
+        <div style={headerStyles.name}>{profile.name || (lang === 'fr' ? 'Nom non renseigné' : 'Name not provided')}</div>
+        <div style={headerStyles.email}>{profile.email || user?.email}</div>
+        <div style={headerStyles.stats}>
+  <span style={headerStyles.completion}>
+    📊 {lang === 'fr' ? 'Complétude du profil' : 'Profile completeness'} : {completionScore}%
+  </span>
+  <div style={headerStyles.badgesList}>
+    {badges.map(b => (
+      <span key={b.id} style={headerStyles.badge}>
+        {b.icon} {b.name}
+      </span>
+    ))}
+  </div>
+</div>
+      </div>
+    </div>
+  );
+
   // Assistant contextuel
   const openAssistant = (section) => {
     let msg = '';
@@ -546,28 +569,8 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     
     <div style={S.page}>
       <div style={S.body}>
+        <ProfileHeader />
         {/* Barre de progression + badges */}
-        <div style={S.scoreSection}>
-          <div style={S.progressContainer}>
-            <div style={S.progressLabel}>
-              <span role="img" aria-label="score">📊</span> {lang === 'fr' ? 'Complétude du profil' : 'Profile completeness'} : {completionScore}%
-            </div>
-            <div style={S.progressBarBg}>
-              <div style={{ ...S.progressBarFill, width: `${completionScore}%` }} />
-            </div>
-          </div>
-          {badges.length > 0 && (
-            <div style={S.badgesContainer} aria-label={lang === 'fr' ? 'Badges débloqués' : 'Unlocked badges'}>
-              {badges.map(b => (
-                <span key={b.id} style={S.badge} title={b.name}>
-                  {b.icon} {b.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-      
 
         {/* Tabs avec bouton assistant */}
         <div style={S.tabBar}>
@@ -584,11 +587,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
         {/* ==================== SECTION PERSONNEL ==================== */}
         {tab === 'personal' && (
           <div style={S.sec}>
-            <AvatarUploader
-              avatarId={profile.avatar}
-              onUpload={(mediaId) => setProfile(p => ({ ...p, avatar: mediaId }))}
-              lang={lang}
-            />
+            
             <div style={S.g2}>
               <F label={lang === 'fr' ? 'Nom complet' : 'Full name'} v={profile.name} s={v => setProfile(p => ({ ...p, name: v }))} ph={lang === 'fr' ? 'Prénom Nom' : 'First Last name'} />
               <F label="Email" v={profile.email} readOnly />
@@ -910,6 +909,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
             ))}
           </div>
         )}
+        
 
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -926,6 +926,7 @@ export default function ProfilPage({ user, setUser, handleLogout, handleQuickRep
     </div>
   );
 }
+
 
 // ==================== COMPOSANTS UTILITAIRES ====================
 function T({ children }) {
@@ -1020,6 +1021,45 @@ deleteAvatarBtn: {
   color: '#dc2626',
   fontWeight: 600,
 },};
+
+const headerStyles = {
+  container: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '24px',
+    background: '#ffffff',
+    padding: '20px 24px',
+    borderRadius: '16px',
+    border: '1px solid #e2e8f0',
+    marginBottom: '24px',
+    flexWrap: 'wrap',
+    '@media (max-width: 680px)': {
+      flexDirection: 'column',
+      textAlign: 'center',
+    }
+  },
+  avatarWrapper: { flexShrink: 0 },
+  info: { flex: 1 },
+  name: { fontSize: '1.5rem', fontWeight: 700, color: '#1a3a6b', marginBottom: '4px' },
+  email: { fontSize: '0.9rem', color: '#64748b', marginBottom: '12px' },
+  stats: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' },
+  completion: { fontSize: '0.8rem', fontWeight: 600, background: '#f8f9fc', padding: '4px 12px', borderRadius: '20px', color: '#1a3a6b' },
+  starterBadge: { fontSize: '0.75rem', fontWeight: 600, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '20px', padding: '4px 12px', color: '#1a3a6b' },
+  badgesList: {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px',
+},
+badge: {
+  background: '#eff6ff',
+  border: '1px solid #bfdbfe',
+  borderRadius: '20px',
+  padding: '4px 10px',
+  fontSize: '0.7rem',
+  fontWeight: 600,
+  color: '#1a3a6b',
+},
+};
 
 // ==================== MODAL DE CONNEXION (inchangé) ====================
 function LoginModal({ onClose }) {

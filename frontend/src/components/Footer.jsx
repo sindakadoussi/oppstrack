@@ -92,15 +92,13 @@ export default function Footer({ setView }) {
           </ul>
         </div>
 
-        {/* Colonne 3 : Ressources */}
-        {/* Colonne 3 : Ressources */}
+    {/* Colonne 3 : Ressources */}
 <div className="footer-col">
   <h4 className="footer-heading">{lang === 'fr' ? 'Ressources' : 'Resources'}</h4>
   <ul className="footer-links">
     <li><a href="#">{lang === 'fr' ? 'Blog' : 'Blog'}</a></li>
     <li><a href="#">{lang === 'fr' ? 'FAQ' : 'FAQ'}</a></li>
-    <li><a href="#">{lang === 'fr' ? 'Témoignages' : 'Testimonials'}</a></li>
-    {/* NOUVEAU LIEN VERS LA PAGE FEEDBACK */}
+    {/* Témoignages remplace l'ancien "Avis étudiants" */}
     <li>
       <a
         href="#"
@@ -110,7 +108,7 @@ export default function Footer({ setView }) {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       >
-        {lang === 'fr' ? 'Avis étudiants' : 'Student Feedback'}
+        {lang === 'fr' ? 'Témoignages' : 'Testimonials'}
       </a>
     </li>
     <li><a href="#">{lang === 'fr' ? 'Guide complet' : 'Complete Guide'}</a></li>

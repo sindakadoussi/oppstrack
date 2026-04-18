@@ -4,7 +4,8 @@ import axiosInstance from '@/config/axiosInstance';
 import BourseDrawer from '../components/Boursedrawer';
 import { API_ROUTES } from '@/config/routes';
 import { useT, LanguageToggle } from '../i18n';
-
+import axios from 'axios';
+import { WEBHOOK_ROUTES } from '@/config/routes';
 /* ═══════════════════════════════════════════════════════════════════════════
    QUICK REPLIES
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -457,6 +458,8 @@ const handleStar = useCallback(async (bourse, isStarred) => {
     console.error('[handleStar]', err);
     alert(lang === 'fr' ? 'Erreur lors de la mise à jour des favoris' : 'Error updating favorites');
   }
+    window.dispatchEvent(new CustomEvent('favoris-updated'));
+
 }, [user, lang]);
 
 // ✅ Postuler : Appel API roadmap + webhook + mise à jour état
@@ -481,11 +484,20 @@ const handleApply = useCallback(async (bourse) => {
 
     // 2. Déclencher le webhook pour générer les étapes (si disponible)
     try {
-      await axiosInstance.post('/api/webhooks/generate-roadmap', {
-        roadmapId: res.data.doc?.id || res.data.id,
-        user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
-        bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
-      });
+      await axios.post(WEBHOOK_ROUTES.generateRoadmap, {
+  roadmapId: res.data.doc?.id || res.data.id,
+  user: { 
+    id: user.id, 
+    email: user.email, 
+    niveau: user.niveau, 
+    domaine: user.domaine 
+  },
+  bourse: { 
+    nom: bourse.nom, 
+    pays: bourse.pays, 
+    lien: bourse.lienOfficiel 
+  },
+});
     } catch (webhookErr) {
       console.warn('Webhook roadmap non disponible, continuation...', webhookErr);
       // Continue même si le webhook échoue

@@ -267,34 +267,36 @@ export default function BoursesPage({
   const showToast = (message, type = 'success') => setToast({ message, type });
 
   const handleStar = async (bourse, isStarred) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour sauvegarder' : 'Sign in to save', 'info'); return; }
-    
-    try {
-      const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
-      const doc = res.data.docs?.[0];
-      if (isStarred) {
-        if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, {
-          bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey)
-        });
-        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
-        showToast(lang === 'fr' ? 'Retiré des favoris' : 'Removed from favorites', 'info');
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour sauvegarder' : 'Sign in to save', 'info'); return; }
+  
+  try {
+    const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
+    const doc = res.data.docs?.[0];
+    if (isStarred) {
+      if (!doc?.id) return;
+      await axiosInstance.patch(`/api/favoris/${doc.id}`, {
+        bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey)
+      });
+      setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
+      showToast(lang === 'fr' ? 'Retiré des favoris' : 'Removed from favorites', 'info');
+    } else {
+      const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
+      if (doc?.id) {
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
       } else {
-        const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
-        if (doc?.id) {
-          await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
-        } else {
-          await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
-        }
-        setStarredNoms(prev => new Set([...prev, nomKey]));
-        showToast(lang === 'fr' ? 'Ajouté aux favoris ⭐' : 'Added to favorites ⭐', 'success');
+        await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
       }
-    } catch (err) { 
-      console.error('[handleStar]', err); 
-      showToast(lang === 'fr' ? 'Erreur lors de la mise à jour' : 'Update error', 'error');
+      setStarredNoms(prev => new Set([...prev, nomKey]));
+      showToast(lang === 'fr' ? 'Ajouté aux favoris ⭐' : 'Added to favorites ⭐', 'success');
     }
-  };
+    // ✅ Émettre l'événement pour la Navbar (et autres composants)
+    window.dispatchEvent(new CustomEvent('favoris-updated'));
+  } catch (err) { 
+    console.error('[handleStar]', err); 
+    showToast(lang === 'fr' ? 'Erreur lors de la mise à jour' : 'Update error', 'error');
+  }
+};
 
   const handleApply = async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();

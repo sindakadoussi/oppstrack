@@ -69,6 +69,14 @@ function useStarredBourses(user) {
     } catch {}
   };
   useEffect(() => { reload(); }, [user?.id]);
+
+  // 👇 Écoute l'événement personnalisé
+  useEffect(() => {
+    const handleFavorisUpdate = () => reload();
+    window.addEventListener('favoris-updated', handleFavorisUpdate);
+    return () => window.removeEventListener('favoris-updated', handleFavorisUpdate);
+  }, [reload]);
+
   return { starred, reload };
 }
 

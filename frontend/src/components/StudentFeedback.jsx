@@ -1,10 +1,10 @@
 // StudentFeedback.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useT } from '../i18n';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 
-export default function StudentFeedback({ setView }) {
+export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la prop user
   const { lang } = useT();
   const [formData, setFormData] = useState({
     name: '',
@@ -14,7 +14,18 @@ export default function StudentFeedback({ setView }) {
     agreeTerms: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null); // 'success', 'error'
+  const [submitStatus, setSubmitStatus] = useState(null);
+
+  // ✅ Pré-remplir avec les données utilisateur si disponibles
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -30,68 +41,64 @@ export default function StudentFeedback({ setView }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // --- Validations ---
-  if (!formData.name.trim()) {
-    setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez entrer votre nom' : 'Please enter your name' });
-    return;
-  }
-  if (!formData.email.trim() || !formData.email.includes('@')) {
-    setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Email valide requis' : 'Valid email required' });
-    return;
-  }
-  if (!formData.comment.trim()) {
-    setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez laisser un commentaire' : 'Please leave a comment' });
-    return;
-  }
-  if (!formData.agreeTerms) {
-    setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Vous devez accepter les conditions' : 'You must agree to the terms' });
-    return;
-  }
+    if (!formData.name.trim()) {
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez entrer votre nom' : 'Please enter your name' });
+      return;
+    }
+    if (!formData.email.trim() || !formData.email.includes('@')) {
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Email valide requis' : 'Valid email required' });
+      return;
+    }
+    if (!formData.comment.trim()) {
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez laisser un commentaire' : 'Please leave a comment' });
+      return;
+    }
+    if (!formData.agreeTerms) {
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Vous devez accepter les conditions' : 'You must agree to the terms' });
+      return;
+    }
 
-  setIsSubmitting(true);
-  setSubmitStatus(null);
+    setIsSubmitting(true);
+    setSubmitStatus(null);
 
-  try {
-    // Envoi vers l'API Payload
-    await axiosInstance.post(API_ROUTES.feedbacks.create, {
-      name: formData.name,
-      email: formData.email,
-      rating: formData.rating,
-      comment: formData.comment,
-    });
+    try {
+      await axiosInstance.post(API_ROUTES.feedbacks.create, {
+        name: formData.name,
+        email: formData.email,
+        rating: formData.rating,
+        comment: formData.comment,
+      });
 
-    setSubmitStatus({
-      type: 'success',
-      message: lang === 'fr' ? 'Merci pour votre retour !' : 'Thank you for your feedback!'
-    });
+      setSubmitStatus({
+        type: 'success',
+        message: lang === 'fr' ? 'Merci pour votre retour !' : 'Thank you for your feedback!'
+      });
 
-    // Réinitialiser le formulaire
-    setFormData({
-      name: '',
-      email: '',
-      rating: 5,
-      comment: '',
-      agreeTerms: false,
-    });
-  } catch (error) {
-    console.error('Erreur lors de l’envoi du feedback :', error);
-    setSubmitStatus({
-      type: 'error',
-      message: lang === 'fr'
-        ? 'Erreur lors de l’envoi. Réessayez plus tard.'
-        : 'Submission error. Please try again later.',
-    });
-  } finally {
-    setIsSubmitting(false);
-    setTimeout(() => setSubmitStatus(null), 5000);
-  }
-};
+      setFormData({
+        name: user?.name || '',
+        email: user?.email || '',
+        rating: 5,
+        comment: '',
+        agreeTerms: false,
+      });
+    } catch (error) {
+      console.error('Erreur lors de l’envoi du feedback :', error);
+      setSubmitStatus({
+        type: 'error',
+        message: lang === 'fr'
+          ? 'Erreur lors de l’envoi. Réessayez plus tard.'
+          : 'Submission error. Please try again later.',
+      });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setSubmitStatus(null), 5000);
+    }
+  };
 
   return (
     <div className="feedback-page">
-      {/* Bouton retour centré */}
       <div className="back-button-container">
         <button 
           onClick={() => {
@@ -107,7 +114,6 @@ export default function StudentFeedback({ setView }) {
         </button>
       </div>
 
-      {/* Hero avec dégradé (comme ContactPage) */}
       <div className="feedback-hero">
         <div className="feedback-hero-content">
           <h1>{lang === 'fr' ? 'Donnez votre avis' : 'Share your feedback'}</h1>
@@ -236,6 +242,7 @@ export default function StudentFeedback({ setView }) {
         </div>
       </div>
 
+
       <style jsx>{`
         .feedback-page {
           min-height: 100vh;
@@ -273,7 +280,7 @@ export default function StudentFeedback({ setView }) {
         }
 
         .feedback-hero {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #1a3a6b;
           padding: 60px 20px;
           text-align: center;
           color: white;
@@ -304,7 +311,7 @@ export default function StudentFeedback({ setView }) {
         }
 
         .form-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #1a3a6b;
           padding: 40px;
           text-align: center;
           color: white;
@@ -419,7 +426,7 @@ export default function StudentFeedback({ setView }) {
         .submit-btn {
           width: 100%;
           padding: 14px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #1a3a6b;
           color: white;
           border: none;
           border-radius: 10px;
@@ -464,7 +471,7 @@ export default function StudentFeedback({ setView }) {
         .success-icon {
           width: 80px;
           height: 80px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #1a3a6b;
           color: white;
           font-size: 3rem;
           border-radius: 50%;

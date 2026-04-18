@@ -1,7 +1,9 @@
 // ContactPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useT } from '../i18n'; // à adapter selon votre chemin
 
-export default function ContactPage({ setView }) {
+export default function ContactPage({ setView, user }) { // ✅ ajout de la prop user
+  const { lang } = useT(); // pour le multilinguisme
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -11,6 +13,17 @@ export default function ContactPage({ setView }) {
   const [sent, setSent] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ Pré-remplir nom et email depuis le profil utilisateur
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,14 +35,14 @@ export default function ContactPage({ setView }) {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Le nom est requis";
+    if (!formData.name.trim()) newErrors.name = lang === 'fr' ? "Le nom est requis" : "Name is required";
     if (!formData.email.trim()) {
-      newErrors.email = "L'email est requis";
+      newErrors.email = lang === 'fr' ? "L'email est requis" : "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email invalide";
+      newErrors.email = lang === 'fr' ? "Email invalide" : "Invalid email";
     }
-    if (!formData.category) newErrors.category = "Veuillez sélectionner une catégorie";
-    if (!formData.message.trim()) newErrors.message = "Le message est requis";
+    if (!formData.category) newErrors.category = lang === 'fr' ? "Veuillez sélectionner une catégorie" : "Please select a category";
+    if (!formData.message.trim()) newErrors.message = lang === 'fr' ? "Le message est requis" : "Message is required";
     return newErrors;
   };
 
@@ -42,19 +55,25 @@ export default function ContactPage({ setView }) {
     }
 
     setIsSubmitting(true);
+    // Simuler l'envoi (à remplacer par un vrai appel API)
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsSubmitting(false);
     setSent(true);
     
     setTimeout(() => {
       setSent(false);
-      setFormData({ name: "", email: "", category: "", message: "" });
+      // Réinitialiser en gardant nom/email si l'utilisateur est connecté
+      setFormData({
+        name: user?.name || "",
+        email: user?.email || "",
+        category: "",
+        message: ""
+      });
     }, 3000);
   };
 
   return (
     <div className="contact-page">
-      {/* Flèche de retour au milieu */}
       <div className="back-button-container">
         <button 
           onClick={() => {
@@ -66,14 +85,14 @@ export default function ContactPage({ setView }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span>Back to home</span>
+          <span>{lang === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}</span>
         </button>
       </div>
 
       <div className="contact-hero">
         <div className="contact-hero-content">
-          <h1>Contactez notre équipe</h1>
-          <p>Nous sommes là pour répondre à toutes vos questions</p>
+          <h1>{lang === 'fr' ? 'Contactez notre équipe' : 'Contact our team'}</h1>
+          <p>{lang === 'fr' ? 'Nous sommes là pour répondre à toutes vos questions' : 'We are here to answer all your questions'}</p>
         </div>
       </div>
 
@@ -83,34 +102,34 @@ export default function ContactPage({ setView }) {
             <div className="info-icon">📧</div>
             <h3>Email</h3>
             <p>contact@oppstrack.com</p>
-            <p className="info-detail">Réponse sous 24h</p>
+            <p className="info-detail">{lang === 'fr' ? 'Réponse sous 24h' : 'Reply within 24h'}</p>
           </div>
 
           <div className="info-card">
             <div className="info-icon">📞</div>
-            <h3>Téléphone</h3>
+            <h3>{lang === 'fr' ? 'Téléphone' : 'Phone'}</h3>
             <p>+216 51 551 456</p>
-            <p className="info-detail">Lun-Ven, 9h-18h</p>
+            <p className="info-detail">{lang === 'fr' ? 'Lun-Ven, 9h-18h' : 'Mon-Fri, 9am-6pm'}</p>
           </div>
 
           <div className="info-card">
             <div className="info-icon">📍</div>
-            <h3>Adresse</h3>
-            <p>Tunis, Tunisie</p>
-            <p className="info-detail">Nous rencontrer</p>
+            <h3>{lang === 'fr' ? 'Adresse' : 'Address'}</h3>
+            <p>{lang === 'fr' ? 'Tunis, Tunisie' : 'Tunis, Tunisia'}</p>
+            <p className="info-detail">{lang === 'fr' ? 'Nous rencontrer' : 'Meet us'}</p>
           </div>
         </div>
 
         <div className="contact-form-section">
           <div className="form-header">
-            <h2>Envoyez-nous un message</h2>
-            <p>Remplissez le formulaire ci-dessous et nous vous répondrons rapidement</p>
+            <h2>{lang === 'fr' ? 'Envoyez-nous un message' : 'Send us a message'}</h2>
+            <p>{lang === 'fr' ? 'Remplissez le formulaire ci-dessous et nous vous répondrons rapidement' : 'Fill out the form below and we will get back to you quickly'}</p>
           </div>
 
           {!sent ? (
             <form onSubmit={handleSubmit} className="contact-form">
               <div className="form-group">
-                <label htmlFor="name">Nom complet *</label>
+                <label htmlFor="name">{lang === 'fr' ? 'Nom complet' : 'Full name'} *</label>
                 <input
                   type="text"
                   id="name"
@@ -118,7 +137,7 @@ export default function ContactPage({ setView }) {
                   value={formData.name}
                   onChange={handleChange}
                   className={errors.name ? "error" : ""}
-                  placeholder="Jean Dupont"
+                  placeholder={lang === 'fr' ? 'Jean Dupont' : 'John Doe'}
                 />
                 {errors.name && <span className="error-message">{errors.name}</span>}
               </div>
@@ -138,7 +157,7 @@ export default function ContactPage({ setView }) {
               </div>
 
               <div className="form-group">
-                <label htmlFor="category">Catégorie *</label>
+                <label htmlFor="category">{lang === 'fr' ? 'Catégorie' : 'Category'} *</label>
                 <select
                   id="category"
                   name="category"
@@ -146,18 +165,18 @@ export default function ContactPage({ setView }) {
                   onChange={handleChange}
                   className={errors.category ? "error" : ""}
                 >
-                  <option value="">Sélectionnez une catégorie</option>
-                  <option value="support">📩 Support technique</option>
-                  <option value="bourse">🎓 Question sur une bourse</option>
-                  <option value="partenariat">💼 Partenariat</option>
-                  <option value="bug">🐞 Signaler un bug</option>
-                  <option value="autre">❓ Autre</option>
+                  <option value="">{lang === 'fr' ? 'Sélectionnez une catégorie' : 'Select a category'}</option>
+                  <option value="support">📩 {lang === 'fr' ? 'Support technique' : 'Technical support'}</option>
+                  <option value="bourse">🎓 {lang === 'fr' ? 'Question sur une bourse' : 'Scholarship question'}</option>
+                  <option value="partenariat">💼 {lang === 'fr' ? 'Partenariat' : 'Partnership'}</option>
+                  <option value="bug">🐞 {lang === 'fr' ? 'Signaler un bug' : 'Report a bug'}</option>
+                  <option value="autre">❓ {lang === 'fr' ? 'Autre' : 'Other'}</option>
                 </select>
                 {errors.category && <span className="error-message">{errors.category}</span>}
               </div>
 
               <div className="form-group">
-                <label htmlFor="message">Message *</label>
+                <label htmlFor="message">{lang === 'fr' ? 'Message' : 'Message'} *</label>
                 <textarea
                   id="message"
                   name="message"
@@ -165,7 +184,7 @@ export default function ContactPage({ setView }) {
                   onChange={handleChange}
                   className={errors.message ? "error" : ""}
                   rows="5"
-                  placeholder="Décrivez votre demande en détail..."
+                  placeholder={lang === 'fr' ? 'Décrivez votre demande en détail...' : 'Describe your request in detail...'}
                 />
                 {errors.message && <span className="error-message">{errors.message}</span>}
               </div>
@@ -178,33 +197,37 @@ export default function ContactPage({ setView }) {
                 {isSubmitting ? (
                   <>
                     <span className="spinner"></span>
-                    Envoi en cours...
+                    {lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}
                   </>
                 ) : (
-                  "Envoyer le message"
+                  lang === 'fr' ? 'Envoyer le message' : 'Send message'
                 )}
               </button>
             </form>
           ) : (
             <div className="success-message">
               <div className="success-icon">✓</div>
-              <h3>Message envoyé avec succès !</h3>
-              <p>Merci de nous avoir contactés. Notre équipe vous répondra dans les plus brefs délais.</p>
+              <h3>{lang === 'fr' ? 'Message envoyé avec succès !' : 'Message sent successfully!'}</h3>
+              <p>
+                {lang === 'fr' 
+                  ? 'Merci de nous avoir contactés. Notre équipe vous répondra dans les plus brefs délais.'
+                  : 'Thank you for contacting us. Our team will get back to you as soon as possible.'}
+              </p>
               <button onClick={() => setSent(false)} className="new-message-btn">
-                Envoyer un nouveau message
+                {lang === 'fr' ? 'Envoyer un nouveau message' : 'Send a new message'}
               </button>
             </div>
           )}
         </div>
       </div>
 
+      {/* Le bloc <style> reste identique à votre version (inchangé) */}
       <style jsx>{`
         .contact-page {
           min-height: 100vh;
           background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
-        /* Conteneur de la flèche - centré */
         .back-button-container {
           display: flex;
           justify-content: center;
@@ -485,7 +508,6 @@ export default function ContactPage({ setView }) {
             font-size: 1.5rem;
           }
         }
-          
       `}</style>
     </div>
   );
