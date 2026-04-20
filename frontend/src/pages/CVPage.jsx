@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 
+// ─── Chargeurs PDF ────────────────────────────────────────────────────────────
+
 function loadJsPDF() {
   return new Promise(resolve => {
     if (window.jspdf) { resolve(window.jspdf.jsPDF); return; }
@@ -39,6 +41,8 @@ async function extractPdfText(file) {
   return text.trim();
 }
 
+// ─── Génération PDF CV ────────────────────────────────────────────────────────
+
 async function generateCV(aiContent, user, bourse, filename) {
   const jsPDF = await loadJsPDF();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -59,10 +63,10 @@ async function generateCV(aiContent, user, bourse, filename) {
   const isBold    = (l) => /^\*{1,3}[^*]+\*{1,3}\s*$/.test(l.trim());
   const isSep     = (l) => /^[-=*]{3,}$/.test(l.trim());
   const isBullet  = (l) => /^[\-*•]\s/.test(l.trim());
-  const nom = (user.name || '').trim().toUpperCase();
+  const nom   = (user.name || '').trim().toUpperCase();
   const titre = [user.currentLevel || user.niveau || '', user.fieldOfStudy || user.domaine || ''].filter(Boolean).join(' - ');
-  const ctc = [user.email, user.phone, user.countryOfResidence || user.pays].filter(Boolean).join('   |   ');
-  const lnk = [user.linkedin, user.github, user.portfolio].filter(Boolean).join('   |   ');
+  const ctc   = [user.email, user.phone, user.countryOfResidence || user.pays].filter(Boolean).join('   |   ');
+  const lnk   = [user.linkedin, user.github, user.portfolio].filter(Boolean).join('   |   ');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(0,0,0);
   doc.text(nom, W/2, y, { align:'center' }); y += 7;
   doc.setDrawColor(26,58,107); doc.setLineWidth(0.7); doc.line(mL, y, W-mR, y); y += 4;
@@ -115,6 +119,8 @@ async function generateCV(aiContent, user, bourse, filename) {
   doc.save(filename + '.pdf');
 }
 
+// ─── Génération PDF Lettre de motivation ──────────────────────────────────────
+
 async function generateLM(rawContent, filename, meta, bourse) {
   const jsPDF = await loadJsPDF();
   const doc = new jsPDF({ unit:'mm', format:'a4' });
@@ -164,6 +170,8 @@ async function generateLM(rawContent, filename, meta, bourse) {
   doc.save(filename+'.pdf');
 }
 
+// ─── Vérification profil ──────────────────────────────────────────────────────
+
 function checkProfile(user) {
   if (!user) return { ok:false, missing:['Connexion requise'] };
   const m = [];
@@ -176,18 +184,25 @@ function checkProfile(user) {
   return { ok: m.length===0, missing: m };
 }
 
+// ─── Appel n8n ────────────────────────────────────────────────────────────────
+
+// REMPLACE la fonction callN8N existante par celle-ci :
 async function callN8N(context, payload) {
+  // Tous les appels CV passent par le webhook principal (orchestrateur)
+  // sauf CV_ANALYSIS qui a son propre endpoint
   let webhookUrl = WEBHOOK_ROUTES.chat;
-  if (context === 'generate_cv' || context === 'generate_lm') webhookUrl = WEBHOOK_ROUTES.cv;
-  else if (context === 'CV_ANALYSIS') webhookUrl = WEBHOOK_ROUTES.entretien;
-  
+  if (context === 'CV_ANALYSIS') webhookUrl = WEBHOOK_ROUTES.entretien;
+
   try {
-    const response = await axios.post(webhookUrl, {
+    const response = await axiosInstance.post(webhookUrl, {
       ...payload,
-      context
+      context,
+      // ← bourse transmise explicitement pour que l'orchestrateur la passe à CVAgent1
+      bourse_nom: payload.bourse_nom || payload.bourse?.nom || '',
+      bourse_pays: payload.bourse_pays || payload.bourse?.pays || '',
     }, {
       timeout: 90000,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
     return response.data?.output || response.data?.text || response.data?.message || '';
   } catch (error) {
@@ -195,6 +210,7 @@ async function callN8N(context, payload) {
     return '';
   }
 }
+// ─── Composants utilitaires ───────────────────────────────────────────────────
 
 function WordCount({ text, min = 500 }) {
   const count = (text || '').split(/\s+/).filter(Boolean).length;
@@ -257,7 +273,8 @@ function BourseSelector({ bourses, selected, onSelect }) {
   );
 }
 
-// ── Modal de connexion (magic link) ─────────────────────────────────────────
+// ─── Modal connexion ──────────────────────────────────────────────────────────
+
 function LoginModal({ onClose }) {
   const [email,  setEmail]  = useState('');
   const [status, setStatus] = useState('idle');
@@ -267,9 +284,7 @@ function LoginModal({ onClose }) {
     if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
     setStatus('sending');
     try {
-      await axiosInstance.post('/api/users/request-magic-link', {
-        email: email.trim().toLowerCase(),
-      });
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
       setStatus('success');
     } catch (err) {
       setStatus('error');
@@ -291,15 +306,9 @@ function LoginModal({ onClose }) {
               <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
                 Entrez votre email pour recevoir un <strong style={{ color: '#1a3a6b' }}>lien de connexion magique</strong>.
               </p>
-              <input
-                type="email"
-                placeholder="votre@email.com"
-                value={email}
-                autoFocus
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && send()}
-                style={M.input}
-              />
+              <input type="email" placeholder="votre@email.com" value={email} autoFocus
+                onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+                style={M.input} />
               {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
               <button style={M.btn} onClick={send}>✉️ Envoyer le lien magique</button>
             </>
@@ -315,21 +324,16 @@ function LoginModal({ onClose }) {
               <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Lien envoyé !</div>
               <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-                Vérifiez votre boîte mail (et les spams).<br/>
-                Cliquez sur le lien pour vous connecter.
+                Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.
               </p>
-              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
-                ✓ Fermer
-              </button>
+              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>✓ Fermer</button>
             </div>
           )}
           {status === 'error' && (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
               <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
-              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
-                Réessayer
-              </button>
+              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>Réessayer</button>
             </div>
           )}
         </div>
@@ -351,100 +355,98 @@ const M = {
   spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
 };
 
-// Styles pour l'état non connecté
 const S_locked = {
-  locked: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f8f9fc',
-    padding: 24,
-  },
-  lockedCard: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    background: '#ffffff',
-    border: '1px solid #e2e8f0',
-    borderRadius: 12,
-    padding: '48px 40px',
-    boxShadow: '0 4px 20px rgba(26,58,107,0.08)',
-    maxWidth: 380,
-    width: '100%',
-  },
-  lockBtn: {
-    padding: '12px 32px',
-    borderRadius: 6,
-    background: '#1a3a6b',
-    color: 'white',
-    border: 'none',
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
+  locked:     { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8f9fc', padding:24 },
+  lockedCard: { display:'flex', flexDirection:'column', alignItems:'center', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:12, padding:'48px 40px', boxShadow:'0 4px 20px rgba(26,58,107,0.08)', maxWidth:380, width:'100%' },
+  lockBtn:    { padding:'12px 32px', borderRadius:6, background:'#1a3a6b', color:'white', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' },
 };
 
-export default function CVPage({ user, setView }) {
-  const [showLoginModal, setShowLoginModal] = useState(false); 
-  const [tab,      setTab]      = useState('cv');
-  const [mode,     setMode]     = useState('menu');
-  const [bourse,   setBourse]   = useState('');
-  const [bourses,  setBourses]  = useState([]);
-  const [content,  setContent]  = useState('');
-  const [improved, setImproved] = useState('');
-  const [analysis, setAnalysis] = useState(null);
-  const [step,     setStep]     = useState('');
-  const [fileName, setFileName] = useState(null);
+// ─── Composant principal CVPage ───────────────────────────────────────────────
+
+export default function CVPage({ user, setView, initialTab }) {
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [tab,          setTab]      = useState(initialTab || 'cv'); // ← pré-sélection depuis le chat
+  const [mode,         setMode]     = useState('menu');
+  const [bourse,       setBourse]   = useState('');
+  const [bourses,      setBourses]  = useState([]);
+  const [content,      setContent]  = useState('');
+  const [improved,     setImproved] = useState('');
+  const [analysis,     setAnalysis] = useState(null);
+  const [step,         setStep]     = useState('');
+  const [fileName,     setFileName] = useState(null);
   const [lmPreviewMode, setLmPreviewMode] = useState('rendered');
   const fileRef = useRef(null);
+
+  // Réagir si initialTab change (ex : 2e navigation depuis le chat)
+  useEffect(() => {
+    if (initialTab === 'cv' || initialTab === 'lm') {
+      setTab(initialTab);
+      reset();
+    }
+  }, [initialTab]);
 
   const docType = tab==='cv' ? 'CV' : 'Lettre de motivation';
   const selB    = bourses.find(b=>b.nom===bourse);
   const pCheck  = checkProfile(user);
+  console.log('Champs manquants:', pCheck.missing);
+console.log('User data:', {
+  name: user.name,
+  currentLevel: user.currentLevel,
+  niveau: user.niveau,
+  fieldOfStudy: user.fieldOfStudy,
+  domaine: user.domaine,
+  institution: user.institution,
+  motivationSummary: user.motivationSummary,
+  academicHistory: user.academicHistory,
+});
   const isLM    = tab === 'lm';
 
-  // 🔒 Si non connecté, afficher le message verrouillé
- if (!user) {
-  return (
-    <>
-      <div style={S_locked.locked}>
-        <div style={S_locked.lockedCard}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>📄</div>
-          <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
-            CV & Lettre non disponibles
-          </h3>
-          <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
-            Connectez-vous pour générer votre CV et lettre de motivation personnalisés avec l'IA.
-          </p>
-          <button style={S_locked.lockBtn} onClick={() => setShowLoginModal(true)}>
-            🔐 Se connecter
-          </button>
+  // ── Non connecté ────────────────────────────────────────────────────────────
+  if (!user) {
+    return (
+      <>
+        <div style={S_locked.locked}>
+          <div style={S_locked.lockedCard}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>📄</div>
+            <h3 style={{ color: '#1a3a6b', fontWeight: 700, fontSize: 18, margin: '0 0 8px' }}>
+              CV & Lettre non disponibles
+            </h3>
+            <p style={{ color: '#64748b', fontSize: 11, lineHeight: 1.6, maxWidth: 280, textAlign: 'center', margin: '0 0 24px' }}>
+              Connectez-vous pour générer votre CV et lettre de motivation personnalisés avec l'IA.
+            </p>
+            <button style={S_locked.lockBtn} onClick={() => setShowLoginModal(true)}>
+              🔐 Se connecter
+            </button>
+          </div>
         </div>
-      </div>
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </>
-  );
-}
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </>
+    );
+  }
 
-  useEffect(()=>{
+  // ── Chargement des bourses depuis la roadmap ─────────────────────────────────
+  useEffect(() => {
     if (!user?.id) return;
     axiosInstance.get(API_ROUTES.roadmap.byUser(user.id))
       .then(response => {
         const docs = (response.data.docs || []).map(d => ({
-          nom: d.nom,
-          pays: d.pays || '',
-          url: d.lienOfficiel || d.url || '',
+          nom:      d.nom,
+          pays:     d.pays || '',
+          url:      d.lienOfficiel || d.url || '',
           deadline: d.dateLimite || d.deadline || '',
-          langue: d.langue || '',
+          langue:   d.langue || '',
         }));
         setBourses(docs || []);
       })
-      .catch(() => { setBourses([]); });
-  },[user?.id]);
+      .catch(() => setBourses([]));
+  }, [user?.id]);
 
-  const reset = () => { setMode('menu'); setContent(''); setImproved(''); setAnalysis(null); setFileName(null); setStep(''); setLmPreviewMode('rendered'); };
+  const reset = () => {
+    setMode('menu'); setContent(''); setImproved('');
+    setAnalysis(null); setFileName(null); setStep('');
+    setLmPreviewMode('rendered');
+  };
 
   const dlPDF = async (text, suffix) => {
     const safe = ((tab==='cv'?'CV':'LM')+'_'+(bourse||'OppsTrack')+(suffix||'')).replace(/[^a-zA-Z0-9_-]/g,'_');
@@ -452,6 +454,7 @@ export default function CVPage({ user, setView }) {
     else await generateLM(text, safe, { name:user?.name||'', email:user?.email||'', phone:user?.phone||'', address:user?.countryOfResidence||user?.pays||'' }, bourse);
   };
 
+  // ── Créer le document ────────────────────────────────────────────────────────
   const handleCreate = async () => {
     if (!pCheck.ok) { setMode('incomplete'); return; }
     if (!bourse) { alert('Sélectionnez une bourse'); return; }
@@ -459,17 +462,27 @@ export default function CVPage({ user, setView }) {
     const steps = isLM
       ? ['Lecture du profil...', 'Analyse des critères de la bourse...', "Rédaction de l'accroche...", 'Développement des arguments...', 'Finalisation et relecture...']
       : ['Lecture du profil...', 'Préparation...', 'Rédaction personnalisée...', 'Adaptation aux critères...', 'Finalisation...'];
-    let si=0; const t=setInterval(()=>{ si=Math.min(si+1,steps.length-1); setStep(steps[si]); },4000);
+    let si=0;
+    const t = setInterval(() => { si=Math.min(si+1,steps.length-1); setStep(steps[si]); }, 4000);
     try {
       const r = await callN8N(tab==='cv'?'generate_cv':'generate_lm', {
         text: buildPrompt(tab, user, bourse, selB),
-        id: user.id, email: user.email,
+        id: user.id,
+        email: user.email,
+          bourse_nom: bourse || '',        // ← ajout
+  bourse_pays: selB?.pays || '',   // ← ajout
         conversationId: tab+'-'+Date.now(),
       });
+      // Détecter si le profil est incomplet côté serveur
+      try {
+        const parsed = JSON.parse(r);
+        if (parsed?.missing_fields) { clearInterval(t); setMode('incomplete'); return; }
+      } catch (_) {}
       clearInterval(t); setContent(r||''); setMode('created');
     } catch(e) { clearInterval(t); setStep('Erreur n8n'); console.error(e); }
   };
 
+  // ── Upload fichier ───────────────────────────────────────────────────────────
   const handleFile = async (file) => {
     if (!file) return;
     setFileName(file.name);
@@ -489,6 +502,7 @@ export default function CVPage({ user, setView }) {
     }
   };
 
+  // ── Analyser ─────────────────────────────────────────────────────────────────
   const handleAnalyze = async () => {
     if (!content.trim()) return;
     setMode('loading'); setStep(bourse?`Comparaison avec "${bourse}"...`:'Analyse en cours...');
@@ -504,16 +518,22 @@ export default function CVPage({ user, setView }) {
           '\nRetourne UNIQUEMENT ce JSON sans markdown :\n{"score":number,"checklist":[{"title":string,"status":"ok"|"warning"|"error","detail":string}],"strengths":[string],"toFix":[string],"toAdd":[string],"toRemove":[string],"conclusion":string}\n' +
           'CV :\n' + content;
       const raw = await callN8N('CV_ANALYSIS', {
-        text: analysisPrompt, id: user?.id||null,
+        text: analysisPrompt, id: user?.id||null,bourse_nom: bourse || '',        // ← ajout
+  bourse_pays: selB?.pays || '',
         bourse:{ nom:selB?.nom||bourse||'', url:selB?.url||'' },
         conversationId: 'analysis-'+Date.now(),
       });
-      try { const m=raw.match(/\{[\s\S]*\}/); setAnalysis(m?JSON.parse(m[0]):{score:0,conclusion:raw,checklist:[],strengths:[],toFix:[],toAdd:[],toRemove:[]}); }
-      catch { setAnalysis({score:0,conclusion:raw,checklist:[],strengths:[],toFix:[],toAdd:[],toRemove:[]}); }
+      try {
+        const m = raw.match(/\{[\s\S]*\}/);
+        setAnalysis(m ? JSON.parse(m[0]) : {score:0,conclusion:raw,checklist:[],strengths:[],toFix:[],toAdd:[],toRemove:[]});
+      } catch {
+        setAnalysis({score:0,conclusion:raw,checklist:[],strengths:[],toFix:[],toAdd:[],toRemove:[]});
+      }
       setMode('analyzed');
     } catch(e) { console.error(e); setMode('upload'); }
   };
 
+  // ── Améliorer ────────────────────────────────────────────────────────────────
   const handleImprove = async () => {
     if (!analysis) return;
     const cvDoc = content;
@@ -530,6 +550,7 @@ export default function CVPage({ user, setView }) {
         : 'Ameliore ce CV.\nA corriger :\n' + (analysis.toFix||[]).map(x=>'- '+x).join('\n') + '\nDocument original :\n' + cvDoc;
       const r = await callN8N(tab==='cv'?'generate_cv':'generate_lm', {
         text: improvePrompt, id: user?.id||null,
+          text: improvePrompt,
         bourse:{ nom:selB?.nom||bourse||'', url:selB?.url||'' },
         conversationId: 'improve-'+Date.now(),
       });
@@ -538,6 +559,7 @@ export default function CVPage({ user, setView }) {
     } catch(e) { console.error(e); setMode('analyzed'); }
   };
 
+  // ── Aperçu LM ────────────────────────────────────────────────────────────────
   const LMPreview = ({ text }) => {
     const paragraphs = (text||'')
       .replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\*([^*]+)\*/g,'$1').replace(/^#{1,4}\s+/gm,'')
@@ -562,25 +584,21 @@ export default function CVPage({ user, setView }) {
     );
   };
 
-  // Styles
+  // ── Styles ───────────────────────────────────────────────────────────────────
   const C = {
-    card: { padding:'22px', borderRadius:10, background:'#fff', border:'1px solid #e2e8f0', boxShadow:'0 2px 8px rgba(26,58,107,0.06)', display:'flex', flexDirection:'column', gap:14 },
-    cardBlue: { padding:'22px', borderRadius:10, background:'#1a3a6b', border:'none', boxShadow:'0 4px 16px rgba(26,58,107,0.2)', display:'flex', flexDirection:'column', gap:14 },
-    btnP: { padding:'10px 20px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', transition:'background 0.2s', fontFamily:'inherit' },
+    card:    { padding:'22px', borderRadius:10, background:'#fff', border:'1px solid #e2e8f0', boxShadow:'0 2px 8px rgba(26,58,107,0.06)', display:'flex', flexDirection:'column', gap:14 },
+    btnP:    { padding:'10px 20px', borderRadius:6, border:'none', background:'#1a3a6b', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', transition:'background 0.2s', fontFamily:'inherit' },
     btnGold: { padding:'10px 20px', borderRadius:6, border:'none', background:'#f5a623', color:'#1a3a6b', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
-    btnO: { padding:'9px 18px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#475569', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'inherit' },
-    btnG: { padding:'10px 20px', borderRadius:6, border:'none', background:'#166534', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
+    btnO:    { padding:'9px 18px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#475569', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'inherit' },
+    btnG:    { padding:'10px 20px', borderRadius:6, border:'none', background:'#166534', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
   };
 
+  // ── Rendu ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ width:'100%', background:'#f8f9fc', minHeight:'100vh', fontFamily:"'Segoe UI',system-ui,sans-serif", color:'#1a3a6b' }}>
-
-      {/* ── En-tête page ── */}
-      
-
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'28px 32px' }}>
 
-        {/* ── Tabs ── */}
+        {/* Tabs */}
         <div style={{ display:'flex', gap:0, marginBottom:24, background:'#ffffff', borderRadius:8, border:'1px solid #e2e8f0', width:'fit-content', overflow:'hidden' }}>
           {[{id:'cv',l:'📄 CV'},{id:'lm',l:'✉️ Lettre de motivation'}].map(t=>(
             <button key={t.id}
@@ -591,7 +609,7 @@ export default function CVPage({ user, setView }) {
           ))}
         </div>
 
-        {/* ── Profil incomplet ── */}
+        {/* Profil incomplet */}
         {mode==='incomplete'&&(
           <div style={{ ...C.card, maxWidth:440, margin:'40px auto', textAlign:'center', alignItems:'center', padding:36 }}>
             <div style={{ fontSize:40 }}>⚠️</div>
@@ -609,7 +627,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── MENU ── */}
+        {/* MENU */}
         {mode==='menu'&&(
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div style={C.card}>
@@ -620,8 +638,8 @@ export default function CVPage({ user, setView }) {
                 </div>
               )}
             </div>
-
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+
               {/* Créer */}
               <div style={C.card}>
                 <div style={{ fontSize:32 }}>✨</div>
@@ -642,9 +660,8 @@ export default function CVPage({ user, setView }) {
                     ))}
                   </div>
                 )}
-                {!user&&<div style={{ fontSize:12, color:'#92400e', padding:'8px 12px', borderRadius:6, background:'#fffbeb', border:'1px solid #fde68a' }}>Connectez-vous d'abord</div>}
                 {user&&!pCheck.ok&&<div style={{ fontSize:12, color:'#92400e', padding:'8px 12px', borderRadius:6, background:'#fffbeb', border:'1px solid #fde68a' }}>{pCheck.missing.length} information{pCheck.missing.length>1?'s':''} manquante{pCheck.missing.length>1?'s':''}</div>}
-                <button style={{ ...C.btnGold, opacity:(!user||!bourse)?0.45:1 }} disabled={!user||!bourse} onClick={handleCreate}>
+                <button style={{ ...C.btnGold, opacity:!bourse?0.45:1 }} disabled={!bourse} onClick={handleCreate}>
                   Générer {isLM ? 'ma lettre' : 'mon CV'}
                 </button>
               </div>
@@ -698,7 +715,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── PDF scanné ── */}
+        {/* PDF scanné */}
         {mode==='pdf_scan'&&(
           <div style={{ ...C.card, maxWidth:540, margin:'0 auto' }}>
             <div style={{fontSize:36,textAlign:'center'}}>🖼️</div>
@@ -717,7 +734,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── Upload ── */}
+        {/* Upload */}
         {mode==='upload'&&(
           <div style={C.card}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -737,7 +754,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── Loading ── */}
+        {/* Loading */}
         {mode==='loading'&&(
           <div style={{ ...C.card, alignItems:'center', padding:'72px 24px', gap:16, textAlign:'center' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', border:'3px solid #e2e8f0', borderTopColor:'#1a3a6b', animation:'spin 1s linear infinite' }}/>
@@ -746,7 +763,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── CREATED ── */}
+        {/* CREATED */}
         {mode==='created'&&content&&(
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div style={{ ...C.card, flexDirection:'row', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
@@ -763,7 +780,6 @@ export default function CVPage({ user, setView }) {
                 <button style={C.btnGold} onClick={()=>dlPDF(content,'')}>⬇️ Télécharger PDF</button>
               </div>
             </div>
-
             <div style={{ ...C.card, padding:0, overflow:'hidden' }}>
               <div style={{ padding:'12px 20px', borderBottom:'1px solid #e2e8f0', background:'#f8fafc', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>
@@ -786,7 +802,6 @@ export default function CVPage({ user, setView }) {
                 : <div style={{ padding:20, fontSize:13, color:'#374151', lineHeight:1.8, whiteSpace:'pre-wrap', fontFamily:'monospace', maxHeight:420, overflowY:'auto' }}>{content}</div>
               }
             </div>
-
             <div style={{ ...C.card, background:'#f0fdf4', border:'1px solid #bbf7d0', flexDirection:'row', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
               <div>
                 <div style={{ fontSize:14, fontWeight:600, color:'#166534' }}>Analyser {isLM ? 'cette lettre' : 'ce document'} ?</div>
@@ -799,7 +814,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── IMPROVED ── */}
+        {/* IMPROVED */}
         {mode==='improved'&&improved&&(
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div style={{ padding:24, borderRadius:10, background:'#1a3a6b', borderBottom:'3px solid #f5a623', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16, boxShadow:'0 4px 16px rgba(26,58,107,0.2)' }}>
@@ -817,7 +832,6 @@ export default function CVPage({ user, setView }) {
                   onClick={()=>setMode('analyzed')}>← Voir l'analyse</button>
               </div>
             </div>
-
             <div style={{ borderRadius:10, background:'#fff', border:'1px solid #e2e8f0', overflow:'hidden', borderTop:'3px solid #f5a623' }}>
               <div style={{ padding:'12px 20px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div style={{ fontSize:12, fontWeight:700, color:'#1a3a6b', textTransform:'uppercase', letterSpacing:'0.08em' }}>Aperçu du {docType} amélioré</div>
@@ -829,7 +843,7 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
 
-        {/* ── ANALYZED ── */}
+        {/* ANALYZED */}
         {mode==='analyzed'&&analysis&&(
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div style={{ ...C.card, flexDirection:'row', alignItems:'center', gap:20, flexWrap:'wrap' }}>
@@ -848,7 +862,6 @@ export default function CVPage({ user, setView }) {
                 <button style={C.btnO} onClick={()=>dlPDF(content,'')}>⬇️ PDF original</button>
               </div>
             </div>
-
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16 }}>
               {analysis.checklist?.length>0&&(
                 <div style={C.card}>
@@ -906,11 +919,12 @@ export default function CVPage({ user, setView }) {
           </div>
         )}
       </div>
-
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}`}</style>
     </div>
   );
 }
+
+// ─── Prompt builder ───────────────────────────────────────────────────────────
 
 function buildPrompt(tab, user, bourse, selB) {
   if (tab === 'cv') {

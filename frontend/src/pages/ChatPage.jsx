@@ -9,7 +9,7 @@ const quickReplies = [
   { emoji: '🔐', label: 'Me connecter',           text: 'Je veux me connecter' },
   { emoji: '🗺️', label: 'Voir la roadmap',        text: 'Montre-moi la roadmap pour postuler' },
   { emoji: '🎙️', label: 'Préparer un entretien',  text: "Je veux m'entraîner pour un entretien de bourse" },
-  { emoji: '📄', label: 'Analyser mon CV',         text: 'Je veux analyser mon CV' },
+{ emoji: '📄', label: 'Créer / Analyser mon CV', text: 'Je veux créer ou analyser mon CV' },
   { emoji: '❌', label: 'Mode invité',             text: 'Non, je ne veux pas me connecter, continuer en invité' },
 ];
 
