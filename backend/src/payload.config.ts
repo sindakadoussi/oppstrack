@@ -17,6 +17,7 @@ import dns from 'dns'
 dns.setServers(['8.8.8.8', '8.8.4.4'])
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import Feedbacks from './collections/Feedbacks'
 const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
 
@@ -47,7 +48,7 @@ export default buildConfig({
     },
   }),
 
-  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris,Roadmap],
+  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris,Roadmap, Feedbacks],
   editor:      lexicalEditor(),
   secret:      process.env.PAYLOAD_SECRET || '',
 

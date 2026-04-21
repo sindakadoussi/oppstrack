@@ -8,7 +8,7 @@ const Bourses: CollectionConfig = {
       'nom', 'pays', 'niveau', 'financement',
       'dateOuverture', 'dateLimite', 'statut',
       'tunisienEligible', 'domaine', 'langue',
-      'description', 'eligibilite', 'documentsRequis',
+      'description', 'eligibilite', 'documentsRequis','image'
     ],
   },
   access: {
@@ -115,6 +115,15 @@ const Bourses: CollectionConfig = {
       type: 'text',
       required: true,
     },
+    {
+  name: 'image',
+  type: 'upload',
+  relationTo: 'media',
+  label: 'Image / Logo de la bourse',
+  admin: {
+    description: 'Logo ou image représentative de la bourse',
+  },
+},
   ],
   hooks: {
     afterChange: [

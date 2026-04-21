@@ -33,11 +33,15 @@ export const API_ROUTES = {
     byUser: (userId) => `/api/favoris?where[user][equals]=${userId}&limit=1&depth=0`,
     create: '/api/favoris',
   },
+   feedbacks: {
+    create: '/api/feedbacks',
+    list: '/api/feedbacks',
+  },
 };
 
 export const WEBHOOK_ROUTES = {
-  cv:        `${WEBHOOK}/webhook/cv`,
-  entretien: `${WEBHOOK}/webhook/entretien`,
-  chat:      `${WEBHOOK}/webhook/chat`,
+ cv:              `${WEBHOOK}/webhook/webhook`,
+  entretien:       `${WEBHOOK}/webhook/webhook`,
+  chat:            `${WEBHOOK}/webhook/webhook`,
   generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
 };

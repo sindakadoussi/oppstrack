@@ -1,5 +1,7 @@
+// components/MatchDrawerIA.jsx
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '@/config/axiosInstance';
+import { useT } from '../i18n';  // ✅ Import pour la traduction
 
 const WEBHOOK_ANALYSE = 'http://localhost:5678/webhook/analyse-match';
 
@@ -17,34 +19,92 @@ const prioriteColor = (p) =>
   : { bg:'#f0fdf4', border:'#bbf7d0', dot:'#16a34a', text:'Basse priorité' };
 
 export default function MatchDrawerIA({ bourse, user, onBack }) {
+  const { lang } = useT();  // ✅ Accès à la langue
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const [analyse,  setAnalyse]  = useState(null);
-  const [tab,      setTab]      = useState('apercu'); // apercu | criteres | ameliorer
+  const [tab,      setTab]      = useState('apercu');
+
+  // ✅ Textes traduits centralisés
+  const t = {
+    // Header
+    title: lang === 'fr' ? 'Analyse IA — Logique du match' : 'AI Analysis — Match Logic',
+    scoreLabel: lang === 'fr' ? 'score IA' : 'AI score',
+    
+    // Tabs
+    tabs: {
+      apercu: lang === 'fr' ? 'Aperçu' : 'Overview',
+      criteres: lang === 'fr' ? 'Critères' : 'Criteria',
+      ameliorer: lang === 'fr' ? 'À améliorer' : 'To improve',
+    },
+    
+    // Loading & Error
+    loadingTitle: lang === 'fr' ? "L'IA analyse votre profil complet" : 'AI is analyzing your complete profile',
+    loadingSub: lang === 'fr' ? 'Expériences, compétences, projets...' : 'Experience, skills, projects...',
+    errorTitle: lang === 'fr' ? 'Analyse indisponible' : 'Analysis unavailable',
+    errorHint: lang === 'fr' ? 'Vérifiez que n8n est actif sur localhost:5678' : 'Check that n8n is running on localhost:5678',
+    
+    // Overview tab
+    match: lang === 'fr' ? 'match' : 'match',
+    strengths: lang === 'fr' ? '✅ Points forts' : '✅ Strengths',
+    missingDocs: lang === 'fr' ? '📁 Documents à préparer' : '📁 Documents to prepare',
+    adviceTitle: lang === 'fr' ? '💡 Conseil personnalisé' : '💡 Personalized advice',
+    
+    // Criteria tab
+    criteriaDesc: lang === 'fr' ? 'Analyse IA de chaque critère selon votre profil complet' : 'AI analysis of each criterion based on your complete profile',
+    strong: lang === 'fr' ? 'Fort' : 'Strong',
+    medium: lang === 'fr' ? 'Moyen' : 'Medium',
+    weak: lang === 'fr' ? 'Faible' : 'Weak',
+    
+    // Improve tab
+    improveDesc: lang === 'fr' ? 'Actions concrètes pour améliorer votre candidature' : 'Concrete actions to improve your application',
+    problem: lang === 'fr' ? 'Problème' : 'Issue',
+    action: lang === 'fr' ? '→ Action' : '→ Action',
+    impact: lang === 'fr' ? 'Impact' : 'Impact',
+    
+    // Priority labels (used in prioriteColor fallback)
+    highPriority: lang === 'fr' ? 'Haute priorité' : 'High priority',
+    mediumPriority: lang === 'fr' ? 'Priorité moyenne' : 'Medium priority',
+    lowPriority: lang === 'fr' ? 'Basse priorité' : 'Low priority',
+  };
 
   useEffect(() => {
-    if (!bourse || !user) { setError('Données manquantes'); setLoading(false); return; }
+    if (!bourse || !user) { setError(lang === 'fr' ? 'Données manquantes' : 'Missing data'); setLoading(false); return; }
 
     const run = async () => {
       try {
         setLoading(true); setError(null);
-        const res = await axiosInstance.post(WEBHOOK_ANALYSE, { user, bourse }        );
+        const res = await axiosInstance.post(WEBHOOK_ANALYSE, { user, bourse }, { timeout: 30000 });
         const data = res.data;
         if (data.success && data.analyse) {
           setAnalyse(data);
         } else {
-          setError(data.error || 'Réponse invalide');
+          setError(data.error || (lang === 'fr' ? 'Réponse invalide' : 'Invalid response'));
         }
       } catch(e) {
-        setError(e.message || 'Erreur de connexion');
+        setError(e.message || (lang === 'fr' ? 'Erreur de connexion' : 'Connection error'));
       } finally {
         setLoading(false);
       }
     };
     run();
-  }, [bourse?.nom, user?.id]);
+  }, [bourse?.nom, user?.id, lang]);
 
   const sc = analyse ? scoreColor(analyse.scoreGlobal) : '#94a3b8';
+
+  // Helper pour les labels de statut
+  const getStatutLabel = (statut) => {
+    if (statut === 'fort') return t.strong;
+    if (statut === 'moyen') return t.medium;
+    return t.weak;
+  };
+
+  // Helper pour les labels de priorité (override prioriteColor)
+  const getPrioriteLabel = (priorite) => {
+    if (priorite === 'haute') return t.highPriority;
+    if (priorite === 'moyenne') return t.mediumPriority;
+    return t.lowPriority;
+  };
 
   return (
     <div style={{ position:'fixed', top:0, right:0, bottom:0, zIndex:902, width:520, maxWidth:'95vw', background:'#ffffff', borderLeft:'3px solid #1a3a6b', display:'flex', flexDirection:'column', animation:'slideIn 0.2s ease', boxShadow:'-8px 0 32px rgba(26,58,107,0.2)' }}>
@@ -54,13 +114,13 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom: analyse ? 12 : 0 }}>
           <button onClick={onBack} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:34, height:34, borderRadius:8, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>←</button>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Analyse IA — Logique du match</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{t.title}</div>
             <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{bourse?.nom}</div>
           </div>
           {analyse && (
             <div style={{ textAlign:'center', flexShrink:0 }}>
               <div style={{ fontSize:26, fontWeight:800, color:'#f5a623', lineHeight:1 }}>{analyse.scoreGlobal}%</div>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,0.6)' }}>score IA</div>
+              <div style={{ fontSize:9, color:'rgba(255,255,255,0.6)' }}>{t.scoreLabel}</div>
             </div>
           )}
         </div>
@@ -68,10 +128,14 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
         {/* Tabs */}
         {analyse && (
           <div style={{ display:'flex', gap:4 }}>
-            {[{id:'apercu',label:'Aperçu'},{id:'criteres',label:'Critères'},{id:'ameliorer',label:'À améliorer'}].map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                style={{ flex:1, padding:'6px 8px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:tab===t.id?700:500, background:tab===t.id?'rgba(255,255,255,0.2)':'transparent', color:tab===t.id?'#fff':'rgba(255,255,255,0.55)', transition:'all 0.15s' }}>
-                {t.label}
+            {[
+              {id:'apercu', label: t.tabs.apercu},
+              {id:'criteres', label: t.tabs.criteres},
+              {id:'ameliorer', label: t.tabs.ameliorer}
+            ].map(tabItem => (
+              <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
+                style={{ flex:1, padding:'6px 8px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:tab===tabItem.id?700:500, background:tab===tabItem.id?'rgba(255,255,255,0.2)':'transparent', color:tab===tabItem.id?'#fff':'rgba(255,255,255,0.55)', transition:'all 0.15s' }}>
+                {tabItem.label}
               </button>
             ))}
           </div>
@@ -86,23 +150,23 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:300, gap:16 }}>
             <div style={{ width:44, height:44, border:'3px solid #e2e8f0', borderTopColor:'#1a3a6b', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
             <div style={{ fontSize:14, color:'#64748b', textAlign:'center' }}>
-              L'IA analyse votre profil complet<br/>
-              <span style={{ fontSize:12, color:'#94a3b8' }}>Expériences, compétences, projets...</span>
+              {t.loadingTitle}<br/>
+              <span style={{ fontSize:12, color:'#94a3b8' }}>{t.loadingSub}</span>
             </div>
           </div>
         )}
 
-        {/* Erreur */}
+        {/* Error */}
         {error && !loading && (
           <div style={{ padding:20, borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', textAlign:'center' }}>
             <div style={{ fontSize:28, marginBottom:8 }}>⚠️</div>
-            <div style={{ fontSize:13, color:'#b91c1c', fontWeight:600 }}>Analyse indisponible</div>
+            <div style={{ fontSize:13, color:'#b91c1c', fontWeight:600 }}>{t.errorTitle}</div>
             <div style={{ fontSize:12, color:'#64748b', marginTop:4 }}>{error}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:8 }}>Vérifiez que n8n est actif sur localhost:5678</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:8 }}>{t.errorHint}</div>
           </div>
         )}
 
-        {/* Résultats */}
+        {/* Results */}
         {analyse && !loading && (
           <>
             {/* ── Tab Aperçu ── */}
@@ -120,7 +184,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                     </svg>
                     <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
                       <span style={{ fontSize:19, fontWeight:800, color:sc, lineHeight:1 }}>{analyse.scoreGlobal}%</span>
-                      <span style={{ fontSize:8, color:'#94a3b8', marginTop:2 }}>match</span>
+                      <span style={{ fontSize:8, color:'#94a3b8', marginTop:2 }}>{t.match}</span>
                     </div>
                   </div>
                   <div style={{ flex:1 }}>
@@ -132,7 +196,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                 {/* Points forts */}
                 {analyse.pointsForts?.length > 0 && (
                   <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>✅ Points forts</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>{t.strengths}</div>
                     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                       {analyse.pointsForts.map((p, i) => (
                         <div key={i} style={{ display:'flex', gap:10, padding:'10px 12px', borderRadius:8, background:'#f0fdf4', border:'1px solid #bbf7d0' }}>
@@ -147,7 +211,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                 {/* Documents manquants */}
                 {analyse.documentsManquants?.length > 0 && (
                   <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>📁 Documents à préparer</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>{t.missingDocs}</div>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                       {analyse.documentsManquants.map((d, i) => (
                         <span key={i} style={{ fontSize:12, padding:'4px 10px', borderRadius:6, background:'#fef2f2', border:'1px solid #fecaca', color:'#b91c1c' }}>
@@ -161,7 +225,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                 {/* Conseil personnalisé */}
                 {analyse.conseilPersonnalise && (
                   <div style={{ padding:'14px 16px', borderRadius:10, background:'#eff6ff', border:'1px solid #bfdbfe' }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.06em' }}>💡 Conseil personnalisé</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#1a3a6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.06em' }}>{lang === 'fr' ? '💡 Conseil personnalisé' : '💡 Personalized advice'}</div>
                     <div style={{ fontSize:13, color:'#1e40af', lineHeight:1.7 }}>{analyse.conseilPersonnalise}</div>
                   </div>
                 )}
@@ -171,7 +235,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
             {/* ── Tab Critères ── */}
             {tab === 'criteres' && (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Analyse IA de chaque critère selon votre profil complet</div>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{t.criteriaDesc}</div>
                 {(analyse.criteres || []).map((c, i) => {
                   const st = statutColor(c.statut);
                   return (
@@ -182,7 +246,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                           <div style={{ fontSize:15, fontWeight:800, color:scoreColor(c.score) }}>{c.score}%</div>
                           <span style={{ fontSize:10, padding:'2px 8px', borderRadius:99, background:st.bg, border:`1px solid ${st.border}`, color:st.text, fontWeight:600 }}>
-                            {c.statut === 'fort' ? 'Fort' : c.statut === 'moyen' ? 'Moyen' : 'Faible'}
+                            {getStatutLabel(c.statut)}
                           </span>
                         </div>
                       </div>
@@ -202,9 +266,12 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
             {/* ── Tab À améliorer ── */}
             {tab === 'ameliorer' && (
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Actions concrètes pour améliorer votre candidature</div>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{t.improveDesc}</div>
                 {(analyse.pointsAmeliorer || []).map((p, i) => {
-                  const pr = prioriteColor(p.priorite);
+                  const pr = {
+                    ...prioriteColor(p.priorite),
+                    text: getPrioriteLabel(p.priorite)  // ✅ Override avec traduction
+                  };
                   return (
                     <div key={i} style={{ borderRadius:10, border:`1px solid ${pr.border}`, overflow:'hidden' }}>
                       <div style={{ padding:'10px 14px', background:pr.bg, display:'flex', alignItems:'center', gap:8 }}>
@@ -213,12 +280,12 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
                         <span style={{ fontSize:10, color:pr.dot, fontWeight:600 }}>{pr.text}</span>
                       </div>
                       <div style={{ padding:'12px 14px', background:'#fff', display:'flex', flexDirection:'column', gap:8 }}>
-                        <div style={{ fontSize:12, color:'#64748b' }}><strong style={{ color:'#475569' }}>Problème :</strong> {p.probleme}</div>
+                        <div style={{ fontSize:12, color:'#64748b' }}><strong style={{ color:'#475569' }}>{t.problem} :</strong> {p.probleme}</div>
                         <div style={{ fontSize:12, padding:'8px 12px', borderRadius:6, background:'#f0fdf4', border:'1px solid #bbf7d0', color:'#15803d' }}>
-                          <strong>→ Action :</strong> {p.action}
+                          <strong>{t.action} :</strong> {p.action}
                         </div>
                         {p.impact && (
-                          <div style={{ fontSize:11, color:'#94a3b8', fontStyle:'italic' }}>Impact : {p.impact}</div>
+                          <div style={{ fontSize:11, color:'#94a3b8', fontStyle:'italic' }}>{t.impact} : {p.impact}</div>
                         )}
                       </div>
                     </div>

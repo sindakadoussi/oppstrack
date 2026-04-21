@@ -118,8 +118,23 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (input.trim() && !loading) {
+        // Arrêter le micro si il est en cours d'enregistrement
+        if (isRecording) {
+          stopRecording();
+        }
         onSend();
       }
+    }
+  };
+
+  // Fonction modifiée pour gérer l'envoi avec arrêt automatique du micro
+  const handleSendWithStop = () => {
+    if (input.trim() && !loading) {
+      // ARRÊTER LE MICRO AUTOMATIQUEMENT avant d'envoyer
+      if (isRecording) {
+        stopRecording();
+      }
+      onSend();
     }
   };
 
@@ -156,10 +171,10 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
           </button>
         )}
         
-        {/* Bouton d'envoi */}
+        {/* Bouton d'envoi MODIFIÉ - appel handleSendWithStop au lieu de onSend direct */}
         <button
           className="send-btn"
-          onClick={onSend}
+          onClick={handleSendWithStop}
           disabled={!input.trim() || loading}
         >
           {loading ? '...' : '➤'}

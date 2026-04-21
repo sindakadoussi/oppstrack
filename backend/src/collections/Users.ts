@@ -209,6 +209,20 @@ export const Users: CollectionConfig = {
         { name: 'ajouteLe', label: 'Ajouté le',        type: 'date' },
       ],
     },
+
+    {
+      name: 'avatar',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      label: {
+        fr: 'Photo de profil',
+        en: 'Profile picture'
+      },
+      admin: {
+        position: 'sidebar',
+      },
+    }
   ],
 
   endpoints: [
@@ -315,7 +329,7 @@ export const Users: CollectionConfig = {
           'academicHistory', 'workExperience', 'languages', 'skills',
           'targetCountries', 'targetFields',
           'academicProjects', 'certifications', 'volunteerWork',
-          'publications', 'awards',
+          'publications', 'awards', 'avatar',
         ]
 
         const dataToUpdate: Record<string, any> = {}
@@ -438,6 +452,13 @@ export const Users: CollectionConfig = {
 
 // ── Helper sérialisation user ──────────────────────────────────────────────────
 function serializeUser(u: any) {
+  // Extraire l'ID de l'avatar s'il s'agit d'un objet
+  let avatarId = null;
+  if (u.avatar) {
+    if (typeof u.avatar === 'string') avatarId = u.avatar;
+    else if (typeof u.avatar === 'object' && u.avatar.id) avatarId = u.avatar.id;
+  }
+
   return {
     id:                u.id,
     email:             u.email,
@@ -471,7 +492,8 @@ function serializeUser(u: any) {
     targetFields:      u.targetFields      || [],
     bourses_choisies:  u.bourses_choisies  || [],
     progression:       u.progression       || [],
-  }
+    avatar:            avatarId, // ← ID en chaîne ou null
+  };
 }
 
 export default Users
