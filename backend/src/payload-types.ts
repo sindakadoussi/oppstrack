@@ -302,9 +302,6 @@ export interface User {
  */
 export interface Media {
   id: string;
-  /**
-   * Texte alternatif pour l'accessibilité
-   */
   alt?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -317,24 +314,6 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    card?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -387,6 +366,10 @@ export interface Bourse {
   dateLimite?: string | null;
   dateOuverture?: string | null;
   lienOfficiel: string;
+  /**
+   * Logo ou image représentative de la bourse
+   */
+  image?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
 }
@@ -773,30 +756,6 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        card?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -843,6 +802,7 @@ export interface BoursesSelect<T extends boolean = true> {
   dateLimite?: T;
   dateOuverture?: T;
   lienOfficiel?: T;
+  image?: T;
   updatedAt?: T;
   createdAt?: T;
 }

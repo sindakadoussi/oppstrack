@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import Navbar, { ThemeProvider } from './components/Navbar'; // ← Import ThemeProvider
+import ChatToggleButton from './components/ChatToggleButton'; // ← Import du bouton chat
 import ChatPage from './pages/ChatPage';
 import BoursesPage from './pages/BoursesPage';
 import RoadmapPage from './pages/RoadmapPage';
@@ -18,6 +19,7 @@ import ContactPage from "./pages/ContactPage";
 import { AppProviders, useT } from './i18n';
 import StudentFeedback from './components/StudentFeedback';
 import GuestPage from './pages/GuestPage';
+import HomePage from './pages/HomePage';
 
 
 function AppContent() {
@@ -34,13 +36,13 @@ function AppContent() {
   const [entretienScores, setEntretienScores] = useState([]);
   const [roadmapData, setRoadmapData] = useState([]);
   const [serverStatus, setServerStatus]       = useState({ n8n: null, payload: null });
+  const [cvContext, setCvContext]             = useState('cv');
+  const [showFloatChat, setShowFloatChat]     = useState(false); // ← État pour le chat
+
   const chatContainerRef = useRef(null);
   const historyLoaded    = useRef(false);
-
-  // Chat flottant
-  const [showFloatChat, setShowFloatChat] = useState(false);
-  const [showFloatScroll, setShowFloatScroll] = useState(false);
   const floatContainerRef = useRef(null);
+  const [showFloatScroll, setShowFloatScroll] = useState(false);
 
   const conversationId = useRef(null);
   if (!conversationId.current) {
@@ -49,6 +51,8 @@ function AppContent() {
     if (!saved) sessionStorage.setItem('opps_conv_id', conversationId.current);
   }
 
+  // ... (garde tous tes useEffect existants) ...
+
   useEffect(() => {
     const saved = localStorage.getItem('opps_user');
     if (saved) {
@@ -56,6 +60,13 @@ function AppContent() {
         const u = JSON.parse(saved);
         setUser(u);
         conversationId.current = `chat-${u.id}`;
+        axiosInstance.get(API_ROUTES.users.byId(u.id), { params: { depth: 2 } })
+          .then(res => {
+            const fullUser = res.data;
+            setUser(fullUser);
+            localStorage.setItem('opps_user', JSON.stringify(fullUser));
+          })
+          .catch(() => {});
       } catch { localStorage.removeItem('opps_user'); }
     }
   }, []);
@@ -160,10 +171,14 @@ function AppContent() {
 
     try {
       const n8nRes = await axios.post('http://localhost:5678/webhook/webhook', {
-        text: textToSend, conversationId: conversationId.current,
-        id: user?.id || null, email: user?.email || null,
+        text: textToSend,
+        conversationId: conversationId.current,
+        id: user?.id || null,
+        email: user?.email || null,
         context: options.context || null,
-        pays: user?.pays || '', niveau: user?.niveau || '', domaine: user?.domaine || '',
+        pays: user?.pays || '',
+        niveau: user?.niveau || '',
+        domaine: user?.domaine || '',
         user_profile: user ? {
           pays: user.pays, niveau: user.niveau, domaine: user.domaine, name: user.name,
           is_complete: !!(user.pays && user.niveau && user.domaine),
@@ -175,17 +190,56 @@ function AppContent() {
       if (data.currentStep !== undefined) setCurrentStep(data.currentStep);
       if (data.view) setView(data.view);
 
-      const aiText2 = data.output || data.message || data.text || '';
-      if (['accéder à mon profil','acceder a mon profil','mettre à jour ton profil','compléter ton profil','ton profil :'].some(p => aiText2.toLowerCase().includes(p))) {
-        setTimeout(() => setView('profil'), 1500);
-      }
       if (data.user) {
         const u = data.user;
         localStorage.setItem('opps_user', JSON.stringify(u));
         setUser(u);
         conversationId.current = `chat-${u.id}`;
       }
+
       const aiText = data.output || data.message || data.text || '';
+
+      if (['accéder à mon profil','acceder a mon profil','mettre à jour ton profil',
+           'compléter ton profil','ton profil :'].some(p => aiText.toLowerCase().includes(p))) {
+        setTimeout(() => setView('profil'), 1500);
+      }
+
+      try {
+        const parsed = JSON.parse(aiText);
+        if (parsed?.action === 'redirect_cv') {
+          const msg = parsed.message || aiText;
+          setMessages(prev => [...prev, { sender: 'ai', text: msg }]);
+          axiosInstance.post(API_ROUTES.messages.create, {
+            text: msg, role: 'assistant',
+            conversationId: conversationId.current,
+          }).catch(e => console.warn('Save AI msg:', e.message));
+          setCvContext(parsed.context === 'generate_lm' ? 'lm' : 'cv');
+          setTimeout(() => setView('cv'), 2000);
+          return;
+        }
+      } catch (_) {}
+
+      const cvRedirectPhrases = [
+        'je vous redirige vers votre espace cv',
+        'redirige vers votre espace cv',
+        'espace cv & lm',
+        'votre espace cv',
+      ];
+      const isRedirectText = cvRedirectPhrases.some(p =>
+        aiText.toLowerCase().includes(p)
+      );
+      if (isRedirectText) {
+        setMessages(prev => [...prev, { sender: 'ai', text: aiText }]);
+        axiosInstance.post(API_ROUTES.messages.create, {
+          text: aiText, role: 'assistant',
+          conversationId: conversationId.current,
+        }).catch(e => console.warn('Save AI msg:', e.message));
+        const isLM = aiText.toLowerCase().includes('lettre de motivation');
+        setCvContext(isLM ? 'lm' : 'cv');
+        setTimeout(() => setView('cv'), 2000);
+        return;
+      }
+
       if (aiText) {
         setMessages(prev => [...prev, { sender: 'ai', text: aiText }]);
         axiosInstance.post(API_ROUTES.messages.create, {
@@ -193,6 +247,7 @@ function AppContent() {
         }).then(() => setTimeout(() => fetchMessages(), 1500))
           .catch(e => console.warn('Save AI msg:', e.message));
       }
+
     } catch (err) {
       setServerStatus(s => ({ ...s, n8n: false }));
       let msg = '';
@@ -209,7 +264,6 @@ function AppContent() {
     }
   };
 
-  // Écouter l'événement pour ouvrir le chat depuis le profil
   useEffect(() => {
     const handler = (event) => {
       const { message } = event.detail;
@@ -224,14 +278,12 @@ function AppContent() {
     return () => window.removeEventListener('openChatWithMessage', handler);
   }, [showFloatChat, handleSend]);
 
-  // Scroll automatique en bas du chat flottant à chaque nouveau message
   useEffect(() => {
     if (showFloatChat && floatContainerRef.current) {
       floatContainerRef.current.scrollTop = floatContainerRef.current.scrollHeight;
     }
   }, [messages, loading, showFloatChat]);
 
-  // Détecter si l'utilisateur a remonté pour afficher le bouton flèche
   useEffect(() => {
     if (!showFloatChat) return;
     const el = floatContainerRef.current;
@@ -285,7 +337,7 @@ function AppContent() {
 
   return (
     <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''}`}>
-      {/* Navbar - cachée sur la page contact */}
+      {/* Navbar - avec onToggleChat */}
       {view !== 'contact' && view !== 'feedback' && (
         <Navbar
           view={view}
@@ -294,10 +346,11 @@ function AppContent() {
           onLogout={handleLogout}
           serverStatus={serverStatus}
           onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
+          onToggleChat={() => setShowFloatChat(prev => !prev)}  // ← AJOUTÉ !
         />
       )}
 
-      {/* Alerte serveur - cachée sur la page contact */}
+      {/* Alerte serveur */}
       {serverStatus.payload === false && view !== 'contact' && view !== 'feedback' && (
         <div className="server-alert">
           ⚠️ <strong>Payload CMS hors ligne</strong> — Lance ton backend sur le port 3000
@@ -318,33 +371,31 @@ function AppContent() {
   />
 )}
 {view === 'accueil' && user && <ChatPage {...sharedProps} />}        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+         {view === 'Home'       && <HomePage {...sharedProps} />}
+        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
+        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
         {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
         {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
         {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
         {view === 'profil'          && <ProfilPage           {...sharedProps} />}
         {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
-        {view === 'cv'              && <CVPage               {...sharedProps} />}
+        {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
         {view === "contact"         && <ContactPage setView={setView} user={user}/>}
-        {view === 'feedback' && <StudentFeedback setView={setView} user={user} />}
+        {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
       </main>
 
-      {/* Bouton flottant pour ouvrir/fermer le chat */}
-      <button
+      {/* ChatToggleButton - UN SEUL BOUTON */}
+      <ChatToggleButton
+        isOpen={showFloatChat}
         onClick={() => setShowFloatChat(prev => !prev)}
-        style={{
-          position: 'fixed', bottom: 24, right: 24, width: 56, height: 56,
-          borderRadius: '50%', background: '#f5a623', border: 'none',
-          boxShadow: '0 4px 12px rgba(26,58,107,0.3)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 24, color: '#1a3a6b', zIndex: 1000, transition: 'transform 0.2s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        {showFloatChat ? '✕' : '💬'}
-      </button>
+        position="bottom-right"
+        offsetX={24}
+        offsetY={24}
+        showBadge={messages.filter(m => m.sender === 'ai' && !m.read).length > 0}
+        badgeCount={messages.filter(m => m.sender === 'ai' && !m.read).length}
+      />
 
-      {/* Chat flottant (un seul, qui utilise les messages globaux) */}
+      {/* Chat flottant */}
       {showFloatChat && (
         <div style={{
           position: 'fixed', bottom: 90, right: 24, width: 380,
@@ -421,125 +472,50 @@ function AppContent() {
         </div>
       )}
 
-      {/* Footer - caché sur la page contact */}
+      {/* Footer */}
       {view !== 'contact' && view !== 'feedback' && <Footer setView={setView} />}
 
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body {
-          background: #f8f9fc !important;
-        }
+        html, body { background: #f8f9fc !important; }
         body {
           font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
-          color: #1a3a6b;
-          -webkit-font-smoothing: antialiased;
+          color: #1a3a6b; -webkit-font-smoothing: antialiased;
         }
-        #root {
-          min-height: 100vh;
-          background: #f8f9fc !important;
-        }
-
-        /* ── LAYOUT ─────────────────────────────── */
-        .app-root {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-          background: #f8f9fc;
-          padding-top: 97px; /* topbar 29px + mainbar 68px */
-        }
-        .main-content {
-          flex: 1;
-          overflow-x: hidden;
-          background: #f8f9fc;
-        }
-
-        /* ── SERVER ALERT ───────────────────────── */
+        #root { min-height: 100vh; background: #f8f9fc !important; }
+        .app-root { display: flex; flex-direction: column; min-height: 100vh; background: #f8f9fc; padding-top: 97px; }
+        .main-content { flex: 1; overflow-x: hidden; background: #f8f9fc; }
         .server-alert {
-          background: #fff3cd;
-          border-bottom: 2px solid #f5a623;
-          color: #856404;
-          padding: 10px 24px;
-          font-size: 13px;
-          text-align: center;
-          font-weight: 500;
+          background: #fff3cd; border-bottom: 2px solid #f5a623;
+          color: #856404; padding: 10px 24px; font-size: 13px;
+          text-align: center; font-weight: 500;
         }
-
-        /* ── SCROLLBAR ──────────────────────────── */
-        ::-webkit-scrollbar       { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         ::selection { background: #dbeafe; color: #1a3a6b; }
-
-        /* ── FOOTER ─────────────────────────────── */
-        .footer {
-          background: #1a3a6b;
-          border-top: 3px solid #f5a623;
-          padding: 48px 32px 24px;
-          margin-top: 0;
-          font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-        .footer-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 40px;
-        }
+        .footer { background: #1a3a6b; border-top: 3px solid #f5a623; padding: 48px 32px 24px; margin-top: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .footer-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; }
         .footer-col { display: flex; flex-direction: column; gap: 14px; }
         .footer-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-        .footer-logo img {
-          width: 40px; height: 40px;
-          object-fit: contain; border-radius: 6px;
-          background: #fff; padding: 2px;
-        }
-        .footer-logo-text {
-          font-size: 1.1rem; font-weight: 800;
-          color: #fff; letter-spacing: 1px;
-        }
-        .footer-logo-sub {
-          font-size: 9px; color: #f5a623;
-          font-weight: 500; letter-spacing: 0.5px;
-          text-transform: uppercase; display: block;
-        }
+        .footer-logo img { width: 40px; height: 40px; object-fit: contain; border-radius: 6px; background: #fff; padding: 2px; }
+        .footer-logo-text { font-size: 1.1rem; font-weight: 800; color: #fff; letter-spacing: 1px; }
+        .footer-logo-sub { font-size: 9px; color: #f5a623; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; display: block; }
         .footer-desc { color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.6; margin: 0; }
         .footer-social { display: flex; gap: 12px; margin-top: 4px; }
-        .social-link {
-          width: 32px; height: 32px; border-radius: 6px;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.15);
-          display: flex; align-items: center; justify-content: center;
-          color: rgba(255,255,255,0.6); font-size: 14px;
-          transition: all 0.2s; text-decoration: none;
-        }
-        .social-link:hover {
-          background: #f5a623; border-color: #f5a623; color: #1a3a6b;
-        }
-        .footer-heading {
-          font-size: 12px; font-weight: 700; color: #f5a623;
-          margin: 0 0 6px 0; letter-spacing: 1px;
-          text-transform: uppercase;
-        }
+        .social-link { width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.6); font-size: 14px; transition: all 0.2s; text-decoration: none; }
+        .social-link:hover { background: #f5a623; border-color: #f5a623; color: #1a3a6b; }
+        .footer-heading { font-size: 12px; font-weight: 700; color: #f5a623; margin: 0 0 6px 0; letter-spacing: 1px; text-transform: uppercase; }
         .footer-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-        .footer-links li a {
-          color: rgba(255,255,255,0.6); text-decoration: none;
-          font-size: 13px; transition: color 0.2s;
-        }
+        .footer-links li a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 13px; transition: color 0.2s; }
         .footer-links li a:hover { color: #f5a623; }
-        .footer-bottom {
-          max-width: 1200px; margin: 32px auto 0; padding-top: 20px;
-          border-top: 1px solid rgba(255,255,255,0.1);
-          display: flex; justify-content: space-between; align-items: center;
-          flex-wrap: wrap; gap: 12px; font-size: 12px;
-          color: rgba(255,255,255,0.4);
-        }
+        .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12px; color: rgba(255,255,255,0.4); }
         .footer-bottom p { margin: 0; }
         .footer-legal { display: flex; gap: 12px; align-items: center; }
         .footer-legal a { color: rgba(255,255,255,0.4); text-decoration: none; transition: color 0.2s; }
         .footer-legal a:hover { color: #f5a623; }
         .footer-legal span { color: rgba(255,255,255,0.15); }
-
         @media (max-width: 768px) {
           .app-root { padding-top: 68px; }
           .footer { padding: 40px 20px 24px; }
@@ -547,30 +523,33 @@ function AppContent() {
           .footer-bottom { flex-direction: column; text-align: center; }
           .footer-legal { justify-content: center; }
         }
-        /* Styles pour la page contact - supprime le padding-top */
         .app-root.no-navbar {
           padding-top: 0 !important;
         }
         .main-content.contact-main {
           padding-top: 0 !important;
         }
-        /* Alternative: Cacher navbar et footer par CSS si la classe existe */
         .no-navbar .navbar,
         .no-navbar .footer,
         .no-navbar .server-alert {
           display: none !important;
         }
+          
       `}</style>
     </div>
   );
 }
 
+// ==================== EXPORT PRINCIPAL AVEC THEME PROVIDER ====================
 export default function App() {
   return (
     <AppProviders>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <ThemeProvider>  {/* ← AJOUTÉ ! */}
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ThemeProvider>
     </AppProviders>
   );
+  
 }

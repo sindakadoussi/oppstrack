@@ -1,4 +1,4 @@
-//const WEBHOOK = import.meta.env.VITE_WEBHOOK_URL ?? 'http://localhost:5678';
+const WEBHOOK = import.meta.env.VITE_WEBHOOK_URL ?? 'http://localhost:5678';
 
 export const API_ROUTES = {
   auth: {
@@ -40,8 +40,8 @@ export const API_ROUTES = {
 };
 
 export const WEBHOOK_ROUTES = {
-  cv:        '/webhook/cv',
-  entretien: '/webhook/webhook',
-  chat:      '/webhook/chat',
-  generateRoadmap: '/webhook/generate-roadmap-steps',
+ cv:              `${WEBHOOK}/webhook/webhook`,
+  entretien:       `${WEBHOOK}/webhook/webhook`,
+  chat:            `${WEBHOOK}/webhook/webhook`,
+  generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
 };

@@ -88,7 +88,7 @@ export const TRANSLATIONS = {
       login: 'Se connecter',
       logout: 'Se déconnecter',
       guest: 'Invité',
-      tagline: 'Trouvez votre bourse avec l\'IA',
+      tagline: 'Votre avenir commence ici. Propulsé par l\'intelligence.',
     },
     en: {
       chat: 'AI Assistant',
@@ -100,7 +100,7 @@ export const TRANSLATIONS = {
       login: 'Sign in',
       logout: 'Sign out',
       guest: 'Guest',
-      tagline: 'Find your scholarship with AI',
+      tagline: 'Your Future Starts Here. Powered by Intelligence.',
     },
   },
 
