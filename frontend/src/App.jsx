@@ -34,6 +34,7 @@ function AppContent() {
   const [currentStep, setCurrentStep]         = useState(0);
   const [user, setUser]                       = useState(null);
   const [entretienScores, setEntretienScores] = useState([]);
+  const [roadmapData, setRoadmapData] = useState([]);
   const [serverStatus, setServerStatus]       = useState({ n8n: null, payload: null });
   const [cvContext, setCvContext]             = useState('cv');
   const [showFloatChat, setShowFloatChat]     = useState(false); // ← État pour le chat
@@ -136,6 +137,17 @@ function AppContent() {
     } catch (e) { console.warn('Scores:', e.message); }
   }, [user]);
 
+  const fetchRoadmap = useCallback(async () => {
+  if (!user?.id) return;
+  try {
+    const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id), {
+      signal: AbortSignal.timeout(5000),
+    });
+    setRoadmapData(res.data.docs || []);
+  } catch (e) { console.warn('Roadmap:', e.message); }
+}, [user]);
+
+
   useEffect(() => {
     if (!historyLoaded.current) {
       historyLoaded.current = true;
@@ -145,6 +157,7 @@ function AppContent() {
   }, [fetchMessages, fetchBourses]);
 
   useEffect(() => { fetchEntretienScores(); }, [fetchEntretienScores]);
+  useEffect(() => { fetchRoadmap(); }, [fetchRoadmap]);
 
   const handleSend = async (messageText, options = {}) => {
     const textToSend = (messageText || input).trim();
@@ -309,7 +322,8 @@ function AppContent() {
     chatContainerRef, currentStep, setCurrentStep,
     bourses, askAboutScholarship, entretienScores,
     fetchEntretienScores, conversationId: conversationId.current,
-    view, setView, serverStatus, lang, setLang,
+    view, setView, serverStatus,lang,setLang,roadmapData,
+  setRoadmapData,
     onOpenBourse: (nom) => { setInitialSelected(nom); setView('bourses'); },
   };
 
@@ -352,6 +366,14 @@ function AppContent() {
          {view === 'Home'       && <HomePage {...sharedProps} />}
         {view === 'accueil'         && <ChatPage             {...sharedProps} />}
         {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+{view === 'accueil' && !user && (
+  <GuestPage
+    bourses={bourses}
+    onSignup={() => { /* ouvrir LoginModal */ }}
+    setView={setView}
+  />
+)}
+{view === 'accueil' && user && <ChatPage {...sharedProps} />}        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
         {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
         {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
         {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}

@@ -1,7 +1,11 @@
 // components/Navbar.jsx
 // Navbar transparente sur le hero (navbar + section 1 = une seule image)
-// Devient blanche quand on dépasse la section 1 (scroll > 100vh)
+// Devient solide quand on dépasse la section 1 (scroll > 100vh)
 // exports : default Navbar, ThemeProvider, useTheme
+//
+// POLICES : 2 polices uniquement
+//   fSerif  → "Playfair Display"  (titres, brand, noms)
+//   fSans   → "DM Sans"           (UI, labels, corps, badges, mono-like)
 
 "use client";
 
@@ -89,6 +93,9 @@ function useStarredBourses(user) {
 }
 
 /* ==================== TOKENS ==================== */
+// Deux polices professionnelles uniquement :
+//   fSerif → Playfair Display  (titres, brand)
+//   fSans  → DM Sans           (tout le reste : UI, corps, labels, chiffres)
 const tokens = (theme) => ({
   accent:    theme === "dark" ? "#4c9fd9" : "#0066b3",
   accentInk: theme === "dark" ? "#8ec1e6" : "#004f8a",
@@ -103,9 +110,8 @@ const tokens = (theme) => ({
   surface:   theme === "dark" ? "#1a1912" : "#ffffff",
   danger:    "#b4321f",
   warn:      "#b06a12",
-  fSerif: `"Libre Caslon Text","Times New Roman",Georgia,serif`,
-  fSans:  `"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`,
-  fMono:  `"JetBrains Mono",ui-monospace,Menlo,monospace`,
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
 });
 
 /* ==================== ICONS ==================== */
@@ -203,7 +209,7 @@ function StarPanel({ starred, onClose, setView, lang, c }) {
         </button>
       </div>
       {starred.length === 0 ? (
-        <div style={{ padding:"28px 20px", textAlign:"center", color:c.ink3, fontSize:13 }}>
+        <div style={{ padding:"28px 20px", textAlign:"center", color:c.ink3, fontSize:13, fontFamily:c.fSans }}>
           {lang==="fr"?"Aucun favori pour l'instant":"No favorites yet"}
         </div>
       ) : (
@@ -216,11 +222,11 @@ function StarPanel({ starred, onClose, setView, lang, c }) {
               <span style={{ color:c.accent, marginTop:2 }}><Icon.StarFill/></span>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink, lineHeight:1.3 }}>{b.nom}</div>
-                <div style={{ fontSize:10, color:c.ink3, marginTop:4, letterSpacing:".12em", textTransform:"uppercase", fontWeight:500 }}>{b.pays}</div>
+                <div style={{ fontSize:10, color:c.ink3, marginTop:4, letterSpacing:".12em", textTransform:"uppercase", fontWeight:500, fontFamily:c.fSans }}>{b.pays}</div>
               </div>
               {b.lienOfficiel && (
                 <a href={b.lienOfficiel} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
-                  style={{ fontSize:10, color:c.accent, textDecoration:"none", letterSpacing:".16em", textTransform:"uppercase", fontWeight:600, padding:"4px 8px", border:`1px solid ${c.rule}` }}>
+                  style={{ fontSize:10, color:c.accent, textDecoration:"none", letterSpacing:".16em", textTransform:"uppercase", fontWeight:600, padding:"4px 8px", border:`1px solid ${c.rule}`, fontFamily:c.fSans }}>
                   {lang==="fr"?"Voir":"View"}
                 </a>
               )}
@@ -262,7 +268,7 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang, c }) {
         </button>
       </div>
       {alerts.length===0 ? (
-        <div style={{ padding:"32px 20px", textAlign:"center", color:c.ink3, fontSize:13 }}>
+        <div style={{ padding:"32px 20px", textAlign:"center", color:c.ink3, fontSize:13, fontFamily:c.fSans }}>
           {lang==="fr"?"Aucune deadline dans les 30 prochains jours":"No deadline in the next 30 days"}
         </div>
       ) : (
@@ -278,18 +284,18 @@ function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang, c }) {
                 <div style={{ width:3, alignSelf:"stretch", background:tn.col }}/>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                    <span style={{ fontFamily:c.fMono, fontSize:9.5, fontWeight:600, color:tn.col, letterSpacing:".16em", textTransform:"uppercase" }}>{tn.label}</span>
+                    <span style={{ fontFamily:c.fSans, fontSize:9.5, fontWeight:700, color:tn.col, letterSpacing:".16em", textTransform:"uppercase" }}>{tn.label}</span>
                     <span style={{ width:3, height:3, background:c.ink4, borderRadius:"50%" }}/>
-                    <span style={{ fontSize:9.5, color:c.ink3, letterSpacing:".14em", fontWeight:500, textTransform:"uppercase" }}>{a.pays}</span>
+                    <span style={{ fontSize:9.5, color:c.ink3, letterSpacing:".14em", fontWeight:500, textTransform:"uppercase", fontFamily:c.fSans }}>{a.pays}</span>
                   </div>
                   <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink, lineHeight:1.3 }}>{a.nom}</div>
-                  <div style={{ fontSize:11, color:c.ink3, marginTop:4 }}>
+                  <div style={{ fontSize:11, color:c.ink3, marginTop:4, fontFamily:c.fSans }}>
                     {a.deadline.toLocaleDateString(lang==="fr"?"fr-FR":"en-GB",{day:"2-digit",month:"short",year:"numeric"})}
                   </div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0, minWidth:78 }}>
                   <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:700, color:tn.col, lineHeight:1 }}>{dayTxt(a)}</div>
-                  <div style={{ fontSize:9, color:c.ink4, marginTop:4, letterSpacing:".14em", textTransform:"uppercase" }}>
+                  <div style={{ fontSize:9, color:c.ink4, marginTop:4, letterSpacing:".14em", textTransform:"uppercase", fontFamily:c.fSans }}>
                     {lang==="fr"?"restants":"remaining"}
                   </div>
                 </div>
@@ -311,29 +317,26 @@ export default function Navbar({
   const { theme, toggleTheme } = useTheme();
   const c = tokens(theme);
 
-  /* ─── SCROLL : transparent tant qu'on est dans le hero (< 100vh) ─── */
+  /* ─── SCROLL : transparent dans le hero (< 100vh), solide après ─── */
   const [pastHero, setPastHero] = useState(false);
 
   useEffect(() => {
     const check = () => {
-      // 100vh = hauteur exacte du hero (section 1 fait minHeight:100vh)
-      setPastHero(window.scrollY >= window.innerHeight - 10);
+      // La navbar fait ~110px (strip 34px + main 76px).
+      // On devient "solid" dès que le scroll dépasse 100vh - hauteur navbar.
+      // On revient "ghost" dès qu'on remonte au-dessus de ce seuil.
+      setPastHero(window.scrollY > window.innerHeight - 120);
     };
     check(); // état initial
     window.addEventListener("scroll", check, { passive: true });
     return () => window.removeEventListener("scroll", check);
   }, []);
 
-  /* ─── Couleurs selon l'état ─── */
-  // pastHero = true  → navbar blanche / solide
-  // pastHero = false → navbar transparente sur l'image
-  const solid      = pastHero;
-  const fg         = solid ? c.ink    : "#ffffff";
-  const fgMuted    = solid ? c.ink3   : "rgba(255,255,255,.6)";
-  const navBg      = solid ? c.paper  : "transparent";
-  const stripBg    = solid ? c.paper2 : "rgba(0,0,0,.28)";
-  const ruleLine   = solid ? c.rule   : "rgba(255,255,255,.1)";
-  const accent     = solid ? c.accent : "#4c9fd9";
+  const solid   = pastHero;
+  const fg      = solid ? c.ink    : "#ffffff";
+  const fgMuted = solid ? c.ink3   : "rgba(255,255,255,.6)";
+  const ruleLine = solid ? c.rule  : "rgba(255,255,255,.1)";
+  const accent  = solid ? c.accent : "#4c9fd9";
 
   /* ─── Panels state ─── */
   const [menuOpen,  setMenuOpen]  = useState(false);
@@ -377,7 +380,6 @@ export default function Navbar({
   const userDisplay = user?.name || user?.email?.split("@")[0] || "";
   const userInitial = ((user?.name || user?.email || "U")[0] || "U").toUpperCase();
 
-  /* ─── Shared button base ─── */
   const utilBase = {
     background: "transparent", border: "none", cursor: "pointer",
     display: "inline-flex", alignItems: "center", gap: 6,
@@ -389,20 +391,21 @@ export default function Navbar({
   };
 
   const chip = (bg) => ({
-    marginLeft: 3, fontFamily: c.fMono, fontSize: 10,
+    marginLeft: 3, fontFamily: c.fSans, fontSize: 10,
     padding: "1px 6px", background: bg, color: "#fff",
-    borderRadius: 2, fontWeight: 600,
+    borderRadius: 2, fontWeight: 700,
   });
 
   return (
     <>
+      {/* ── Google Fonts : Playfair Display + DM Sans ── */}
       <style>{`
-        /* ── global transition on the header ── */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
         .ot-nav {
           position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-          transition: background .5s ease, box-shadow .5s ease;
+          transition: background .45s ease, box-shadow .45s ease;
           will-change: background;
-          background: transparent; /* default: always start transparent */
         }
         .ot-nav.solid {
           background: ${c.paper} !important;
@@ -413,27 +416,24 @@ export default function Navbar({
           box-shadow: none;
         }
 
-        /* ── utility strip ── */
         .ot-strip {
-          transition: background .5s ease, border-color .5s ease;
+          transition: background .45s ease, border-color .45s ease;
           border-bottom: 1px solid;
         }
         .ot-strip.solid { background:${c.paper2} !important; border-color:${c.rule} !important; }
         .ot-strip.ghost { background:rgba(0,0,0,.28) !important; border-color:rgba(255,255,255,.1) !important; }
 
-        /* ── main tier ── */
         .ot-main-tier {
           border-bottom: 1px solid;
-          transition: border-color .5s ease, background .5s ease;
+          transition: border-color .45s ease, background .45s ease;
         }
         .ot-main-tier.solid { border-color:${c.rule}; background: ${c.paper}; }
         .ot-main-tier.ghost { border-color:rgba(255,255,255,.1); background: transparent; }
 
-        /* ── nav items ── */
         .ot-item {
           position: relative; background: transparent; border: none; cursor: pointer;
           padding: 0 17px; height: 100%;
-          font-family: ${c.fSerif}; font-size: 15.5px; font-weight: 400;
+          font-family: ${c.fSans}; font-size: 14px; font-weight: 400; letter-spacing: .01em;
           display: inline-flex; align-items: center;
           white-space: nowrap;
           transition: color .3s ease;
@@ -445,12 +445,10 @@ export default function Navbar({
           transition: transform .22s ease;
         }
         .ot-item:hover .ul, .ot-item.on .ul { transform: scaleX(1); }
-        .ot-item.on { font-weight: 700; }
+        .ot-item.on { font-weight: 600; }
 
-        /* ── util button hover ── */
         .ot-util:hover { color: ${fg} !important; }
 
-        /* ── CTA ── */
         .ot-cta {
           display: inline-flex; align-items: center; gap: 8px;
           padding: 9px 20px; border: none; cursor: pointer;
@@ -468,16 +466,16 @@ export default function Navbar({
         }
       `}</style>
 
-      <header ref={wrapRef} className={`ot-nav ${solid ? "solid" : "ghost"}`} style={{ fontFamily: c.fSans, background: solid ? c.paper : "transparent", boxShadow: solid ? `0 1px 0 ${c.rule}` : "none" }}>
+      <header ref={wrapRef} className={`ot-nav ${solid ? "solid" : "ghost"}`}>
 
         {/* ══════════ STRIP ══════════ */}
-        <div className={`ot-strip ${solid ? "solid" : "ghost"}`} style={{ background: solid ? c.paper2 : "rgba(0,0,0,.28)", borderBottom: `1px solid ${solid ? c.rule : "rgba(255,255,255,.1)"}` }}>
+        <div className={`ot-strip ${solid ? "solid" : "ghost"}`}>
           <div style={{
             maxWidth:1440, margin:"0 auto", padding:"0 40px",
             display:"flex", alignItems:"center", height:34,
           }}>
             {/* left links */}
-            <div style={{ display:"flex", gap:20, fontSize:11, fontWeight:500, letterSpacing:".08em", textTransform:"uppercase" }}>
+            <div style={{ display:"flex", gap:20, fontSize:11, fontWeight:500, letterSpacing:".08em", textTransform:"uppercase", fontFamily:c.fSans }}>
               {[
                 { label: lang==="fr"?"Contact":"Contact", view:"contact" },
                 { label: lang==="fr"?"Témoignages":"Testimonials", view:"feedback" },
@@ -547,7 +545,7 @@ export default function Navbar({
                     <span style={{
                       width:22, height:22, borderRadius:"50%", background:accent, color:"#fff",
                       display:"inline-flex", alignItems:"center", justifyContent:"center",
-                      overflow:"hidden", fontFamily:c.fSerif, fontWeight:700, fontSize:10,
+                      overflow:"hidden", fontFamily:c.fSans, fontWeight:700, fontSize:10,
                     }}>
                       {avatarUrl
                         ? <img src={avatarUrl} alt={userDisplay} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
@@ -566,12 +564,12 @@ export default function Navbar({
                       boxShadow:"0 20px 50px rgba(0,0,0,.18)", zIndex:400,
                     }}>
                       <div style={{ padding:"16px 18px", borderBottom:`1px solid ${c.rule}`, display:"flex", gap:12, alignItems:"center" }}>
-                        <div style={{ width:42, height:42, borderRadius:"50%", background:accent, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:c.fSerif, fontWeight:700, fontSize:16, overflow:"hidden" }}>
+                        <div style={{ width:42, height:42, borderRadius:"50%", background:accent, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:c.fSans, fontWeight:700, fontSize:16, overflow:"hidden" }}>
                           {avatarUrl ? <img src={avatarUrl} alt={userDisplay} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : userInitial}
                         </div>
                         <div style={{ minWidth:0, flex:1 }}>
                           <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink }}>{userDisplay}</div>
-                          <div style={{ fontSize:11, color:c.ink3, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</div>
+                          <div style={{ fontSize:11, color:c.ink3, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:c.fSans }}>{user.email}</div>
                         </div>
                       </div>
                       <div style={{ padding:"6px 0" }}>
@@ -583,7 +581,7 @@ export default function Navbar({
                             onClick={e=>{ e.preventDefault(); setView("profil"); setUserOpen(false); }}
                             onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
                             onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", fontSize:13, color:c.ink2, textDecoration:"none" }}>
+                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", fontSize:13, color:c.ink2, textDecoration:"none", fontFamily:c.fSans }}>
                             <span>{x}</span><Icon.Arrow style={{color:c.ink4}}/>
                           </a>
                         ))}
@@ -592,7 +590,7 @@ export default function Navbar({
                         <button onClick={()=>{ setUserOpen(false); onLogout?.(); }}
                           onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
                           onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", border:"none", background:"transparent", fontSize:13, color:c.danger, cursor:"pointer", fontFamily:"inherit" }}>
+                          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", border:"none", background:"transparent", fontSize:13, color:c.danger, cursor:"pointer", fontFamily:c.fSans }}>
                           <span>{lang==="fr"?"Déconnexion":"Sign out"}</span><Icon.Logout/>
                         </button>
                       </div>
@@ -611,7 +609,7 @@ export default function Navbar({
 
         {/* ══════════ MAIN TIER ══════════ */}
         <div className={`ot-main-tier ${solid?"solid":"ghost"}`}
-          style={{ maxWidth:1440, margin:"0 auto", padding:"0 40px", display:"flex", alignItems:"stretch", height:76, background:"transparent", borderBottom:`1px solid ${solid ? c.rule : "rgba(255,255,255,.1)"}`, width:"100%" }}>
+          style={{ maxWidth:1440, margin:"0 auto", padding:"0 40px", display:"flex", alignItems:"stretch", height:76, background:"transparent", width:"100%" }}>
 
           {/* Brand */}
           <a href="#" onClick={e=>{ e.preventDefault(); setView("Home"); }}
@@ -621,7 +619,6 @@ export default function Navbar({
               borderRight:`1px solid ${ruleLine}`,
               transition:"border-color .5s",
             }}>
-            {/* Logo image — inverted on ghost to appear white */}
             <div style={{ width:44, height:44, display:"grid", placeItems:"center", flexShrink:0 }}>
               <img src="/LOGO (2).png" alt="OppsTrack"
                 style={{
@@ -641,6 +638,7 @@ export default function Navbar({
                 fontSize:9.5, fontWeight:600, letterSpacing:".18em",
                 textTransform:"uppercase", marginTop:3,
                 color:fgMuted, transition:"color .5s",
+                fontFamily:c.fSans,
               }}>
                 {t("navbar","tagline") || (lang==="fr"?"Opportunités · Bourses · Mobilité":"Opportunities · Scholarships · Mobility")}
               </span>
@@ -662,14 +660,12 @@ export default function Navbar({
 
           {/* Right: CTA + hamburger */}
           <div style={{ display:"flex", alignItems:"center", gap:10, marginLeft:"auto" }}>
-            {/* CTA: only visible when solid */}
             <button className="ot-cta"
               style={{ opacity:solid?1:0, pointerEvents:solid?"auto":"none", transform:solid?"none":"translateY(-4px)" }}
               onClick={()=>setView("bourses")}>
               {lang==="fr"?"Explorer":"Explore"} <Icon.Arrow/>
             </button>
 
-            {/* Hamburger */}
             <button className="ot-hamburger"
               onClick={()=>setMenuOpen(!menuOpen)}
               style={{
@@ -700,7 +696,7 @@ export default function Navbar({
                   padding:"14px 4px", border:"none", borderBottom:`1px solid ${c.ruleSoft}`,
                   background:"transparent",
                   color:view===item.id?c.accent:c.ink,
-                  fontFamily:c.fSerif, fontSize:18,
+                  fontFamily:c.fSans, fontSize:16,
                   fontWeight:view===item.id?700:400,
                   cursor:"pointer", textAlign:"left",
                 }}>
@@ -709,7 +705,7 @@ export default function Navbar({
             ))}
             {user && (
               <button onClick={()=>{ onLogout?.(); setMenuOpen(false); }}
-                style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 4px", border:"none", background:"transparent", color:c.danger, fontSize:14, cursor:"pointer", marginTop:8, letterSpacing:".08em", textTransform:"uppercase", fontWeight:600 }}>
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 4px", border:"none", background:"transparent", color:c.danger, fontSize:14, cursor:"pointer", marginTop:8, letterSpacing:".08em", textTransform:"uppercase", fontWeight:600, fontFamily:c.fSans }}>
                 <Icon.Logout/>{t("navbar","logout")||"Déconnexion"}
               </button>
             )}

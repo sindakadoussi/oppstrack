@@ -1,7 +1,13 @@
-// app/page.jsx  (ou pages/index.jsx)
-// Homepage OppsTrack — style éditorial inspiré unipd.it
-// Animations : hero fullbleed, funnel step-by-step, modules stagger, AI typewriter, stories, sources flip-in
-// Police : Libre Caslon Text + Inter + JetBrains Mono (voir layout)
+// app/page.jsx
+// POLICES : 2 polices uniquement
+//   fSerif → "Playfair Display"  (titres, headings, noms)
+//   fSans  → "DM Sans"           (corps, UI, labels, chiffres, mono-like)
+//
+// FIX HERO : le hero démarre à top:0 (position:fixed navbar en overlay),
+// donc l'image occupe 100vh depuis le tout début de la page.
+// Le contenu du hero est décalé vers le bas par un paddingTop tenant compte
+// de la hauteur de la navbar (110px strip+main) via une variable CSS.
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -10,6 +16,9 @@ import { useTheme } from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 
 /* =============== TOKENS =============== */
+// Deux polices uniquement :
+//   fSerif → Playfair Display  (titres, noms)
+//   fSans  → DM Sans           (tout le reste)
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
   accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
@@ -24,40 +33,35 @@ const tokens = (theme) => ({
   surface:    theme === "dark" ? "#1a1912" : "#ffffff",
   danger:     "#b4321f",
   warn:       "#b06a12",
-  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
-  fSans:  `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-  fMono:  `"JetBrains Mono", ui-monospace, Menlo, monospace`,
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
 });
 
-/* =============== HOOK: INTERSECTION OBSERVER =============== */
+/* Hauteur totale de la navbar (strip 34px + main 76px) */
+const NAV_H = 110;
+
+/* =============== HOOKS =============== */
 function useReveal(options = {}) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
     if (!ref.current) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          obs.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.15, ...options }
-    );
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        obs.unobserve(entry.target);
+      }
+    }, { threshold: 0.15, ...options });
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
-
   return [ref, visible];
 }
 
-/* =============== HOOK: TYPEWRITER =============== */
 function useTypewriter(text, trigger, speed = 22) {
   const [display, setDisplay] = useState("");
   const [typing, setTyping] = useState(false);
   const timerRef = useRef(null);
-
   useEffect(() => {
     if (!trigger) return;
     if (timerRef.current) clearInterval(timerRef.current);
@@ -73,81 +77,51 @@ function useTypewriter(text, trigger, speed = 22) {
     }, speed);
     return () => clearInterval(timerRef.current);
   }, [text, trigger]);
-
   return { display, typing };
 }
 
-/* =============== SHARED =============== */
+/* =============== SHARED COMPONENTS =============== */
 function Arrow({ size = 14 }) {
   return (
-    <svg
-      width={size} height={size} viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
 
-function SectionLabel({ num, title, c, style = {} }) {
+function SectionLabel({ num, title, c }) {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 4, ...style }}>
-      <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.accent, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase" }}>
-        § {num}
-      </span>
-      <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase" }}>
-        {title}
-      </span>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 4 }}>
+      <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.accent, fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase" }}>§ {num}</span>
+      <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase" }}>{title}</span>
     </div>
   );
 }
 
 function BigHeading({ children, c, style = {} }) {
   return (
-    <h2 style={{
-      fontFamily: c.fSerif,
-      fontSize: "clamp(32px, 4vw, 54px)",
-      fontWeight: 700,
-      letterSpacing: "-.015em",
-      lineHeight: 1.05,
-      color: c.ink,
-      margin: "16px 0 32px",
-      ...style,
-    }}>
+    <h2 style={{ fontFamily: c.fSerif, fontSize: "clamp(32px, 4vw, 54px)", fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.05, color: c.ink, margin: "16px 0 32px", ...style }}>
       {children}
     </h2>
   );
 }
 
-/* =============== 1. HERO =============== */
+/* =============== SECTION 1: HERO =============== */
 function Hero({ c, lang, navigate }) {
   const [heroVisible, setHeroVisible] = useState(false);
-  const [cardsVisible, setCardsVisible] = useState([false, false, false, false]);
+  const [cardsVisible, setCardsVisible] = useState([false, false, false]);
 
   useEffect(() => {
-    // hero content fade-in
-    const t1 = setTimeout(() => setHeroVisible(true), 150);
-    // cards staggered
-    [600, 850, 1100, 1350].forEach((delay, i) => {
-      setTimeout(() => {
-        setCardsVisible((prev) => {
-          const next = [...prev];
-          next[i] = true;
-          return next;
-        });
-      }, delay);
+    setTimeout(() => setHeroVisible(true), 150);
+    [600, 850, 1100].forEach((delay, i) => {
+      setTimeout(() => setCardsVisible(prev => { const next = [...prev]; next[i] = true; return next; }), delay);
     });
-    return () => clearTimeout(t1);
   }, []);
 
   const cardStyle = (visible, extra = {}) => ({
     position: "absolute",
-    background: lang === "dark"
-      ? "rgba(26,25,18,.92)"
-      : "rgba(18,16,10,.85)",
-    border: "1px solid rgba(242,239,231,.12)",
+    background: "rgba(18,16,10,.85)",
     backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
     padding: "14px 16px",
     color: "#f2efe7",
     fontFamily: c.fSans,
@@ -158,22 +132,30 @@ function Hero({ c, lang, navigate }) {
     ...extra,
   });
 
+  const scholarships = [
+    { pays: "Germany · Bonn", nom: "DAAD — Helmut Schmidt Programme", match: 94 },
+    { pays: "UK · London", nom: "Chevening Scholarship", deadline: "21 · APR · 2026", urgent: true },
+    { pays: "France · Paris", nom: "Eiffel Excellence", match: 87 },
+  ];
+
   return (
     <>
       <style>{`
-        @keyframes heroPulse {
-          0%,100% { box-shadow: 0 0 0 4px rgba(76,159,217,.18); }
-          50%      { box-shadow: 0 0 0 9px rgba(76,159,217,.04); }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+        /* ── Hero image : couvre toute la section depuis top:0 ── */
         .hero-bg-img {
-          position: absolute; inset: 0;
+          position: absolute;
+          inset: 0;
           background-image: url('/ceremonie.jpg');
-          background-size: cover; background-position: center;
-          filter: brightness(.36);
+          background-size: cover;
+          background-position: center top;   /* ancrage haut pour ne pas couper le sujet */
+          filter: brightness(.56);
           transform: scale(1.06);
           transition: transform 14s ease-out;
         }
         .hero-bg-img.loaded { transform: scale(1); }
+
         .hero-btn-primary {
           padding: 15px 28px; font-size: 11px; font-weight: 700;
           letter-spacing: .22em; text-transform: uppercase;
@@ -182,6 +164,7 @@ function Hero({ c, lang, navigate }) {
           transition: background .2s, transform .15s;
         }
         .hero-btn-primary:hover { background: ${lang === "dark" ? "#3a8bc4" : "#004f8a"}; transform: translateY(-2px); }
+
         .hero-btn-ghost {
           padding: 15px 28px; font-size: 11px; font-weight: 700;
           letter-spacing: .22em; text-transform: uppercase;
@@ -190,8 +173,18 @@ function Hero({ c, lang, navigate }) {
           font-family: ${c.fSans}; transition: background .2s;
         }
         .hero-btn-ghost:hover { background: rgba(242,239,231,.1); }
+
+        @keyframes blink { 50% { opacity: 0; } }
       `}</style>
 
+      {/*
+        ── FIX HERO ──
+        La section démarre à top:0 et occupe 100vh.
+        La navbar est fixed par-dessus (z-index:1000).
+        On ne met AUCUN margin-top ni padding-top sur la section elle-même :
+        le gradient de fondu en bas suffit à la transition.
+        Le contenu interne utilise paddingTop: NAV_H + espace visuel.
+      */}
       <section style={{
         position: "relative",
         height: "100vh",
@@ -199,143 +192,89 @@ function Hero({ c, lang, navigate }) {
         display: "flex",
         alignItems: "center",
         overflow: "hidden",
+        /* Pas de marginTop : la navbar fixe passe par-dessus */
       }}>
+        {/* Image de fond — remplit toute la section y compris sous la navbar */}
+        <div className="hero-bg-img" />
 
-        {/* Background image */}
-       <div className="hero-bg-img" />
-
-        {/* Overlay gradient → paper color at bottom */}
+        {/* Dégradé bas vers paper pour transition fluide avec la section suivante */}
         <div style={{
           position: "absolute", inset: 0,
           background: `linear-gradient(to bottom, rgba(20,15,5,.55) 0%, rgba(20,15,5,.7) 60%, ${c.paper} 100%)`,
         }} />
 
-        {/* Content */}
+        {/* Contenu : décalé vers le bas pour passer sous la navbar */}
         <div style={{
           position: "relative", zIndex: 2,
           maxWidth: 1440, margin: "0 auto",
-          padding: "200px 48px 120px",   /* 200px top = clears 114px navbar + breathing room */
+          /* paddingTop = hauteur navbar + marge visuelle */
+          padding: `${NAV_H + 80}px 48px 120px`,
           width: "100%",
           opacity: heroVisible ? 1 : 0,
           transform: heroVisible ? "none" : "translateY(32px)",
           transition: "opacity .9s ease .2s, transform .9s ease .2s",
         }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 64, alignItems: "center" }}>
-
-            {/* Left */}
             <div>
-              <div style={{
-                fontFamily: c.fMono, fontSize: 11, color: c.accent,
-                letterSpacing: ".28em", textTransform: "uppercase",
-                fontWeight: 600, marginBottom: 22,
-              }}>
-                § Platform
-              </div>
-
               <h1 style={{
                 fontFamily: c.fSerif,
-                fontSize: "clamp(46px, 6vw, 86px)",
-                fontWeight: 700, lineHeight: 1.03,
-                letterSpacing: "-.022em",
+                fontSize: "clamp(46px, 6vw, 56px)",
+                fontWeight: 140, lineHeight: 1.03, letterSpacing: "-.022em",
                 color: "#f2efe7", margin: 0,
               }}>
                 {lang === "fr" ? (
-                  <><em style={{ color: c.accent, fontStyle: "italic" }}>L'intelligence</em><br />au service de vos<br />opportunités académiques.</>
+                  <>Trouvez, préparez et obtenez votre bourse internationale — <em style={{ color: c.accent, fontStyle: "italic" }}>avec l'IA</em>.</>
                 ) : (
-                  <>One intelligent platform<br />for every <em style={{ color: c.accent, fontStyle: "italic" }}>scholarship journey</em>.</>
+                  <>Find, prepare and secure your international scholarship — <em style={{ color: c.accent, fontStyle: "italic" }}>with AI</em>.</>
                 )}
               </h1>
-
               <p style={{
                 fontFamily: c.fSans, fontSize: 17, lineHeight: 1.65,
-                color: "rgba(242,239,231,.78)",
-                maxWidth: 580, margin: "28px 0 0",
+                color: "rgba(242,239,231,.78)", maxWidth: 580, margin: "28px 0 0",
               }}>
                 {lang === "fr"
-                  ? "OppsTrack centralise les bourses entièrement financées dans le monde, vous aide à découvrir des opportunités, évaluer votre compatibilité, préparer des candidatures plus solides, vous entraîner aux entretiens et suivre chaque échéance — au même endroit."
-                  : "OppsTrack centralizes fully funded scholarships worldwide and helps you discover opportunities, evaluate your match, prepare stronger applications, practice interviews and track every deadline in one place."}
+                  ? "OppsTrack centralise les bourses entièrement financées dans le monde, analyse votre profil et vous guide jusqu'à la candidature."
+                  : "OppsTrack centralizes fully funded scholarships worldwide, analyzes your profile and guides you through your application."}
               </p>
-
               <div style={{ display: "flex", gap: 14, marginTop: 38, flexWrap: "wrap" }}>
-                <button className="hero-btn-primary" onClick={() => navigate("/bourses")}>
-                  {lang === "fr" ? "Explorer les bourses" : "Explore scholarships"} <Arrow />
+                <button className="hero-btn-primary" onClick={() => navigate("/signup")}>
+                  {lang === "fr" ? "Commencer gratuitement" : "Get started free"} <Arrow />
                 </button>
                 <button className="hero-btn-ghost" onClick={() => navigate("/chat")}>
-                  {lang === "fr" ? "Essayer l'IA" : "Try AI assistant"}
+                  {lang === "fr" ? "Tester mon éligibilité" : "Check my eligibility"}
                 </button>
-              </div>
-
-              <div style={{
-                display: "flex", gap: 10, marginTop: 44,
-                fontFamily: c.fMono, fontSize: 10.5,
-                color: "rgba(242,239,231,.5)",
-                letterSpacing: ".2em", textTransform: "uppercase",
-              }}>
-                {["Discover","Match","Prepare","Apply","Track"].map((w, i, arr) => (
-                  <React.Fragment key={w}>
-                    <span>{w}</span>
-                    {i < arr.length - 1 && <span style={{ color: "rgba(242,239,231,.22)" }}>·</span>}
-                  </React.Fragment>
-                ))}
               </div>
             </div>
 
-            {/* Right — collage */}
-            <div style={{ position: "relative", height: 480, display: "none" }}
-              ref={(el) => { if (el) el.style.display = "block"; }}
-            >
-              {/* Card 1 — Scholarship match */}
-              <div style={cardStyle(cardsVisible[0], { top: 0, left: 0, width: 264, transform: cardsVisible[0] ? "rotate(-1.5deg)" : "translateY(22px)" })}>
-                <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>Germany · Bonn</div>
-                <div style={{ fontFamily: c.fSerif, fontSize: 17, fontWeight: 700, marginTop: 6, lineHeight: 1.25 }}>DAAD — Helmut Schmidt Programme</div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontSize: 11 }}>
-                  <span style={{ color: "rgba(242,239,231,.42)", letterSpacing: ".12em", textTransform: "uppercase", fontSize: 9.5 }}>Match</span>
-                  <span style={{ fontFamily: c.fMono, color: c.accent, fontWeight: 600 }}>94%</span>
+            <div style={{ position: "relative", height: 480 }}>
+              <div style={cardStyle(cardsVisible[0], { top: 0, left: 0, width: 264 })}>
+                <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>{scholarships[0].pays}</div>
+                <div style={{ fontFamily: c.fSerif, fontSize: 17, fontWeight: 700, marginTop: 6 }}>{scholarships[0].nom}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14 }}>
+                  <span style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", fontFamily: c.fSans }}>Match</span>
+                  <span style={{ fontFamily: c.fSans, color: c.accent, fontWeight: 700, fontSize: 13 }}>{scholarships[0].match}%</span>
                 </div>
                 <div style={{ height: 3, background: "rgba(255,255,255,.1)", marginTop: 4, position: "relative" }}>
-                  <div style={{ position: "absolute", inset: 0, width: "94%", background: c.accent }} />
+                  <div style={{ position: "absolute", inset: 0, width: `${scholarships[0].match}%`, background: c.accent }} />
                 </div>
               </div>
 
-              {/* Card 2 — AI */}
-              <div style={cardStyle(cardsVisible[1], { top: 68, right: 0, width: 282, transform: cardsVisible[1] ? "rotate(1deg)" : "translateY(22px)" })}>
-                <div style={{ fontSize: 9.5, color: c.accent, letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 700 }}>AI Assistant</div>
-                <div style={{ fontFamily: c.fSerif, fontSize: 13, color: "rgba(242,239,231,.7)", marginTop: 10, lineHeight: 1.4 }}>
-                  "Am I eligible for DAAD with a 3.4 GPA and 2 years of experience?"
-                </div>
-                <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(242,239,231,.07)", fontSize: 12, color: "#f2efe7", lineHeight: 1.45, borderLeft: `2px solid ${c.accent}` }}>
-                  Your profile meets <strong>5 of 6</strong> criteria. Focus: TOEFL score…
-                </div>
-              </div>
-
-              {/* Card 3 — Roadmap */}
-              <div style={cardStyle(cardsVisible[2], { top: 236, left: 20, width: 234 })}>
-                <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>Roadmap · Chevening</div>
-                {[
-                  { k: "Profile", done: true },
-                  { k: "Essays", done: true },
-                  { k: "References", done: false, active: true },
-                  { k: "Submit", done: false },
-                ].map((s) => (
-                  <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, fontSize: 12 }}>
-                    <span style={{
-                      width: 14, height: 14, flexShrink: 0,
-                      border: `1px solid ${s.done ? c.accent : s.active ? "#f2efe7" : "rgba(242,239,231,.25)"}`,
-                      background: s.done ? c.accent : "transparent",
-                      display: "inline-block",
-                    }} />
-                    <span style={{ color: s.done ? "rgba(242,239,231,.42)" : s.active ? "#f2efe7" : "rgba(242,239,231,.3)", fontWeight: s.active ? 600 : 400 }}>
-                      {s.k}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Card 4 — Deadline */}
-              <div style={cardStyle(cardsVisible[3], { bottom: 10, right: 30, width: 214, borderLeft: `3px solid ${c.danger}`, transform: cardsVisible[3] ? "rotate(-.8deg)" : "translateY(22px)" })}>
+              <div style={cardStyle(cardsVisible[1], { top: 80, right: 0, width: 240, borderLeft: `3px solid ${c.danger}` })}>
                 <div style={{ fontSize: 9.5, color: c.danger, letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 700 }}>Deadline · today</div>
-                <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, marginTop: 4 }}>Chevening Scholarship</div>
-                <div style={{ fontFamily: c.fMono, fontSize: 11, color: "rgba(242,239,231,.42)", marginTop: 6 }}>21 · APR · 2026</div>
+                <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, marginTop: 4 }}>{scholarships[1].nom}</div>
+                <div style={{ fontFamily: c.fSans, fontSize: 11, color: "rgba(242,239,231,.42)", marginTop: 6, letterSpacing: ".1em" }}>{scholarships[1].deadline}</div>
+              </div>
+
+              <div style={cardStyle(cardsVisible[2], { bottom: 0, left: 20, width: 244 })}>
+                <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>France · Paris</div>
+                <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, marginTop: 6 }}>{scholarships[2].nom}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                  <span style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", fontFamily: c.fSans }}>Match</span>
+                  <span style={{ fontFamily: c.fSans, color: c.accent, fontWeight: 700, fontSize: 13 }}>{scholarships[2].match}%</span>
+                </div>
+                <div style={{ height: 3, background: "rgba(255,255,255,.1)", marginTop: 4 }}>
+                  <div style={{ width: `${scholarships[2].match}%`, height: 3, background: c.accent }} />
+                </div>
               </div>
             </div>
           </div>
@@ -345,470 +284,40 @@ function Hero({ c, lang, navigate }) {
   );
 }
 
-/* =============== 2. FUNNEL — step by step =============== */
-function Funnel({ c, lang }) {
+/* =============== SECTION 2: COMMENT ÇA MARCHE =============== */
+function HowItWorks({ c, lang }) {
   const [sectionRef, sectionVisible] = useReveal({ threshold: 0.08 });
-  const [stepsVisible, setStepsVisible] = useState([false, false, false, false, false]);
-  const [lineDrawn, setLineDrawn] = useState(false);
+  const [stepsVisible, setStepsVisible] = useState([false, false, false]);
   const triggered = useRef(false);
 
   useEffect(() => {
     if (!sectionVisible || triggered.current) return;
     triggered.current = true;
-    setLineDrawn(true);
-    [0, 1, 2, 3, 4].forEach((i) => {
-      setTimeout(() => {
-        setStepsVisible((prev) => {
-          const next = [...prev];
-          next[i] = true;
-          return next;
-        });
-      }, 200 + i * 220);
-    });
+    [0, 1, 2].forEach((i) => setTimeout(() => setStepsVisible(prev => { const next = [...prev]; next[i] = true; return next; }), 200 + i * 220));
   }, [sectionVisible]);
 
   const steps = [
-    {
-      k: "Build", fr: "Construire",
-      t: lang === "fr" ? "Votre profil académique" : "Your academic profile",
-      d: lang === "fr" ? "Diplômes, langues, expériences, domaines d'intérêt — votre socle de candidature." : "Degrees, languages, experiences, fields of interest — your application foundation.",
-    },
-    {
-      k: "Match", fr: "Associer",
-      t: lang === "fr" ? "Opportunités compatibles" : "Opportunities that fit",
-      d: lang === "fr" ? "Algorithme de compatibilité, filtres avancés, recommandations par pays et niveau." : "Matching algorithm, advanced filters, recommendations by country and level.",
-    },
-    {
-      k: "Prepare", fr: "Préparer",
-      t: lang === "fr" ? "Candidature plus solide" : "Stronger applications",
-      d: lang === "fr" ? "IA qui rédige, révise et structure CV, lettres, essais et dossiers." : "AI that drafts, reviews and structures CVs, letters, essays and files.",
-    },
-    {
-      k: "Practice", fr: "S'entraîner",
-      t: lang === "fr" ? "Entretiens simulés" : "Simulated interviews",
-      d: lang === "fr" ? "Simulateur IA, questions typiques du programme, retour détaillé." : "AI simulator, program-specific questions, detailed feedback.",
-    },
-    {
-      k: "Track", fr: "Suivre",
-      t: lang === "fr" ? "Échéances & soumission" : "Deadlines & submission",
-      d: lang === "fr" ? "Planning stratégique, alertes, suivi d'état par candidature." : "Strategic planning, alerts, per-application status tracking.",
-    },
+    { num: "01", title: lang === "fr" ? "Trouver" : "Find", subtitle: lang === "fr" ? "Des bourses adaptées à votre profil" : "Scholarships matched to your profile", desc: lang === "fr" ? "Notre IA analyse votre parcours et vous recommande les opportunités les plus pertinentes." : "Our AI analyzes your background and recommends the most relevant opportunities." },
+    { num: "02", title: lang === "fr" ? "Préparer" : "Prepare", subtitle: lang === "fr" ? "CV, lettres, essais générés par IA" : "CV, letters, essays generated by AI", desc: lang === "fr" ? "Générez et optimisez vos documents de candidature avec notre assistant intelligent." : "Generate and optimize your application documents with our intelligent assistant." },
+    { num: "03", title: lang === "fr" ? "Réussir" : "Succeed", subtitle: lang === "fr" ? "Simulation + suivi jusqu'à la soumission" : "Simulation + tracking until submission", desc: lang === "fr" ? "Entraînez-vous aux entretiens et suivez chaque étape jusqu'à l'envoi." : "Practice interviews and track every step until submission." },
   ];
 
   return (
-    <>
-      <style>{`
-        .funnel-line-inner {
-          position: absolute; left: 23px; top: 24px; bottom: 0;
-          width: 2px; background: ${c.rule};
-          transform: scaleY(0); transform-origin: top center;
-          transition: transform 1.3s cubic-bezier(.4,0,.2,1);
-        }
-        .funnel-line-inner.drawn { transform: scaleY(1); }
-      `}</style>
+    <section ref={sectionRef} style={{ padding: "96px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto", textAlign: "center" }}>
+        <SectionLabel num="01" title={lang === "fr" ? "Comment ça marche" : "How it works"} c={c} />
+        <BigHeading c={c} style={{ textAlign: "center" }}>
+          {lang === "fr" ? <>Trois étapes vers votre <em style={{ color: c.accent, fontStyle: "italic" }}>bourse idéale</em>.</> : <>Three steps to your <em style={{ color: c.accent, fontStyle: "italic" }}>ideal scholarship</em>.</>}
+        </BigHeading>
 
-      <section
-        ref={sectionRef}
-        style={{ padding: "96px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper }}
-      >
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <SectionLabel num="02" title={lang === "fr" ? "Processus" : "Process"} c={c} />
-          <BigHeading c={c}>
-            {lang === "fr"
-              ? <>{`Comment OppsTrack `}<em style={{ color: c.accent, fontStyle: "italic" }}>guide</em> votre candidature.</>
-              : <>How OppsTrack <em style={{ color: c.accent, fontStyle: "italic" }}>guides</em> your application.</>}
-          </BigHeading>
-
-          <div style={{ position: "relative", maxWidth: 760 }}>
-            <div className={`funnel-line-inner${lineDrawn ? " drawn" : ""}`} />
-
-            {steps.map((s, i) => (
-              <div
-                key={s.k}
-                style={{
-                  display: "flex", gap: 30, marginBottom: 44,
-                  opacity: stepsVisible[i] ? 1 : 0,
-                  transform: stepsVisible[i] ? "none" : "translateX(-28px)",
-                  transition: "opacity .6s ease, transform .6s ease",
-                  position: "relative", zIndex: 1,
-                }}
-              >
-                {/* Circle */}
-                <div style={{
-                  width: 48, height: 48, borderRadius: "50%", flexShrink: 0,
-                  border: `2px solid ${stepsVisible[i] ? c.ink : c.rule}`,
-                  background: stepsVisible[i] ? c.ink : c.paper,
-                  display: "grid", placeItems: "center",
-                  fontFamily: c.fSerif, fontSize: 16, fontWeight: 700,
-                  color: stepsVisible[i] ? c.paper : c.ink,
-                  transition: "background .4s ease .1s, color .4s ease .1s, border-color .4s ease .1s",
-                }}>
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-
-                {/* Body */}
-                <div style={{ paddingTop: 8, flex: 1 }}>
-                  <div style={{
-                    fontFamily: c.fMono, fontSize: 10, color: c.accent,
-                    letterSpacing: ".22em", textTransform: "uppercase", fontWeight: 600,
-                  }}>
-                    {lang === "fr" ? s.fr : s.k}
-                  </div>
-                  <h3 style={{
-                    fontFamily: c.fSerif, fontSize: 22, fontWeight: 700,
-                    margin: "8px 0 8px", color: c.ink,
-                    letterSpacing: "-.005em", lineHeight: 1.25,
-                  }}>
-                    {s.t}
-                  </h3>
-                  <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.6, margin: 0 }}>
-                    {s.d}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
-/* =============== 3. MODULES =============== */
-function Modules({ c, lang }) {
-  const [gridRef, gridVisible] = useReveal({ threshold: 0.08 });
-  const [visibleCards, setVisibleCards] = useState([]);
-  const triggered = useRef(false);
-
-  useEffect(() => {
-    if (!gridVisible || triggered.current) return;
-    triggered.current = true;
-    modules.forEach((_, i) => {
-      setTimeout(() => {
-        setVisibleCards((prev) => [...prev, i]);
-      }, i * 90);
-    });
-  }, [gridVisible]);
-
-  const modules = [
-    { k: "AI Assistant", fr: "Assistant IA", d: lang === "fr" ? "Posez des questions, vérifiez votre éligibilité, obtenez des conseils instantanés." : "Ask questions, verify eligibility, get instant guidance." },
-    { k: "Scholarships Explorer", fr: "Explorateur de bourses", d: lang === "fr" ? "Recherchez, filtrez, sauvegardez et évaluez les opportunités mondiales." : "Search, filter, favorite and evaluate opportunities." },
-    { k: "Personalized Recommendations", fr: "Recommandations personnalisées", d: lang === "fr" ? "Recevez des bourses sélectionnées selon votre profil et domaine." : "Receive scholarships matched to your profile." },
-    { k: "Application Roadmap", fr: "Roadmap de candidature", d: lang === "fr" ? "Un guide étape par étape pour chaque dossier." : "Get step-by-step application guidance." },
-    { k: "CV & Motivation Letter", fr: "CV & Lettre de motivation", d: lang === "fr" ? "Générez et optimisez vos documents de candidature avec l'IA." : "Generate and optimize application documents." },
-    { k: "Interview Simulator", fr: "Simulateur d'entretien", d: lang === "fr" ? "Entraînez-vous aux entretiens avec scoring IA et retour personnalisé." : "Practice scholarship interviews with AI scoring and feedback." },
-    { k: "Dashboard", fr: "Tableau de bord", d: lang === "fr" ? "Suivez vos échéances, candidatures et statistiques globales." : "Track deadlines, applications and global opportunities." },
-  ];
-
-  return (
-    <>
-      <style>{`
-        .module-card {
-          padding: 32px 28px 28px;
-          border-right: 1px solid ${c.ruleSoft};
-          border-bottom: 1px solid ${c.ruleSoft};
-          cursor: pointer;
-          background: ${c.surface};
-          display: flex; flex-direction: column; min-height: 210px;
-          position: relative; overflow: hidden;
-          transition: background .2s;
-        }
-        .module-card::before {
-          content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
-          background: ${c.accent}; transition: width .25s ease;
-        }
-        .module-card:hover::before { width: 3px; }
-        .module-card:hover { background: ${c.paper2}; }
-        .module-cta-arrow { transition: transform .2s; display: inline-flex; }
-        .module-card:hover .module-cta-arrow { transform: translateX(5px); }
-      `}</style>
-
-      <section style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.surface }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <SectionLabel num="03" title={lang === "fr" ? "Écosystème" : "Ecosystem"} c={c} />
-          <BigHeading c={c}>
-            {lang === "fr"
-              ? <>Explorez l'<em style={{ color: c.accent, fontStyle: "italic" }}>écosystème</em> OppsTrack.</>
-              : <>Explore the OppsTrack <em style={{ color: c.accent, fontStyle: "italic" }}>ecosystem</em>.</>}
-          </BigHeading>
-
-          <div
-            ref={gridRef}
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderTop: `1px solid ${c.rule}` }}
-          >
-            {modules.map((m, i) => (
-              <div
-                key={m.k}
-                className="module-card"
-                style={{
-                  opacity: visibleCards.includes(i) ? 1 : 0,
-                  transform: visibleCards.includes(i) ? "none" : "translateY(20px)",
-                  transition: `background .2s, opacity .4s ease ${i * 0.06}s, transform .4s ease ${i * 0.06}s`,
-                  borderRight: (i % 3 !== 2) ? `1px solid ${c.ruleSoft}` : "none",
-                }}
-              >
-                <div style={{ fontFamily: c.fMono, fontSize: 10, color: c.ink4, letterSpacing: ".22em", fontWeight: 600 }}>
-                  № {String(i + 1).padStart(2, "0")}
-                </div>
-                <h3 style={{
-                  fontFamily: c.fSerif, fontSize: 20, fontWeight: 700,
-                  margin: "12px 0 10px", color: c.ink, letterSpacing: "-.005em", lineHeight: 1.25,
-                }}>
-                  {lang === "fr" ? m.fr : m.k}
-                </h3>
-                <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.55, flex: 1 }}>
-                  {m.d}
-                </p>
-                <div style={{
-                  marginTop: 18, fontSize: 10.5, fontWeight: 700,
-                  letterSpacing: ".18em", textTransform: "uppercase",
-                  color: c.accent, display: "inline-flex", alignItems: "center", gap: 8,
-                }}>
-                  {lang === "fr" ? "Ouvrir" : "Open"}
-                  <span className="module-cta-arrow"><Arrow /></span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
-/* =============== 4. AI PREVIEW =============== */
-function AiPreview({ c, lang }) {
-  const [active, setActive] = useState(0);
-  const [panelRef, panelVisible] = useReveal({ threshold: 0.1 });
-
-  const prompts = [
-    { q: "Check my eligibility for DAAD",       qf: "Vérifier mon éligibilité DAAD" },
-    { q: "Improve my motivation letter",          qf: "Améliorer ma lettre de motivation" },
-    { q: "Simulate a scholarship interview",      qf: "Simuler un entretien de bourse" },
-    { q: "What documents are missing?",           qf: "Quels documents manque-t-il ?" },
-  ];
-
-  const responses = [
-    lang === "fr"
-      ? "Votre profil satisfait 5 des 6 critères DAAD. Point faible : TOEFL (minimum 90). Je recommande un test d'ici juin."
-      : "Your profile meets 5 of 6 DAAD criteria. Gap: TOEFL (min 90). I recommend a test by June.",
-    lang === "fr"
-      ? "Paragraphe 2 un peu générique. Suggestion : remplacez « passionate about research » par une anecdote concrète (mémoire, stage, publication)."
-      : "Paragraph 2 feels generic. Suggestion: replace 'passionate about research' with a concrete anecdote (thesis, internship, paper).",
-    lang === "fr"
-      ? "Entretien prêt. 12 questions cibles, scoring sur clarté, structure, pertinence. Durée estimée 18 min."
-      : "Interview ready. 12 target questions, scoring on clarity, structure, relevance. Estimated 18 min.",
-    lang === "fr"
-      ? "Manquant : 2 lettres de recommandation, certificat de langue, relevé de notes officiel (PDF signé)."
-      : "Missing: 2 recommendation letters, language certificate, official transcript (signed PDF).",
-  ];
-
-  const { display, typing } = useTypewriter(responses[active], panelVisible, 20);
-
-  const handleSelect = (i) => setActive(i);
-
-  return (
-    <>
-      <style>{`
-        @keyframes aiPulse {
-          0%,100% { box-shadow: 0 0 0 4px rgba(0,102,179,.15); }
-          50%      { box-shadow: 0 0 0 9px rgba(0,102,179,.04); }
-        }
-        .prompt-btn-item {
-          width: 100%; border: none; border-bottom: 1px solid ${c.rule};
-          background: transparent; padding: 20px 22px; text-align: left;
-          cursor: pointer; display: flex; align-items: center; gap: 14px;
-          transition: background .2s;
-        }
-        .prompt-btn-item:hover { background: ${c.surface}; }
-        .prompt-btn-item.active { background: ${c.surface}; }
-      `}</style>
-
-      <section style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper2 }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <SectionLabel num="04" title="AI" c={c} />
-          <BigHeading c={c}>
-            {lang === "fr"
-              ? <>Un assistant qui <em style={{ color: c.accent, fontStyle: "italic" }}>comprend</em> votre candidature.</>
-              : <>An assistant that <em style={{ color: c.accent, fontStyle: "italic" }}>understands</em> your application.</>}
-          </BigHeading>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.25fr", gap: 40, marginTop: 32 }}>
-
-            {/* Prompt list */}
-            <div style={{ borderTop: `1px solid ${c.rule}` }}>
-              {prompts.map((p, i) => (
-                <button
-                  key={i}
-                  className={`prompt-btn-item${active === i ? " active" : ""}`}
-                  onClick={() => handleSelect(i)}
-                >
-                  <span style={{
-                    fontFamily: c.fMono, fontSize: 10, letterSpacing: ".22em",
-                    fontWeight: 600, width: 28, flexShrink: 0,
-                    color: active === i ? c.accent : c.ink4,
-                  }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span style={{
-                    fontFamily: c.fSerif, fontSize: 17, flex: 1, textAlign: "left",
-                    color: active === i ? c.ink : c.ink2,
-                    fontWeight: active === i ? 700 : 400,
-                  }}>
-                    {lang === "fr" ? p.qf : p.q}
-                  </span>
-                  <span style={{ color: active === i ? c.accent : c.ink4, display: "flex" }}>
-                    <Arrow />
-                  </span>
-                </button>
-              ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 48, marginTop: 32 }}>
+          {steps.map((step, i) => (
+            <div key={i} style={{ opacity: stepsVisible[i] ? 1 : 0, transform: stepsVisible[i] ? "translateY(0)" : "translateY(30px)", transition: `opacity .6s ease ${i * 0.15}s, transform .6s ease ${i * 0.15}s` }}>
+              <div style={{ width: 80, height: 80, margin: "0 auto", borderRadius: "50%", background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.fSans, fontSize: 26, fontWeight: 700, color: "#fff", marginBottom: 24 }}>{step.num}</div>
+              <h3 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 12 }}>{step.title}</h3>
+              <p style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.accent, marginBottom: 12 }}>{step.subtitle}</p>
+              <p style={{ fontFamily: c.fSans, fontSize: 14, color: c.ink2, lineHeight: 1.6 }}>{step.desc}</p>
             </div>
-
-            {/* Response panel */}
-            <div
-              ref={panelRef}
-              style={{
-                background: c.surface,
-                border: `1px solid ${c.rule}`,
-                padding: "28px 32px",
-                minHeight: 320,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{
-                  width: 8, height: 8, borderRadius: "50%", background: c.accent,
-                  animation: "aiPulse 2s infinite",
-                }} />
-                <span style={{
-                  fontSize: 10, letterSpacing: ".22em", textTransform: "uppercase",
-                  color: c.ink3, fontWeight: 600,
-                }}>
-                  OppsTrack AI · {lang === "fr" ? "en ligne" : "online"}
-                </span>
-              </div>
-
-              <div style={{
-                marginTop: 22, paddingLeft: 16, borderLeft: `2px solid ${c.rule}`,
-                color: c.ink3, fontSize: 13,
-                fontFamily: c.fSerif, fontStyle: "italic",
-              }}>
-                « {lang === "fr" ? prompts[active].qf : prompts[active].q} »
-              </div>
-
-              <p style={{
-                fontFamily: c.fSerif, fontSize: 21, color: c.ink,
-                lineHeight: 1.5, marginTop: 22, letterSpacing: "-.005em",
-                minHeight: 100,
-              }}>
-                {display}
-                {typing && (
-                  <span style={{
-                    display: "inline-block", width: 2, height: "1em",
-                    background: c.accent, marginLeft: 2, verticalAlign: "middle",
-                    animation: "blink 1s step-end infinite",
-                  }} />
-                )}
-              </p>
-
-              <div style={{
-                marginTop: 22, display: "flex", gap: 12,
-                fontFamily: c.fMono, fontSize: 10.5, color: c.ink4,
-                letterSpacing: ".18em", textTransform: "uppercase",
-              }}>
-                <span>Generated in 1.2s</span>
-                <span style={{ color: c.ink4 }}>·</span>
-                <span>Claude Haiku 4.5</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <style>{`
-        @keyframes blink { 50% { opacity: 0; } }
-      `}</style>
-    </>
-  );
-}
-
-/* =============== 5. STORIES =============== */
-function Stories({ c, lang }) {
-  const [sectionRef, sectionVisible] = useReveal({ threshold: 0.12 });
-  const [visibleCards, setVisibleCards] = useState([]);
-  const triggered = useRef(false);
-
-  useEffect(() => {
-    if (!sectionVisible || triggered.current) return;
-    triggered.current = true;
-    [0, 1, 2].forEach((i) => {
-      setTimeout(() => {
-        setVisibleCards((prev) => [...prev, i]);
-      }, i * 190);
-    });
-  }, [sectionVisible]);
-
-  const list = [
-    {
-      name: "Amira Belkacem", from: "Algiers → Berlin", prog: "DAAD — Helmut Schmidt",
-      quote: lang === "fr"
-        ? "J'ai passé deux ans à me perdre dans des dizaines d'onglets. Avec OppsTrack, j'ai envoyé trois candidatures — deux retenues. Le simulateur d'entretien a fait la différence."
-        : "I spent two years lost in dozens of browser tabs. With OppsTrack I sent three applications — two accepted. The interview simulator made the difference.",
-    },
-    {
-      name: "Youssef Haidari", from: "Rabat → London", prog: "Chevening",
-      quote: lang === "fr"
-        ? "L'IA a réécrit ma lettre de motivation trois fois. La troisième version m'a donné une voix que je reconnaissais enfin."
-        : "The AI rewrote my motivation letter three times. The third version finally gave me a voice I recognized.",
-    },
-    {
-      name: "Linh Pham", from: "Hanoi → Tokyo", prog: "MEXT Research",
-      quote: lang === "fr"
-        ? "La roadmap a tout changé. Je ne me réveillais plus avec une deadline oubliée à 3h du matin."
-        : "The roadmap changed everything. No more waking up at 3am to a forgotten deadline.",
-    },
-  ];
-
-  return (
-    <section ref={sectionRef} style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper }}>
-      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-        <SectionLabel num="05" title={lang === "fr" ? "Témoignages" : "Stories"} c={c} />
-        <BigHeading c={c}>{lang === "fr" ? "Des parcours qui ont abouti." : "Journeys that made it."}</BigHeading>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderTop: `1px solid ${c.ink}` }}>
-          {list.map((s, i) => (
-            <figure
-              key={i}
-              style={{
-                margin: 0,
-                padding: "40px 32px",
-                borderRight: i < 2 ? `1px solid ${c.rule}` : "none",
-                display: "flex", flexDirection: "column",
-                opacity: visibleCards.includes(i) ? 1 : 0,
-                transform: visibleCards.includes(i) ? "none" : "translateY(22px)",
-                transition: `opacity .65s ease ${i * 0.12}s, transform .65s ease ${i * 0.12}s`,
-              }}
-            >
-              <span style={{
-                fontFamily: c.fSerif, fontSize: 80, color: c.accent,
-                lineHeight: .6, fontStyle: "italic", height: 40,
-              }}>"</span>
-              <blockquote style={{
-                fontFamily: c.fSerif, fontSize: 20, color: c.ink,
-                lineHeight: 1.45, margin: "8px 0 28px",
-                letterSpacing: "-.005em", flex: 1,
-              }}>
-                {s.quote}
-              </blockquote>
-              <figcaption style={{ borderTop: `1px solid ${c.ruleSoft}`, paddingTop: 16 }}>
-                <div style={{ fontFamily: c.fSerif, fontSize: 15, fontWeight: 700, color: c.ink }}>{s.name}</div>
-                <div style={{
-                  fontFamily: c.fMono, fontSize: 10.5, color: c.ink3,
-                  marginTop: 4, letterSpacing: ".18em", textTransform: "uppercase",
-                }}>
-                  {s.from} · {s.prog}
-                </div>
-              </figcaption>
-            </figure>
           ))}
         </div>
       </div>
@@ -816,139 +325,260 @@ function Stories({ c, lang }) {
   );
 }
 
-/* =============== 6. SOURCES =============== */
+/* =============== SECTION 3: ASSISTANT IA =============== */
+function AiAssistant({ c, lang }) {
+  const [active, setActive] = useState(0);
+  const [panelRef, panelVisible] = useReveal({ threshold: 0.1 });
+
+  const prompts = [
+    { q: "Suis-je éligible au DAAD avec mon profil ?", qe: "Am I eligible for DAAD with my profile?" },
+    { q: "Comment améliorer ma lettre de motivation ?", qe: "How to improve my motivation letter?" },
+    { q: "Quels documents me manquent ?", qe: "What documents am I missing?" },
+  ];
+
+  const responses = [
+    lang === "fr" ? "Votre profil satisfait 5 des 6 critères DAAD. Il vous manque un score TOEFL (minimum 90). Je recommande de passer le test d'ici juin." : "Your profile meets 5 of 6 DAAD criteria. Missing: TOEFL score (min 90). I recommend taking the test by June.",
+    lang === "fr" ? "Votre deuxième paragraphe est trop générique. Suggestion : remplacez « passionné par la recherche » par une anecdote concrète (mémoire, stage, publication)." : "Your second paragraph is too generic. Suggestion: replace 'passionate about research' with a concrete anecdote (thesis, internship, publication).",
+    lang === "fr" ? "Documents manquants : 2 lettres de recommandation, certificat de langue (TOEFL/IELTS), relevé de notes officiel signé." : "Missing documents: 2 recommendation letters, language certificate (TOEFL/IELTS), signed official transcript.",
+  ];
+
+  const { display, typing } = useTypewriter(responses[active], panelVisible, 20);
+
+  return (
+    <section style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper2 }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+        <SectionLabel num="02" title={lang === "fr" ? "Assistant IA" : "AI Assistant"} c={c} />
+        <BigHeading c={c}>
+          {lang === "fr" ? <>Votre assistant de candidature <em style={{ color: c.accent, fontStyle: "italic" }}>intelligent</em>.</> : <>Your <em style={{ color: c.accent, fontStyle: "italic" }}>intelligent</em> application assistant.</>}
+        </BigHeading>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.25fr", gap: 40, marginTop: 32 }}>
+          <div style={{ borderTop: `1px solid ${c.rule}` }}>
+            {prompts.map((p, i) => (
+              <button key={i} onClick={() => setActive(i)} style={{ width: "100%", border: "none", borderBottom: `1px solid ${c.rule}`, background: active === i ? c.surface : "transparent", padding: "20px 22px", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, transition: "background .2s" }}>
+                <span style={{ fontFamily: c.fSans, fontSize: 10, letterSpacing: ".22em", fontWeight: 700, color: active === i ? c.accent : c.ink4 }}>{String(i + 1).padStart(2, "0")}</span>
+                <span style={{ fontFamily: c.fSerif, fontSize: 16, flex: 1, color: active === i ? c.ink : c.ink2, fontWeight: active === i ? 700 : 400 }}>{lang === "fr" ? p.q : p.qe}</span>
+                <span style={{ color: active === i ? c.accent : c.ink4 }}><Arrow /></span>
+              </button>
+            ))}
+          </div>
+
+          <div ref={panelRef} style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: "28px 32px", minHeight: 280 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.accent }} />
+              <span style={{ fontSize: 10, letterSpacing: ".22em", textTransform: "uppercase", color: c.ink3, fontWeight: 600, fontFamily: c.fSans }}>OppsTrack AI · {lang === "fr" ? "en ligne" : "online"}</span>
+            </div>
+            <div style={{ marginBottom: 20, paddingLeft: 16, borderLeft: `2px solid ${c.rule}`, color: c.ink3, fontSize: 13, fontFamily: c.fSerif, fontStyle: "italic" }}>« {lang === "fr" ? prompts[active].q : prompts[active].qe} »</div>
+            <p style={{ fontFamily: c.fSerif, fontSize: 20, color: c.ink, lineHeight: 1.5, minHeight: 100 }}>
+              {display}{typing && <span style={{ display: "inline-block", width: 2, height: "1em", background: c.accent, marginLeft: 2, verticalAlign: "middle", animation: "blink 1s step-end infinite" }} />}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== SECTION 4: BOURSES RECOMMANDÉES =============== */
+function RecommendedScholarships({ c, lang, navigate }) {
+  const [sectionRef, sectionVisible] = useReveal({ threshold: 0.1 });
+  const [cardsVisible, setCardsVisible] = useState([false, false, false, false]);
+
+  useEffect(() => {
+    if (sectionVisible) {
+      [0, 1, 2, 3].forEach((i) => setTimeout(() => setCardsVisible(prev => { const next = [...prev]; next[i] = true; return next; }), i * 120));
+    }
+  }, [sectionVisible]);
+
+  const scholarships = [
+    { pays: "Germany · Bonn", nom: "DAAD — Helmut Schmidt Programme", match: 94, deadline: "15 · JUN · 2026", type: "Fully Funded" },
+    { pays: "UK · London", nom: "Chevening Scholarship", match: 88, deadline: "21 · APR · 2026", type: "Fully Funded", urgent: true },
+    { pays: "France · Paris", nom: "Eiffel Excellence", match: 87, deadline: "10 · MAY · 2026", type: "Fully Funded" },
+    { pays: "Japan · Tokyo", nom: "MEXT Research", match: 82, deadline: "30 · MAY · 2026", type: "Fully Funded" },
+  ];
+
+  return (
+    <section ref={sectionRef} style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+        <SectionLabel num="03" title={lang === "fr" ? "Bourses recommandées" : "Recommended scholarships"} c={c} />
+        <BigHeading c={c}>{lang === "fr" ? <>Bourses adaptées à <em style={{ color: c.accent, fontStyle: "italic" }}>votre profil</em>.</> : <>Scholarships matched to <em style={{ color: c.accent, fontStyle: "italic" }}>your profile</em>.</>}</BigHeading>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+          {scholarships.map((s, i) => (
+            <div key={i} style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: "20px", transition: "all .3s ease", opacity: cardsVisible[i] ? 1 : 0, transform: cardsVisible[i] ? "translateY(0)" : "translateY(30px)", cursor: "pointer" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "0 12px 30px rgba(0,0,0,.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+              <div style={{ fontSize: 10, color: c.ink3, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, marginBottom: 8, fontFamily: c.fSans }}>{s.pays}</div>
+              <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: c.ink, marginBottom: 12 }}>{s.nom}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: c.ink3, fontFamily: c.fSans }}>Match</span>
+                <span style={{ fontFamily: c.fSans, fontSize: 14, fontWeight: 700, color: c.accent }}>{s.match}%</span>
+              </div>
+              <div style={{ height: 3, background: c.rule, marginBottom: 16, position: "relative" }}>
+                <div style={{ width: `${s.match}%`, height: 3, background: c.accent }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 9.5, color: s.urgent ? c.danger : c.ink3, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, fontFamily: c.fSans }}>{s.deadline}</span>
+                <span style={{ fontSize: 9.5, color: c.accent, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, fontFamily: c.fSans }}>{s.type}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 48 }}>
+          <button onClick={() => navigate("/bourses")}
+            style={{ padding: "12px 28px", background: "transparent", border: `1px solid ${c.accent}`, color: c.accent, fontFamily: c.fSans, fontSize: 11, fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", cursor: "pointer", transition: "all .2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = c.accent; }}>
+            {lang === "fr" ? "Voir toutes les bourses" : "View all scholarships"} <Arrow />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== SECTION 5: POURQUOI OPSTRACK =============== */
+function WhyOppsTrack({ c, lang }) {
+  const [sectionRef, sectionVisible] = useReveal({ threshold: 0.1 });
+  const [featuresVisible, setFeaturesVisible] = useState([false, false, false, false]);
+
+  useEffect(() => {
+    if (sectionVisible) {
+      [0, 1, 2, 3].forEach((i) => setTimeout(() => setFeaturesVisible(prev => { const next = [...prev]; next[i] = true; return next; }), i * 150));
+    }
+  }, [sectionVisible]);
+
+  const features = [
+    { title: lang === "fr" ? "Découverte intelligente" : "Smart Discovery", desc: lang === "fr" ? "Algorithme de matching précis pour trouver les bourses qui vous correspondent vraiment." : "Precise matching algorithm to find scholarships that truly fit you." },
+    { title: lang === "fr" ? "IA de rédaction" : "AI Writing Assistant", desc: lang === "fr" ? "Générez et optimisez CV, lettres de motivation et essais académiques." : "Generate and optimize CVs, motivation letters and academic essays." },
+    { title: lang === "fr" ? "Simulation d'entretien" : "Interview Simulator", desc: lang === "fr" ? "Entraînez-vous avec des questions spécifiques à chaque programme." : "Practice with program-specific interview questions." },
+    { title: lang === "fr" ? "Suivi des deadlines" : "Deadline Tracking", desc: lang === "fr" ? "Ne manquez plus aucune date importante avec nos alertes intelligentes." : "Never miss important dates with our smart alerts." },
+  ];
+
+  return (
+    <section ref={sectionRef} style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper2 }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto", textAlign: "center" }}>
+        <SectionLabel num="04" title={lang === "fr" ? "Pourquoi OppsTrack" : "Why OppsTrack"} c={c} />
+        <BigHeading c={c} style={{ textAlign: "center" }}>{lang === "fr" ? <>Tout ce dont vous avez besoin, <em style={{ color: c.accent, fontStyle: "italic" }}>au même endroit</em>.</> : <>Everything you need, <em style={{ color: c.accent, fontStyle: "italic" }}>in one place</em>.</>}</BigHeading>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32, marginTop: 32 }}>
+          {features.map((f, i) => (
+            <div key={i} style={{ opacity: featuresVisible[i] ? 1 : 0, transform: featuresVisible[i] ? "translateY(0)" : "translateY(20px)", transition: `opacity .5s ease ${i * 0.1}s, transform .5s ease ${i * 0.1}s` }}>
+              <div style={{ width: 48, height: 48, margin: "0 auto 20px", borderRadius: "50%", background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontFamily: c.fSans, fontSize: 18 }}>{String(i + 1).padStart(2, "0")}</div>
+              <h3 style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginBottom: 12 }}>{f.title}</h3>
+              <p style={{ fontFamily: c.fSans, fontSize: 14, color: c.ink2, lineHeight: 1.6 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== SECTION 6: TÉMOIGNAGES =============== */
+function Testimonials({ c, lang }) {
+  const [sectionRef, sectionVisible] = useReveal({ threshold: 0.12 });
+  const [visibleCards, setVisibleCards] = useState([]);
+
+  useEffect(() => {
+    if (sectionVisible) {
+      [0, 1, 2].forEach((i) => setTimeout(() => setVisibleCards(prev => [...prev, i]), i * 190));
+    }
+  }, [sectionVisible]);
+
+  const testimonials = [
+    { name: "Amira Belkacem", from: "Algiers → Berlin", prog: "DAAD — Helmut Schmidt", quote: lang === "fr" ? "Deux candidatures envoyées, deux acceptées. L'IA m'a sauvé des mois de recherches." : "Two applications sent, two accepted. The AI saved me months of research.", highlight: "Deux candidatures envoyées, deux acceptées." },
+    { name: "Youssef Haidari", from: "Rabat → London", prog: "Chevening", quote: lang === "fr" ? "La roadmap a tout changé. Je ne me réveillais plus avec une deadline oubliée." : "The roadmap changed everything. No more waking up to forgotten deadlines.", highlight: "La roadmap a tout changé." },
+    { name: "Linh Pham", from: "Hanoi → Tokyo", prog: "MEXT Research", quote: lang === "fr" ? "Le simulateur d'entretien m'a préparé à des questions que je n'aurais jamais imaginées." : "The interview simulator prepared me for questions I never would have imagined.", highlight: "Le simulateur d'entretien a fait la différence." },
+  ];
+
+  return (
+    <section ref={sectionRef} style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+        <SectionLabel num="05" title={lang === "fr" ? "Témoignages" : "Testimonials"} c={c} />
+        <BigHeading c={c}>{lang === "fr" ? "Ils ont réussi grâce à OppsTrack." : "They succeeded with OppsTrack."}</BigHeading>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}>
+          {testimonials.map((t, i) => (
+            <div key={i} style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: "32px", opacity: visibleCards.includes(i) ? 1 : 0, transform: visibleCards.includes(i) ? "translateY(0)" : "translateY(30px)", transition: `opacity .6s ease ${i * 0.12}s, transform .6s ease ${i * 0.12}s` }}>
+              <span style={{ fontFamily: c.fSerif, fontSize: 60, color: c.accent, lineHeight: 0.6, fontStyle: "italic" }}>"</span>
+              <p style={{ fontFamily: c.fSerif, fontSize: 18, color: c.ink, lineHeight: 1.5, margin: "16px 0 24px" }}><strong style={{ color: c.accent }}>"{t.highlight}"</strong> {t.quote.replace(t.highlight, "")}</p>
+              <div style={{ borderTop: `1px solid ${c.ruleSoft}`, paddingTop: 16 }}>
+                <div style={{ fontFamily: c.fSerif, fontSize: 15, fontWeight: 700, color: c.ink }}>{t.name}</div>
+                <div style={{ fontFamily: c.fSans, fontSize: 10.5, color: c.ink3, marginTop: 4, letterSpacing: ".18em", textTransform: "uppercase" }}>{t.from} · {t.prog}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== SECTION 7: SOURCES =============== */
 function Sources({ c, lang }) {
   const [gridRef, gridVisible] = useReveal({ threshold: 0.12 });
   const [visibleCells, setVisibleCells] = useState([]);
-  const triggered = useRef(false);
 
   useEffect(() => {
-    if (!gridVisible || triggered.current) return;
-    triggered.current = true;
-    logos.forEach((_, i) => {
-      setTimeout(() => {
-        setVisibleCells((prev) => [...prev, i]);
-      }, i * 70);
-    });
+    if (gridVisible) {
+      const sources = ["DAAD", "Fulbright", "Erasmus+", "Chevening", "MEXT", "Eiffel", "Commonwealth", "Rhodes"];
+      sources.forEach((_, i) => setTimeout(() => setVisibleCells(prev => [...prev, i]), i * 80));
+    }
   }, [gridVisible]);
 
-  const logos = ["DAAD","Fulbright","Erasmus+","Chevening","MEXT","Eiffel","Commonwealth","Rhodes","Swiss Gov","Schwarzman"];
+  const sources = ["DAAD", "Fulbright", "Erasmus+", "Chevening", "MEXT", "Eiffel", "Commonwealth", "Rhodes"];
 
   return (
-    <>
-      <style>{`
-        .source-cell {
-          padding: 36px 18px; text-align: center;
-          font-family: "Libre Caslon Text", Georgia, serif;
-          font-size: 19px; font-weight: 700;
-          color: ${c.ink3}; letter-spacing: -.01em;
-          border-right: 1px solid ${c.ruleSoft};
-          border-bottom: 1px solid ${c.ruleSoft};
-          transition: color .22s, background .22s, transform .35s ease, opacity .35s ease;
-          cursor: default;
-        }
-        .source-cell:hover { color: ${c.accent}; background: ${c.surface}; }
-      `}</style>
+    <section ref={gridRef} style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper2 }}>
+      <div style={{ maxWidth: 1320, margin: "0 auto", textAlign: "center" }}>
+        <SectionLabel num="06" title={lang === "fr" ? "Sources" : "Sources"} c={c} />
+        <BigHeading c={c} style={{ textAlign: "center" }}>{lang === "fr" ? <>Des bourses officielles et <em style={{ color: c.accent, fontStyle: "italic" }}>vérifiées</em>.</> : <>Official and <em style={{ color: c.accent, fontStyle: "italic" }}>verified</em> scholarships.</>}</BigHeading>
 
-      <section style={{ padding: "88px 40px", borderBottom: `1px solid ${c.rule}`, background: c.paper2 }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <SectionLabel num="06" title={lang === "fr" ? "Sources" : "Sources"} c={c} />
-          <BigHeading c={c}>
-            {lang === "fr"
-              ? <>Des opportunités vérifiées, <em style={{ color: c.accent, fontStyle: "italic" }}>à la source</em>.</>
-              : <>Verified opportunities, <em style={{ color: c.accent, fontStyle: "italic" }}>at the source</em>.</>}
-          </BigHeading>
-
-          <div
-            ref={gridRef}
-            style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", borderTop: `1px solid ${c.rule}` }}
-          >
-            {logos.map((name, i) => (
-              <div
-                key={name}
-                className="source-cell"
-                style={{
-                  opacity: visibleCells.includes(i) ? 1 : 0,
-                  transform: visibleCells.includes(i) ? "scale(1)" : "scale(0.88)",
-                  borderRight: (i + 1) % 5 !== 0 ? `1px solid ${c.ruleSoft}` : "none",
-                  borderBottom: i < 5 ? `1px solid ${c.ruleSoft}` : "none",
-                }}
-              >
-                {name}
-              </div>
-            ))}
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: c.rule, border: `1px solid ${c.rule}` }}>
+          {sources.map((name, i) => (
+            <div key={name} style={{ background: c.paper, padding: "32px 20px", textAlign: "center", opacity: visibleCells.includes(i) ? 1 : 0, transform: visibleCells.includes(i) ? "scale(1)" : "scale(0.9)", transition: `opacity .4s ease ${i * 0.04}s, transform .4s ease ${i * 0.04}s` }}>
+              <span style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink3, letterSpacing: "-.01em" }}>{name}</span>
+            </div>
+          ))}
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
-/* =============== 7. FINAL CTA =============== */
+/* =============== SECTION 8: CTA FINAL =============== */
 function FinalCta({ c, lang, navigate }) {
   return (
-    <>
-      <style>{`
-        .cta-btn-primary {
-          padding: 18px 32px; font-size: 11px; font-weight: 700;
-          letter-spacing: .22em; text-transform: uppercase;
-          background: ${c.accent}; color: #fff; border: none; cursor: pointer;
-          font-family: ${c.fSans}; display: inline-flex; align-items: center; gap: 12px;
-          transition: background .2s, transform .15s;
-        }
-        .cta-btn-primary:hover { background: ${lang === "dark" ? "#3a8bc4" : "#004f8a"}; transform: translateY(-2px); }
-        .cta-btn-ghost2 {
-          padding: 18px 32px; font-size: 11px; font-weight: 700;
-          letter-spacing: .22em; text-transform: uppercase;
-          background: transparent; color: #f2efe7;
-          border: 1px solid rgba(250,248,243,.35); cursor: pointer;
-          font-family: ${c.fSans}; transition: background .2s;
-        }
-        .cta-btn-ghost2:hover { background: rgba(242,239,231,.08); }
-      `}</style>
-
-      <section style={{ padding: "120px 40px", background: c.ink, color: c.paper }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
-          <div style={{
-            fontFamily: c.fMono, fontSize: 11, color: c.accent,
-            letterSpacing: ".28em", textTransform: "uppercase", fontWeight: 600,
-          }}>
-            § {lang === "fr" ? "Commencez" : "Begin"}
-          </div>
-          <h2 style={{
-            fontFamily: c.fSerif,
-            fontSize: "clamp(38px, 5.6vw, 72px)",
-            fontWeight: 700, lineHeight: 1.05,
-            letterSpacing: "-.02em", margin: "24px 0 28px",
-          }}>
-            {lang === "fr"
-              ? <>{`Construisez votre `}<em style={{ color: c.accent, fontStyle: "italic" }}>roadmap</em> aujourd'hui.</>
-              : <>Start building your <em style={{ color: c.accent, fontStyle: "italic" }}>scholarship roadmap</em> today.</>}
-          </h2>
-          <p style={{
-            fontFamily: c.fSans, fontSize: 17,
-            color: "rgba(250,248,243,.72)",
-            maxWidth: 600, margin: "0 auto 42px", lineHeight: 1.6,
-          }}>
-            {lang === "fr"
-              ? "Inscription gratuite. Aucune carte bancaire. Commencez votre premier dossier en moins de cinq minutes."
-              : "Free sign-up. No credit card. Start your first application in under five minutes."}
-          </p>
-          <div style={{ display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="cta-btn-primary" onClick={() => navigate("/signup")}>
-              {lang === "fr" ? "Commencer gratuitement" : "Get started free"} <Arrow />
-            </button>
-            <button className="cta-btn-ghost2">
-              {lang === "fr" ? "Parler à l'équipe" : "Talk to the team"}
-            </button>
-          </div>
+    <section style={{ padding: "120px 40px", background: c.ink, color: c.paper, textAlign: "center" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <h2 style={{ fontFamily: c.fSerif, fontSize: "clamp(38px, 5.6vw, 72px)", fontWeight: 700, lineHeight: 1.05, letterSpacing: "-.02em", marginBottom: 24 }}>
+          {lang === "fr" ? <>Votre prochaine bourse <em style={{ color: c.accent, fontStyle: "italic" }}>commence ici</em>.</> : <>Your next scholarship <em style={{ color: c.accent, fontStyle: "italic" }}>starts here</em>.</>}
+        </h2>
+        <p style={{ fontFamily: c.fSans, fontSize: 17, color: "rgba(250,248,243,.72)", maxWidth: 600, margin: "0 auto 42px", lineHeight: 1.6 }}>
+          {lang === "fr" ? "Inscription gratuite. Commencez votre premier dossier en moins de cinq minutes." : "Free sign-up. Start your first application in under five minutes."}
+        </p>
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={() => navigate("/signup")}
+            style={{ padding: "16px 32px", background: c.accent, color: "#fff", border: "none", fontFamily: c.fSans, fontSize: 11, fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase", cursor: "pointer", transition: "all .2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = c.accentInk; e.currentTarget.style.transform = "translateY(-2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.transform = "translateY(0)"; }}>
+            {lang === "fr" ? "Créer mon profil" : "Create my profile"} <Arrow />
+          </button>
+          <button onClick={() => navigate("/chat")}
+            style={{ padding: "16px 32px", background: "transparent", border: `1px solid rgba(250,248,243,.35)`, color: c.paper, fontFamily: c.fSans, fontSize: 11, fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase", cursor: "pointer", transition: "all .2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(242,239,231,.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+            {lang === "fr" ? "Essayer l'IA" : "Try the AI"}
+          </button>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
-/* =============== PAGE ROOT =============== */
+/* =============== PAGE PRINCIPALE =============== */
 export default function HomePage() {
   const { lang } = useT();
   const { theme } = useTheme();
@@ -956,14 +586,21 @@ export default function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, paddingTop: 0 }}>
-      <Hero      c={c} lang={lang} navigate={navigate} />
-      <Funnel    c={c} lang={lang} />
-      <Modules   c={c} lang={lang} />
-      <AiPreview c={c} lang={lang} />
-      <Stories   c={c} lang={lang} />
-      <Sources   c={c} lang={lang} />
-      <FinalCta  c={c} lang={lang} navigate={navigate} />
+    /*
+      Pas de paddingTop sur <main> :
+      le hero section couvre toute la hauteur depuis top:0,
+      et la navbar fixed flotte par-dessus.
+      Le paddingTop du contenu hero (NAV_H + espace) gère l'espacement interne.
+    */
+    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans }}>
+      <Hero c={c} lang={lang} navigate={navigate} />
+      <HowItWorks c={c} lang={lang} />
+      <AiAssistant c={c} lang={lang} />
+      <RecommendedScholarships c={c} lang={lang} navigate={navigate} />
+      <WhyOppsTrack c={c} lang={lang} />
+      <Testimonials c={c} lang={lang} />
+      <Sources c={c} lang={lang} />
+      <FinalCta c={c} lang={lang} navigate={navigate} />
     </main>
   );
 }

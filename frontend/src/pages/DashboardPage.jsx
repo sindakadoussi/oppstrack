@@ -188,20 +188,7 @@ function Sparkline({ data, color='#255cae', height=60, lang = 'fr' }) {  // ✅ 
   );
 }
 
-function SkillRadar({ skills }) {
-  const cx=80,cy=80,r=58,n=skills.length;
-  const toXY=(i,pct)=>{ const angle=(i/n)*Math.PI*2-Math.PI/2,dist=(pct/100)*r; return [cx+Math.cos(angle)*dist,cy+Math.sin(angle)*dist]; };
-  const innerPts=skills.map((s,i)=>toXY(i,s.value).join(',')).join(' ');
-  return (
-    <svg width={160} height={160} viewBox="0 0 160 160">
-      {[20,40,60,80,100].map(p=><polygon key={p} points={skills.map((_,i)=>toXY(i,p).join(',')).join(' ')} fill="none" stroke="#e2e8f0" strokeWidth="0.8"/>)}
-      {skills.map((_,i)=>{ const [x,y]=toXY(i,100); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="0.8"/>; })}
-      <polygon points={innerPts} fill="rgba(26,58,107,0.12)" stroke="#255cae" strokeWidth="1.5"/>
-      {skills.map((s,i)=>{ const [x,y]=toXY(i,s.value); return <circle key={i} cx={x} cy={y} r="4" fill="#f5a623" stroke="#255cae" strokeWidth="1"/>; })}
-      {skills.map((s,i)=>{ const [x,y]=toXY(i,118); return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize="9" fontWeight="600" fill="#475569" fontFamily="system-ui">{s.label}</text>; })}
-    </svg>
-  );
-}
+
 
 /* ─── ACTIVITY HEATMAP ────────────────────────────────────────────────────── */
 function ActivityHeatmap({ activities }) {
@@ -1264,9 +1251,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20 }}>
           {[
             {label:lang === 'fr' ? 'Bourses disponibles' : 'Available scholarships',val:kpiBourses,icon:'🎓',color:'#255cae',bg:'#eff6ff',trend:`${Object.keys(scholarshipCounts).length} ${lang === 'fr' ? 'pays' : 'countries'}`,trendColor:'#166534'},
-            {label:lang === 'fr' ? 'Dans ma roadmap' : 'In my roadmap',val:kpiRoadmap,icon:'📋',color:'#166534',bg:'#f0fdf4',trend:`${roadmapTerminees} ${lang === 'fr' ? `terminée${roadmapTerminees>1?'s':''}` : `completed${roadmapTerminees>1?'':' (s)'}`} · ${roadmapEnCours} ${lang === 'fr' ? 'en cours' : 'in progress'}`,trendColor:'#166534'},
-            {label:lang === 'fr' ? 'Deadlines ce mois' : 'Deadlines this month',val:kpiDeadlines,icon:'⏰',color:'#d97706',bg:'#fffbeb',trend:`${urgentDeadlines.length} ${lang === 'fr' ? 'urgente' : 'urgent'}${urgentDeadlines.length>1?'s':''}`,trendColor:urgentDeadlines.length>0?'#dc2626':'#166534'},
-            {label:lang === 'fr' ? 'Score entretien' : 'Interview score',val:lastScore!=null?`${kpiScore}/100`:'—',icon:'🎙️',color:'#7c3aed',bg:'#f5f3ff',trend:scoreDiff!=null?`${scoreDiff>0?'+':''}${scoreDiff} vs ${lang === 'fr' ? 'dernier' : 'last'}`:`${scores.length} ${lang === 'fr' ? `simulé${scores.length!==1?'s':''}` : `simulated${scores.length!==1?'':' (s)'}`}`,trendColor:scoreDiff!=null&&scoreDiff>0?'#166534':'#94a3b8'},
+            
           ].map((k,i)=>(
             <div key={i} className="dash-card hover-lift" style={{ background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'16px 18px',borderTop:`3px solid ${k.color}`,boxShadow:'0 2px 6px rgba(26,58,107,0.06)' }}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' }}>
@@ -1281,60 +1266,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
           
           {/* Card 1: Smart Tips */}
-          <div style={S.card} className="hover-lift">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={S.cardTitle}>💡 {lang === 'fr' ? 'Conseils' : 'Tips'}</div>
-              <div style={{ fontSize: 9, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 4, border: '1px solid #e2e8f0' }}>
-                {lang === 'fr' ? 'IA temps réel' : 'Real-time AI'}
-              </div>
-            </div>
-            <SmartTips user={user} scores={scores} roadmap={roadmap} urgentDeadlines={urgentDeadlines} setView={setView}/>
-          </div>
 
-          {/* Card 2: Profile Strength */}
-          <div style={S.card} className="hover-lift">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={S.cardTitle}>📊 {lang === 'fr' ? 'Force dossier' : 'Profile strength'}</div>
-              <button style={S.btnXs} onClick={() => setView('profil')}>→</button>
-            </div>
-            <ProfileStrength user={user} scores={scores} setView={setView}/>
-          </div>
-
-          {/* Card 3: Roadmap */}
-          <div style={S.card} className="hover-lift">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={S.cardTitle}>✅ {lang === 'fr' ? 'Roadmap' : 'Roadmap'}</div>
-              <button style={S.btnXs} onClick={() => setView('roadmap')}>
-                {lang === 'fr' ? 'Voir →' : 'View →'}
-              </button>
-            </div>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 10 }}>
-              {roadmap.length} {lang === 'fr' ? `bourse${roadmap.length !== 1 ? 's' : ''}` : `scholarship${roadmap.length !== 1 ? 's' : ''}`}
-            </div>
-            <ChecklistWidget user={user} roadmap={roadmap} setRoadmap={setRoadmap}/>
-          </div>
-
-          {/* Card 4: Activity */}
-          <div style={S.card} className="hover-lift">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={S.cardTitle}>🔥 {lang === 'fr' ? 'Activité' : 'Activity'}</div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: streak >= 7 ? '#d97706' : '#64748b' }}>
-                {streak}{lang === 'fr' ? 'j' : 'd'} 🔥
-              </div>
-            </div>
-            <StreakWidget activities={realActivities}/>
-            {(() => {
-              const today = new Date();
-              const JOURS = lang === 'fr' ? ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'] : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-              const data7 = Array.from({ length: 7 }).map((_, i) => {
-                const d = new Date(today);
-                d.setDate(today.getDate() - (6 - i));
-                const k = d.toISOString().split('T')[0];
-                return { label: JOURS[d.getDay()], val: realActivities.filter(a => a.date === k).length };
-              });
-              return <MiniBarChart data={data7} color="#255cae" height={36}/>;
-            })()}
-          </div>
 
         </div>
 
@@ -1371,35 +1303,7 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
             </div>
           </div>
 
-          <div style={S.card} className="hover-lift">
-            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
-              <div><div style={S.cardTitle}>📊 {lang === 'fr' ? 'Progression des scores' : 'Score progression'}</div><div style={S.cardSub}>{scores.length} {lang === 'fr' ? `entretien${scores.length!==1?'s':''} simulé${scores.length!==1?'s':''}` : `interview${scores.length!==1?'':' (s)'} simulated`}</div></div>
-              <button style={S.btnXs} onClick={()=>setView('entretien')}>
-                {lang === 'fr' ? 'Pratiquer →' : 'Practice →'}
-              </button>
-            </div>
-            {scores.length===0 ? (
-              <div style={{ textAlign:'center',padding:'32px 0' }}><div style={{ fontSize:40,marginBottom:12 }}>🎙️</div><div style={{ color:'#64748b',fontSize:13,marginBottom:14 }}>{lang === 'fr' ? 'Aucun entretien simulé' : 'No mock interviews'}</div><button style={S.btnPrimary} onClick={()=>setView('entretien')}>
-                {lang === 'fr' ? 'Démarrer maintenant' : 'Start now'}
-              </button></div>
-            ) : (
-              <>
-               <Sparkline data={scoreHistory} color="#255cae" height={70} lang={lang}/>
-                <div style={{ display:'flex',gap:10,marginTop:12,flexWrap:'wrap' }}>
-                  {[
-                    {label:lang === 'fr' ? 'Dernier score' : 'Last score',val:`${lastScore}/100`,color:lastScore>=75?'#166534':lastScore>=55?'#d97706':'#dc2626'},
-                    avgScore!=null&&{label:lang === 'fr' ? 'Moyenne' : 'Average',val:`${avgScore}/100`,color:'#475569'},
-                    scoreDiff!=null&&{label:lang === 'fr' ? 'Évolution' : 'Change',val:`${scoreDiff>0?'+':''}${scoreDiff}`,color:scoreDiff>0?'#166534':'#dc2626'},
-                  ].filter(Boolean).map((s,i)=>(
-                    <div key={i} style={{ padding:'8px 14px',borderRadius:8,background:'#f8fafc',border:'1px solid #e2e8f0' }}>
-                      <div style={{ fontSize:17,fontWeight:800,color:s.color }}>{s.val}</div>
-                      <div style={{ fontSize:10,color:'#64748b',marginTop:2 }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        
         </div>
 
         {/* ROW 3: Calendar + Upcoming */}
@@ -1519,50 +1423,6 @@ export default function DashboardPage({ user, bourses, entretienScores, setView,
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* RADAR + ADVICE */}
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
-          <div style={S.card}>
-            <div style={S.cardTitle}>🕸️ {lang === 'fr' ? 'Radar de compétences' : 'Skills radar'}</div>
-            <div style={S.cardSub}>
-              {scores.length>0 
-                ? (lang === 'fr' ? `Basé sur ${scores.length} entretien${scores.length>1?'s':''}` : `Based on ${scores.length} interview${scores.length>1?'s':''}`)
-                : user?.skills?.length>0 
-                  ? (lang === 'fr' ? `${user.skills.length} compétence${user.skills.length>1?'s':''} dans le profil` : `${user.skills.length} skill${user.skills.length>1?'s':''} in profile`)
-                  : (lang === 'fr' ? 'Lance un entretien pour des données réelles' : 'Start an interview for real data')}
-            </div>
-            <div style={{ display:'flex',alignItems:'center',gap:16,marginTop:14 }}>
-              <SkillRadar skills={skillData}/>
-              <div style={{ display:'flex',flexDirection:'column',gap:8,flex:1 }}>
-                {skillData.map(s=>(
-                  <div key={s.label}>
-                    <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}><span style={{ fontSize:11,color:'#475569' }}>{s.label}</span><span style={{ fontSize:10,fontWeight:700,color:'#255cae' }}>{s.value}%</span></div>
-                    <div style={{ height:4,borderRadius:99,background:'#f1f5f9',overflow:'hidden' }}><div style={{ height:'100%',width:`${s.value}%`,background:s.value>=80?'#166534':s.value>=60?'#2563eb':'#d97706',borderRadius:99,transition:'width 0.8s ease' }}/></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <button style={{ ...S.btnPrimary,width:'100%',marginTop:14 }} onClick={()=>setView('entretien')}>
-              🎙️ {lang === 'fr' ? 'Lancer un entretien IA' : 'Start AI interview'}
-            </button>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardTitle}>💪 {lang === 'fr' ? 'Conseils pour ton entretien' : 'Interview tips'}</div>
-            <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:12 }}>
-              {[
-                {icon:'🗣️',title:lang === 'fr' ? 'Méthode STAR' : 'STAR Method',desc:lang === 'fr' ? 'Situation → Tâche → Action → Résultat. Cite toujours des chiffres.' : 'Situation → Task → Action → Result. Always cite numbers.',color:'#eff6ff',border:'#bfdbfe',text:'#255cae'},
-                {icon:'🎯',title:lang === 'fr' ? 'Projet précis' : 'Specific project',desc:lang === 'fr' ? 'Cite le nom de tes profs cibles et laboratoires visés dans le pays.' : 'Mention target professors and labs in the country.',color:'#f0fdf4',border:'#bbf7d0',text:'#166534'},
-                {icon:'⏱️',title:lang === 'fr' ? 'Gestion du temps' : 'Time management',desc:lang === 'fr' ? '2-3 minutes max par réponse.' : '2-3 minutes max per answer.',color:'#fffbeb',border:'#fde68a',text:'#856404'},
-                {icon:'🌍',title:lang === 'fr' ? 'Contexte culturel' : 'Cultural context',desc:lang === 'fr' ? 'Montre que tu connais le pays, son système d\'éducation, sa culture.' : 'Show you know the country, its education system, its culture.',color:'#f5f3ff',border:'#ddd6fe',text:'#7c3aed'},
-              ].map((c,i)=>(
-                <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',borderRadius:8,background:c.color,border:`1px solid ${c.border}` }}>
-                  <span style={{ fontSize:18,flexShrink:0 }}>{c.icon}</span>
-                  <div><div style={{ fontSize:12,fontWeight:700,color:c.text,marginBottom:3 }}>{c.title}</div><div style={{ fontSize:11,color:'#64748b',lineHeight:1.5 }}>{c.desc}</div></div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
