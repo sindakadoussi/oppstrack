@@ -87,8 +87,7 @@ export const TRANSLATIONS = {
       profil: 'Mon profil',
       login: 'Se connecter',
       logout: 'Se déconnecter',
-      guest: 'Invité',
-      tagline: 'Votre avenir commence ici. Propulsé par l\'intelligence.',
+      guest: 'Visiteur',
     },
     en: {
       chat: 'AI Assistant',
@@ -100,7 +99,6 @@ export const TRANSLATIONS = {
       login: 'Sign in',
       logout: 'Sign out',
       guest: 'Guest',
-      tagline: 'Your Future Starts Here. Powered by Intelligence.',
     },
   },
 

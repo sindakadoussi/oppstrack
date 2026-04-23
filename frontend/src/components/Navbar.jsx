@@ -476,21 +476,8 @@ const solid = view !== "Home" ? true : pastHero;
             maxWidth:1440, margin:"0 auto", padding:"0 40px",
             display:"flex", alignItems:"center", height:34,
           }}>
-            {/* left links */}
-            <div style={{ display:"flex", gap:20, fontSize:11, fontWeight:500, letterSpacing:".08em", textTransform:"uppercase", fontFamily:c.fSans }}>
-              {[
-                { label: lang==="fr"?"Contact":"Contact", view:"contact" },
-                { label: lang==="fr"?"Témoignages":"Testimonials", view:"feedback" },
-              ].map(({label, view:v}) => (
-                <a key={v} href="#"
-                  style={{ color:fgMuted, textDecoration:"none", transition:"color .3s" }}
-                  onMouseEnter={e=>e.currentTarget.style.color=fg}
-                  onMouseLeave={e=>e.currentTarget.style.color=fgMuted}
-                  onClick={e=>{ e.preventDefault(); setView?.(v); window.scrollTo({top:0,behavior:"smooth"}); }}>
-                  {label}
-                </a>
-              ))}
-            </div>
+       
+            
 
             {/* right utils */}
             <div style={{ marginLeft:"auto", display:"flex", alignItems:"center" }}>
@@ -602,7 +589,7 @@ const solid = view !== "Home" ? true : pastHero;
               ) : (
                 <span style={{ ...utilBase, cursor:"default" }}>
                   <span style={{ width:6, height:6, borderRadius:"50%", background:accent }}/>
-                  <span className="ot-util-label" style={{ color:fgMuted }}>{t("navbar","guest")||"Invité"}</span>
+                  <span className="ot-util-label" style={{ color:fgMuted }}>{t("navbar","guest")||"Visiteur"}</span>
                 </span>
               )}
             </div>
@@ -642,7 +629,7 @@ const solid = view !== "Home" ? true : pastHero;
                 color:fgMuted, transition:"color .5s",
                 fontFamily:c.fSans,
               }}>
-                {t("navbar","tagline") || (lang==="fr"?"Opportunités · Bourses · Mobilité":"Opportunities · Scholarships · Mobility")}
+                {t(lang==="fr"?"Opportunités · Bourses · Mobilité":"Opportunities · Scholarships · Mobility")}
               </span>
             </div>
           </a>
