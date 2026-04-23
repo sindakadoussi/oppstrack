@@ -1,9 +1,37 @@
-// ContactPage.jsx
-import React, { useState, useEffect } from "react";
-import { useT } from '../i18n'; // à adapter selon votre chemin
+// ContactPage.jsx — version style éditorial (tokens unipd.it)
+"use client";
 
-export default function ContactPage({ setView, user }) { // ✅ ajout de la prop user
-  const { lang } = useT(); // pour le multilinguisme
+import React, { useState, useEffect } from "react";
+import { useT } from '../i18n';
+import { useTheme } from '../components/Navbar';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS (identique à la homepage)
+═══════════════════════════════════════════════════════════════════════════ */
+const tokens = (theme) => ({
+  accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
+  ink:        theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:       theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:       theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:       theme === "dark" ? "#6d6b64" : "#9a9794",
+  paper:      theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:     theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule:       theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:   theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface:    theme === "dark" ? "#1a1912" : "#ffffff",
+  danger:     "#b4321f",
+  warn:       "#b06a12",
+  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+  fSans:  `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"JetBrains Mono", ui-monospace, Menlo, monospace`,
+});
+
+export default function ContactPage({ setView, user }) {
+  const { lang } = useT();
+  const { theme } = useTheme();
+  const c = tokens(theme);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -14,7 +42,7 @@ export default function ContactPage({ setView, user }) { // ✅ ajout de la prop
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ Pré-remplir nom et email depuis le profil utilisateur
+  // Pré-remplir nom et email depuis le profil utilisateur
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -53,16 +81,12 @@ export default function ContactPage({ setView, user }) { // ✅ ajout de la prop
       setErrors(newErrors);
       return;
     }
-
     setIsSubmitting(true);
-    // Simuler l'envoi (à remplacer par un vrai appel API)
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsSubmitting(false);
     setSent(true);
-    
     setTimeout(() => {
       setSent(false);
-      // Réinitialiser en gardant nom/email si l'utilisateur est connecté
       setFormData({
         name: user?.name || "",
         email: user?.email || "",
@@ -72,443 +96,325 @@ export default function ContactPage({ setView, user }) { // ✅ ajout de la prop
     }, 3000);
   };
 
+  const t = {
+    back: lang === 'fr' ? 'Retour à l\'accueil' : 'Back to home',
+    heroTitle: lang === 'fr' ? 'Contactez notre équipe' : 'Contact our team',
+    heroSub: lang === 'fr' ? 'Nous sommes là pour répondre à toutes vos questions' : 'We are here to answer all your questions',
+    email: 'Email',
+    phone: lang === 'fr' ? 'Téléphone' : 'Phone',
+    address: lang === 'fr' ? 'Adresse' : 'Address',
+    reply24h: lang === 'fr' ? 'Réponse sous 24h' : 'Reply within 24h',
+    hours: lang === 'fr' ? 'Lun-Ven, 9h-18h' : 'Mon-Fri, 9am-6pm',
+    meet: lang === 'fr' ? 'Nous rencontrer' : 'Meet us',
+    formTitle: lang === 'fr' ? 'Envoyez-nous un message' : 'Send us a message',
+    formDesc: lang === 'fr' ? 'Remplissez le formulaire ci-dessous et nous vous répondrons rapidement' : 'Fill out the form below and we will get back to you quickly',
+    nameLabel: lang === 'fr' ? 'Nom complet' : 'Full name',
+    namePlaceholder: lang === 'fr' ? 'Jean Dupont' : 'John Doe',
+    emailLabel: 'Email',
+    categoryLabel: lang === 'fr' ? 'Catégorie' : 'Category',
+    categoryPlaceholder: lang === 'fr' ? 'Sélectionnez une catégorie' : 'Select a category',
+    categories: {
+      support: lang === 'fr' ? 'Support technique' : 'Technical support',
+      scholarship: lang === 'fr' ? 'Question sur une bourse' : 'Scholarship question',
+      partnership: lang === 'fr' ? 'Partenariat' : 'Partnership',
+      bug: lang === 'fr' ? 'Signaler un bug' : 'Report a bug',
+      other: lang === 'fr' ? 'Autre' : 'Other',
+    },
+    messageLabel: lang === 'fr' ? 'Message' : 'Message',
+    messagePlaceholder: lang === 'fr' ? 'Décrivez votre demande en détail...' : 'Describe your request in detail...',
+    submit: lang === 'fr' ? 'Envoyer le message' : 'Send message',
+    sending: lang === 'fr' ? 'Envoi en cours...' : 'Sending...',
+    successTitle: lang === 'fr' ? 'Message envoyé avec succès !' : 'Message sent successfully!',
+    successDesc: lang === 'fr' ? 'Merci de nous avoir contactés. Notre équipe vous répondra dans les plus brefs délais.' : 'Thank you for contacting us. Our team will get back to you as soon as possible.',
+    newMessage: lang === 'fr' ? 'Envoyer un nouveau message' : 'Send a new message',
+  };
+
   return (
-    <div className="contact-page">
-      <div className="back-button-container">
-        <button 
+    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
+      {/* Bouton retour */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 32px 0' }}>
+        <button
           onClick={() => {
             if (setView) setView('accueil');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="back-button"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${c.ruleSoft}`,
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 500,
+            color: c.ink2,
+            fontFamily: c.fMono,
+            letterSpacing: '0.02em',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = c.accent; e.currentTarget.style.color = c.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = c.ruleSoft; e.currentTarget.style.color = c.ink2; }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span>{lang === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}</span>
+          <span>{t.back}</span>
         </button>
       </div>
 
-      <div className="contact-hero">
-        <div className="contact-hero-content">
-          <h1>{lang === 'fr' ? 'Contactez notre équipe' : 'Contact our team'}</h1>
-          <p>{lang === 'fr' ? 'Nous sommes là pour répondre à toutes vos questions' : 'We are here to answer all your questions'}</p>
+      {/* Hero */}
+      <div style={{
+        background: `linear-gradient(135deg, ${c.accent}15 0%, ${c.paper2} 100%)`,
+        padding: '64px 32px',
+        textAlign: 'center',
+        borderBottom: `1px solid ${c.rule}`,
+      }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <h1 style={{
+            fontFamily: c.fSerif,
+            fontSize: 'clamp(36px, 5vw, 56px)',
+            fontWeight: 700,
+            color: c.ink,
+            marginBottom: 16,
+            letterSpacing: '-0.01em',
+          }}>{t.heroTitle}</h1>
+          <p style={{
+            fontSize: 17,
+            color: c.ink2,
+            lineHeight: 1.6,
+          }}>{t.heroSub}</p>
         </div>
       </div>
 
-      <div className="contact-container">
-        <div className="contact-info-section">
-          <div className="info-card">
-            <div className="info-icon">📧</div>
-            <h3>Email</h3>
-            <p>contact@oppstrack.com</p>
-            <p className="info-detail">{lang === 'fr' ? 'Réponse sous 24h' : 'Reply within 24h'}</p>
-          </div>
-
-          <div className="info-card">
-            <div className="info-icon">📞</div>
-            <h3>{lang === 'fr' ? 'Téléphone' : 'Phone'}</h3>
-            <p>+216 51 551 456</p>
-            <p className="info-detail">{lang === 'fr' ? 'Lun-Ven, 9h-18h' : 'Mon-Fri, 9am-6pm'}</p>
-          </div>
-
-          <div className="info-card">
-            <div className="info-icon">📍</div>
-            <h3>{lang === 'fr' ? 'Adresse' : 'Address'}</h3>
-            <p>{lang === 'fr' ? 'Tunis, Tunisie' : 'Tunis, Tunisia'}</p>
-            <p className="info-detail">{lang === 'fr' ? 'Nous rencontrer' : 'Meet us'}</p>
-          </div>
+      {/* Contenu principal */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '64px 32px' }}>
+        {/* Cartes d'infos */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 32,
+          marginBottom: 64,
+        }}>
+          {[
+            { icon: '📧', title: t.email, detail: 'contact@oppstrack.com', sub: t.reply24h },
+            { icon: '📞', title: t.phone, detail: '+216 51 551 456', sub: t.hours },
+            { icon: '📍', title: t.address, detail: lang === 'fr' ? 'Tunis, Tunisie' : 'Tunis, Tunisia', sub: t.meet },
+          ].map((item, i) => (
+            <div key={i} style={{
+              background: c.surface,
+              border: `1px solid ${c.ruleSoft}`,
+              padding: '28px 24px',
+              textAlign: 'center',
+              transition: 'transform 0.2s ease, border-color 0.2s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = c.accent; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = c.ruleSoft; e.currentTarget.style.transform = 'translateY(0)'; }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>{item.icon}</div>
+              <h3 style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginBottom: 8 }}>{item.title}</h3>
+              <p style={{ fontSize: 14, color: c.accent, fontWeight: 500, marginBottom: 4 }}>{item.detail}</p>
+              <p style={{ fontSize: 11, color: c.ink3, letterSpacing: '0.02em' }}>{item.sub}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="contact-form-section">
-          <div className="form-header">
-            <h2>{lang === 'fr' ? 'Envoyez-nous un message' : 'Send us a message'}</h2>
-            <p>{lang === 'fr' ? 'Remplissez le formulaire ci-dessous et nous vous répondrons rapidement' : 'Fill out the form below and we will get back to you quickly'}</p>
+        {/* Formulaire */}
+        <div style={{
+          background: c.surface,
+          border: `1px solid ${c.rule}`,
+        }}>
+          <div style={{
+            padding: '32px 32px 24px',
+            borderBottom: `1px solid ${c.rule}`,
+            textAlign: 'center',
+          }}>
+            <h2 style={{ fontFamily: c.fSerif, fontSize: 28, fontWeight: 700, color: c.ink, marginBottom: 8 }}>{t.formTitle}</h2>
+            <p style={{ fontSize: 13, color: c.ink2 }}>{t.formDesc}</p>
           </div>
 
           {!sent ? (
-            <form onSubmit={handleSubmit} className="contact-form">
-              <div className="form-group">
-                <label htmlFor="name">{lang === 'fr' ? 'Nom complet' : 'Full name'} *</label>
+            <form onSubmit={handleSubmit} style={{ padding: '32px' }}>
+              <div style={{ marginBottom: 24 }}>
+                <label htmlFor="name" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.ink2, marginBottom: 6, letterSpacing: '0.02em' }}>{t.nameLabel} *</label>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={errors.name ? "error" : ""}
-                  placeholder={lang === 'fr' ? 'Jean Dupont' : 'John Doe'}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${errors.name ? c.danger : c.ruleSoft}`,
+                    background: c.paper,
+                    color: c.ink,
+                    fontSize: 14,
+                    fontFamily: c.fSans,
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = c.accent}
+                  onBlur={e => { if (!errors.name) e.target.style.borderColor = c.ruleSoft; }}
+                  placeholder={t.namePlaceholder}
                 />
-                {errors.name && <span className="error-message">{errors.name}</span>}
+                {errors.name && <span style={{ fontSize: 11, color: c.danger, marginTop: 4, display: 'block' }}>{errors.name}</span>}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="email">Email *</label>
+              <div style={{ marginBottom: 24 }}>
+                <label htmlFor="email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.ink2, marginBottom: 6, letterSpacing: '0.02em' }}>{t.emailLabel} *</label>
                 <input
                   type="email"
                   id="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={errors.email ? "error" : ""}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${errors.email ? c.danger : c.ruleSoft}`,
+                    background: c.paper,
+                    color: c.ink,
+                    fontSize: 14,
+                    fontFamily: c.fSans,
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = c.accent}
+                  onBlur={e => { if (!errors.email) e.target.style.borderColor = c.ruleSoft; }}
                   placeholder="jean@example.com"
                 />
-                {errors.email && <span className="error-message">{errors.email}</span>}
+                {errors.email && <span style={{ fontSize: 11, color: c.danger, marginTop: 4, display: 'block' }}>{errors.email}</span>}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="category">{lang === 'fr' ? 'Catégorie' : 'Category'} *</label>
+              <div style={{ marginBottom: 24 }}>
+                <label htmlFor="category" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.ink2, marginBottom: 6, letterSpacing: '0.02em' }}>{t.categoryLabel} *</label>
                 <select
                   id="category"
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className={errors.category ? "error" : ""}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${errors.category ? c.danger : c.ruleSoft}`,
+                    background: c.paper,
+                    color: c.ink,
+                    fontSize: 14,
+                    fontFamily: c.fSans,
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <option value="">{lang === 'fr' ? 'Sélectionnez une catégorie' : 'Select a category'}</option>
-                  <option value="support">📩 {lang === 'fr' ? 'Support technique' : 'Technical support'}</option>
-                  <option value="bourse">🎓 {lang === 'fr' ? 'Question sur une bourse' : 'Scholarship question'}</option>
-                  <option value="partenariat">💼 {lang === 'fr' ? 'Partenariat' : 'Partnership'}</option>
-                  <option value="bug">🐞 {lang === 'fr' ? 'Signaler un bug' : 'Report a bug'}</option>
-                  <option value="autre">❓ {lang === 'fr' ? 'Autre' : 'Other'}</option>
+                  <option value="">{t.categoryPlaceholder}</option>
+                  <option value="support">📩 {t.categories.support}</option>
+                  <option value="bourse">🎓 {t.categories.scholarship}</option>
+                  <option value="partenariat">💼 {t.categories.partnership}</option>
+                  <option value="bug">🐞 {t.categories.bug}</option>
+                  <option value="autre">❓ {t.categories.other}</option>
                 </select>
-                {errors.category && <span className="error-message">{errors.category}</span>}
+                {errors.category && <span style={{ fontSize: 11, color: c.danger, marginTop: 4, display: 'block' }}>{errors.category}</span>}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="message">{lang === 'fr' ? 'Message' : 'Message'} *</label>
+              <div style={{ marginBottom: 28 }}>
+                <label htmlFor="message" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.ink2, marginBottom: 6, letterSpacing: '0.02em' }}>{t.messageLabel} *</label>
                 <textarea
                   id="message"
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
-                  className={errors.message ? "error" : ""}
                   rows="5"
-                  placeholder={lang === 'fr' ? 'Décrivez votre demande en détail...' : 'Describe your request in detail...'}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${errors.message ? c.danger : c.ruleSoft}`,
+                    background: c.paper,
+                    color: c.ink,
+                    fontSize: 14,
+                    fontFamily: c.fSans,
+                    outline: 'none',
+                    resize: 'vertical',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = c.accent}
+                  onBlur={e => { if (!errors.message) e.target.style.borderColor = c.ruleSoft; }}
+                  placeholder={t.messagePlaceholder}
                 />
-                {errors.message && <span className="error-message">{errors.message}</span>}
+                {errors.message && <span style={{ fontSize: 11, color: c.danger, marginTop: 4, display: 'block' }}>{errors.message}</span>}
               </div>
 
-              <button 
-                type="submit" 
-                className="submit-btn"
+              <button
+                type="submit"
                 disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: c.accent,
+                  border: 'none',
+                  color: c.paper,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: c.fMono,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.opacity = '0.9'; }}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 {isSubmitting ? (
-                  <>
-                    <span className="spinner"></span>
-                    {lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}
-                  </>
-                ) : (
-                  lang === 'fr' ? 'Envoyer le message' : 'Send message'
-                )}
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <span style={{ width: 14, height: 14, border: `2px solid ${c.paper}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                    {t.sending}
+                  </span>
+                ) : t.submit}
               </button>
             </form>
           ) : (
-            <div className="success-message">
-              <div className="success-icon">✓</div>
-              <h3>{lang === 'fr' ? 'Message envoyé avec succès !' : 'Message sent successfully!'}</h3>
-              <p>
-                {lang === 'fr' 
-                  ? 'Merci de nous avoir contactés. Notre équipe vous répondra dans les plus brefs délais.'
-                  : 'Thank you for contacting us. Our team will get back to you as soon as possible.'}
-              </p>
-              <button onClick={() => setSent(false)} className="new-message-btn">
-                {lang === 'fr' ? 'Envoyer un nouveau message' : 'Send a new message'}
+            <div style={{ textAlign: 'center', padding: '48px 32px' }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                margin: '0 auto 20px',
+                background: c.accent,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 32,
+                color: c.paper,
+              }}>✓</div>
+              <h3 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 12 }}>{t.successTitle}</h3>
+              <p style={{ fontSize: 13, color: c.ink2, marginBottom: 28, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>{t.successDesc}</p>
+              <button
+                onClick={() => setSent(false)}
+                style={{
+                  padding: '10px 28px',
+                  background: 'transparent',
+                  border: `1px solid ${c.accent}`,
+                  color: c.accent,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: c.fMono,
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = c.paper; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.accent; }}
+              >
+                {t.newMessage}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Le bloc <style> reste identique à votre version (inchangé) */}
-      <style jsx>{`
-        .contact-page {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-
-        .back-button-container {
-          display: flex;
-          justify-content: center;
-          padding-top: 40px;
-          padding-bottom: 20px;
-        }
-
-        .back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid #e1e5e9;
-          border-radius: 50px;
-          cursor: pointer;
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: #667eea;
-          transition: all 0.3s ease;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-
-        .back-button:hover {
-          background: white;
-          transform: translateX(-5px);
-          box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
-          border-color: #667eea;
-        }
-
-        .back-button svg {
-          transition: transform 0.3s ease;
-        }
-
-        .back-button:hover svg {
-          transform: translateX(-3px);
-        }
-
-        .contact-hero {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 60px 20px;
-          text-align: center;
-          color: white;
-        }
-
-        .contact-hero-content h1 {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          font-weight: 700;
-        }
-
-        .contact-hero-content p {
-          font-size: 1.2rem;
-          opacity: 0.95;
-        }
-
-        .contact-container {
-          max-width: 1200px;
-          margin: -50px auto 0;
-          padding: 0 20px 80px;
-        }
-
-        .contact-info-section {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 30px;
-          margin-bottom: 60px;
-        }
-
-        .info-card {
-          background: white;
-          padding: 30px;
-          border-radius: 15px;
-          text-align: center;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .info-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .info-icon {
-          font-size: 3rem;
-          margin-bottom: 15px;
-        }
-
-        .info-card h3 {
-          font-size: 1.3rem;
-          color: #333;
-          margin-bottom: 10px;
-        }
-
-        .info-card p {
-          color: #666;
-          margin: 5px 0;
-        }
-
-        .info-detail {
-          font-size: 0.85rem;
-          color: #999;
-        }
-
-        .contact-form-section {
-          background: white;
-          border-radius: 20px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
-        }
-
-        .form-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 40px;
-          text-align: center;
-          color: white;
-        }
-
-        .form-header h2 {
-          font-size: 1.8rem;
-          margin-bottom: 10px;
-        }
-
-        .form-header p {
-          opacity: 0.95;
-        }
-
-        .contact-form {
-          padding: 40px;
-        }
-
-        .form-group {
-          margin-bottom: 25px;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 8px;
-          font-weight: 500;
-          color: #333;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-          width: 100%;
-          padding: 12px 15px;
-          border: 2px solid #e1e5e9;
-          border-radius: 10px;
-          font-size: 1rem;
-          transition: all 0.3s ease;
-          font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-          outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-group input.error,
-        .form-group select.error,
-        .form-group textarea.error {
-          border-color: #e74c3c;
-        }
-
-        .error-message {
-          color: #e74c3c;
-          font-size: 0.85rem;
-          margin-top: 5px;
-          display: block;
-        }
-
-        .submit-btn {
-          width: 100%;
-          padding: 14px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 10px;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-
-        .submit-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .submit-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .spinner {
-          width: 20px;
-          height: 20px;
-          border: 3px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-
+      <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-
-        .success-message {
-          text-align: center;
-          padding: 60px 40px;
-        }
-
-        .success-icon {
-          width: 80px;
-          height: 80px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          font-size: 3rem;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-        }
-
-        .success-message h3 {
-          font-size: 1.8rem;
-          color: #333;
-          margin-bottom: 15px;
-        }
-
-        .success-message p {
-          color: #666;
-          margin-bottom: 30px;
-        }
-
-        .new-message-btn {
-          padding: 12px 30px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 25px;
-          cursor: pointer;
-          font-size: 1rem;
-          transition: transform 0.2s ease;
-        }
-
-        .new-message-btn:hover {
-          transform: translateY(-2px);
-        }
-
-        @media (max-width: 768px) {
-          .back-button-container {
-            padding-top: 20px;
-          }
-
-          .contact-hero-content h1 {
-            font-size: 2rem;
-          }
-
-          .contact-form {
-            padding: 25px;
-          }
-
-          .form-header {
-            padding: 30px 20px;
-          }
-
-          .form-header h2 {
-            font-size: 1.5rem;
-          }
-        }
       `}</style>
-    </div>
+    </main>
   );
 }

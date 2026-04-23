@@ -336,8 +336,8 @@ function AppContent() {
   }
 
   return (
-    <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''}`}>
-      {/* Navbar - avec onToggleChat */}
+<div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''} ${view === 'Home' ? 'view-home' : ''}`}>
+        {/* Navbar - avec onToggleChat */}
       {view !== 'contact' && view !== 'feedback' && (
         <Navbar
           view={view}
@@ -363,6 +363,7 @@ function AppContent() {
       )}
 
       <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
+        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
 {view === 'accueil' && !user && (
   <GuestPage
     bourses={bourses}
@@ -370,9 +371,7 @@ function AppContent() {
     setView={setView}
   />
 )}
-{view === 'accueil' && user && <ChatPage {...sharedProps} />}        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
          {view === 'Home'       && <HomePage {...sharedProps} />}
-        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
         {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
         {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
         {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
@@ -483,8 +482,18 @@ function AppContent() {
           color: #1a3a6b; -webkit-font-smoothing: antialiased;
         }
         #root { min-height: 100vh; background: #f8f9fc !important; }
-        .app-root { display: flex; flex-direction: column; min-height: 100vh; background: #f8f9fc; padding-top: 97px; }
-        .main-content { flex: 1; overflow-x: hidden; background: #f8f9fc; }
+.app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f8f9fc;
+  padding-top: 97px;
+}
+
+/* HomePage : le hero doit commencer à top:0 derrière la navbar transparente */
+.app-root.view-home {
+  padding-top: 0 !important;
+}        .main-content { flex: 1; overflow-x: hidden; background: #f8f9fc; }
         .server-alert {
           background: #fff3cd; border-bottom: 2px solid #f5a623;
           color: #856404; padding: 10px 24px; font-size: 13px;

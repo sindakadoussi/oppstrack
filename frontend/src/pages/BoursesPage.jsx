@@ -1,4 +1,4 @@
-// BoursesPage.jsx - Version avec layout vertical et images
+// BoursesPage.jsx - Style éditorial harmonisé avec la homepage
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import BourseCard from '../components/BourseCard';
 import ChatInput from '../components/ChatInput';
@@ -6,11 +6,30 @@ import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
-import MatchDrawerIA from '../components/MatchDrawerIA'; // à adapter selon le chemin exact
+import { useTheme } from '../components/Navbar';
+import MatchDrawerIA from '../components/MatchDrawerIA';
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   UTILS & HELPERS
-═══════════════════════════════════════════════════════════════════════════ */
+/* =============== TOKENS (copiés depuis la homepage) =============== */
+const tokens = (theme) => ({
+  accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
+  ink:        theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:       theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:       theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:       theme === "dark" ? "#6d6b64" : "#9a9794",
+  paper:      theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:     theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule:       theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:   theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface:    theme === "dark" ? "#1a1912" : "#ffffff",
+  danger:     "#b4321f",
+  warn:       "#b06a12",
+  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+  fSans:  `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"JetBrains Mono", ui-monospace, Menlo, monospace`,
+});
+
+/* =============== HELPERS =============== */
 const countryFlag = (pays) => {
   const flags = {
     'France':'🇫🇷','Allemagne':'🇩🇪','Royaume-Uni':'🇬🇧','États-Unis':'🇺🇸',
@@ -23,17 +42,13 @@ const countryFlag = (pays) => {
   return flags[pays] || '🌍';
 };
 
-// Fonction pour obtenir l'URL de l'image depuis l'objet image (relation Payload)
 const getImageUrl = (image) => {
   if (!image) return null;
-  // Si image est un objet avec url
   if (typeof image === 'object' && image.url) return image.url;
-  // Si image est un string (ID) - il faudra faire un fetch ou utiliser un endpoint
-  if (typeof image === 'string') return `/api/media/${image}`;
+  if (typeof image === 'string') return `${process.env.NEXT_PUBLIC_PAYLOAD_URL || ''}/api/media/${image}`;
   return null;
 };
 
-// Debounce hook pour la recherche
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -43,335 +58,173 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-// Toast notification simple
-function Toast({ message, type = 'success', onClose }) {
+/* =============== TOAST (style éditorial) =============== */
+function Toast({ message, type = 'success', onClose, c }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const colors = {
-    success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
-    error: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
-    info: { bg: '#eff6ff', border: '#bfdbfe', text: '#255cae' },
+  const typeStyles = {
+    success: { bg: '#e6f4ea', border: c.accent, text: '#2e6b3e' },
+    error: { bg: '#fef2f2', border: c.danger, text: '#b91c1c' },
+    info: { bg: '#eef2ff', border: c.accent, text: '#1e40af' },
   };
-  const c = colors[type] || colors.info;
+  const s = typeStyles[type] || typeStyles.info;
 
   return (
     <div style={{
       position: 'fixed', bottom: 100, right: 24, zIndex: 2000,
-      padding: '12px 20px', borderRadius: 10, background: c.bg,
-      border: `1px solid ${c.border}`, color: c.text,
-      fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 10,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)', animation: 'slideIn 0.3s ease'
+      padding: '12px 20px', borderRadius: 4, background: s.bg,
+      borderLeft: `3px solid ${s.border}`, color: s.text,
+      fontSize: 13, fontWeight: 500, fontFamily: c.fSans,
+      display: 'flex', alignItems: 'center', gap: 12,
+      boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+      animation: 'slideIn 0.25s ease'
     }}>
-      <span>{type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
+      <span>{type === 'success' ? '✓' : type === 'error' ? '⚠' : 'ℹ'}</span>
       <span>{message}</span>
-      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: c.text }}>✕</button>
+      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: s.text }}>✕</button>
     </div>
   );
 }
 
-// Skeleton card pour le loading (version verticale)
-function SkeletonCard() {
+/* =============== SKELETON CARD (style éditorial) =============== */
+function SkeletonCard({ c }) {
   return (
     <div style={{
-      background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0',
-      padding: 20, animation: 'pulse 1.5s infinite ease-in-out',
-      display: 'flex', gap: 20
+      background: c.surface, borderBottom: `1px solid ${c.ruleSoft}`,
+      padding: 24, display: 'flex', gap: 24, alignItems: 'center',
+      animation: 'pulse 1.2s infinite ease-in-out',
     }}>
-      <div style={{ width: 80, height: 80, borderRadius: 10, background: '#f1f5f9', flexShrink: 0 }} />
+      <div style={{ width: 80, height: 80, background: c.ruleSoft, flexShrink: 0 }} />
       <div style={{ flex: 1 }}>
-        <div style={{ height: 20, background: '#f1f5f9', borderRadius: 4, width: '60%', marginBottom: 10 }} />
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-          <div style={{ height: 16, background: '#f1f5f9', borderRadius: 3, width: 80 }} />
-          <div style={{ height: 16, background: '#f1f5f9', borderRadius: 3, width: 100 }} />
-        </div>
-        <div style={{ height: 14, background: '#f1f5f9', borderRadius: 3, width: '90%', marginBottom: 8 }} />
-        <div style={{ height: 14, background: '#f1f5f9', borderRadius: 3, width: '70%', marginBottom: 12 }} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ height: 34, background: '#f1f5f9', borderRadius: 6, width: 100 }} />
-          <div style={{ height: 34, background: '#f1f5f9', borderRadius: 6, width: 100 }} />
-          <div style={{ height: 34, background: '#f1f5f9', borderRadius: 6, width: 100 }} />
-        </div>
+        <div style={{ height: 20, width: '60%', background: c.ruleSoft, marginBottom: 12 }} />
+        <div style={{ height: 14, width: '40%', background: c.ruleSoft, marginBottom: 16 }} />
+        <div style={{ height: 12, width: '80%', background: c.ruleSoft }} />
       </div>
     </div>
   );
 }
 
-function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch }) {
-  const { lang } = useT();
-
-  // ✅ Récupérer l'URL de l'image depuis Payload SEULEMENT
-  const imageUrl = bourse.image?.url || null;
-  const finalImageUrl = imageUrl 
-    ? imageUrl 
-    : (typeof bourse.image === 'string' 
-        ? `${process.env.NEXT_PUBLIC_PAYLOAD_URL || ''}/api/media/${bourse.image}` 
-        : null);
-  
-  const formatDate = (date) => {
-    if (!date) return null;
-    return new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US');
-  };
+/* =============== VERTICAL BOURSE CARD (style unipd) =============== */
+function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang }) {
+  const imageUrl = getImageUrl(bourse.image);
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
 
   return (
-    <div 
+    <article
       onClick={onClick}
       style={{
-        background: '#fff',
-        borderRadius: 16,
-        border: '1px solid #e2e8f0',
-        padding: 20,
+        display: 'flex', gap: 24, alignItems: 'center',
+        padding: '24px 0',
+        borderBottom: `1px solid ${c.ruleSoft}`,
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        display: 'flex',
-        gap: 24,
-        alignItems: 'center',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        position: 'relative'
+        transition: 'background 0.15s ease',
+        background: c.surface,
       }}
-      onMouseEnter={e => {
-        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)';
-        e.currentTarget.style.borderColor = '#f5a623';
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-        e.currentTarget.style.borderColor = '#e2e8f0';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
+      onMouseEnter={e => e.currentTarget.style.background = c.paper2}
+      onMouseLeave={e => e.currentTarget.style.background = c.surface}
     >
-      {/* Section Image */}
-      <div style={{ flexShrink: 0, width: 100, height: 100, position: 'relative' }}>
-        {finalImageUrl ? (
-          <img 
-            src={finalImageUrl}
-            alt={bourse.nom}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              borderRadius: 12,
-              background: '#f1f5f9'
-            }}
-          />
+      {/* Image */}
+      <div style={{ flexShrink: 0, width: 100, height: 100 }}>
+        {imageUrl ? (
+          <img src={imageUrl} alt={bourse.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         ) : (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 32,
-            color: '#94a3b8'
-          }}>
-            🎓
-          </div>
+          <div style={{ width: '100%', height: '100%', background: c.ruleSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: c.ink3 }}>🎓</div>
         )}
       </div>
 
-      {/* Section Contenu */}
+      {/* Contenu */}
       <div style={{ flex: 1 }}>
-        {/* Titre + pays */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#255cae' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+          <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em' }}>
             {bourse.nom}
           </h3>
-          <span style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: 4, 
-            padding: '2px 8px', 
-            background: '#f1f5f9', 
-            borderRadius: 20,
-            fontSize: 12,
-            color: '#475569'
-          }}>
+          <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {countryFlag(bourse.pays)} {bourse.pays}
           </span>
           {bourse.niveau && (
-            <span style={{ 
-              padding: '2px 8px', 
-              background: '#eff6ff', 
-              borderRadius: 20,
-              fontSize: 12,
-              color: '#255cae'
-            }}>
-              🎓 {bourse.niveau}
+            <span style={{ fontFamily: c.fMono, fontSize: 10, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {bourse.niveau}
             </span>
           )}
         </div>
 
-        {/* Financement + deadline */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-          {bourse.financement && (
-            <span style={{ fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 4 }}>
-              💰 {bourse.financement}
-            </span>
-          )}
-          {bourse.dateLimite && (
-            <span style={{ fontSize: 13, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
-              ⏰ {lang === 'fr' ? 'Date limite' : 'Deadline'} : {formatDate(bourse.dateLimite)}
-            </span>
-          )}
-          {bourse.tunisienEligible === 'oui' && (
-            <span style={{ fontSize: 13, color: '#f5a623', display: 'flex', alignItems: 'center', gap: 4 }}>
-              🇹🇳 Éligible Tunisie
-            </span>
-          )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12, fontFamily: c.fSans, fontSize: 12, color: c.ink2 }}>
+          {bourse.financement && <span>💰 {bourse.financement}</span>}
+          {bourse.dateLimite && <span>⏰ {lang === 'fr' ? 'Limite' : 'Deadline'} : {formatDate(bourse.dateLimite)}</span>}
+          {bourse.tunisienEligible === 'oui' && <span>🇹🇳 Éligible Tunisie</span>}
         </div>
 
-        {/* Description courte */}
         {bourse.description && (
-          <p style={{ 
-            margin: '0 0 12px 0', 
-            fontSize: 13, 
-            color: '#64748b',
-            lineHeight: 1.5,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden'
-          }}>
-            {bourse.description.length > 150 
-              ? `${bourse.description.substring(0, 150)}...` 
-              : bourse.description}
+          <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {bourse.description.length > 150 ? `${bourse.description.substring(0, 150)}...` : bourse.description}
           </p>
         )}
 
-        {/* Boutons d'action */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onAskAI(bourse); }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              background: '#fff',
-              color: '#255cae',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#255cae'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-          >
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button onClick={(e) => { e.stopPropagation(); onAskAI(bourse); }} style={{ ...actionButton(c, 'ghost'), border: `1px solid ${c.rule}`, background: 'transparent', color: c.accent }}>
             🤖 {lang === 'fr' ? 'IA' : 'AI'}
           </button>
-          
-          <button
-            onClick={(e) => { e.stopPropagation(); onStar(bourse, starred); }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              background: starred ? '#fef3c7' : '#fff',
-              color: starred ? '#d97706' : '#64748b',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            {starred ? '⭐' : '☆'} {lang === 'fr' ? 'Favori' : 'Favorite'}
+          <button onClick={(e) => { e.stopPropagation(); onStar(bourse, starred); }} style={{ ...actionButton(c, 'ghost'), background: starred ? c.accent : 'transparent', color: starred ? c.paper : c.ink3, border: `1px solid ${c.rule}` }}>
+            {starred ? '★' : '☆'} {lang === 'fr' ? 'Favori' : 'Favorite'}
           </button>
-          
-          <button
-            onClick={(e) => { e.stopPropagation(); onApply(bourse); }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: 'none',
-              background: applied ? '#86efac' : '#f5a623',
-              color: applied ? '#166534' : '#255cae',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
+          <button onClick={(e) => { e.stopPropagation(); onApply(bourse); }} style={{ ...actionButton(c, applied ? 'success' : 'primary'), background: applied ? '#2e6b3e' : c.accent, color: '#fff' }}>
             {applied ? '✓' : '+'} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
           </button>
-
-          {/* BOUTON MATCH IA corrigé */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onMatch(bourse); }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: 'none',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-          >
+          <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'gradient'), background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff' }}>
             🎯 {lang === 'fr' ? 'Match IA' : 'AI Match'}
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   LOGIN MODAL (traduit)
-═══════════════════════════════════════════════════════════════════════════ */
-function LoginModal({ onClose, lang }) {
+const actionButton = (c, variant) => ({
+  padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+  letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+  border: 'none', borderRadius: 0, transition: 'all 0.15s ease',
+  ...(variant === 'primary' && { background: c.accent, color: c.paper }),
+  ...(variant === 'ghost' && { background: 'transparent', color: c.ink2, border: `1px solid ${c.rule}` }),
+  ...(variant === 'success' && { background: '#2e6b3e', color: '#fff' }),
+});
+
+/* =============== LOGIN MODAL (style éditorial) =============== */
+function LoginModal({ onClose, lang, c }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
 
   const send = async () => {
-    if (!email || !email.includes('@')) { 
-      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); 
-      return; 
-    }
+    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
     setStatus('sending');
     try {
       await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot contact server'));
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
     }
   };
 
   return (
-    <div style={M.overlay}>
-      <div style={M.box}>
-        <div style={M.head}>
-          <span style={{ fontSize: 22 }}>🔐</span>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>
+    <div style={modalStyles.overlay}>
+      <div style={{ ...modalStyles.box, borderTop: `3px solid ${c.accent}`, background: c.surface }}>
+        <div style={{ ...modalStyles.head, background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
+          <span style={{ fontSize: 20 }}>🔐</span>
+          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 18, color: c.ink }}>
             {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
           </span>
-          <button style={M.closeBtn} onClick={onClose}>✕</button>
+          <button style={modalStyles.closeBtn} onClick={onClose}>✕</button>
         </div>
-        <div style={M.body}>
+        <div style={modalStyles.body}>
           {status === 'idle' && (
             <>
-              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }} dangerouslySetInnerHTML={{
-                __html: lang === 'fr' 
-                  ? 'Entrez votre email pour recevoir un <strong>lien de connexion magique</strong>.'
-                  : 'Enter your email to receive a <strong>magic login link</strong>.'
-              }} />
+              <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, marginBottom: 24, lineHeight: 1.5 }}>
+                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien de connexion magique.' : 'Enter your email to receive a magic login link.'}
+              </p>
               <input
                 type="email"
                 placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
@@ -379,69 +232,64 @@ function LoginModal({ onClose, lang }) {
                 autoFocus
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
-                style={M.input}
+                style={{
+                  width: '100%', padding: '12px', fontFamily: c.fSans, fontSize: 14,
+                  border: `1px solid ${c.rule}`, background: c.paper, color: c.ink,
+                  outline: 'none', marginBottom: 8
+                }}
               />
-              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
-              <button style={M.btn} onClick={send}>
-                ✉️ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              {errMsg && <div style={{ color: c.danger, fontSize: 12, marginTop: 4 }}>{errMsg}</div>}
+              <button onClick={send} style={{ ...modalStyles.btn, background: c.accent, color: c.paper, marginTop: 16 }}>
+                ✉️ {lang === 'fr' ? 'Envoyer le lien' : 'Send magic link'}
               </button>
             </>
           )}
           {status === 'sending' && (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={M.spinner} />
-              <p style={{ color: '#64748b', marginTop: 14 }}>
-                {lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}
-              </p>
+            <div style={{ textAlign: 'center', padding: 32 }}>
+              <div style={modalStyles.spinner} />
+              <p style={{ color: c.ink2, marginTop: 16 }}>{lang === 'fr' ? 'Envoi...' : 'Sending...'}</p>
             </div>
           )}
           {status === 'success' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>
+            <div style={{ textAlign: 'center', padding: 24 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
+              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: '#2e6b3e', marginBottom: 8 }}>
                 {lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}
               </div>
-              <p style={{ color: '#64748b', fontSize: 13, lineHeight: 1.6 }} dangerouslySetInnerHTML={{
-                __html: lang === 'fr' 
-                  ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.'
-                  : 'Check your inbox (and spam).<br/>Click the link to sign in.'
+              <p style={{ fontSize: 13, color: c.ink2 }} dangerouslySetInnerHTML={{
+                __html: lang === 'fr' ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.' : 'Check your inbox (and spam).<br/>Click the link to sign in.'
               }} />
-              <button style={{ ...M.btn, background: '#166534', marginTop: 20 }} onClick={onClose}>
-                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
-              </button>
+              <button onClick={onClose} style={{ ...modalStyles.btn, background: '#2e6b3e', marginTop: 24 }}>✓ {lang === 'fr' ? 'Fermer' : 'Close'}</button>
             </div>
           )}
           {status === 'error' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <div style={{ textAlign: 'center', padding: 24 }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-              <p style={{ color: '#dc2626', marginBottom: 12 }}>{errMsg}</p>
-              <button style={{ ...M.btn, background: '#dc2626' }} onClick={() => { setStatus('idle'); setErrMsg(''); }}>
+              <p style={{ color: c.danger }}>{errMsg}</p>
+              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ ...modalStyles.btn, background: c.accent, marginTop: 16 }}>
                 {lang === 'fr' ? 'Réessayer' : 'Retry'}
               </button>
             </div>
           )}
         </div>
       </div>
-      <div style={M.backdrop} onClick={onClose} />
+      <div style={modalStyles.backdrop} onClick={onClose} />
     </div>
   );
 }
 
-const M = {
-  overlay:  { position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' },
-  backdrop: { position:'absolute', inset:0, background:'rgba(26,58,107,0.45)', backdropFilter:'blur(6px)' },
-  box:      { position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:'#ffffff', borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0', boxShadow:'0 20px 48px rgba(26,58,107,0.18)', borderTop:'3px solid #f5a623' },
-  head:     { display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:'#255cae', borderBottom:'1px solid rgba(255,255,255,0.1)' },
-  closeBtn: { marginLeft:'auto', background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', width:28, height:28, borderRadius:6, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' },
-  body:     { padding:'24px' },
-  input:    { width:'100%', padding:'11px 14px', borderRadius:6, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 },
-  btn:      { width:'100%', marginTop:16, padding:'12px', borderRadius:6, border:'none', background:'#255cae', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'opacity 0.2s' },
-  spinner:  { width:40, height:40, border:'3px solid #eff6ff', borderTopColor:'#255cae', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' },
+const modalStyles = {
+  overlay:  { position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  backdrop: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' },
+  box:      { position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
+  head:     { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' },
+  closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' },
+  body:     { padding: '24px' },
+  btn:      { width: '100%', padding: '12px', fontFamily: 'Inter', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '0.05em' },
+  spinner:  { width: 32, height: 32, border: `2px solid ${c => c.rule}`, borderTopColor: c => c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' },
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MAIN PAGE
-═══════════════════════════════════════════════════════════════════════════ */
+/* =============== PAGE PRINCIPALE =============== */
 export default function BoursesPage({
   bourses,
   handleSend,
@@ -456,8 +304,9 @@ export default function BoursesPage({
   onClearInitialSelected,
 }) {
   const { t, lang } = useT();
-  
-  // États
+  const { theme } = useTheme();
+  const c = tokens(theme);
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [search, setSearch] = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
@@ -470,10 +319,8 @@ export default function BoursesPage({
   const [dataLoaded, setDataLoaded] = useState(false);
   const [matchBourse, setMatchBourse] = useState(null);
 
-  // Debounce pour la recherche
   const debouncedSearch = useDebounce(search, 300);
 
-  // Chargement des données utilisateur
   const loadUserData = useCallback(async () => {
     if (!user?.id) { setDataLoaded(true); return; }
     try {
@@ -483,42 +330,30 @@ export default function BoursesPage({
       ]);
       setStarredNoms(new Set((resFav.data.docs?.[0]?.bourses || []).map(b => b.nom?.trim().toLowerCase())));
       setAppliedNoms(new Set((resRM.data.docs || []).map(b => b.nom?.trim().toLowerCase())));
-    } catch (err) { console.error('[loadUserData]', err); }
+    } catch (err) { console.error(err); }
     finally { setDataLoaded(true); }
   }, [user?.id]);
 
   useEffect(() => { loadUserData(); }, [loadUserData]);
 
-  // Sélection initiale depuis l'URL/chat
   useEffect(() => {
     if (!initialSelected || !bourses?.length) return;
     const nomLower = initialSelected.trim().toLowerCase();
-    const found = bourses.find(b =>
-      b.nom?.trim().toLowerCase() === nomLower ||
-      b.nom?.trim().toLowerCase().includes(nomLower) ||
-      nomLower.includes(b.nom?.trim().toLowerCase())
-    );
-    if (found) {
-      setSelected(found);
-      if (onClearInitialSelected) onClearInitialSelected();
-    }
+    const found = bourses.find(b => b.nom?.trim().toLowerCase() === nomLower || b.nom?.trim().toLowerCase().includes(nomLower));
+    if (found) { setSelected(found); if (onClearInitialSelected) onClearInitialSelected(); }
   }, [initialSelected, bourses, onClearInitialSelected]);
 
-  // Handlers avec notifications
   const showToast = (message, type = 'success') => setToast({ message, type });
 
   const handleStar = async (bourse, isStarred) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour sauvegarder' : 'Sign in to save', 'info'); return; }
-    
     try {
       const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
       const doc = res.data.docs?.[0];
       if (isStarred) {
         if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, {
-          bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey)
-        });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
         setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
         showToast(lang === 'fr' ? 'Retiré des favoris' : 'Removed from favorites', 'info');
       } else {
@@ -529,20 +364,16 @@ export default function BoursesPage({
           await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
         }
         setStarredNoms(prev => new Set([...prev, nomKey]));
-        showToast(lang === 'fr' ? 'Ajouté aux favoris ⭐' : 'Added to favorites ⭐', 'success');
+        showToast(lang === 'fr' ? 'Ajouté aux favoris' : 'Added to favorites', 'success');
       }
       window.dispatchEvent(new CustomEvent('favoris-updated'));
-    } catch (err) { 
-      console.error('[handleStar]', err); 
-      showToast(lang === 'fr' ? 'Erreur lors de la mise à jour' : 'Update error', 'error');
-    }
+    } catch (err) { showToast(lang === 'fr' ? 'Erreur' : 'Error', 'error'); }
   };
 
   const handleApply = async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour postuler' : 'Sign in to apply', 'info'); return; }
-    if (appliedNoms.has(nomKey)) { showToast(lang === 'fr' ? 'Déjà dans votre roadmap' : 'Already in your roadmap', 'info'); return; }
-
+    if (appliedNoms.has(nomKey)) { showToast(lang === 'fr' ? 'Déjà dans votre roadmap' : 'Already in roadmap', 'info'); return; }
     try {
       const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
         userId: user.id, userEmail: user.email || '',
@@ -550,30 +381,18 @@ export default function BoursesPage({
         financement: bourse.financement || '', dateLimite: bourse.dateLimite || null,
         ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
       });
-
       const newRoadmapId = res.data.doc?.id || res.data.id;
-      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-        roadmapId: newRoadmapId,
-        bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.lienOfficiel || bourse.url },
-        userProfile: user 
-      });
-
+      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, { roadmapId: newRoadmapId, bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.lienOfficiel || bourse.url }, userProfile: user });
       setAppliedNoms(prev => new Set([...prev, nomKey]));
-      showToast(lang === 'fr' ? '✅ Ajouté à votre roadmap !' : '✅ Added to your roadmap!', 'success');
-    } catch (err) {
-      console.error('[handleApply Error]', err);
-      showToast(lang === 'fr' ? "Erreur lors de l'ajout" : 'Error adding to roadmap', 'error');
-    }
+      showToast(lang === 'fr' ? 'Ajouté à votre roadmap' : 'Added to your roadmap', 'success');
+    } catch (err) { showToast(lang === 'fr' ? "Erreur lors de l'ajout" : 'Error adding to roadmap', 'error'); }
   };
 
   const handleAskAI = (bourse) => {
-    const message = lang === 'fr'
-      ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?`
-      : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
+    const message = lang === 'fr' ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?` : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
     window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
   };
 
-  // Filtrage + tri optimisé
   const filtered = useMemo(() => {
     let result = bourses.filter(b => {
       if (b.statut === 'expiree') return false;
@@ -583,38 +402,19 @@ export default function BoursesPage({
       const matchPays = !filterPays || b.pays === filterPays;
       return matchSearch && matchNiveau && matchPays;
     });
-
-    // Tri
     if (sortBy === 'deadline') {
-      result.sort((a, b) => {
-        const da = a.dateLimite ? new Date(a.dateLimite).getTime() : Infinity;
-        const db = b.dateLimite ? new Date(b.dateLimite).getTime() : Infinity;
-        return da - db;
-      });
+      result.sort((a, b) => (a.dateLimite ? new Date(a.dateLimite).getTime() : Infinity) - (b.dateLimite ? new Date(b.dateLimite).getTime() : Infinity));
     } else if (sortBy === 'funding') {
-      const fundingScore = (f) => {
-        const s = (f || '').toLowerCase();
-        if (s.includes('100') || s.includes('total') || s.includes('complet')) return 3;
-        if (s.includes('partiel') || s.includes('50')) return 2;
-        return s ? 1 : 0;
-      };
+      const fundingScore = (f) => { const s = (f || '').toLowerCase(); if (s.includes('100') || s.includes('total') || s.includes('complet')) return 3; if (s.includes('partiel') || s.includes('50')) return 2; return s ? 1 : 0; };
       result.sort((a, b) => fundingScore(b.financement) - fundingScore(a.financement));
     }
     return result;
   }, [bourses, debouncedSearch, filterNiveau, filterPays, sortBy]);
 
-  // Pagination pour invités
   const visibleBourses = !user ? filtered.slice(0, 9) : filtered;
   const hasHiddenBourses = !user && filtered.length > 9;
-
-  // Listes pour filtres
   const paysList = useMemo(() => [...new Set(bourses.map(b => b.pays).filter(Boolean))].sort(), [bourses]);
-  const niveauxList = useMemo(() => 
-    [...new Set(bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean))].sort(), 
-    [bourses]
-  );
-
-  // Chips de filtres actifs
+  const niveauxList = useMemo(() => [...new Set(bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean))].sort(), [bourses]);
   const activeFilters = useMemo(() => {
     const filters = [];
     if (debouncedSearch) filters.push({ key: 'search', label: `🔍 "${debouncedSearch}"`, onRemove: () => setSearch('') });
@@ -623,143 +423,121 @@ export default function BoursesPage({
     return filters;
   }, [debouncedSearch, filterNiveau, filterPays]);
 
-  // Loading skeleton
   const showSkeleton = !dataLoaded;
 
   return (
-    <div style={{ width:'100%', minHeight:'100vh', background:'#f8f9fc', fontFamily:"'Segoe UI', system-ui, sans-serif", position:'relative' }}>
-
-      {/* HEADER AVEC FILTRES */}
-      <div style={{ background:'#ffffff', borderBottom:'1px solid #e2e8f0', padding:'16px 32px' }}>
-        <div style={{ maxWidth:1200, margin:'0 auto' }}>
-          
-          {/* Barre de recherche + filtres */}
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:12 }}>
-            <div style={{ position:'relative', flex:1, minWidth:200 }}>
-              <input 
-                placeholder={t('bourses', 'searchPlaceholder')} 
-                value={search} 
+    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
+      {/* En-tête avec filtres (style minimal) */}
+      <div style={{ borderBottom: `1px solid ${c.rule}`, background: c.surface, padding: '24px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+              <input
+                placeholder={t('bourses', 'searchPlaceholder')}
+                value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width:'100%', padding:'9px 14px 9px 36px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#255cae', fontSize:14, outline:'none', transition:'border 0.2s' }}
-                onFocus={e => e.target.style.borderColor = '#255cae'}
-                onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                style={{
+                  width: '100%', padding: '10px 12px 10px 36px',
+                  fontFamily: c.fSans, fontSize: 14,
+                  background: c.paper, border: `1px solid ${c.ruleSoft}`,
+                  color: c.ink, outline: 'none', transition: 'border 0.2s'
+                }}
+                onFocus={e => e.target.style.borderColor = c.accent}
+                onBlur={e => e.target.style.borderColor = c.ruleSoft}
               />
-              <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:14 }}>🔍</span>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: c.ink3 }}>🔍</span>
             </div>
-            
-            <select value={filterNiveau} onChange={e => setFilterNiveau(e.target.value)}
-              style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none', minWidth:140 }}>
+            <select value={filterNiveau} onChange={e => setFilterNiveau(e.target.value)} style={selectStyle(c)}>
               <option value="">{t('bourses', 'filterNiveau')}</option>
               {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-            
-            <select value={filterPays} onChange={e => setFilterPays(e.target.value)}
-              style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none', minWidth:140 }}>
+            <select value={filterPays} onChange={e => setFilterPays(e.target.value)} style={selectStyle(c)}>
               <option value="">{t('bourses', 'filterPays')}</option>
               {paysList.map(p => <option key={p} value={p}>{countryFlag(p)} {p}</option>)}
             </select>
-            
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-              style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:13, cursor:'pointer', outline:'none', minWidth:140 }}>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={selectStyle(c)}>
               <option value="relevance">{lang === 'fr' ? '🎯 Pertinence' : '🎯 Relevance'}</option>
               <option value="deadline">{lang === 'fr' ? '⏰ Deadline' : '⏰ Deadline'}</option>
               <option value="funding">{lang === 'fr' ? '💰 Financement' : '💰 Funding'}</option>
             </select>
-            
             {(search || filterNiveau || filterPays) && (
-              <button style={{ padding:'9px 14px', borderRadius:6, border:'1px solid #fecaca', background:'#fef2f2', color:'#dc2626', fontSize:13, cursor:'pointer', fontWeight:500, display:'flex', alignItems:'center', gap:4 }}
-                onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}>
+              <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c) }}>
                 ✕ {lang === 'fr' ? 'Effacer' : 'Clear'}
               </button>
             )}
           </div>
 
-          {/* Chips de filtres actifs */}
           {activeFilters.length > 0 && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               {activeFilters.map(f => (
-                <span key={f.key} style={{ 
-                  display:'inline-flex', alignItems:'center', gap:6,
-                  padding:'4px 10px', borderRadius:20, background:'#eff6ff', 
-                  border:'1px solid #bfdbfe', color:'#255cae', fontSize:12, fontWeight:500 
-                }}>
+                <span key={f.key} style={{ fontFamily: c.fMono, fontSize: 11, background: c.paper2, padding: '4px 12px', border: `1px solid ${c.ruleSoft}`, color: c.ink2 }}>
                   {f.label}
-                  <button onClick={f.onRemove} style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, marginLeft:2, color:'#64748b' }}>✕</button>
+                  <button onClick={f.onRemove} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: c.ink3 }}>✕</button>
                 </span>
               ))}
             </div>
           )}
 
-          {/* Résultats counter */}
-          <div style={{ marginTop:12, fontSize:13, color:'#64748b' }}>
-            {filtered.length} {lang === 'fr' ? 'bourse' : 'scholarship'}{filtered.length > 1 ? (lang === 'fr' ? 's' : 's') : ''} {lang === 'fr' ? 'trouvée' : 'found'}
+          <div style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3, letterSpacing: '0.02em', marginTop: 8 }}>
+            {filtered.length} {lang === 'fr' ? 'bourse' : 'scholarship'}{filtered.length > 1 ? 's' : ''} {lang === 'fr' ? 'trouvée' : 'found'}
             {debouncedSearch && <span> pour "<strong>{debouncedSearch}</strong>"</span>}
           </div>
         </div>
       </div>
 
-      {/* GRILLE VERTICALE (une bourse par ligne) */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 32px' }}>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {showSkeleton ? (
-            Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#255cae', marginBottom: 8 }}>{t('bourses', 'noResult')}</div>
-              <p style={{ color: '#64748b', fontSize: 14 }}>{t('bourses', 'noResultSub')}</p>
-              <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }}
-                style={{ marginTop: 16, padding: '10px 24px', borderRadius: 6, background: '#255cae', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
-              </button>
-            </div>
-          ) : (
-            visibleBourses.map(bourse => (
-              <VerticalBourseCard
-                key={bourse.id || bourse.nom}
-                bourse={bourse}
-                user={user}
-                onAskAI={handleAskAI}
-                onClick={() => setSelected(bourse)}
-                starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                onStar={handleStar}
-                applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                onApply={handleApply}
-                 onMatch={setMatchBourse}
-              />
-            ))
-          )}
+      {/* Liste verticale des bourses */}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 32px 64px' }}>
+        {showSkeleton ? (
+          Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} c={c} />)
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+            <div style={{ fontFamily: c.fSerif, fontSize: 32, color: c.ink2, marginBottom: 16 }}>🔍</div>
+            <div style={{ fontFamily: c.fSerif, fontSize: 20, color: c.ink, marginBottom: 8 }}>{t('bourses', 'noResult')}</div>
+            <p style={{ color: c.ink3 }}>{t('bourses', 'noResultSub')}</p>
+            <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c), marginTop: 24, background: c.accent, color: c.paper }}>
+              {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
+            </button>
+          </div>
+        ) : (
+          visibleBourses.map(bourse => (
+            <VerticalBourseCard
+              key={bourse.id || bourse.nom}
+              bourse={bourse}
+              user={user}
+              onAskAI={handleAskAI}
+              onClick={() => setSelected(bourse)}
+              starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+              onStar={handleStar}
+              applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+              onApply={handleApply}
+              onMatch={setMatchBourse}
+              c={c}
+              lang={lang}
+            />
+          ))
+        )}
 
-          {/* Message pour les bourses cachées (invités) */}
-          {hasHiddenBourses && (
-            <div 
-              onClick={() => setShowLoginModal(true)}
-              style={{ 
-                textAlign: 'center', padding: '32px 20px', marginTop: 8,
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 12,
-                border: '2px dashed #cbd5e1', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#f5a623'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-            >
-              <div style={{ fontSize: 36, marginBottom: 8 }}>🔒</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#255cae', marginBottom: 4 }}>
-                {filtered.length - 9} {lang === 'fr' ? 'bourse supplémentaire' : 'additional scholarship'}
-                {filtered.length - 9 > 1 ? (lang === 'fr' ? 's' : 's') : ''}
-              </div>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-                {lang === 'fr' ? 'Connectez-vous pour voir toutes les bourses disponibles' : 'Sign in to see all available scholarships'}
-              </div>
-              <button style={{ padding: '8px 20px', borderRadius: 6, background: '#f5a623', border: 'none', color: '#255cae', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                🔐 {t('navbar', 'login')}
-              </button>
+        {hasHiddenBourses && (
+          <div onClick={() => setShowLoginModal(true)} style={{
+            textAlign: 'center', padding: '48px 20px', marginTop: 32,
+            borderTop: `1px solid ${c.ruleSoft}`, borderBottom: `1px solid ${c.ruleSoft}`,
+            cursor: 'pointer', transition: 'background 0.2s'
+          }} onMouseEnter={e => e.currentTarget.style.background = c.paper2} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+            <div style={{ fontFamily: c.fSerif, fontSize: 18, color: c.ink, marginBottom: 4 }}>
+              {filtered.length - 9} {lang === 'fr' ? 'bourse supplémentaire' : 'additional scholarship'}{filtered.length - 9 > 1 ? 's' : ''}
             </div>
-          )}
-        </div>
+            <div style={{ fontFamily: c.fSans, fontSize: 12, color: c.ink2, marginBottom: 16 }}>
+              {lang === 'fr' ? 'Connectez-vous pour voir toutes les bourses' : 'Sign in to see all scholarships'}
+            </div>
+            <button style={{ ...actionButton(c, 'primary'), padding: '8px 24px' }}>
+              🔐 {t('navbar', 'login')}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* DRAWER + MODAL */}
+      {/* Drawers et modals */}
       <BourseDrawer
         bourse={selected}
         onClose={() => setSelected(null)}
@@ -771,27 +549,31 @@ export default function BoursesPage({
         onApply={handleApply}
         user={user}
       />
-      {matchBourse && (
-  <MatchDrawerIA
-    bourse={matchBourse}
-    user={user}
-    onBack={() => setMatchBourse(null)}
-  />
-)}
+      {matchBourse && <MatchDrawerIA bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} c={c} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} c={c} />}
 
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} />}
-      
-      {/* Toast notification */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-      {/* Styles globaux */}
       <style>{`
-        input::placeholder { color:#94a3b8 }
-        select option { color:#255cae; background:#fff }
-        @keyframes spin { to { transform:rotate(360deg) } }
-        @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }
-        @keyframes slideIn { from { transform:translateX(100%); opacity:0 } to { transform:translateX(0); opacity:1 } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
-    </div>
+    </main>
   );
 }
+
+/* =============== STYLES PARTAGÉS =============== */
+const selectStyle = (c) => ({
+  padding: '9px 28px 9px 12px',
+  fontFamily: c.fSans, fontSize: 13,
+  background: c.paper, border: `1px solid ${c.ruleSoft}`,
+  color: c.ink, outline: 'none', cursor: 'pointer',
+  appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(c.ink3)}' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center'
+});
+
+const clearButton = (c) => ({
+  padding: '9px 16px', fontFamily: c.fMono, fontSize: 11, fontWeight: 600,
+  letterSpacing: '0.05em', background: 'transparent', border: `1px solid ${c.ruleSoft}`,
+  cursor: 'pointer', color: c.ink2, transition: 'all 0.2s'
+});
