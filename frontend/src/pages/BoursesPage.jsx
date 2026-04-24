@@ -32,7 +32,9 @@ const countryFlag = (pays) => pays; // on enlève l'emoji, on garde juste le tex
 const getImageUrl = (image) => {
   if (!image) return null;
   if (typeof image === 'object' && image.url) return image.url;
-  if (typeof image === 'string') return `${process.env.NEXT_PUBLIC_PAYLOAD_URL || ''}/api/media/${image}`;
+  if (typeof image === 'string') {
+    return `${import.meta.env.VITE_PAYLOAD_URL || ''}/api/media/${image}`;
+  }
   return null;
 };
 

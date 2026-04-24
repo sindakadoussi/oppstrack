@@ -7,7 +7,7 @@ import { useT } from '../i18n';
 import axios from 'axios';
 import { WEBHOOK_ROUTES } from '@/config/routes';
 
-// ─── DESIGN TOKENS (identiques à HomePage) ────────────────────────────────────
+// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
 const tokens = (theme = 'light') => ({
   accent:    theme === 'dark' ? '#4c9fd9' : '#0066b3',
   accentInk: theme === 'dark' ? '#8ec1e6' : '#004f8a',
@@ -26,41 +26,7 @@ const tokens = (theme = 'light') => ({
   fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
 });
 
-// ─── QUICK REPLIES ─────────────────────────────────────────────────────────────
-const getQuickReplies = (lang) => [
-  {
-    icon: '🎯',
-    label: lang === 'fr' ? 'Bourses cette semaine' : 'Closing this week',
-    text: lang === 'fr' ? 'Quelles bourses ferment cette semaine ?' : 'Which scholarships close this week?',
-  },
-  {
-    icon: '🔎',
-    label: lang === 'fr' ? 'Analyser mon éligibilité' : 'Check eligibility',
-    text: lang === 'fr' ? 'Analyse mon éligibilité pour la bourse Rhodes' : 'Analyze my eligibility for the Rhodes Scholarship',
-  },
-  {
-    icon: '📝',
-    label: lang === 'fr' ? 'Rédiger mon essai' : 'Write my essay',
-    text: lang === 'fr' ? 'Aide-moi à rédiger mon essai pour Chevening' : 'Help me write my essay for Chevening',
-  },
-  {
-    icon: '🎙️',
-    label: lang === 'fr' ? 'Préparer entretien' : 'Prepare interview',
-    text: lang === 'fr' ? "Je veux m'entraîner pour un entretien de bourse" : 'I want to practice for a scholarship interview',
-  },
-  {
-    icon: '📄',
-    label: lang === 'fr' ? 'Analyser mon CV' : 'Analyze my CV',
-    text: lang === 'fr' ? 'Je veux analyser mon CV' : 'I want to analyze my CV',
-  },
-  {
-    icon: '🔐',
-    label: lang === 'fr' ? 'Me connecter' : 'Sign in',
-    text: lang === 'fr' ? 'Je veux me connecter' : 'I want to sign in',
-  },
-];
-
-// ─── HERO STATS ────────────────────────────────────────────────────────────────
+// ─── HERO STATS HOOK ───────────────────────────────────────────────────────────
 function useHeroStats() {
   const [stats, setStats] = useState({ totalBourses: null, pctFinancees: null, loaded: false });
   useEffect(() => {
@@ -83,22 +49,183 @@ function useHeroStats() {
   return stats;
 }
 
-// ─── ANIMATED STAT NUMBER ──────────────────────────────────────────────────────
-function StatNumber({ value, suffix = '', loading }) {
-  const [displayed, setDisplayed] = useState(0);
-  useEffect(() => {
-    if (loading || value === null) return;
-    const target = parseInt(value), steps = 30, inc = target / steps;
-    let step = 0;
-    const t = setInterval(() => {
-      step++;
-      setDisplayed(Math.min(Math.round(inc * step), target));
-      if (step >= steps) clearInterval(t);
-    }, 800 / steps);
-    return () => clearInterval(t);
-  }, [value, loading]);
-  if (loading || value === null) return <span style={{ opacity: 0.4 }}>—</span>;
-  return <span>{displayed}{suffix}</span>;
+// ─── SMART ACTIONS ─────────────────────────────────────────────────────────────
+const INTENTS = [
+  { label: 'Trouver une bourse',      labelEn: 'Find a scholarship',     key: 'find'    },
+  { label: 'Préparer ma candidature', labelEn: 'Prepare my application', key: 'apply'   },
+  { label: 'Améliorer mes chances',   labelEn: 'Improve my chances',     key: 'improve' },
+  { label: 'Analyser mon profil',     labelEn: 'Analyze my profile',     key: 'analyze' },
+];
+
+const getSmartReplies = (intent, user, lang) => {
+  const isComplete = user?.niveau && user?.domaine;
+  if (!isComplete) {
+    return lang === 'fr'
+      ? ['Compléter mon profil', 'Analyse rapide sans profil', 'Voir des exemples de bourses']
+      : ['Complete my profile', 'Quick analysis without profile', 'See scholarship examples'];
+  }
+  const map = {
+    find:    lang === 'fr'
+      ? ['Meilleures bourses pour moi', 'Bourses en Europe', 'Bourses ouvertes maintenant', 'Bourses 100% financées', 'Fermeture imminente']
+      : ['Best scholarships for me', 'Scholarships in Europe', 'Currently open', 'Fully funded', 'Closing soon'],
+    apply:   lang === 'fr'
+      ? ['Créer mon CV académique', 'Rédiger lettre de motivation', 'Corriger mon essay', 'Préparer entretien', 'Documents requis']
+      : ['Create my academic CV', 'Write motivation letter', 'Review my essay', 'Prepare interview', 'Required documents'],
+    improve: lang === 'fr'
+      ? ['Ma probabilité de succès ?', 'Quelle stratégie adopter ?', 'Mes points faibles', 'Comment me démarquer ?', "Plan d'amélioration"]
+      : ['My success probability?', 'What strategy?', 'My weak points', 'How to stand out?', 'Improvement plan'],
+    analyze: lang === 'fr'
+      ? ['Suis-je éligible ?', 'Score de mon profil', 'Bourses adaptées', 'Ce qui manque', 'Optimiser mon profil']
+      : ['Am I eligible?', 'My profile score', 'Matching scholarships', 'What is missing', 'Optimize my profile'],
+  };
+  return map[intent] || [];
+};
+
+function SmartActions({ user, onSelect, lang, c }) {
+  const [active, setActive] = useState(null);
+  const replies = getSmartReplies(active, user, lang);
+
+  return (
+    <div style={{ marginBottom: 32, width: '100%' }}>
+      <div style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>
+        {lang === 'fr' ? 'Actions intelligentes' : 'Smart actions'}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {INTENTS.map((intent) => {
+          const isActive = active === intent.key;
+          return (
+            <button
+              key={intent.key}
+              onClick={() => setActive(isActive ? null : intent.key)}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.paper2; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = c.surface; }}
+              style={{
+                padding: '8px 18px',
+                background: isActive ? c.accent : c.surface,
+                border: `1px solid ${isActive ? c.accent : c.rule}`,
+                cursor: 'pointer',
+                fontFamily: c.fSans,
+                fontSize: 12.5,
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? '#fff' : c.ink,
+                transition: 'all .18s',
+                borderRadius: 40,
+              }}
+            >
+              {lang === 'fr' ? intent.label : intent.labelEn}
+            </button>
+          );
+        })}
+      </div>
+      {active && replies.length > 0 && (
+        <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', animation: 'smartActionsIn .2s ease both' }}>
+          {replies.map((r, idx) => (
+            <button
+              key={idx}
+              onClick={() => onSelect(r.replace(/^[^\w\u00C0-\u024F]*/, '').trim())}
+              onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = c.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.color = c.ink2; e.currentTarget.style.borderColor = c.rule; }}
+              style={{ padding: '5px 14px', border: `1px solid ${c.rule}`, background: c.surface, color: c.ink2, cursor: 'pointer', fontSize: 12, fontFamily: c.fSans, fontWeight: 600, transition: 'all .15s', borderRadius: 40 }}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MINI DASHBOARD ────────────────────────────────────────────────────────────
+function ProgressBar({ value, color }) {
+  return (
+    <div style={{ width: '100%', height: 3, background: '#e8e4d9', marginTop: 4 }}>
+      <div style={{ width: `${Math.min(100, Math.max(0, value))}%`, height: '100%', background: color, transition: 'width .6s cubic-bezier(.4,0,.2,1)' }} />
+    </div>
+  );
+}
+
+function MiniDashboard({ user, stats = {}, lang, c }) {
+  const completion = stats.completion ?? 0;
+  const readiness  = stats.readiness  ?? 0;
+  const completionColor = completion >= 80 ? '#166534' : completion >= 50 ? c.accent : '#b45309';
+  const readinessColor  = readiness  >= 70 ? '#166534' : readiness  >= 40 ? c.accent : '#b45309';
+
+  return (
+    <div style={{ border: `1px solid ${c.rule}`, borderTop: `3px solid ${c.accent2}`, background: c.surface, padding: '20px', marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' }}>
+          {lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
+        </span>
+        {user?.name && <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink4, fontWeight: 500 }}>{user.name}</span>}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+          <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600 }}>{lang === 'fr' ? 'Profil complété' : 'Profile complete'}</span>
+          <span style={{ fontFamily: c.fSans, fontSize: 13, fontWeight: 700, color: completionColor }}>{completion}%</span>
+        </div>
+        <ProgressBar value={completion} color={completionColor} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[
+          { label: lang === 'fr' ? 'Niveau' : 'Level',  value: user?.niveau  || (lang === 'fr' ? 'Non renseigné' : 'Not set') },
+          { label: lang === 'fr' ? 'Domaine' : 'Field', value: user?.domaine || (lang === 'fr' ? 'Non renseigné' : 'Not set') },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ flex: 1, padding: '6px 10px', background: c.paper2, border: `1px solid ${c.ruleSoft}`, fontFamily: c.fSans }}>
+            <div style={{ fontSize: 9, color: c.ink4, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: 11.5, color: c.ink, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ height: 1, background: c.ruleSoft, marginBottom: 16 }} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: lang === 'fr' ? 'Bourses'  : 'Matches', value: stats.matches ?? 0,  color: c.accent      },
+          { label: lang === 'fr' ? 'Urgentes' : 'Urgent',  value: stats.urgent  ?? 0,  color: '#b91c1c'     },
+          { label: lang === 'fr' ? 'Prêt'     : 'Ready',   value: `${readiness}%`,      color: readinessColor },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ fontFamily: c.fSans, fontSize: 9, color: c.ink4, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontFamily: c.fSans, fontSize: 18, fontWeight: 700, color, letterSpacing: '-0.02em' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+          <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600 }}>{lang === 'fr' ? 'Prêt à postuler' : 'Application readiness'}</span>
+        </div>
+        <ProgressBar value={readiness} color={readinessColor} />
+      </div>
+    </div>
+  );
+}
+
+// ─── POST SUGGESTIONS ──────────────────────────────────────────────────────────
+function PostSuggestions({ onClick, lang, c }) {
+  const suggestions = lang === 'fr'
+    ? ['Ajouter à ma roadmap', 'Analyser cette bourse', 'Comparer avec une autre', 'Préparer ma candidature']
+    : ['Add to my roadmap', 'Analyze this scholarship', 'Compare with another', 'Prepare my application'];
+
+  return (
+    <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+      {suggestions.map((s, i) => (
+        <button
+          key={i}
+          onClick={() => onClick(s.replace(/^[^\w\u00C0-\u024F]*/, '').trim())}
+          onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = c.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.color = c.ink3; e.currentTarget.style.borderColor = c.rule; }}
+          style={{ padding: '4px 10px', border: `1px solid ${c.rule}`, background: c.surface, color: c.ink3, cursor: 'pointer', fontSize: 11, fontFamily: c.fSans, fontWeight: 600, transition: 'all .15s', borderRadius: 4 }}
+        >
+          {s}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ─── PARSE BOURSES ─────────────────────────────────────────────────────────────
@@ -111,19 +238,16 @@ function parseBourses(msg) {
       lienOfficiel: b.lienOfficiel?.trim() || '', domaine: b.domaine?.trim() || '',
     }));
   }
-
   const text = msg?.text || '';
   if (!text) return [];
   const lines = text.split('\n');
   const bourses = [];
   let current = null;
-
   const isFakeTitle = (nom) => {
     if (!nom) return true;
     const n = nom.trim();
     return n.length < 8 || /^(consultez|notez|préparez|prochaines étapes|voir détails|apply|click|summary)/i.test(n) || /^[\*\_#\-•\d\s]+$/.test(n);
   };
-
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -137,15 +261,12 @@ function parseBourses(msg) {
       continue;
     }
     if (!current) continue;
-    if (/^[🎓🌍💰📋🔍•\-_\*#]+$/.test(line) || /voir détails|postuler|apply now|click here/i.test(line)) continue;
-
     const fieldMatch =
       line.match(/^(?:•\s*[-–]?\s*)?(?:🌍\s*)?(pays|country)\s*[:\-–]\s*(.+)/i) ||
       line.match(/^(?:•\s*[-–]?\s*)?(?:💰\s*)?(financement|funding)\s*[:\-–]\s*(.+)/i) ||
       line.match(/^(?:•\s*[-–]?\s*)?(?:🎓\s*)?(niveau|level)\s*[:\-–]\s*(.+)/i) ||
       line.match(/^(?:•\s*[-–]?\s*)?(?:📝\s*)?(description|details)\s*[:\-–]\s*(.+)/i) ||
       line.match(/^(?:•\s*[-–]?\s*)?(?:📚\s*)?(domaine|field)\s*[:\-–]\s*(.+)/i);
-
     if (fieldMatch) {
       const key = fieldMatch[1].toLowerCase();
       const value = fieldMatch[2]?.trim() || '';
@@ -162,7 +283,6 @@ function parseBourses(msg) {
     }
   }
   if (current?.nom && current.nom.length >= 8) bourses.push(current);
-
   const unique = [], seen = new Set();
   for (const b of bourses) {
     if (!b?.nom) continue;
@@ -178,15 +298,10 @@ function parseBourses(msg) {
 // ─── CLEAN MESSAGE TEXT ────────────────────────────────────────────────────────
 function cleanMessageText(text, lang = 'fr') {
   if (!text) return '';
-  let t = text
-    .replace(/\[\[BOURSES:[\s\S]*?\]\]/g, '')
-    .replace(/```json[\s\S]*?```/g, '')
-    .replace(/BOURSES_JSON:[\s\S]*?(?=\n\n|$)/g, '');
-
+  let t = text.replace(/\[\[BOURSES:[\s\S]*?\]\]/g, '').replace(/```json[\s\S]*?```/g, '').replace(/BOURSES_JSON:[\s\S]*?(?=\n\n|$)/g, '');
   const lines = t.split('\n');
   const cleanLines = [];
   let inBourseSection = false;
-
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -202,23 +317,20 @@ function cleanMessageText(text, lang = 'fr') {
     if (/^(?:#{1,3}\s*)?\d+[\.\)\s]*[️⃣]?\s*[^\n]{10,}/.test(trimmed)) continue;
     cleanLines.push(trimmed);
   }
-
   const result = cleanLines.join('\n').trim();
   const defaultMsg = lang === 'fr' ? 'Voici les bourses qui correspondent à votre profil :' : 'Here are the scholarships matching your profile:';
   return result.length > 10 ? result : defaultMsg;
 }
 
-// ─── BOURSE CARD (horizontal compacte dans le chat) ───────────────────────────
+// ─── BOURSE CARD COMPACT ───────────────────────────────────────────────────────
 function BourseCardCompact({ bourse, onApply, onDetails, applied, index, c }) {
   const [applying, setApplying] = useState(false);
   const [appDone, setAppDone] = useState(applied);
   const dl = bourse.dateLimite ? new Date(bourse.dateLimite) : null;
   const daysLeft = dl ? Math.round((dl - new Date()) / 86400000) : null;
   const isUrgent = daysLeft !== null && daysLeft <= 7;
-
   const flags = { France:'🇫🇷', Allemagne:'🇩🇪', 'Royaume-Uni':'🇬🇧', 'États-Unis':'🇺🇸', Canada:'🇨🇦', Australie:'🇦🇺', Japon:'🇯🇵', Maroc:'🇲🇦', Tunisie:'🇹🇳', Belgique:'🇧🇪', Suisse:'🇨🇭', International:'🌍', Mondial:'🌐' };
   const flag = bourse.pays ? (flags[bourse.pays] || '🌍') : '🌍';
-
   const accentColors = ['#0066b3', '#166534', '#7c3aed', '#f5a623', '#0891b2', '#dc2626'];
   const barColor = accentColors[index % accentColors.length];
 
@@ -232,51 +344,36 @@ function BourseCardCompact({ bourse, onApply, onDetails, applied, index, c }) {
 
   return (
     <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 14px',
-        background: c.surface,
-        border: `1px solid ${c.rule}`,
-        borderLeft: `3px solid ${barColor}`,
-        borderRadius: 10,
-        cursor: 'pointer',
-        transition: 'all .18s',
-        marginTop: 8,
-        animationDelay: `${index * 0.07}s`,
-      }}
       onClick={() => onDetails?.(bourse)}
-      onMouseEnter={e => { e.currentTarget.style.background = c.paper2; e.currentTarget.style.borderLeftColor = '#f5a623'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = c.paper2; e.currentTarget.style.borderLeftColor = c.accent2; e.currentTarget.style.transform = 'translateX(3px)'; }}
       onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.borderLeftColor = barColor; e.currentTarget.style.transform = 'translateX(0)'; }}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: c.surface, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${barColor}`, borderRadius: 0, cursor: 'pointer', transition: 'all .18s', marginTop: 8 }}
     >
-      <span style={{ fontSize: 22, flexShrink: 0 }}>{flag}</span>
+      <span style={{ fontSize: 20, flexShrink: 0 }}>{flag}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: c.fSans, fontSize: 12.5, fontWeight: 700, color: c.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bourse.nom}</div>
+        <div style={{ fontFamily: c.fSans, fontSize: 12.5, fontWeight: 700, color: c.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '.01em' }}>{bourse.nom}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap', alignItems: 'center' }}>
           {bourse.pays && <span style={{ fontFamily: c.fSans, fontSize: 10.5, color: c.ink3 }}>{bourse.pays}</span>}
           {bourse.niveau && <><span style={{ color: c.rule }}>·</span><span style={{ fontFamily: c.fSans, fontSize: 10.5, color: c.ink3 }}>{bourse.niveau}</span></>}
           {dl && (
-            <span style={{ fontFamily: c.fSans, fontSize: 10, fontWeight: 700, color: isUrgent ? '#b91c1c' : '#1d4ed8', background: isUrgent ? '#fef2f2' : '#eff6ff', border: `1px solid ${isUrgent ? '#fecaca' : '#bfdbfe'}`, borderRadius: 4, padding: '2px 6px' }}>
-              ⏰ {daysLeft < 0 ? 'Expiré' : daysLeft === 0 ? "Auj." : `${daysLeft}j`}
+            <span style={{ fontFamily: c.fSans, fontSize: 10, fontWeight: 700, color: isUrgent ? '#b91c1c' : '#1d4ed8', background: isUrgent ? '#fef2f2' : '#eff6ff', border: `1px solid ${isUrgent ? '#fecaca' : '#bfdbfe'}`, borderRadius: 3, padding: '2px 6px' }}>
+              {daysLeft < 0 ? 'Expiré' : daysLeft === 0 ? 'Aujourd\'hui' : `${daysLeft}j`}
             </span>
           )}
         </div>
       </div>
-      <div style={{ flexShrink: 0, textAlign: 'right', marginRight: 6 }}>
-        <div style={{ fontFamily: c.fSans, fontSize: 16, fontWeight: 800, color: c.accent, lineHeight: 1 }}>
-          {/* match score si disponible */}
-        </div>
-      </div>
       <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
         {bourse.lienOfficiel && (
-          <a href={bourse.lienOfficiel} target="_blank" rel="noopener noreferrer"
-            style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${c.rule}`, background: c.paper2, color: c.ink3, fontSize: 11, fontFamily: c.fSans, textDecoration: 'none', fontWeight: 600 }}
-            onClick={e => e.stopPropagation()}>🔗</a>
+          <a href={bourse.lienOfficiel} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+            style={{ padding: '5px 10px', border: `1px solid ${c.rule}`, background: 'transparent', color: c.ink3, fontSize: 11, fontFamily: c.fSans, textDecoration: 'none', fontWeight: 600, borderRadius: 4 }}>
+            Lien
+          </a>
         )}
         <button
           onClick={e => { e.stopPropagation(); handleApply(); }}
           disabled={appDone || applying}
-          style={{ padding: '5px 10px', borderRadius: 6, border: 'none', background: appDone ? '#166534' : c.accent, color: '#fff', fontSize: 11, fontFamily: c.fSans, fontWeight: 700, cursor: appDone ? 'default' : 'pointer', transition: 'all .15s' }}>
-          {applying ? '⏳' : appDone ? '✓' : '+ Postuler'}
+          style={{ padding: '5px 14px', border: 'none', background: appDone ? '#166534' : c.accent, color: '#fff', fontSize: 11, fontFamily: c.fSans, fontWeight: 700, cursor: appDone ? 'default' : 'pointer', letterSpacing: '.05em', textTransform: 'uppercase', transition: 'all .15s', borderRadius: 4 }}>
+          {applying ? '...' : appDone ? '✓' : 'Postuler'}
         </button>
       </div>
     </div>
@@ -299,23 +396,19 @@ function BourseCardsGrid({ bourses, onApply, onDetails, appliedNoms, allBourses,
 
   return (
     <div style={{ width: '100%', marginTop: 6 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
-        padding: '8px 12px',
-        background: c.paper2, border: `1px solid ${c.rule}`, borderRadius: 8,
-      }}>
-        <span style={{ fontSize: 16 }}>🎓</span>
-        <span style={{ fontFamily: c.fSans, fontSize: 13, fontWeight: 700, color: c.ink }}>
-          {bourses.length} bourse{bourses.length > 1 ? 's' : ''} recommandée{bourses.length > 1 ? 's' : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${c.rule}` }}>
+        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.accent, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase' }}>
+          {bourses.length} bourse{bourses.length > 1 ? 's' : ''}
         </span>
-        <span style={{ marginLeft: 'auto', fontFamily: c.fSans, fontSize: 10.5, color: c.ink3, background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 20, padding: '2px 10px' }}>
-          {lang === 'fr' ? 'selon votre profil' : 'matching your profile'}
+        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 600, letterSpacing: '.22em', textTransform: 'uppercase' }}>
+          {lang === 'fr' ? 'recommandées' : 'recommended'}
         </span>
+        <div style={{ flex: 1, height: 1, background: c.ruleSoft }} />
+        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink4 }}>{lang === 'fr' ? 'selon votre profil' : 'matching your profile'}</span>
       </div>
       {bourses.slice(0, visible).map((b, i) => (
         <BourseCardCompact
-          key={b.id || b.nom || i}
-          bourse={b} index={i}
+          key={b.id || b.nom || i} bourse={b} index={i}
           applied={appliedNoms?.has(b.nom?.trim().toLowerCase())}
           onApply={onApply}
           onDetails={(bo) => onDetails?.(enrich(bo))}
@@ -325,16 +418,10 @@ function BourseCardsGrid({ bourses, onApply, onDetails, appliedNoms, allBourses,
       {visible < bourses.length && (
         <button
           onClick={() => setVisible(v => v + 3)}
-          style={{
-            width: '100%', marginTop: 10, padding: '9px', borderRadius: 8,
-            border: `1.5px dashed ${c.rule}`, background: 'transparent',
-            color: c.ink3, fontFamily: c.fSans, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            transition: 'all .18s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = c.paper2; e.currentTarget.style.borderColor = c.accent; e.currentTarget.style.color = c.accent; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = c.rule; e.currentTarget.style.color = c.ink3; }}
-        >
-          {lang === 'fr' ? `Voir ${Math.min(3, bourses.length - visible)} de plus ↓` : `Show ${Math.min(3, bourses.length - visible)} more ↓`}
+          onMouseEnter={e => { e.currentTarget.style.color = c.accent; e.currentTarget.style.borderColor = c.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.color = c.ink3; e.currentTarget.style.borderColor = c.rule; }}
+          style={{ width: '100%', marginTop: 10, padding: '9px', border: `1px solid ${c.rule}`, background: 'transparent', color: c.ink3, fontFamily: c.fSans, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all .18s', letterSpacing: '.12em', textTransform: 'uppercase' }}>
+          {lang === 'fr' ? `Voir ${Math.min(3, bourses.length - visible)} de plus →` : `Show ${Math.min(3, bourses.length - visible)} more →`}
         </button>
       )}
     </div>
@@ -366,29 +453,23 @@ function ChatMessage({ msg, index, appliedNoms, onApply, onDetails, handleQuickR
     b.nom && b.nom.length > 8 && !/chercher|recevoir|consulter|préparer|notez|vérifiez|consultez/i.test(b.nom)
   );
 
-  const avatarStyle = {
-    width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center',
-    justifyContent: 'center', flexShrink: 0, marginTop: 2,
-    fontFamily: c.fSans, fontSize: 13, fontWeight: 700,
-  };
-
   const AIAvatar = () => (
-    <div style={{ ...avatarStyle, background: '#0a1a2e', border: `1px solid #2a3a5e` }}>
-      <img src="/logo.png" alt="IA" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }}
-        onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;font-size:14px;">✦</span>'; }} />
+    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+      <img src="/logo.png" alt="IA" style={{ width: 16, height: 16, objectFit: 'contain' }}
+        onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;font-size:13px;">✦</span>'; }} />
     </div>
   );
+
   const UserAvatar = () => (
-    <div style={{ ...avatarStyle, background: c.accent, color: '#fff' }}>👤</div>
+    <div style={{ width: 30, height: 30, background: c.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, color: '#fff', fontSize: 13 }}>👤</div>
   );
 
-  // User message
   if (!isAI) {
     return (
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexDirection: 'row-reverse', animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexDirection: 'row-reverse', animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
         <UserAvatar />
         <div style={{ maxWidth: '78%' }}>
-          <div style={{ padding: '10px 15px', borderRadius: 12, borderTopRightRadius: 3, background: c.accent, color: '#fff', fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.55 }}>
+          <div style={{ padding: '10px 16px', background: c.accent, color: '#fff', fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
             {formatText(msg.text)}
           </div>
         </div>
@@ -396,39 +477,38 @@ function ChatMessage({ msg, index, appliedNoms, onApply, onDetails, handleQuickR
     );
   }
 
-  // AI message without cards
   if (validBourses.length === 0) {
     return (
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
         <AIAvatar />
         <div style={{ maxWidth: '86%' }}>
           {cleanText && (
-            <div style={{ padding: '10px 15px', borderRadius: 12, borderTopLeftRadius: 3, background: c.paper2, border: `1px solid ${c.rule}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.55 }}>
+            <div style={{ padding: '10px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
               {formatText(cleanText)}
-              {msg.voiceInput && <div style={{ marginTop: 8, display: 'inline-block', fontSize: 10, padding: '2px 8px', borderRadius: 10, background: c.rule, color: c.ink3, fontWeight: 600 }}>🎤 Vocal</div>}
+              {msg.voiceInput && (
+                <div style={{ marginTop: 8, display: 'inline-block', fontSize: 10, padding: '2px 8px', background: c.rule, color: c.ink3, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', borderRadius: 4 }}>Vocal</div>
+              )}
             </div>
           )}
+          <PostSuggestions onClick={(text) => handleQuickReply(text)} lang={lang} c={c} />
         </div>
       </div>
     );
   }
 
-  // AI message with bourse cards
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <AIAvatar />
         {cleanText && (
-          <div style={{ flex: 1, maxWidth: '86%', padding: '10px 15px', borderRadius: 12, borderTopLeftRadius: 3, background: c.paper2, border: `1px solid ${c.rule}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.55 }}>
+          <div style={{ flex: 1, maxWidth: '86%', padding: '10px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
             {formatText(cleanText)}
           </div>
         )}
       </div>
-      <div style={{ paddingLeft: 42 }}>
-        <BourseCardsGrid
-          bourses={validBourses} appliedNoms={appliedNoms} onApply={onApply} onDetails={onDetails}
-          allBourses={allBourses} c={c} lang={lang}
-        />
+      <div style={{ paddingLeft: 40 }}>
+        <BourseCardsGrid bourses={validBourses} appliedNoms={appliedNoms} onApply={onApply} onDetails={onDetails} allBourses={allBourses} c={c} lang={lang} />
+        <PostSuggestions onClick={(text) => handleQuickReply(text)} lang={lang} c={c} />
       </div>
     </div>
   );
@@ -440,17 +520,8 @@ function ScrollToBottomButton({ onClick, visible, c }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        position: 'sticky', bottom: 10, right: 10, float: 'right',
-        width: 34, height: 34, borderRadius: '50%', background: c.accent,
-        border: 'none', color: '#fff', cursor: 'pointer', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', zIndex: 20, marginTop: 4,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'all .18s',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = c.accentInk; e.currentTarget.style.transform = 'scale(1.06)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.transform = 'scale(1)'; }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      style={{ position: 'sticky', bottom: 10, right: 10, float: 'right', width: 32, height: 32, background: c.accent, border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'all .18s', borderRadius: 40 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </button>
@@ -460,16 +531,35 @@ function ScrollToBottomButton({ onClick, visible, c }) {
 // ─── MAIN CHAT PAGE ────────────────────────────────────────────────────────────
 export default function ChatPage({ user, messages, input, setInput, loading, handleSend, handleQuickReply, chatContainerRef, setView, bourses = [], appliedNoms, onApplyBourse }) {
   const { t, lang } = useT();
-  const c = tokens('light'); // Connectez à useTheme() si disponible
+  const c = tokens('light');
   const heroStats = useHeroStats();
   const [showScroll, setShowScroll] = useState(false);
   const localRef = useRef(null);
   const containerRef = chatContainerRef || localRef;
-  const quickReplies = getQuickReplies(lang);
   const [drawer, setDrawer] = useState(null);
   const appliedSet = useMemo(() => appliedNoms instanceof Set ? appliedNoms : new Set((appliedNoms || []).map(n => n?.trim().toLowerCase())), [appliedNoms]);
   const [starredNoms, setStarredNoms] = useState(new Set());
   const [appliedNomsLocal, setAppliedNomsLocal] = useState(new Set());
+
+  // ── Dashboard stats ────────────────────────────────────────────────────────
+  const dashboardStats = useMemo(() => {
+    const now = new Date();
+    const urgentCount = bourses.filter(b => {
+      if (!b.dateLimite) return false;
+      const dl = new Date(b.dateLimite);
+      const days = Math.round((dl - now) / 86400000);
+      return days >= 0 && days <= 7;
+    }).length;
+    const profileFields = ['niveau', 'domaine', 'pays', 'email', 'name'];
+    const filled = profileFields.filter(f => user?.[f]).length;
+    const completion = Math.round((filled / profileFields.length) * 100);
+    return {
+      completion,
+      matches: heroStats.totalBourses ?? bourses.length,
+      urgent: urgentCount,
+      readiness: Math.min(100, completion + (appliedSet.size > 0 ? 15 : 0)),
+    };
+  }, [bourses, user, heroStats.totalBourses, appliedSet]);
 
   const scrollToBottom = () => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight; };
 
@@ -501,7 +591,7 @@ export default function ChatPage({ user, messages, input, setInput, loading, han
       }
     } catch (err) { console.error('[handleStar]', err); }
     window.dispatchEvent(new CustomEvent('favoris-updated'));
-  }, [user, lang]);
+  }, [user]);
 
   const handleApply = useCallback(async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
@@ -532,199 +622,106 @@ export default function ChatPage({ user, messages, input, setInput, loading, han
     handleQuickReply?.(`Donne-moi tous les détails sur "${bourse.nom}" : conditions, financement, processus de candidature`);
   }, [handleQuickReply]);
 
-  // ─── Progress data ─────────────────────────────────────────────────────────
-  const progressItems = [
-    { icon: '👤', label: lang === 'fr' ? 'Profil' : 'Profile', value: '80%', pct: 80, color: c.accent },
-    { icon: '🗺️', label: lang === 'fr' ? 'Roadmap' : 'Roadmap', value: lang === 'fr' ? '2 en cours' : '2 active', pct: 40, color: '#166534' },
-    { icon: '📄', label: lang === 'fr' ? 'Documents' : 'Documents', value: lang === 'fr' ? 'CV prêt' : 'CV ready', pct: 60, color: '#7c3aed' },
-  ];
+  const handleSmartSelect = useCallback((text) => {
+    setInput(text);
+    setTimeout(() => handleSend(), 50);
+  }, [setInput, handleSend]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', fontFamily: c.fSans, background: c.paper }}>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          §1 · HERO — Tableau de bord de conversation
-      ══════════════════════════════════════════════════════════════════════ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-        @keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-        @keyframes dotBounce { 0%,60%,100% { transform:scale(.7); opacity:.5; } 30% { transform:scale(1.1); opacity:1; } }
-        @keyframes cardIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-        @keyframes statPulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+        @keyframes msgIn          { from { opacity:0; transform:translateY(6px);  } to { opacity:1; transform:none; } }
+        @keyframes dotBounce      { 0%,60%,100% { transform:scale(.7); opacity:.5; } 30% { transform:scale(1.1); opacity:1; } }
+        @keyframes fadeUp         { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+        @keyframes smartActionsIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
       `}</style>
 
-      {/* Hero section — fond sombre comme homepage */}
-      <section style={{
-        position: 'relative', width: '100vw', maxWidth: '100vw',
-        marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)',
-        background: 'linear-gradient(135deg, #0a1a2e 0%, #0f2d50 55%, #1a3a6b 100%)',
-        padding: '36px 24px 0', overflow: 'hidden',
-      }}>
-        {/* Orbes décoratifs */}
-        <div style={{ position: 'absolute', top: -80, right: -80, width: 360, height: 360, borderRadius: '50%', background: 'rgba(245,166,35,0.06)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -60, left: -40, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+      <section style={{ width: '100%', padding: '80px 40px 0', borderBottom: `1px solid ${c.rule}`, background: c.paper, animation: 'fadeUp .5s ease both' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 800, margin: '0 auto' }}>
+          {/* Titre */}
+          <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 700, letterSpacing: '-0.015em', lineHeight: 1.05, color: c.ink, margin: '0 0 48px', textAlign: 'center' }}>
+            {lang === 'fr'
+              ? <>
+prêt à obtenir des réponses à   <em style={{ color: c.accent, fontStyle: 'italic' }}>toutes</em> vos questions ?</>
+              : <>Turn    <em style={{ color: c.accent, fontStyle: 'italic' }}>every</em> question into clarity. </>}
+          </h1>
 
-          {/* ── Barre de progression rapide ── */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
-            {progressItems.map((item, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                flex: 1, minWidth: 130,
-                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 10, padding: '10px 14px',
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: c.fSans, fontSize: 9.5, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
-                  <div style={{ fontFamily: c.fSans, fontSize: 12.5, color: '#fff', fontWeight: 700 }}>{item.value}</div>
-                  <div style={{ height: 3, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 5, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${item.pct}%`, background: item.color, borderRadius: 2, transition: 'width .8s ease' }} />
+          {/* Smart Actions - Centered above chat */}
+          <SmartActions user={user} onSelect={handleSmartSelect} lang={lang} c={c} />
+
+          {/* Chat Section - Centered */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' }}>
+                Opptrack AI · {lang === 'fr' ? 'En ligne' : 'Online'}
+              </span>
+            </div>
+
+            <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderTop: `3px solid ${c.accent}`, borderRadius: 12, overflow: 'hidden' }}>
+              <div ref={containerRef} style={{ height: 450, overflowY: 'auto', padding: '24px', scrollBehavior: 'smooth', position: 'relative' }}>
+
+                {/* Welcome */}
+                {messages.length === 0 && (
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0' }}>
+                    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 8 }}>
+                      <img src="/logo.png" alt="OppsTrack" style={{ width: 16, height: 16, objectFit: 'contain' }}
+                        onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;">✦</span>'; }} />
+                    </div>
+                    <div style={{ background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, padding: '16px 20px', fontFamily: c.fSans, fontSize: 13.5, color: c.ink, lineHeight: 1.6, borderRadius: 8 }}>
+                      <div style={{ borderLeft: `2px solid ${c.rule}`, paddingLeft: 12, marginBottom: 10, fontFamily: c.fSerif, fontSize: 13, color: c.ink3, fontStyle: 'italic' }}>
+                        « {lang === 'fr' ? 'Suis-je éligible au DAAD avec mon profil ?' : 'Am I eligible for the DAAD scholarship?'} »
+                      </div>
+                      <p><strong>{lang === 'fr' ? 'Bonjour' : 'Hello'}{user?.name ? ` ${user.name}` : ''}!</strong></p>
+                      <p style={{ color: c.ink2, marginTop: 6 }}>{lang === 'fr' ? 'Utilisez les actions ci-dessus ou posez-moi directement votre question.' : 'Use the actions above or ask me directly.'}</p>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Messages */}
+                {messages.map((msg, i) => (
+                  <ChatMessage
+                    key={i} msg={msg} index={i}
+                    appliedNoms={appliedSet} onApply={handleApply}
+                    onDetails={setDrawer} allBourses={bourses}
+                    handleQuickReply={handleQuickReply} lang={lang} c={c}
+                  />
+                ))}
+
+                {/* Typing indicator */}
+                {loading && (
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 8 }}>
+                      <span style={{ color: '#f5a623', fontSize: 12 }}>✦</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '12px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, borderRadius: 8 }}>
+                      {[0, 1, 2].map(i => (
+                        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: c.accent, display: 'inline-block', animation: 'dotBounce 1.2s infinite ease-in-out', animationDelay: `${i * 0.2}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <ScrollToBottomButton onClick={scrollToBottom} visible={showScroll} c={c} />
               </div>
-            ))}
-          </div>
 
-          {/* ── Salutation ── */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontFamily: c.fSans, fontSize: 10, letterSpacing: '.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginBottom: 8 }}>
-              {lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
-            </div>
-            <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(22px,4vw,34px)', fontWeight: 700, color: '#fff', lineHeight: 1.15, letterSpacing: '-.015em', margin: 0 }}>
-              {lang === 'fr'
-                ? <>{user?.name ? `Bonjour ${user.name},` : 'Bonjour,'} prêt à franchir <em style={{ color: '#f5a623', fontStyle: 'italic' }}>l'étape suivante</em> ?</>
-                : <>{user?.name ? `Hello ${user.name},` : 'Hello,'} ready for your <em style={{ color: '#f5a623', fontStyle: 'italic' }}>next step</em>?</>}
-            </h1>
-          </div>
-
-          {/* ── Quick Actions ── */}
-          <div style={{ fontFamily: c.fSans, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', fontWeight: 600, marginBottom: 10 }}>
-            {lang === 'fr' ? 'Actions rapides' : 'Quick actions'}
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 0, paddingBottom: 0 }}>
-            {quickReplies.map((qr, i) => (
-              <button
-                key={i}
-                onClick={() => handleQuickReply(qr.text)}
-                disabled={loading}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 9,
-                  flex: '1 1 160px', minWidth: 140,
-                  padding: '11px 14px',
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.13)',
-                  borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  transition: 'all .2s', fontFamily: c.fSans, opacity: loading ? 0.45 : 1,
-                }}
-                onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.2 }}>{qr.icon}</span>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.82)', fontWeight: 500, lineHeight: 1.4 }}>{qr.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Espacement avant chat box */}
-          <div style={{ height: 32 }} />
-
-          {/* ── Chat Box ── */}
-          <div style={{
-            background: c.surface, border: `1px solid ${c.rule}`,
-            borderTop: `3px solid #f5a623`,
-            borderRadius: '14px 14px 0 0',
-            overflow: 'hidden',
-            boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
-          }}>
-            {/* Messages */}
-            <div
-              ref={containerRef}
-              style={{ height: 460, overflowY: 'auto', padding: '20px 20px 10px', scrollBehavior: 'smooth', position: 'relative' }}
-            >
-              {/* Welcome screen */}
-              {messages.length === 0 && (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <img src="/logo.png" alt="OppsTrack" style={{ width: 20, height: 20, objectFit: 'contain', borderRadius: 4 }}
-                      onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;font-size:16px;">✦</span>'; }} />
-                  </div>
-                  <div style={{ background: c.paper2, border: `1px solid ${c.rule}`, borderRadius: '0 12px 12px 12px', padding: '16px 20px', fontFamily: c.fSans, fontSize: 13.5, color: c.ink, lineHeight: 1.6 }}>
-                    <p><strong>{lang === 'fr' ? 'Bonjour' : 'Hello'}{user?.name ? ` ${user.name}` : ''}!</strong> 👋</p>
-                    <p style={{ color: c.ink2, marginTop: 6 }}>{lang === 'fr' ? 'Utilisez les actions rapides ci-dessus ou posez-moi directement votre question.' : 'Use the quick actions above or ask me directly.'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Messages */}
-              {messages.map((msg, i) => (
-                <ChatMessage
-                  key={i} msg={msg} index={i}
-                  appliedNoms={appliedSet} onApply={handleApply}
-                  onDetails={setDrawer} allBourses={bourses}
-                  handleQuickReply={handleQuickReply} lang={lang} c={c}
-                />
-              ))}
-
-              {/* Typing indicator */}
-              {loading && (
-                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#0a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ color: '#f5a623', fontSize: 14 }}>✦</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '12px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderRadius: 12, borderTopLeftRadius: 3 }}>
-                    {[0, 1, 2].map(i => (
-                      <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: c.accent, display: 'inline-block', animation: 'dotBounce 1.2s infinite ease-in-out', animationDelay: `${i * 0.2}s` }} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <ScrollToBottomButton onClick={scrollToBottom} visible={showScroll} c={c} />
-            </div>
-
-            {/* Chat input */}
-            <div style={{ padding: '12px 16px', borderTop: `1px solid ${c.rule}`, background: c.paper2 }}>
-              <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading} />
+              <div style={{ padding: '14px 18px', borderTop: `1px solid ${c.rule}`, background: c.paper2 }}>
+                <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading} />
+              </div>
             </div>
           </div>
+
+          {/* Dashboard - Below chat */}
+          <MiniDashboard user={user} stats={dashboardStats} lang={lang} c={c} />
+
+          <div style={{ height: 80 }} />
         </div>
-
-        {/* Fondu bas vers paper */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: c.paper, zIndex: 3 }} />
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          §2 · STATS BAR (style homepage)
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 40, flexWrap: 'wrap',
-        background: '#0a1a2e',
-        padding: '20px 36px', width: '100vw',
-        maxWidth: '100vw', marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)',
-        borderBottom: `3px solid #f5a623`,
-      }}>
-        {[
-          { value: heroStats.totalBourses, suffix: heroStats.totalBourses >= 500 ? '+' : '', label: lang === 'fr' ? 'Bourses' : 'Scholarships' },
-          { value: heroStats.pctFinancees, suffix: '%', label: lang === 'fr' ? 'Financées' : 'Funded' },
-          { value: null, static: '24/7', label: lang === 'fr' ? 'IA active' : 'AI active' },
-        ].map((stat, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)' }} />}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontFamily: c.fSans, fontSize: '1.8rem', fontWeight: 800, color: '#f5a623', minWidth: 60, textAlign: 'center' }}>
-                {stat.static ?? <StatNumber value={stat.value} suffix={stat.suffix} loading={!heroStats.loaded} />}
-              </span>
-              <span style={{ fontFamily: c.fSans, fontSize: 10.5, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>{stat.label}</span>
-            </div>
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          §3 · DRAWER (détails bourse en sidebar)
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* Drawer */}
       {drawer && (
         <BourseDrawer
           bourse={drawer}
@@ -738,7 +735,6 @@ export default function ChatPage({ user, messages, input, setInput, loading, han
           user={user}
         />
       )}
-
     </div>
   );
 }
