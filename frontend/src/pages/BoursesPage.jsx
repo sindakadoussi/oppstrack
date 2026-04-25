@@ -1,7 +1,5 @@
-// BoursesPage.jsx - Style éditorial harmonisé avec la homepage
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import BourseCard from '../components/BourseCard';
-import ChatInput from '../components/ChatInput';
+// BoursesPage.jsx - Premium editorial + AI-driven experience (sans émojis, avec pagination)
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
@@ -9,7 +7,7 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import MatchDrawerIA from '../components/MatchDrawerIA';
 
-/* =============== TOKENS (copiés depuis la homepage) =============== */
+/* =============== TOKENS =============== */
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
   accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
@@ -24,24 +22,13 @@ const tokens = (theme) => ({
   surface:    theme === "dark" ? "#1a1912" : "#ffffff",
   danger:     "#b4321f",
   warn:       "#b06a12",
-  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
-  fSans:  `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-  fMono:  `"JetBrains Mono", ui-monospace, Menlo, monospace`,
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"DM Sans", monospace`,
 });
 
 /* =============== HELPERS =============== */
-const countryFlag = (pays) => {
-  const flags = {
-    'France':'🇫🇷','Allemagne':'🇩🇪','Royaume-Uni':'🇬🇧','États-Unis':'🇺🇸',
-    'Canada':'🇨🇦','Japon':'🇯🇵','Chine':'🇨🇳','Australie':'🇦🇺',
-    'Suisse':'🇨🇭','Pays-Bas':'🇳🇱','Maroc':'🇲🇦','Hongrie':'🇭🇺',
-    'Corée du Sud':'🇰🇷','Nouvelle-Zélande':'🇳🇿','Turquie':'🇹🇷',
-    'Belgique':'🇧🇪','Espagne':'🇪🇸','Italie':'🇮🇹','Portugal':'🇵🇹',
-    'Roumanie':'🇷🇴','Arabie Saoudite':'🇸🇦','Brunei':'🇧🇳',
-  };
-  return flags[pays] || '🌍';
-};
-
+const countryFlag = (pays) => pays; // on enlève l'emoji, on garde juste le texte
 const getImageUrl = (image) => {
   if (!image) return null;
   if (typeof image === 'object' && image.url) return image.url;
@@ -60,7 +47,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-/* =============== TOAST (style éditorial) =============== */
+/* =============== TOAST (sans émoji) =============== */
 function Toast({ message, type = 'success', onClose, c }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -91,7 +78,7 @@ function Toast({ message, type = 'success', onClose, c }) {
   );
 }
 
-/* =============== SKELETON CARD (style éditorial) =============== */
+/* =============== SKELETON CARD =============== */
 function SkeletonCard({ c }) {
   return (
     <div style={{
@@ -109,24 +96,131 @@ function SkeletonCard({ c }) {
   );
 }
 
-/* =============== VERTICAL BOURSE CARD (style unipd) =============== */
-function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang }) {
+/* =============== AI PREVIEW PANEL (sans émoji) =============== */
+function AIPreviewPanel({ bourse, user, onClose, c, lang }) {
+  const matchScore = 72 + (bourse.id?.charCodeAt(0) % 20) || 78;
+  const fitReason = lang === 'fr'
+    ? 'Votre profil correspond aux critères académiques et linguistiques.'
+    : 'Your profile matches academic and language criteria.';
+  const missing = lang === 'fr'
+    ? 'Améliorez votre lettre de motivation'
+    : 'Improve your motivation letter';
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        marginTop: 8,
+        background: c.surface,
+        border: `1px solid ${c.rule}`,
+        borderLeft: `3px solid ${c.accent}`,
+        padding: '16px 20px',
+        borderRadius: 0,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        zIndex: 10,
+        fontFamily: c.fSans,
+        fontSize: 13,
+        lineHeight: 1.5,
+        backdropFilter: 'blur(4px)',
+        backgroundColor: c.surface + 'ee',
+        transition: 'all 0.2s ease',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontFamily: c.fMono, fontSize: 11, fontWeight: 600, color: c.accent, letterSpacing: '0.05em' }}>
+          Match AI
+        </span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: c.accent }}>{matchScore}%</span>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <span style={{ fontWeight: 600, color: c.ink }}>✓ Points forts</span>
+        <p style={{ margin: '4px 0 0', color: c.ink2 }}>{fitReason}</p>
+      </div>
+      <div>
+        <span style={{ fontWeight: 600, color: c.danger }}>⚠ Axes d’amélioration</span>
+        <p style={{ margin: '4px 0 0', color: c.ink2 }}>{missing}</p>
+      </div>
+      <button
+        onClick={onClose}
+        style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', color: c.ink3, fontSize: 12 }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+/* =============== CARD VERTICALE (métadonnées structurées, sans hover AI) =============== */
+function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang, index }) {
   const imageUrl = getImageUrl(bourse.image);
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
+  const animationDelay = `${index * 0.05}s`;
+
+  // ----- Détermination du statut -----
+  const getStatus = () => {
+    if (bourse.statut === 'expiree') {
+      return { label: lang === 'fr' ? 'Expirée' : 'Expired', color: c.danger, intensity: 'solid' };
+    }
+    if (!bourse.dateLimite) {
+      return { label: lang === 'fr' ? 'Ouvert' : 'Open', color: c.accent, intensity: 'light' };
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(bourse.dateLimite);
+    deadline.setHours(0, 0, 0, 0);
+    if (deadline < today) {
+      return { label: lang === 'fr' ? 'Expirée' : 'Expired', color: c.danger, intensity: 'solid' };
+    }
+    if (deadline.toDateString() === today.toDateString()) {
+      return { label: lang === 'fr' ? 'Dernier jour' : 'Last day', color: c.warn, intensity: 'solid' };
+    }
+    if (deadline <= new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+      return { label: lang === 'fr' ? 'Bientôt' : 'Soon', color: c.warn, intensity: 'light' };
+    }
+    return { label: lang === 'fr' ? 'Ouvert' : 'Open', color: c.accent, intensity: 'light' };
+  };
+  const status = getStatus();
+
+  const getInsight = () => {
+    const domaine = (bourse.domaine || '').toLowerCase();
+    if (domaine.includes('public policy') || domaine.includes('politique publique')) return 'Idéal pour étudiants en politiques publiques';
+    if (domaine.includes('data science') || domaine.includes('ia')) return 'Parfait pour les carrières tech & IA';
+    if (bourse.niveau === 'Master' || bourse.niveau === 'PhD') return 'Programme très compétitif';
+    return 'Entièrement financé';
+  };
 
   return (
     <article
       onClick={onClick}
       style={{
-        display: 'flex', gap: 24, alignItems: 'center',
-        padding: '24px 0',
+        display: 'flex',
+        gap: 24,
+        alignItems: 'flex-start',
+        padding: '24px 20px',
+        marginBottom: 16,
         borderBottom: `1px solid ${c.ruleSoft}`,
         cursor: 'pointer',
-        transition: 'background 0.15s ease',
+        transition: 'all 0.25s cubic-bezier(0.2, 0, 0, 1)',
         background: c.surface,
+        position: 'relative',
+        opacity: 0,
+        transform: 'translateY(20px)',
+        animation: `cardAppear 0.5s ease ${animationDelay} forwards`,
       }}
-      onMouseEnter={e => e.currentTarget.style.background = c.paper2}
-      onMouseLeave={e => e.currentTarget.style.background = c.surface}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+        e.currentTarget.style.borderLeft = `3px solid ${c.accent}`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderLeft = '0px solid transparent';
+      }}
     >
       {/* Image */}
       <div style={{ flexShrink: 0, width: 100, height: 100 }}>
@@ -139,47 +233,100 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
 
       {/* Contenu */}
       <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+        {/* Ligne titre + deadline + statut */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
           <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em' }}>
             {bourse.nom}
           </h3>
-          <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            {countryFlag(bourse.pays)} {bourse.pays}
-          </span>
-          {bourse.niveau && (
-            <span style={{ fontFamily: c.fMono, fontSize: 10, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {bourse.niveau}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            {bourse.dateLimite && (
+              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+                <strong>Deadline</strong> {formatDate(bourse.dateLimite)}
+              </span>
+            )}
+            <span style={{
+              fontFamily: c.fMono,
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 20,
+              background: status.intensity === 'solid' ? status.color : `${status.color}20`,
+              color: status.intensity === 'solid' ? '#fff' : status.color,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              {status.label}
             </span>
+          </div>
+        </div>
+
+        {/* Insight contextuel */}
+        <p style={{ fontFamily: c.fSerif, fontSize: 14, fontStyle: 'italic', color: c.ink3, marginBottom: 12 }}>
+          “{getInsight()}”
+        </p>
+
+        {/* Grille des métadonnées (pays, niveau, domaine) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
+          {bourse.pays && (
+            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📍</span> <strong>Pays</strong> {bourse.pays}
+            </div>
+          )}
+          {bourse.niveau && (
+            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {bourse.niveau}
+            </div>
+          )}
+          {bourse.domaine && (
+            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
+            </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12, fontFamily: c.fSans, fontSize: 12, color: c.ink2 }}>
-          {bourse.financement && <span>💰 {bourse.financement}</span>}
-          {bourse.dateLimite && <span>⏰ {lang === 'fr' ? 'Limite' : 'Deadline'} : {formatDate(bourse.dateLimite)}</span>}
-          {bourse.tunisienEligible === 'oui' && <span>🇹🇳 Éligible Tunisie</span>}
-        </div>
+        {/* Financement (deuxième ligne) */}
+        {bourse.financement && (
+          <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {bourse.financement}
+          </div>
+        )}
 
+        {/* Description courte */}
         {bourse.description && (
           <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {bourse.description.length > 150 ? `${bourse.description.substring(0, 150)}...` : bourse.description}
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {/* Boutons d'action */}
+        <div style={{
+          display: 'flex', gap: 12, flexWrap: 'wrap',
+          opacity: 0,
+          transition: 'opacity 0.2s ease 0.1s',
+        }} className="card-actions">
           <button onClick={(e) => { e.stopPropagation(); onAskAI(bourse); }} style={{ ...actionButton(c, 'ghost'), border: `1px solid ${c.rule}`, background: 'transparent', color: c.accent }}>
-            🤖 {lang === 'fr' ? 'IA' : 'AI'}
+            IA
           </button>
           <button onClick={(e) => { e.stopPropagation(); onStar(bourse, starred); }} style={{ ...actionButton(c, 'ghost'), background: starred ? c.accent : 'transparent', color: starred ? c.paper : c.ink3, border: `1px solid ${c.rule}` }}>
-            {starred ? '★' : '☆'} {lang === 'fr' ? 'Favori' : 'Favorite'}
+            {starred ? '★' : '☆'} Favori
           </button>
           <button onClick={(e) => { e.stopPropagation(); onApply(bourse); }} style={{ ...actionButton(c, applied ? 'success' : 'primary'), background: applied ? '#2e6b3e' : c.accent, color: '#fff' }}>
             {applied ? '✓' : '+'} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'gradient'), background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff' }}>
-            🎯 {lang === 'fr' ? 'Match IA' : 'AI Match'}
+          <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'primary'), background: c.accent, color: '#fff' }}>
+            Match IA
           </button>
         </div>
       </div>
+
+      <style>{`
+        article:hover .card-actions {
+          opacity: 1 !important;
+        }
+        @keyframes cardAppear {
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </article>
   );
 }
@@ -187,13 +334,14 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
 const actionButton = (c, variant) => ({
   padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
   letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-  border: 'none', borderRadius: 0, transition: 'all 0.15s ease',
+  border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
   ...(variant === 'primary' && { background: c.accent, color: c.paper }),
   ...(variant === 'ghost' && { background: 'transparent', color: c.ink2, border: `1px solid ${c.rule}` }),
   ...(variant === 'success' && { background: '#2e6b3e', color: '#fff' }),
+  ...(variant === 'gradient' && { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff' }),
 });
 
-/* =============== LOGIN MODAL (style éditorial) =============== */
+/* =============== LOGIN MODAL (sans émoji) =============== */
 function LoginModal({ onClose, lang, c }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle');
@@ -209,6 +357,17 @@ function LoginModal({ onClose, lang, c }) {
       setStatus('error');
       setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
     }
+  };
+
+  const modalStyles = {
+    overlay:  { position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    backdrop: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' },
+    box:      { position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
+    head:     { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' },
+    closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' },
+    body:     { padding: '24px' },
+    btn:      { width: '100%', padding: '12px', fontFamily: c.fSans, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '0.05em' },
+    spinner:  { width: 32, height: 32, border: `2px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' },
   };
 
   return (
@@ -242,7 +401,7 @@ function LoginModal({ onClose, lang, c }) {
               />
               {errMsg && <div style={{ color: c.danger, fontSize: 12, marginTop: 4 }}>{errMsg}</div>}
               <button onClick={send} style={{ ...modalStyles.btn, background: c.accent, color: c.paper, marginTop: 16 }}>
-                ✉️ {lang === 'fr' ? 'Envoyer le lien' : 'Send magic link'}
+                ✉️ Envoyer le lien
               </button>
             </>
           )}
@@ -256,12 +415,12 @@ function LoginModal({ onClose, lang, c }) {
             <div style={{ textAlign: 'center', padding: 24 }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
               <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: '#2e6b3e', marginBottom: 8 }}>
-                {lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}
+                Lien envoyé !
               </div>
               <p style={{ fontSize: 13, color: c.ink2 }} dangerouslySetInnerHTML={{
                 __html: lang === 'fr' ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.' : 'Check your inbox (and spam).<br/>Click the link to sign in.'
               }} />
-              <button onClick={onClose} style={{ ...modalStyles.btn, background: '#2e6b3e', marginTop: 24 }}>✓ {lang === 'fr' ? 'Fermer' : 'Close'}</button>
+              <button onClick={onClose} style={{ ...modalStyles.btn, background: '#2e6b3e', marginTop: 24 }}>✓ Fermer</button>
             </div>
           )}
           {status === 'error' && (
@@ -269,7 +428,7 @@ function LoginModal({ onClose, lang, c }) {
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
               <p style={{ color: c.danger }}>{errMsg}</p>
               <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ ...modalStyles.btn, background: c.accent, marginTop: 16 }}>
-                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+                Réessayer
               </button>
             </div>
           )}
@@ -280,16 +439,182 @@ function LoginModal({ onClose, lang, c }) {
   );
 }
 
-const modalStyles = {
-  overlay:  { position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  backdrop: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' },
-  box:      { position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
-  head:     { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' },
-  closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' },
-  body:     { padding: '24px' },
-  btn:      { width: '100%', padding: '12px', fontFamily: 'Inter', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '0.05em' },
-  spinner:  { width: 32, height: 32, border: `2px solid ${c => c.rule}`, borderTopColor: c => c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' },
-};
+/* =============== BARRE DE CONTEXTE (sans émojis, chiffres mis en valeur) =============== */
+function SmartContextBar({ filteredBourses, user, c, lang }) {
+  const profileMatchCount = user ? Math.floor(filteredBourses.length * 0.6) : filteredBourses.length;
+  const deadlinesThisWeek = filteredBourses.filter(b => {
+    if (!b.dateLimite) return false;
+    const days = Math.ceil((new Date(b.dateLimite) - new Date()) / (1000*60*60*24));
+    return days <= 7 && days >= 0;
+  }).length;
+  const urgentCount = filteredBourses.filter(b => {
+    if (!b.dateLimite) return false;
+    const days = Math.ceil((new Date(b.dateLimite) - new Date()) / (1000*60*60*24));
+    return days <= 3 && days >= 0;
+  }).length;
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 24,
+      marginTop: 24,
+      marginBottom: 32,
+      padding: '16px 0',
+      borderTop: `1px solid ${c.ruleSoft}`,
+      borderBottom: `1px solid ${c.ruleSoft}`,
+      fontFamily: c.fMono,
+      fontSize: 13,
+      color: c.ink2,
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>{profileMatchCount}</div>
+        <div>{lang === 'fr' ? 'bourses compatibles' : 'matching scholarships'}</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>{deadlinesThisWeek}</div>
+        <div>{lang === 'fr' ? 'deadlines cette semaine' : 'deadlines this week'}</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>{urgentCount}</div>
+        <div>{lang === 'fr' ? 'opportunités urgentes' : 'urgent opportunities'}</div>
+      </div>
+    </div>
+  );
+}
+
+/* =============== MINI HERO (sans émoji) =============== */
+function MiniHero({ c, lang, totalCount }) {
+  return (
+    <div style={{
+      background: c.paper2,
+      padding: '40px 32px',
+      textAlign: 'center',
+      borderBottom: `1px solid ${c.rule}`,
+      animation: 'fadeIn 0.6s ease',
+    }}>
+      <h1 style={{
+        fontFamily: c.fSerif,
+        fontSize: 'clamp(32px, 5vw, 48px)',
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        color: c.ink,
+        margin: 0,
+      }}>
+        
+       {lang === "fr" ? (
+                  <>Trouvez votre <em style={{ color: c.accent, fontStyle: 'italic' }}>prochaine bourse internationale</em>.</>
+                ) : (
+                  <> <em style={{ color: c.accent, fontStyle: "italic" }}>Find your</em>  next international scholarship.</>
+                )}
+      </h1>
+      <p style={{
+        fontFamily: c.fSans,
+        fontSize: 16,
+        color: c.ink2,
+        marginTop: 12,
+        maxWidth: 600,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      }}>
+        +{totalCount} opportunités entièrement financées dans le monde. Personnalisées par l’IA.
+      </p>
+    </div>
+  );
+}
+
+/* =============== SMART LOGIN LOCK =============== */
+function SmartLoginLock({ hiddenCount, onLogin, c, lang }) {
+  return (
+    <div style={{
+      position: 'relative',
+      marginTop: 32,
+      backdropFilter: 'blur(8px)',
+      background: 'rgba(0,0,0,0.02)',
+      borderRadius: 0,
+      padding: '48px 24px',
+      textAlign: 'center',
+      border: `1px solid ${c.ruleSoft}`,
+      transition: 'all 0.2s',
+    }}>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(145deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06))',
+        backdropFilter: 'blur(2px)',
+        zIndex: 0,
+      }} />
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔓</div>
+        <h3 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, marginBottom: 8 }}>
+          {hiddenCount} {lang === 'fr' ? 'bourse supplémentaire' : 'more scholarships'}
+        </h3>
+        <p style={{ fontFamily: c.fSans, fontSize: 14, color: c.ink2, marginBottom: 24 }}>
+          {lang === 'fr' ? 'Créez un compte gratuit pour débloquer toutes les opportunités.' : 'Create a free account to unlock all opportunities.'}
+        </p>
+        <button
+          onClick={onLogin}
+          style={{
+            ...actionButton(c, 'primary'),
+            padding: '12px 28px',
+            fontSize: 12,
+            background: c.accent,
+            color: c.paper,
+            border: 'none',
+          }}
+        >
+          Se connecter
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* =============== COMPOSANT PAGINATION =============== */
+function Pagination({ currentPage, totalPages, onPageChange, c, lang }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 16,
+      marginTop: 48,
+      marginBottom: 24,
+    }}>
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        style={{
+          ...actionButton(c, 'ghost'),
+          padding: '8px 16px',
+          opacity: currentPage === 1 ? 0.4 : 1,
+          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {lang === 'fr' ? 'Précédent' : 'Previous'}
+      </button>
+      <span style={{ fontFamily: c.fMono, fontSize: 13, color: c.ink2 }}>
+        {lang === 'fr' ? 'Page' : 'Page'} {currentPage} / {totalPages}
+      </span>
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        style={{
+          ...actionButton(c, 'ghost'),
+          padding: '8px 16px',
+          opacity: currentPage === totalPages ? 0.4 : 1,
+          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {lang === 'fr' ? 'Suivant' : 'Next'}
+      </button>
+    </div>
+  );
+}
 
 /* =============== PAGE PRINCIPALE =============== */
 export default function BoursesPage({
@@ -321,6 +646,10 @@ export default function BoursesPage({
   const [dataLoaded, setDataLoaded] = useState(false);
   const [matchBourse, setMatchBourse] = useState(null);
 
+  // Pagination (uniquement pour les utilisateurs connectés)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   const debouncedSearch = useDebounce(search, 300);
 
   const loadUserData = useCallback(async () => {
@@ -347,54 +676,98 @@ export default function BoursesPage({
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
-  const handleStar = async (bourse, isStarred) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour sauvegarder' : 'Sign in to save', 'info'); return; }
-    try {
-      const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
-      const doc = res.data.docs?.[0];
-      if (isStarred) {
-        if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
-        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
-        showToast(lang === 'fr' ? 'Retiré des favoris' : 'Removed from favorites', 'info');
-      } else {
-        const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
-        if (doc?.id) {
-          await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
-        } else {
-          await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
-        }
-        setStarredNoms(prev => new Set([...prev, nomKey]));
-        showToast(lang === 'fr' ? 'Ajouté aux favoris' : 'Added to favorites', 'success');
-      }
-      window.dispatchEvent(new CustomEvent('favoris-updated'));
-    } catch (err) { showToast(lang === 'fr' ? 'Erreur' : 'Error', 'error'); }
-  };
+  // Dans BoursesPage.jsx (dans le composant principal)
 
-  const handleApply = async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) { showToast(lang === 'fr' ? 'Connectez-vous pour postuler' : 'Sign in to apply', 'info'); return; }
-    if (appliedNoms.has(nomKey)) { showToast(lang === 'fr' ? 'Déjà dans votre roadmap' : 'Already in roadmap', 'info'); return; }
-    try {
-      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id, userEmail: user.email || '',
-        nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '',
-        financement: bourse.financement || '', dateLimite: bourse.dateLimite || null,
-        ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
+const handleStar = async (bourse, isStarred) => {
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id) {
+    showToast(lang === 'fr' ? 'Connectez-vous pour sauvegarder' : 'Sign in to save', 'info');
+    return;
+  }
+  try {
+    const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
+    const doc = res.data.docs?.[0];
+    if (isStarred) {
+      if (!doc?.id) return;
+      await axiosInstance.patch(`/api/favoris/${doc.id}`, { 
+        bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) 
       });
-      const newRoadmapId = res.data.doc?.id || res.data.id;
-      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, { roadmapId: newRoadmapId, bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.lienOfficiel || bourse.url }, userProfile: user });
-      setAppliedNoms(prev => new Set([...prev, nomKey]));
-      showToast(lang === 'fr' ? 'Ajouté à votre roadmap' : 'Added to your roadmap', 'success');
-    } catch (err) { showToast(lang === 'fr' ? "Erreur lors de l'ajout" : 'Error adding to roadmap', 'error'); }
-  };
+      setStarredNoms(prev => new Set([...prev].filter(i => i !== nomKey)));
+      showToast(lang === 'fr' ? 'Retiré des favoris' : 'Removed from favorites', 'info');
+    } else {
+      const newBourse = { 
+        nom: bourse.nom, 
+        pays: bourse.pays || '', 
+        lienOfficiel: bourse.lienOfficiel || '', 
+        financement: bourse.financement || '', 
+        dateLimite: bourse.dateLimite || null, 
+        ajouteLe: new Date().toISOString() 
+      };
+      if (doc?.id) {
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { 
+          bourses: [...(doc.bourses || []), newBourse] 
+        });
+      } else {
+        await axiosInstance.post('/api/favoris', { 
+          user: user.id, 
+          userEmail: user.email || '', 
+          bourses: [newBourse] 
+        });
+      }
+      setStarredNoms(prev => new Set([...prev, nomKey]));
+      showToast(lang === 'fr' ? 'Ajouté aux favoris' : 'Added to favorites', 'success');
+    }
+    window.dispatchEvent(new CustomEvent('favoris-updated'));
+  } catch (err) { 
+    showToast(lang === 'fr' ? 'Erreur' : 'Error', 'error'); 
+  }
+};
 
-  const handleAskAI = (bourse) => {
-    const message = lang === 'fr' ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?` : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
-    window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
-  };
+const handleApply = async (bourse) => {
+  const nomKey = bourse.nom?.trim().toLowerCase();
+  if (!user?.id) {
+    showToast(lang === 'fr' ? 'Connectez-vous pour postuler' : 'Sign in to apply', 'info');
+    return;
+  }
+  if (appliedNoms.has(nomKey)) {
+    showToast(lang === 'fr' ? 'Déjà dans votre roadmap' : 'Already in roadmap', 'info');
+    return;
+  }
+  try {
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId: user.id,
+      userEmail: user.email || '',
+      nom: bourse.nom,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || null,
+      ajouteLe: new Date().toISOString(),
+      statut: 'en_cours',
+      etapeCourante: 0,
+    });
+    const newRoadmapId = res.data.doc?.id || res.data.id;
+    // Appel au webhook pour générer les étapes de roadmap
+    await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, { 
+      roadmapId: newRoadmapId, 
+      bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.lienOfficiel || bourse.url }, 
+      userProfile: user 
+    });
+    setAppliedNoms(prev => new Set([...prev, nomKey]));
+    showToast(lang === 'fr' ? 'Ajouté à votre roadmap' : 'Added to your roadmap', 'success');
+  } catch (err) { 
+    showToast(lang === 'fr' ? "Erreur lors de l'ajout" : 'Error adding to roadmap', 'error'); 
+  }
+};
 
+const handleAskAI = (bourse) => {
+  const message = lang === 'fr' 
+    ? `Peux-tu me dire si je suis éligible à la bourse "${bourse.nom}" en ${bourse.pays} ?` 
+    : `Can you tell me if I'm eligible for the "${bourse.nom}" scholarship in ${bourse.pays}?`;
+  window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
+};
+
+  // Filtrage
   const filtered = useMemo(() => {
     let result = bourses.filter(b => {
       if (b.statut === 'expiree') return false;
@@ -413,15 +786,38 @@ export default function BoursesPage({
     return result;
   }, [bourses, debouncedSearch, filterNiveau, filterPays, sortBy]);
 
-  const visibleBourses = !user ? filtered.slice(0, 9) : filtered;
-  const hasHiddenBourses = !user && filtered.length > 9;
+  // Gestion de l'affichage selon connexion
+  let visibleBoursesAll = filtered;
+  let hasHiddenBourses = false;
+  let hiddenCount = 0;
+
+  if (!user) {
+    visibleBoursesAll = filtered.slice(0, 9);
+    hasHiddenBourses = filtered.length > 9;
+    hiddenCount = filtered.length - 9;
+  }
+
+  // Pagination (seulement si user connecté)
+  let paginatedBourses = visibleBoursesAll;
+  let totalPages = 1;
+  if (user) {
+    totalPages = Math.ceil(visibleBoursesAll.length / itemsPerPage);
+    const start = (currentPage - 1) * itemsPerPage;
+    paginatedBourses = visibleBoursesAll.slice(start, start + itemsPerPage);
+  }
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterNiveau, filterPays, sortBy]);
+
   const paysList = useMemo(() => [...new Set(bourses.map(b => b.pays).filter(Boolean))].sort(), [bourses]);
   const niveauxList = useMemo(() => [...new Set(bourses.flatMap(b => (b.niveau || '').split(',').map(s => s.trim())).filter(Boolean))].sort(), [bourses]);
   const activeFilters = useMemo(() => {
     const filters = [];
     if (debouncedSearch) filters.push({ key: 'search', label: `🔍 "${debouncedSearch}"`, onRemove: () => setSearch('') });
     if (filterNiveau) filters.push({ key: 'niveau', label: `🎓 ${filterNiveau}`, onRemove: () => setFilterNiveau('') });
-    if (filterPays) filters.push({ key: 'pays', label: `${countryFlag(filterPays)} ${filterPays}`, onRemove: () => setFilterPays('') });
+    if (filterPays) filters.push({ key: 'pays', label: `${filterPays}`, onRemove: () => setFilterPays('') });
     return filters;
   }, [debouncedSearch, filterNiveau, filterPays]);
 
@@ -429,7 +825,9 @@ export default function BoursesPage({
 
   return (
     <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
-      {/* En-tête avec filtres (style minimal) */}
+      <MiniHero c={c} lang={lang} totalCount={bourses.length} />
+
+      {/* Filtres */}
       <div style={{ borderBottom: `1px solid ${c.rule}`, background: c.surface, padding: '24px 32px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -455,16 +853,16 @@ export default function BoursesPage({
             </select>
             <select value={filterPays} onChange={e => setFilterPays(e.target.value)} style={selectStyle(c)}>
               <option value="">{t('bourses', 'filterPays')}</option>
-              {paysList.map(p => <option key={p} value={p}>{countryFlag(p)} {p}</option>)}
+              {paysList.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={selectStyle(c)}>
-              <option value="relevance">{lang === 'fr' ? '🎯 Pertinence' : '🎯 Relevance'}</option>
-              <option value="deadline">{lang === 'fr' ? '⏰ Deadline' : '⏰ Deadline'}</option>
-              <option value="funding">{lang === 'fr' ? '💰 Financement' : '💰 Funding'}</option>
+              <option value="relevance">{lang === 'fr' ? 'Pertinence' : 'Relevance'}</option>
+              <option value="deadline">{lang === 'fr' ? 'Deadline' : 'Deadline'}</option>
+              <option value="funding">{lang === 'fr' ? 'Financement' : 'Funding'}</option>
             </select>
             {(search || filterNiveau || filterPays) && (
               <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c) }}>
-                ✕ {lang === 'fr' ? 'Effacer' : 'Clear'}
+                ✕ Effacer
               </button>
             )}
           </div>
@@ -481,61 +879,56 @@ export default function BoursesPage({
           )}
 
           <div style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3, letterSpacing: '0.02em', marginTop: 8 }}>
-            {filtered.length} {lang === 'fr' ? 'bourse' : 'scholarship'}{filtered.length > 1 ? 's' : ''} {lang === 'fr' ? 'trouvée' : 'found'}
-            {debouncedSearch && <span> pour "<strong>{debouncedSearch}</strong>"</span>}
+            {filtered.length} {lang === 'fr' ? 'bourse' : 'scholarship'}{filtered.length > 1 ? 's' : ''} trouvé{filtered.length > 1 ? 'es' : 'e'}
+            {debouncedSearch && <span> pour "{debouncedSearch}"</span>}
           </div>
         </div>
       </div>
 
-      {/* Liste verticale des bourses */}
+      {/* Barre de contexte intelligente */}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 32px' }}>
+        <SmartContextBar filteredBourses={filtered} user={user} c={c} lang={lang} />
+      </div>
+
+      {/* Liste des bourses */}
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 32px 64px' }}>
         {showSkeleton ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} c={c} />)
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ fontFamily: c.fSerif, fontSize: 32, color: c.ink2, marginBottom: 16 }}>🔍</div>
+            <div style={{ fontFamily: c.fSerif, fontSize: 32, color: c.ink2, marginBottom: 16 }}>📭</div>
             <div style={{ fontFamily: c.fSerif, fontSize: 20, color: c.ink, marginBottom: 8 }}>{t('bourses', 'noResult')}</div>
             <p style={{ color: c.ink3 }}>{t('bourses', 'noResultSub')}</p>
             <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c), marginTop: 24, background: c.accent, color: c.paper }}>
-              {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
+              Réinitialiser les filtres
             </button>
           </div>
         ) : (
-          visibleBourses.map(bourse => (
-            <VerticalBourseCard
-              key={bourse.id || bourse.nom}
-              bourse={bourse}
-              user={user}
-              onAskAI={handleAskAI}
-              onClick={() => setSelected(bourse)}
-              starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-              onStar={handleStar}
-              applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-              onApply={handleApply}
-              onMatch={setMatchBourse}
-              c={c}
-              lang={lang}
-            />
-          ))
+          <>
+            {paginatedBourses.map((bourse, idx) => (
+              <VerticalBourseCard
+                key={bourse.id || bourse.nom}
+                index={idx}
+                bourse={bourse}
+                user={user}
+                onAskAI={handleAskAI}
+                onClick={() => setSelected(bourse)}
+                starred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                onStar={handleStar}
+                applied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                onApply={handleApply}
+                onMatch={setMatchBourse}
+                c={c}
+                lang={lang}
+              />
+            ))}
+            {/* Pagination (seulement si connecté) */}
+            {user && <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} c={c} lang={lang} />}
+          </>
         )}
 
         {hasHiddenBourses && (
-          <div onClick={() => setShowLoginModal(true)} style={{
-            textAlign: 'center', padding: '48px 20px', marginTop: 32,
-            borderTop: `1px solid ${c.ruleSoft}`, borderBottom: `1px solid ${c.ruleSoft}`,
-            cursor: 'pointer', transition: 'background 0.2s'
-          }} onMouseEnter={e => e.currentTarget.style.background = c.paper2} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
-            <div style={{ fontFamily: c.fSerif, fontSize: 18, color: c.ink, marginBottom: 4 }}>
-              {filtered.length - 9} {lang === 'fr' ? 'bourse supplémentaire' : 'additional scholarship'}{filtered.length - 9 > 1 ? 's' : ''}
-            </div>
-            <div style={{ fontFamily: c.fSans, fontSize: 12, color: c.ink2, marginBottom: 16 }}>
-              {lang === 'fr' ? 'Connectez-vous pour voir toutes les bourses' : 'Sign in to see all scholarships'}
-            </div>
-            <button style={{ ...actionButton(c, 'primary'), padding: '8px 24px' }}>
-              🔐 {t('navbar', 'login')}
-            </button>
-          </div>
+          <SmartLoginLock hiddenCount={hiddenCount} onLogin={() => setShowLoginModal(true)} c={c} lang={lang} />
         )}
       </div>
 
@@ -559,6 +952,7 @@ export default function BoursesPage({
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </main>
   );

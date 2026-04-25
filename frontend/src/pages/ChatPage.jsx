@@ -1,740 +1,1157 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import ChatInput from '../components/ChatInput';
-import axiosInstance from '@/config/axiosInstance';
-import BourseDrawer from '../components/Boursedrawer';
-import { API_ROUTES } from '@/config/routes';
-import { useT } from '../i18n';
-import axios from 'axios';
-import { WEBHOOK_ROUTES } from '@/config/routes';
+// ChatInterface.jsx — v2 avec toutes les améliorations UX
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
-const tokens = (theme = 'light') => ({
-  accent:    theme === 'dark' ? '#4c9fd9' : '#0066b3',
-  accentInk: theme === 'dark' ? '#8ec1e6' : '#004f8a',
-  accent2:   '#f5a623',
-  ink:       theme === 'dark' ? '#f2efe7' : '#141414',
-  ink2:      theme === 'dark' ? '#cfccc2' : '#3a3a3a',
-  ink3:      theme === 'dark' ? '#a19f96' : '#6b6b6b',
-  ink4:      theme === 'dark' ? '#6d6b64' : '#9a9794',
-  paper:     theme === 'dark' ? '#15140f' : '#faf8f3',
-  paper2:    theme === 'dark' ? '#1d1c16' : '#f2efe7',
-  rule:      theme === 'dark' ? '#2b2a22' : '#d9d5cb',
-  ruleSoft:  theme === 'dark' ? '#24231c' : '#e8e4d9',
-  surface:   theme === 'dark' ? '#1a1912' : '#ffffff',
-  danger:    '#b4321f',
-  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
-  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-});
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=DM+Sans:opsz,wght@9..40,100;9..40,200;9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900;9..40,1000&display=swap');
 
-// ─── HERO STATS HOOK ───────────────────────────────────────────────────────────
-function useHeroStats() {
-  const [stats, setStats] = useState({ totalBourses: null, pctFinancees: null, loaded: false });
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await axiosInstance.get(API_ROUTES.bourses.list, { params: { limit: 500, depth: 0 } });
-        const docs = res.data.docs || [];
-        const total = res.data.totalDocs ?? docs.length;
-        const fin = docs.filter(b => {
-          const f = (b.financement || '').toLowerCase();
-          return f.includes('100') || f.includes('total') || f.includes('complet') || f.includes('intégral');
-        });
-        setStats({ totalBourses: total, pctFinancees: total > 0 ? Math.round((fin.length / total) * 100) : null, loaded: true });
-      } catch {
-        setStats({ totalBourses: 500, pctFinancees: 98, loaded: true });
-      }
-    };
-    fetchStats();
-  }, []);
-  return stats;
-}
-
-// ─── SMART ACTIONS ─────────────────────────────────────────────────────────────
-const INTENTS = [
-  { label: 'Trouver une bourse',      labelEn: 'Find a scholarship',     key: 'find'    },
-  { label: 'Préparer ma candidature', labelEn: 'Prepare my application', key: 'apply'   },
-  { label: 'Améliorer mes chances',   labelEn: 'Improve my chances',     key: 'improve' },
-  { label: 'Analyser mon profil',     labelEn: 'Analyze my profile',     key: 'analyze' },
-];
-
-const getSmartReplies = (intent, user, lang) => {
-  const isComplete = user?.niveau && user?.domaine;
-  if (!isComplete) {
-    return lang === 'fr'
-      ? ['Compléter mon profil', 'Analyse rapide sans profil', 'Voir des exemples de bourses']
-      : ['Complete my profile', 'Quick analysis without profile', 'See scholarship examples'];
+  :root {
+    --accent: #0066b3;
+    --accent-ink: #004f8a;
+    --accent2: #f5a623;
+    --ink: #141414;
+    --ink2: #3a3a3a;
+    --ink3: #6b6b6b;
+    --ink4: #9a9794;
+    --paper: #faf8f3;
+    --paper2: #f2efe7;
+    --rule: #d9d5cb;
+    --rule-soft: #e8e4d9;
+    --surface: #ffffff;
+    --danger: #b4321f;
+    --success: #166534;
+    --f-serif: "Playfair Display", "Times New Roman", Georgia, serif;
+    --f-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --chat-max-width: 800px;
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --transition-fast: 0.12s ease;
+    --transition-base: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    --sidebar-width: 280px;
   }
-  const map = {
-    find:    lang === 'fr'
-      ? ['Meilleures bourses pour moi', 'Bourses en Europe', 'Bourses ouvertes maintenant', 'Bourses 100% financées', 'Fermeture imminente']
-      : ['Best scholarships for me', 'Scholarships in Europe', 'Currently open', 'Fully funded', 'Closing soon'],
-    apply:   lang === 'fr'
-      ? ['Créer mon CV académique', 'Rédiger lettre de motivation', 'Corriger mon essay', 'Préparer entretien', 'Documents requis']
-      : ['Create my academic CV', 'Write motivation letter', 'Review my essay', 'Prepare interview', 'Required documents'],
-    improve: lang === 'fr'
-      ? ['Ma probabilité de succès ?', 'Quelle stratégie adopter ?', 'Mes points faibles', 'Comment me démarquer ?', "Plan d'amélioration"]
-      : ['My success probability?', 'What strategy?', 'My weak points', 'How to stand out?', 'Improvement plan'],
-    analyze: lang === 'fr'
-      ? ['Suis-je éligible ?', 'Score de mon profil', 'Bourses adaptées', 'Ce qui manque', 'Optimiser mon profil']
-      : ['Am I eligible?', 'My profile score', 'Matching scholarships', 'What is missing', 'Optimize my profile'],
-  };
-  return map[intent] || [];
+
+  [data-theme="dark"] {
+    --accent: #4c9fd9;
+    --accent-ink: #8ec1e6;
+    --ink: #f2efe7;
+    --ink2: #cfccc2;
+    --ink3: #a19f96;
+    --ink4: #6d6b64;
+    --paper: #15140f;
+    --paper2: #1d1c16;
+    --rule: #2b2a22;
+    --rule-soft: #24231c;
+    --surface: #1a1912;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulse-dot {
+    0%, 60%, 100% { transform: scale(0.7); opacity: 0.4; }
+    30% { transform: scale(1.1); opacity: 1; }
+  }
+  @keyframes ctx-pop {
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes action-bar-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+  ::selection { background: var(--accent); color: white; }
+  body { margin: 0; padding: 0; }
+
+  .conv-item { position: relative; }
+  .conv-item:hover .conv-menu-btn { opacity: 1 !important; }
+
+  .ctx-menu {
+    position: absolute;
+    right: 8px;
+    top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 6px;
+    z-index: 100;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    animation: ctx-pop 0.15s ease both;
+  }
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink2);
+    font-family: var(--f-sans);
+    transition: all 0.1s ease;
+    white-space: nowrap;
+  }
+  .ctx-item:hover { background: var(--paper2); color: var(--ink); }
+  .ctx-item.danger:hover { background: #fef2f2; color: var(--danger); }
+
+  .rename-input {
+    background: var(--paper2);
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 13px;
+    padding: 4px 8px;
+    outline: none;
+    width: 100%;
+  }
+  .search-input {
+    background: var(--paper2);
+    border: 1.5px solid var(--rule);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 13px;
+    padding: 8px 12px 8px 34px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .date-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink4);
+    padding: 8px 12px 4px;
+  }
+
+  /* ── Action bar after AI message ── */
+  .action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    animation: action-bar-in 0.22s ease both;
+  }
+  .action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    font-family: var(--f-sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.13s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .action-chip:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+  }
+  .action-chip:active { transform: translateY(0); }
+
+  /* ── Suggestion blocks ── */
+  .sugg-section { margin-bottom: 16px; }
+  .sugg-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink4);
+    margin-bottom: 6px;
+    padding: 0 2px;
+    font-family: var(--f-sans);
+  }
+  .sugg-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sugg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 22px;
+    font-family: var(--f-sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.13s ease;
+    user-select: none;
+  }
+  .sugg-chip:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+  }
+  .sugg-chip:active { transform: translateY(0); }
+  .sugg-emoji {
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+`;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const generateId = () => Math.random().toString(36).slice(2);
+
+const formatDateLabel = (iso) => {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return 'Hier';
+  if (diff < 7) return 'Cette semaine';
+  return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 };
 
-function SmartActions({ user, onSelect, lang, c }) {
-  const [active, setActive] = useState(null);
-  const replies = getSmartReplies(active, user, lang);
+// ── Suggestion groups ──────────────────────────────────────────────────────
+const SUGGESTION_GROUPS = [
+  {
+    title: '🎯 Trouver des bourses',
+    items: [
+      { emoji: '🎯', text: 'Trouve-moi des bourses adaptées à mon profil' },
+      { emoji: '⚡', text: 'Quelles bourses sont encore ouvertes maintenant ?' },
+      { emoji: '💰', text: 'Bourses 100% financées pour moi' },
+      { emoji: '🌍', text: 'Quelles bourses à l\'étranger me correspondent ?' },
+      { emoji: '🇫🇷', text: 'Quelles bourses en France sont accessibles pour moi ?' },
+    ],
+  },
+  {
+    title: '📊 Analyse intelligente',
+    items: [
+      { emoji: '📊', text: 'Quelle est ma probabilité d\'être accepté ?' },
+      { emoji: '🔍', text: 'Analyse mon profil et dis-moi mes chances' },
+      { emoji: '⚠️', text: 'Qu\'est-ce qui bloque ma candidature ?' },
+      { emoji: '🧠', text: 'Quelle stratégie dois-je suivre ?' },
+    ],
+  },
+  {
+    title: '🚀 Action rapide',
+    items: [
+      { emoji: '🚀', text: 'Aide-moi à postuler à une bourse' },
+      { emoji: '📝', text: 'Rédige ma lettre de motivation' },
+      { emoji: '📄', text: 'Améliore mon CV' },
+      { emoji: '🎙️', text: 'Simule un entretien de bourse' },
+    ],
+  },
+  {
+    title: '⏰ Urgence',
+    items: [
+      { emoji: '⏰', text: 'Quelles bourses ferment cette semaine ?' },
+      { emoji: '🔥', text: 'Donne-moi les bourses les plus urgentes' },
+      { emoji: '📅', text: 'Quelles deadlines approchent ?' },
+    ],
+  },
+  {
+    title: '🎓 Explorer par destination',
+    items: [
+      { emoji: '🎓', text: 'Je veux étudier en Europe' },
+      { emoji: '🌎', text: 'Je veux étudier au Canada' },
+      { emoji: '🇬🇧', text: 'Je veux étudier au Royaume-Uni' },
+      { emoji: '🇩🇪', text: 'Je veux étudier en Allemagne' },
+    ],
+  },
+];
+
+// ── Action chips after AI message ────────────────────────────────────────────
+const ACTION_CHIPS = [
+  { icon: '📄', label: 'Ajouter à ma roadmap', prompt: 'Ajouter cette bourse à ma roadmap' },
+  { icon: '📊', label: 'Analyser cette bourse', prompt: 'Analyse cette bourse en détail' },
+  { icon: '⚖️', label: 'Comparer avec une autre', prompt: 'Compare cette bourse avec une autre similaire' },
+  { icon: '✉️', label: 'Préparer ma candidature', prompt: 'Aide-moi à préparer ma candidature pour cette bourse' },
+];
+
+const DEMO_CONVERSATIONS = [
+  {
+    id: 'demo1',
+    title: 'Bourses pour master en France',
+    updatedAt: new Date().toISOString(),
+    messages: [
+      { id: 'd1a', sender: 'user', text: 'Bourses pour master en France', timestamp: new Date().toISOString() },
+      { id: 'd1b', sender: 'ai', text: 'Voici les meilleures bourses pour un master en France…', timestamp: new Date().toISOString(), showActions: true }
+    ]
+  },
+  {
+    id: 'demo2',
+    title: 'Comment rédiger une lettre de motivation ?',
+    updatedAt: new Date(Date.now() - 86400000).toISOString(),
+    messages: [
+      { id: 'd2a', sender: 'user', text: 'Comment rédiger une lettre de motivation ?', timestamp: new Date(Date.now() - 86400000).toISOString() }
+    ]
+  },
+  {
+    id: 'demo3',
+    title: 'Visa étudiant Erasmus',
+    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    messages: [
+      { id: 'd3a', sender: 'user', text: 'Visa étudiant Erasmus', timestamp: new Date(Date.now() - 3 * 86400000).toISOString() }
+    ]
+  }
+];
+
+const generateAIResponse = (query) => {
+  return `Merci pour votre question : **${query}**
+
+## Voici ce que je peux vous proposer
+
+Je suis votre assistant dédié à la recherche de bourses d'études. Voici comment je peux vous aider :
+
+• **Rechercher** des bourses adaptées à votre profil
+• **Analyser** votre éligibilité pour différentes opportunités
+• **Préparer** vos dossiers de candidature
+• **Optimiser** vos chances de réussite
+
+### Bourses recommandées
+
+**Bourse Eiffel**
+Pays : France | Niveau : Master, Doctorat
+Financement : Jusqu'à 1,181€ par mois
+
+**Bourse Fulbright**
+Pays : États-Unis | Niveau : Master, Doctorat
+Financement : Frais de scolarité + allocation
+
+**Bourse Erasmus Mundus**
+Pays : Europe | Niveau : Master
+Financement : Jusqu'à 1,400€ par mois
+
+N'hésitez pas à me donner plus de détails sur votre parcours pour des recommandations personnalisées.`;
+};
+
+// ── Context Menu ─────────────────────────────────────────────────────────────
+function ContextMenu({ onRename, onDelete, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
 
   return (
-    <div style={{ marginBottom: 32, width: '100%' }}>
-      <div style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>
-        {lang === 'fr' ? 'Actions intelligentes' : 'Smart actions'}
+    <div className="ctx-menu" ref={ref}>
+      <div className="ctx-item" onClick={onRename}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Renommer
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {INTENTS.map((intent) => {
-          const isActive = active === intent.key;
-          return (
-            <button
-              key={intent.key}
-              onClick={() => setActive(isActive ? null : intent.key)}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.paper2; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = c.surface; }}
-              style={{
-                padding: '8px 18px',
-                background: isActive ? c.accent : c.surface,
-                border: `1px solid ${isActive ? c.accent : c.rule}`,
-                cursor: 'pointer',
-                fontFamily: c.fSans,
-                fontSize: 12.5,
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? '#fff' : c.ink,
-                transition: 'all .18s',
-                borderRadius: 40,
-              }}
-            >
-              {lang === 'fr' ? intent.label : intent.labelEn}
-            </button>
-          );
-        })}
+      <div className="ctx-item danger" onClick={onDelete}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/>
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+        Supprimer
       </div>
-      {active && replies.length > 0 && (
-        <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', animation: 'smartActionsIn .2s ease both' }}>
-          {replies.map((r, idx) => (
-            <button
-              key={idx}
-              onClick={() => onSelect(r.replace(/^[^\w\u00C0-\u024F]*/, '').trim())}
-              onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = c.accent; }}
-              onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.color = c.ink2; e.currentTarget.style.borderColor = c.rule; }}
-              style={{ padding: '5px 14px', border: `1px solid ${c.rule}`, background: c.surface, color: c.ink2, cursor: 'pointer', fontSize: 12, fontFamily: c.fSans, fontWeight: 600, transition: 'all .15s', borderRadius: 40 }}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── MINI DASHBOARD ────────────────────────────────────────────────────────────
-function ProgressBar({ value, color }) {
-  return (
-    <div style={{ width: '100%', height: 3, background: '#e8e4d9', marginTop: 4 }}>
-      <div style={{ width: `${Math.min(100, Math.max(0, value))}%`, height: '100%', background: color, transition: 'width .6s cubic-bezier(.4,0,.2,1)' }} />
-    </div>
-  );
-}
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete }) {
+  const [search, setSearch] = useState('');
+  const [openMenu, setOpenMenu] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameRef = useRef(null);
 
-function MiniDashboard({ user, stats = {}, lang, c }) {
-  const completion = stats.completion ?? 0;
-  const readiness  = stats.readiness  ?? 0;
-  const completionColor = completion >= 80 ? '#166534' : completion >= 50 ? c.accent : '#b45309';
-  const readinessColor  = readiness  >= 70 ? '#166534' : readiness  >= 40 ? c.accent : '#b45309';
+  useEffect(() => {
+    if (renamingId && renameRef.current) renameRef.current.focus();
+  }, [renamingId]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return conversations;
+    return conversations.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+  }, [conversations, search]);
+
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach(c => {
+      const label = formatDateLabel(c.updatedAt);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(c);
+    });
+    return groups;
+  }, [filtered]);
+
+  const handleRenameSubmit = (id) => {
+    if (renameValue.trim()) onRename(id, renameValue.trim());
+    setRenamingId(null);
+    setRenameValue('');
+  };
 
   return (
-    <div style={{ border: `1px solid ${c.rule}`, borderTop: `3px solid ${c.accent2}`, background: c.surface, padding: '20px', marginTop: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' }}>
-          {lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
-        </span>
-        {user?.name && <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink4, fontWeight: 500 }}>{user.name}</span>}
+    <aside style={{
+      width: 'var(--sidebar-width)',
+      background: 'var(--surface)',
+      borderRight: '1px solid var(--rule)',
+      display: 'flex',
+      flexDirection: 'column',
+      // FIX #6: sidebar ne recouvre plus le footer — position sticky dans son flex parent
+      position: 'sticky',
+      top: 0,
+      height: '100vh',
+      flexShrink: 0,
+      animation: 'slide-in-left 0.25s ease both',
+      overflowY: 'hidden',
+    }}>
+      {/* Logo + New Chat */}
+      <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
+        <h1 style={{
+          fontFamily: 'var(--f-serif)',
+          fontSize: 22, fontWeight: 700,
+          color: 'var(--accent)',
+          letterSpacing: '-0.01em',
+          marginBottom: 14
+        }}>OppsTrack</h1>
+
+        {/* FIX #5: Bouton New Chat dans sidebar */}
+        <button
+          onClick={onNew}
+          style={{
+            width: '100%',
+            padding: '9px 14px',
+            background: 'var(--accent)',
+            border: 'none',
+            borderRadius: 10,
+            color: 'white',
+            fontFamily: 'var(--f-sans)',
+            fontSize: 13, fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+            transition: 'background 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-ink)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nouvelle discussion
+        </button>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-          <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600 }}>{lang === 'fr' ? 'Profil complété' : 'Profile complete'}</span>
-          <span style={{ fontFamily: c.fSans, fontSize: 13, fontWeight: 700, color: completionColor }}>{completion}%</span>
+      {/* Search */}
+      <div style={{ padding: '12px 14px 8px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink4)', pointerEvents: 'none' }}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input className="search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…" />
         </div>
-        <ProgressBar value={completion} color={completionColor} />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {[
-          { label: lang === 'fr' ? 'Niveau' : 'Level',  value: user?.niveau  || (lang === 'fr' ? 'Non renseigné' : 'Not set') },
-          { label: lang === 'fr' ? 'Domaine' : 'Field', value: user?.domaine || (lang === 'fr' ? 'Non renseigné' : 'Not set') },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ flex: 1, padding: '6px 10px', background: c.paper2, border: `1px solid ${c.ruleSoft}`, fontFamily: c.fSans }}>
-            <div style={{ fontSize: 9, color: c.ink4, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-            <div style={{ fontSize: 11.5, color: c.ink, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+      {/* Conversation list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+        {Object.keys(grouped).length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--ink4)', textAlign: 'center', marginTop: 24, fontFamily: 'var(--f-sans)' }}>
+            Aucune conversation
+          </p>
+        )}
+        {Object.entries(grouped).map(([label, convs]) => (
+          <div key={label}>
+            <div className="date-label">{label}</div>
+            {convs.map(conv => (
+              <div
+                key={conv.id}
+                className="conv-item"
+                style={{
+                  borderRadius: 8,
+                  marginBottom: 2,
+                  background: conv.id === activeId ? 'var(--paper2)' : 'transparent',
+                  border: conv.id === activeId ? '1px solid var(--rule-soft)' : '1px solid transparent',
+                  transition: 'all 0.12s ease'
+                }}
+                onMouseEnter={e => { if (conv.id !== activeId) e.currentTarget.style.background = 'var(--paper2)'; }}
+                onMouseLeave={e => { if (conv.id !== activeId) e.currentTarget.style.background = 'transparent'; }}
+              >
+                {renamingId === conv.id ? (
+                  <div style={{ padding: '8px 10px' }}>
+                    <input
+                      ref={renameRef}
+                      className="rename-input"
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenameSubmit(conv.id);
+                        if (e.key === 'Escape') { setRenamingId(null); setRenameValue(''); }
+                      }}
+                      onBlur={() => handleRenameSubmit(conv.id)}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', padding: '9px 8px', cursor: 'pointer', gap: 8 }}
+                    onClick={() => onSelect(conv.id)}
+                  >
+                    <svg style={{ flexShrink: 0, color: conv.id === activeId ? 'var(--accent)' : 'var(--ink4)' }}
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: conv.id === activeId ? 600 : 400,
+                        color: conv.id === activeId ? 'var(--accent)' : 'var(--ink2)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        fontFamily: 'var(--f-sans)'
+                      }}>{conv.title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 1, fontFamily: 'var(--f-sans)' }}>
+                        {new Date(conv.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <button
+                      className="conv-menu-btn"
+                      style={{
+                        background: 'transparent', border: 'none',
+                        padding: '3px 4px', borderRadius: 5,
+                        cursor: 'pointer', color: 'var(--ink3)',
+                        flexShrink: 0,
+                        opacity: openMenu === conv.id ? 1 : 0,
+                        transition: 'opacity 0.12s ease, background 0.12s ease',
+                        display: 'flex', alignItems: 'center'
+                      }}
+                      onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--rule-soft)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === conv.id && (
+                      <ContextMenu
+                        onClose={() => setOpenMenu(null)}
+                        onRename={() => { setOpenMenu(null); setRenamingId(conv.id); setRenameValue(conv.title); }}
+                        onDelete={() => { setOpenMenu(null); onDelete(conv.id); }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ))}
       </div>
-
-      <div style={{ height: 1, background: c.ruleSoft, marginBottom: 16 }} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: lang === 'fr' ? 'Bourses'  : 'Matches', value: stats.matches ?? 0,  color: c.accent      },
-          { label: lang === 'fr' ? 'Urgentes' : 'Urgent',  value: stats.urgent  ?? 0,  color: '#b91c1c'     },
-          { label: lang === 'fr' ? 'Prêt'     : 'Ready',   value: `${readiness}%`,      color: readinessColor },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ fontFamily: c.fSans, fontSize: 9, color: c.ink4, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontFamily: c.fSans, fontSize: 18, fontWeight: 700, color, letterSpacing: '-0.02em' }}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-          <span style={{ fontFamily: c.fSans, fontSize: 11, color: c.ink3, fontWeight: 600 }}>{lang === 'fr' ? 'Prêt à postuler' : 'Application readiness'}</span>
-        </div>
-        <ProgressBar value={readiness} color={readinessColor} />
-      </div>
-    </div>
+    </aside>
   );
 }
 
-// ─── POST SUGGESTIONS ──────────────────────────────────────────────────────────
-function PostSuggestions({ onClick, lang, c }) {
-  const suggestions = lang === 'fr'
-    ? ['Ajouter à ma roadmap', 'Analyser cette bourse', 'Comparer avec une autre', 'Préparer ma candidature']
-    : ['Add to my roadmap', 'Analyze this scholarship', 'Compare with another', 'Prepare my application'];
-
+// ── Action Bar (après chaque message AI) ─────────────────────────────────────
+function ActionBar({ onAction }) {
   return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-      {suggestions.map((s, i) => (
+    <div className="action-bar">
+      {ACTION_CHIPS.map((chip, i) => (
         <button
           key={i}
-          onClick={() => onClick(s.replace(/^[^\w\u00C0-\u024F]*/, '').trim())}
-          onMouseEnter={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = c.accent; }}
-          onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.color = c.ink3; e.currentTarget.style.borderColor = c.rule; }}
-          style={{ padding: '4px 10px', border: `1px solid ${c.rule}`, background: c.surface, color: c.ink3, cursor: 'pointer', fontSize: 11, fontFamily: c.fSans, fontWeight: 600, transition: 'all .15s', borderRadius: 4 }}
+          className="action-chip"
+          onClick={() => onAction(chip.prompt)}
+          title={chip.label}
         >
-          {s}
+          <span style={{ fontSize: 12 }}>{chip.icon}</span>
+          {chip.label}
         </button>
       ))}
     </div>
   );
 }
 
-// ─── PARSE BOURSES ─────────────────────────────────────────────────────────────
-function parseBourses(msg) {
-  if (msg?.bourses && Array.isArray(msg.bourses) && msg.bourses.length > 0) {
-    return msg.bourses.map(b => ({
-      ...b, _fromText: false,
-      nom: b.nom?.trim(), pays: b.pays?.trim() || '', financement: b.financement?.trim() || '',
-      niveau: b.niveau?.trim() || '', description: b.description?.trim() || '',
-      lienOfficiel: b.lienOfficiel?.trim() || '', domaine: b.domaine?.trim() || '',
-    }));
-  }
-  const text = msg?.text || '';
-  if (!text) return [];
-  const lines = text.split('\n');
-  const bourses = [];
-  let current = null;
-  const isFakeTitle = (nom) => {
-    if (!nom) return true;
-    const n = nom.trim();
-    return n.length < 8 || /^(consultez|notez|préparez|prochaines étapes|voir détails|apply|click|summary)/i.test(n) || /^[\*\_#\-•\d\s]+$/.test(n);
-  };
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    if (/prochaines étapes|💡|voir \d+ bourses|selon votre profil|summary/i.test(line)) break;
-    const start = line.match(/^(?:#+\s*)?(\d+)[\.\)\s]*[️⃣]?\s*(.+)/);
-    if (start) {
-      if (current?.nom && current.nom.length >= 8) bourses.push(current);
-      let nom = start[2].replace(/^[^:]+:\s*/, '').replace(/\*\*/g, '').trim().replace(/^[\uFE0F\u20E3\s]+/, '').trim();
-      if (isFakeTitle(nom)) { current = null; continue; }
-      current = { nom, pays: '', financement: '', niveau: '', description: '', lienOfficiel: '', domaine: '', _fromText: true };
-      continue;
-    }
-    if (!current) continue;
-    const fieldMatch =
-      line.match(/^(?:•\s*[-–]?\s*)?(?:🌍\s*)?(pays|country)\s*[:\-–]\s*(.+)/i) ||
-      line.match(/^(?:•\s*[-–]?\s*)?(?:💰\s*)?(financement|funding)\s*[:\-–]\s*(.+)/i) ||
-      line.match(/^(?:•\s*[-–]?\s*)?(?:🎓\s*)?(niveau|level)\s*[:\-–]\s*(.+)/i) ||
-      line.match(/^(?:•\s*[-–]?\s*)?(?:📝\s*)?(description|details)\s*[:\-–]\s*(.+)/i) ||
-      line.match(/^(?:•\s*[-–]?\s*)?(?:📚\s*)?(domaine|field)\s*[:\-–]\s*(.+)/i);
-    if (fieldMatch) {
-      const key = fieldMatch[1].toLowerCase();
-      const value = fieldMatch[2]?.trim() || '';
-      if (/pays|country/.test(key)) current.pays = value;
-      else if (/financement|funding/.test(key)) current.financement = value;
-      else if (/niveau|level/.test(key)) current.niveau = value;
-      else if (/description|details/.test(key)) current.description = value;
-      else if (/domaine|field/.test(key)) current.domaine = value;
-      continue;
-    }
-    if (!current.lienOfficiel) {
-      const link = line.match(/\[.*?\]\((https?:\/\/[^)]+)\)/) || line.match(/\((https?:\/\/[^)]+)\)/);
-      if (link) { current.lienOfficiel = link[1]; continue; }
-    }
-  }
-  if (current?.nom && current.nom.length >= 8) bourses.push(current);
-  const unique = [], seen = new Set();
-  for (const b of bourses) {
-    if (!b?.nom) continue;
-    const key = b.nom.toLowerCase().trim();
-    if (!seen.has(key) && b.nom.length >= 8 && !/^(consultez|notez|préparez|apply|click)/i.test(b.nom)) {
-      seen.add(key);
-      unique.push({ ...b, nom: b.nom.trim(), pays: b.pays?.trim() || '', financement: b.financement?.trim() || '', niveau: b.niveau?.trim() || '', description: b.description?.trim() || '', lienOfficiel: b.lienOfficiel?.trim() || '', domaine: b.domaine?.trim() || '' });
-    }
-  }
-  return unique;
-}
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction }) {
+  const formattedContent = useMemo(() => {
+    if (!message.text) return null;
+    const lines = message.text.split('\n');
+    const elements = [];
 
-// ─── CLEAN MESSAGE TEXT ────────────────────────────────────────────────────────
-function cleanMessageText(text, lang = 'fr') {
-  if (!text) return '';
-  let t = text.replace(/\[\[BOURSES:[\s\S]*?\]\]/g, '').replace(/```json[\s\S]*?```/g, '').replace(/BOURSES_JSON:[\s\S]*?(?=\n\n|$)/g, '');
-  const lines = t.split('\n');
-  const cleanLines = [];
-  let inBourseSection = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (/^#{0,3}\s*(?:[🏥🎓✨💡]\s*)?(?:bourses|recommandées|scholarships|liste|voici les)/i.test(trimmed)) { inBourseSection = true; continue; }
-    if (inBourseSection) {
-      if (/^(###\s*)?(?:📌\s*Prochaines|✨|💡|💬|Prêt|Astuce|Conseil|Note|Bonne chance)/i.test(trimmed)) { inBourseSection = false; cleanLines.push(trimmed); continue; }
-      continue;
-    }
-    if (/^[-*_]{3,}$/.test(trimmed)) continue;
-    if (/^•\s*[-–]?\s*[🌍💰🎓📝🔗📚]/.test(trimmed)) continue;
-    if (/^[🌍💰🎓📝🔗]\s+[\w\-:]/.test(trimmed)) continue;
-    if (/\[Lien officiel|Official link\]\(https?:\/\//i.test(trimmed) || /^https?:\/\/[^\s]+(?:scholarship|bourse)/i.test(trimmed)) continue;
-    if (/^(?:#{1,3}\s*)?\d+[\.\)\s]*[️⃣]?\s*[^\n]{10,}/.test(trimmed)) continue;
-    cleanLines.push(trimmed);
-  }
-  const result = cleanLines.join('\n').trim();
-  const defaultMsg = lang === 'fr' ? 'Voici les bourses qui correspondent à votre profil :' : 'Here are the scholarships matching your profile:';
-  return result.length > 10 ? result : defaultMsg;
-}
-
-// ─── BOURSE CARD COMPACT ───────────────────────────────────────────────────────
-function BourseCardCompact({ bourse, onApply, onDetails, applied, index, c }) {
-  const [applying, setApplying] = useState(false);
-  const [appDone, setAppDone] = useState(applied);
-  const dl = bourse.dateLimite ? new Date(bourse.dateLimite) : null;
-  const daysLeft = dl ? Math.round((dl - new Date()) / 86400000) : null;
-  const isUrgent = daysLeft !== null && daysLeft <= 7;
-  const flags = { France:'🇫🇷', Allemagne:'🇩🇪', 'Royaume-Uni':'🇬🇧', 'États-Unis':'🇺🇸', Canada:'🇨🇦', Australie:'🇦🇺', Japon:'🇯🇵', Maroc:'🇲🇦', Tunisie:'🇹🇳', Belgique:'🇧🇪', Suisse:'🇨🇭', International:'🌍', Mondial:'🌐' };
-  const flag = bourse.pays ? (flags[bourse.pays] || '🌍') : '🌍';
-  const accentColors = ['#0066b3', '#166534', '#7c3aed', '#f5a623', '#0891b2', '#dc2626'];
-  const barColor = accentColors[index % accentColors.length];
-
-  const handleApply = async () => {
-    if (appDone) return;
-    setApplying(true);
-    await onApply?.(bourse);
-    setAppDone(true);
-    setApplying(false);
-  };
-
-  return (
-    <div
-      onClick={() => onDetails?.(bourse)}
-      onMouseEnter={e => { e.currentTarget.style.background = c.paper2; e.currentTarget.style.borderLeftColor = c.accent2; e.currentTarget.style.transform = 'translateX(3px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = c.surface; e.currentTarget.style.borderLeftColor = barColor; e.currentTarget.style.transform = 'translateX(0)'; }}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: c.surface, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${barColor}`, borderRadius: 0, cursor: 'pointer', transition: 'all .18s', marginTop: 8 }}
-    >
-      <span style={{ fontSize: 20, flexShrink: 0 }}>{flag}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: c.fSans, fontSize: 12.5, fontWeight: 700, color: c.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '.01em' }}>{bourse.nom}</div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-          {bourse.pays && <span style={{ fontFamily: c.fSans, fontSize: 10.5, color: c.ink3 }}>{bourse.pays}</span>}
-          {bourse.niveau && <><span style={{ color: c.rule }}>·</span><span style={{ fontFamily: c.fSans, fontSize: 10.5, color: c.ink3 }}>{bourse.niveau}</span></>}
-          {dl && (
-            <span style={{ fontFamily: c.fSans, fontSize: 10, fontWeight: 700, color: isUrgent ? '#b91c1c' : '#1d4ed8', background: isUrgent ? '#fef2f2' : '#eff6ff', border: `1px solid ${isUrgent ? '#fecaca' : '#bfdbfe'}`, borderRadius: 3, padding: '2px 6px' }}>
-              {daysLeft < 0 ? 'Expiré' : daysLeft === 0 ? 'Aujourd\'hui' : `${daysLeft}j`}
-            </span>
-          )}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-        {bourse.lienOfficiel && (
-          <a href={bourse.lienOfficiel} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            style={{ padding: '5px 10px', border: `1px solid ${c.rule}`, background: 'transparent', color: c.ink3, fontSize: 11, fontFamily: c.fSans, textDecoration: 'none', fontWeight: 600, borderRadius: 4 }}>
-            Lien
-          </a>
-        )}
-        <button
-          onClick={e => { e.stopPropagation(); handleApply(); }}
-          disabled={appDone || applying}
-          style={{ padding: '5px 14px', border: 'none', background: appDone ? '#166534' : c.accent, color: '#fff', fontSize: 11, fontFamily: c.fSans, fontWeight: 700, cursor: appDone ? 'default' : 'pointer', letterSpacing: '.05em', textTransform: 'uppercase', transition: 'all .15s', borderRadius: 4 }}>
-          {applying ? '...' : appDone ? '✓' : 'Postuler'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── BOURSE CARDS GRID ─────────────────────────────────────────────────────────
-function BourseCardsGrid({ bourses, onApply, onDetails, appliedNoms, allBourses, c, lang }) {
-  const [visible, setVisible] = useState(3);
-  if (!bourses || bourses.length === 0) return null;
-
-  const enrich = (b) => {
-    if (!b._fromText || !allBourses?.length) return b;
-    const found = allBourses.find(db => {
-      const a = (db.nom || '').toLowerCase().trim(), cv = (b.nom || '').toLowerCase().trim();
-      return a === cv || a.includes(cv.slice(0, 12)) || cv.includes(a.slice(0, 12));
-    });
-    return found ? { ...found, _enriched: true } : b;
-  };
-
-  return (
-    <div style={{ width: '100%', marginTop: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${c.rule}` }}>
-        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.accent, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase' }}>
-          {bourses.length} bourse{bourses.length > 1 ? 's' : ''}
-        </span>
-        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 600, letterSpacing: '.22em', textTransform: 'uppercase' }}>
-          {lang === 'fr' ? 'recommandées' : 'recommended'}
-        </span>
-        <div style={{ flex: 1, height: 1, background: c.ruleSoft }} />
-        <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink4 }}>{lang === 'fr' ? 'selon votre profil' : 'matching your profile'}</span>
-      </div>
-      {bourses.slice(0, visible).map((b, i) => (
-        <BourseCardCompact
-          key={b.id || b.nom || i} bourse={b} index={i}
-          applied={appliedNoms?.has(b.nom?.trim().toLowerCase())}
-          onApply={onApply}
-          onDetails={(bo) => onDetails?.(enrich(bo))}
-          c={c}
-        />
-      ))}
-      {visible < bourses.length && (
-        <button
-          onClick={() => setVisible(v => v + 3)}
-          onMouseEnter={e => { e.currentTarget.style.color = c.accent; e.currentTarget.style.borderColor = c.accent; }}
-          onMouseLeave={e => { e.currentTarget.style.color = c.ink3; e.currentTarget.style.borderColor = c.rule; }}
-          style={{ width: '100%', marginTop: 10, padding: '9px', border: `1px solid ${c.rule}`, background: 'transparent', color: c.ink3, fontFamily: c.fSans, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all .18s', letterSpacing: '.12em', textTransform: 'uppercase' }}>
-          {lang === 'fr' ? `Voir ${Math.min(3, bourses.length - visible)} de plus →` : `Show ${Math.min(3, bourses.length - visible)} more →`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── CHAT MESSAGE ──────────────────────────────────────────────────────────────
-function ChatMessage({ msg, index, appliedNoms, onApply, onDetails, handleQuickReply, allBourses, lang, c }) {
-  const isAI = msg.sender === 'ai';
-  const detectedBourses = useMemo(() => { if (!isAI) return []; return parseBourses(msg); }, [msg, isAI]);
-  const cleanText = useMemo(() => {
-    if (!isAI) return msg.text;
-    return cleanMessageText(msg.text || '', lang);
-  }, [msg.text, isAI, lang]);
-
-  const formatText = (text) => {
-    if (!text) return null;
-    return text.split('\n').map((line, i) => {
-      const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
-        part.startsWith('**') && part.endsWith('**') ? <strong key={j}>{part.slice(2, -2)}</strong> : part
+    const parseInline = (text) =>
+      text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i}>{part.slice(2, -2)}</strong>
+          : part
       );
-      if (/^\s*[-•·✓→★\d+\.]\s/.test(line)) return <div key={i} style={{ paddingLeft: 8, color: isAI ? c.ink2 : 'rgba(255,255,255,0.9)', fontSize: 13 }}>• {parts}</div>;
-      if (line.trim() === '') return <br key={i} />;
-      return <div key={i}>{parts}</div>;
-    });
-  };
 
-  const validBourses = detectedBourses.filter(b =>
-    b.nom && b.nom.length > 8 && !/chercher|recevoir|consulter|préparer|notez|vérifiez|consultez/i.test(b.nom)
-  );
-
-  const AIAvatar = () => (
-    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-      <img src="/logo.png" alt="IA" style={{ width: 16, height: 16, objectFit: 'contain' }}
-        onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;font-size:13px;">✦</span>'; }} />
-    </div>
-  );
-
-  const UserAvatar = () => (
-    <div style={{ width: 30, height: 30, background: c.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, color: '#fff', fontSize: 13 }}>👤</div>
-  );
-
-  if (!isAI) {
-    return (
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexDirection: 'row-reverse', animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
-        <UserAvatar />
-        <div style={{ maxWidth: '78%' }}>
-          <div style={{ padding: '10px 16px', background: c.accent, color: '#fff', fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
-            {formatText(msg.text)}
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const t = line.trim();
+      if (!t) { elements.push(<div key={`s-${i}`} style={{ height: 8 }} />); continue; }
+      if (t.startsWith('## ')) {
+        elements.push(<h2 key={i} style={{ fontSize: 17, fontWeight: 700, margin: '16px 0 8px', fontFamily: 'var(--f-serif)', color: 'var(--ink)' }}>{parseInline(t.slice(3))}</h2>);
+        continue;
+      }
+      if (t.startsWith('### ')) {
+        elements.push(<h3 key={i} style={{ fontSize: 14, fontWeight: 600, margin: '12px 0 6px', color: 'var(--ink2)' }}>{parseInline(t.slice(4))}</h3>);
+        continue;
+      }
+      if (t.match(/^[-*]\s/)) {
+        elements.push(
+          <div key={i} style={{ margin: '5px 0 5px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }}>•</span>
+            <span style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>{parseInline(t.slice(2))}</span>
           </div>
-        </div>
-      </div>
-    );
-  }
+        );
+        continue;
+      }
+      const bold = t.match(/^\*\*(.+?)\*\*$/);
+      if (bold) {
+        elements.push(
+          <div key={i} style={{ margin: '10px 0 6px', padding: '7px 12px', background: 'var(--paper2)', borderLeft: '3px solid var(--accent)', borderRadius: 7 }}>
+            <strong style={{ fontSize: 13 }}>{bold[1]}</strong>
+          </div>
+        );
+        continue;
+      }
+      elements.push(<p key={i} style={{ margin: '0 0 10px', lineHeight: 1.65, fontSize: 14 }}>{parseInline(line)}</p>);
+    }
+    return elements;
+  }, [message.text]);
 
-  if (validBourses.length === 0) {
+  if (isUser) {
     return (
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
-        <AIAvatar />
-        <div style={{ maxWidth: '86%' }}>
-          {cleanText && (
-            <div style={{ padding: '10px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
-              {formatText(cleanText)}
-              {msg.voiceInput && (
-                <div style={{ marginTop: 8, display: 'inline-block', fontSize: 10, padding: '2px 8px', background: c.rule, color: c.ink3, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', borderRadius: 4 }}>Vocal</div>
-              )}
-            </div>
-          )}
-          <PostSuggestions onClick={(text) => handleQuickReply(text)} lang={lang} c={c} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20, animation: `fade-up 0.28s ease-out both`, animationDelay: `${delay}s` }}>
+        <div style={{
+          maxWidth: '72%', background: 'var(--accent)', color: 'white',
+          padding: '12px 18px', borderRadius: 18, borderBottomRightRadius: 4,
+          fontSize: 14, lineHeight: 1.55, fontFamily: 'var(--f-sans)'
+        }}>
+          {message.text}
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, animation: 'msgIn .3s ease both', animationDelay: `${index * 0.03}s` }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <AIAvatar />
-        {cleanText && (
-          <div style={{ flex: 1, maxWidth: '86%', padding: '10px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, color: c.ink, fontFamily: c.fSans, fontSize: 13.5, lineHeight: 1.6, borderRadius: 8 }}>
-            {formatText(cleanText)}
-          </div>
+    <div style={{ display: 'flex', gap: 12, marginBottom: 24, animation: `fade-up 0.28s ease-out both`, animationDelay: `${delay}s` }}>
+      {/* Avatar */}
+      <div style={{
+        width: 38, height: 38,
+        background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+        borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, marginTop: 2
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+
+      <div style={{ flex: 1 }}>
+        {/* Bubble */}
+        <div style={{
+          background: 'var(--paper2)',
+          borderRadius: 18, borderTopLeftRadius: 4,
+          padding: '12px 18px', color: 'var(--ink)', fontFamily: 'var(--f-sans)'
+        }}>
+          {formattedContent}
+        </div>
+
+        {/* Action bar — uniquement après le dernier message AI ou si showActions */}
+        {(isLast || message.showActions) && onAction && (
+          <ActionBar onAction={onAction} />
         )}
       </div>
-      <div style={{ paddingLeft: 40 }}>
-        <BourseCardsGrid bourses={validBourses} appliedNoms={appliedNoms} onApply={onApply} onDetails={onDetails} allBourses={allBourses} c={c} lang={lang} />
-        <PostSuggestions onClick={(text) => handleQuickReply(text)} lang={lang} c={c} />
-      </div>
     </div>
   );
 }
 
-// ─── SCROLL TO BOTTOM BUTTON ───────────────────────────────────────────────────
-function ScrollToBottomButton({ onClick, visible, c }) {
-  if (!visible) return null;
+// ── Suggestion Groups (juste sous l'input) ───────────────────────────────────
+function SuggestionGroups({ onSelect }) {
   return (
-    <button
-      onClick={onClick}
-      style={{ position: 'sticky', bottom: 10, right: 10, float: 'right', width: 32, height: 32, background: c.accent, border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'all .18s', borderRadius: 40 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
+    <div style={{
+      maxHeight: 320,
+      overflowY: 'auto',
+      padding: '4px 0 12px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14,
+    }}>
+      {SUGGESTION_GROUPS.map((group, gi) => (
+        <div key={gi} className="sugg-section">
+          <div className="sugg-section-title">{group.title}</div>
+          <div className="sugg-grid">
+            {group.items.map((item, ii) => (
+              <button
+                key={ii}
+                className="sugg-chip"
+                onClick={() => onSelect(item.text)}
+              >
+                <span className="sugg-emoji">{item.emoji}</span>
+                {item.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
-// ─── MAIN CHAT PAGE ────────────────────────────────────────────────────────────
-export default function ChatPage({ user, messages, input, setInput, loading, handleSend, handleQuickReply, chatContainerRef, setView, bourses = [], appliedNoms, onApplyBourse }) {
-  const { t, lang } = useT();
-  const c = tokens('light');
-  const heroStats = useHeroStats();
-  const [showScroll, setShowScroll] = useState(false);
-  const localRef = useRef(null);
-  const containerRef = chatContainerRef || localRef;
-  const [drawer, setDrawer] = useState(null);
-  const appliedSet = useMemo(() => appliedNoms instanceof Set ? appliedNoms : new Set((appliedNoms || []).map(n => n?.trim().toLowerCase())), [appliedNoms]);
-  const [starredNoms, setStarredNoms] = useState(new Set());
-  const [appliedNomsLocal, setAppliedNomsLocal] = useState(new Set());
+// ── Main Export ───────────────────────────────────────────────────────────────
+export default function ChatInterface() {
+  const [theme] = useState(() => {
+    try { return localStorage.getItem('theme') || 'light'; } catch { return 'light'; }
+  });
+  const [conversations, setConversations] = useState(() => {
+    try {
+      const s = localStorage.getItem('opps-conversations');
+      return s ? JSON.parse(s) : DEMO_CONVERSATIONS;
+    } catch { return DEMO_CONVERSATIONS; }
+  });
+  const [activeId, setActiveId] = useState(() => conversations[0]?.id || null);
+  const [loading, setLoading] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // ── Dashboard stats ────────────────────────────────────────────────────────
-  const dashboardStats = useMemo(() => {
-    const now = new Date();
-    const urgentCount = bourses.filter(b => {
-      if (!b.dateLimite) return false;
-      const dl = new Date(b.dateLimite);
-      const days = Math.round((dl - now) / 86400000);
-      return days >= 0 && days <= 7;
-    }).length;
-    const profileFields = ['niveau', 'domaine', 'pays', 'email', 'name'];
-    const filled = profileFields.filter(f => user?.[f]).length;
-    const completion = Math.round((filled / profileFields.length) * 100);
-    return {
-      completion,
-      matches: heroStats.totalBourses ?? bourses.length,
-      urgent: urgentCount,
-      readiness: Math.min(100, completion + (appliedSet.size > 0 ? 15 : 0)),
-    };
-  }, [bourses, user, heroStats.totalBourses, appliedSet]);
+  const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const scrollToBottom = () => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight; };
+  const activeConv = useMemo(() => conversations.find(c => c.id === activeId) || null, [conversations, activeId]);
+  const messages = activeConv?.messages || [];
+  const hasMessages = messages.length > 0;
 
-  useEffect(() => { scrollToBottom(); }, [messages, loading]);
-  useEffect(() => { setTimeout(scrollToBottom, 100); }, []);
+  useEffect(() => {
+    try { localStorage.setItem('opps-conversations', JSON.stringify(conversations)); } catch {}
+  }, [conversations]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, []);
+
+  useEffect(() => { scrollToBottom(); }, [messages, loading, scrollToBottom]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const check = () => setShowScroll(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
-    el.addEventListener('scroll', check);
-    check();
-    return () => el.removeEventListener('scroll', check);
+    const h = () => setShowScrollButton(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
+    el.addEventListener('scroll', h);
+    h();
+    return () => el.removeEventListener('scroll', h);
+  }, [messages]);
+
+  // FIX #5: handleNew réinitialise tout
+  const handleNew = useCallback(() => {
+    const id = generateId();
+    const conv = {
+      id,
+      title: 'Nouvelle conversation',
+      updatedAt: new Date().toISOString(),
+      messages: []
+    };
+    setConversations(prev => [conv, ...prev]);
+    setActiveId(id);
+    setInputValue('');
+    setShowSuggestions(false);
+    // scroll en haut
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  const handleStar = useCallback(async (bourse, isStarred) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) return;
-    try {
-      const { data: favData } = await axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } });
-      const favDoc = favData.docs?.[0];
-      const bourseData = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
-      if (isStarred) {
-        if (favDoc?.id) await axiosInstance.patch(`/api/favoris/${favDoc.id}`, { bourses: (favDoc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
-        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); return s; });
-      } else {
-        if (favDoc?.id) await axiosInstance.patch(`/api/favoris/${favDoc.id}`, { bourses: [...(favDoc.bourses || []), bourseData] });
-        else await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [bourseData] });
-        setStarredNoms(prev => new Set([...prev, nomKey]));
-      }
-    } catch (err) { console.error('[handleStar]', err); }
-    window.dispatchEvent(new CustomEvent('favoris-updated'));
-  }, [user]);
+  const handleSelect = useCallback((id) => {
+    setActiveId(id);
+    setInputValue('');
+    setShowSuggestions(false);
+  }, []);
 
-  const handleApply = useCallback(async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id || appliedSet.has(nomKey) || appliedNomsLocal.has(nomKey)) return;
-    try {
-      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id, userEmail: user.email || '', nom: bourse.nom, pays: bourse.pays || '',
-        lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '',
-        dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString(),
-        statut: 'en_cours', etapeCourante: 0,
-      });
-      try {
-        await axios.post(WEBHOOK_ROUTES.generateRoadmap, {
-          roadmapId: res.data.doc?.id || res.data.id,
-          user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
-          bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
-        });
-      } catch (webhookErr) { console.warn('Webhook roadmap non disponible', webhookErr); }
-      setAppliedNomsLocal(prev => new Set([...prev, nomKey]));
-      if (typeof onApplyBourse === 'function') await onApplyBourse(bourse);
-    } catch (err) {
-      console.error('[handleApply]', err);
-      alert(lang === 'fr' ? "Erreur lors de l'initialisation de la candidature." : 'Error initializing application.');
+  const handleRename = useCallback((id, title) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  }, []);
+
+  const handleDelete = useCallback((id) => {
+    setConversations(prev => {
+      const next = prev.filter(c => c.id !== id);
+      if (id === activeId) setActiveId(next[0]?.id || null);
+      return next;
+    });
+  }, [activeId]);
+
+  const handleSendMessage = useCallback(async (text) => {
+    if (!text.trim() || loading) return;
+    setShowSuggestions(false);
+
+    let targetId = activeId;
+    if (!targetId) {
+      targetId = generateId();
+      const conv = { id: targetId, title: text.slice(0, 42), updatedAt: new Date().toISOString(), messages: [] };
+      setConversations(prev => [conv, ...prev]);
+      setActiveId(targetId);
     }
-  }, [user, appliedSet, appliedNomsLocal, onApplyBourse, lang]);
 
-  const handleAskAI = useCallback((bourse) => {
-    handleQuickReply?.(`Donne-moi tous les détails sur "${bourse.nom}" : conditions, financement, processus de candidature`);
-  }, [handleQuickReply]);
+    const userMsg = { id: generateId(), sender: 'user', text: text.trim(), timestamp: new Date().toISOString() };
 
-  const handleSmartSelect = useCallback((text) => {
-    setInput(text);
-    setTimeout(() => handleSend(), 50);
-  }, [setInput, handleSend]);
+    setConversations(prev => prev.map(c => {
+      if (c.id !== targetId) return c;
+      const msgs = [...c.messages, userMsg];
+      return { ...c, messages: msgs, title: c.messages.length === 0 ? text.slice(0, 42) : c.title, updatedAt: new Date().toISOString() };
+    }));
+
+    setInputValue('');
+    setLoading(true);
+
+    setTimeout(() => {
+      const aiMsg = {
+        id: generateId(),
+        sender: 'ai',
+        text: generateAIResponse(text),
+        timestamp: new Date().toISOString(),
+        showActions: true,  // toujours afficher les actions sur les nouveaux messages AI
+      };
+      setConversations(prev => prev.map(c =>
+        c.id === targetId ? { ...c, messages: [...c.messages, aiMsg], updatedAt: new Date().toISOString() } : c
+      ));
+      setLoading(false);
+    }, 1200);
+  }, [loading, activeId]);
+
+  const handleSubmit = (e) => { e.preventDefault(); handleSendMessage(inputValue); };
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(inputValue); }
+  };
+
+  // Trouver l'index du dernier message AI
+  const lastAiIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender === 'ai') return i;
+    }
+    return -1;
+  }, [messages]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', fontFamily: c.fSans, background: c.paper }}>
+    <>
+      <style>{styles}</style>
+      {/*
+        FIX #6: Layout principal en flexbox horizontal.
+        Le sidebar est sticky dans ce flex container.
+        Le footer (rendu par le parent) reste en dessous de ce flex wrapper.
+      */}
+      <div style={{
+        display: 'flex',
+        height: '100vh',
+        background: 'var(--paper)',
+        fontFamily: 'var(--f-sans)',
+        overflow: 'hidden',
+      }}>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-        @keyframes msgIn          { from { opacity:0; transform:translateY(6px);  } to { opacity:1; transform:none; } }
-        @keyframes dotBounce      { 0%,60%,100% { transform:scale(.7); opacity:.5; } 30% { transform:scale(1.1); opacity:1; } }
-        @keyframes fadeUp         { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
-        @keyframes smartActionsIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-      `}</style>
+        <Sidebar
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={handleSelect}
+          onNew={handleNew}
+          onRename={handleRename}
+          onDelete={handleDelete}
+        />
 
-      <section style={{ width: '100%', padding: '80px 40px 0', borderBottom: `1px solid ${c.rule}`, background: c.paper, animation: 'fadeUp .5s ease both' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        {/* Zone principale */}
+        <main style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'hidden',
+          minWidth: 0,
+        }}>
 
-          {/* Titre */}
-          <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 700, letterSpacing: '-0.015em', lineHeight: 1.05, color: c.ink, margin: '0 0 48px', textAlign: 'center' }}>
-            {lang === 'fr'
-              ? <>
-prêt à obtenir des réponses à   <em style={{ color: c.accent, fontStyle: 'italic' }}>toutes</em> vos questions ?</>
-              : <>Turn    <em style={{ color: c.accent, fontStyle: 'italic' }}>every</em> question into clarity. </>}
-          </h1>
-
-          {/* Smart Actions - Centered above chat */}
-          <SmartActions user={user} onSelect={handleSmartSelect} lang={lang} c={c} />
-
-          {/* Chat Section - Centered */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              <span style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase' }}>
-                Opptrack AI · {lang === 'fr' ? 'En ligne' : 'Online'}
-              </span>
+          {/* ── Header ── */}
+          <header style={{
+            padding: '18px 32px 14px',
+            borderBottom: '1px solid var(--rule-soft)',
+            background: 'var(--paper)',
+            flexShrink: 0,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'
+          }}>
+            <div style={{ flex: 1 }}>
+              <h1 style={{
+                fontFamily: 'var(--f-serif)',
+                fontSize: 'clamp(22px, 3vw, 30px)',
+                fontWeight: 700,
+                letterSpacing: '-0.015em',
+                color: 'var(--ink)', marginBottom: 3
+              }}>
+                {!hasMessages ? 'Bonjour !' : (activeConv?.title || 'Assistant IA')}
+              </h1>
+              <p style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                Posez-moi votre question ci-dessous.
+              </p>
             </div>
 
-            <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderTop: `3px solid ${c.accent}`, borderRadius: 12, overflow: 'hidden' }}>
-              <div ref={containerRef} style={{ height: 450, overflowY: 'auto', padding: '24px', scrollBehavior: 'smooth', position: 'relative' }}>
+            {/* FIX #5: Bouton New Chat dans le header aussi */}
+            <button
+              onClick={handleNew}
+              style={{
+                padding: '8px 16px',
+                background: 'transparent',
+                border: '1.5px solid var(--rule)',
+                borderRadius: 10,
+                color: 'var(--ink2)',
+                fontFamily: 'var(--f-sans)',
+                fontSize: 13, fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 7,
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--accent)';
+                e.currentTarget.style.borderColor = 'var(--accent)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = 'var(--rule)';
+                e.currentTarget.style.color = 'var(--ink2)';
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Nouveau chat
+            </button>
+          </header>
 
-                {/* Welcome */}
-                {messages.length === 0 && (
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0' }}>
-                    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 8 }}>
-                      <img src="/logo.png" alt="OppsTrack" style={{ width: 16, height: 16, objectFit: 'contain' }}
-                        onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span style="color:#f5a623;">✦</span>'; }} />
-                    </div>
-                    <div style={{ background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, padding: '16px 20px', fontFamily: c.fSans, fontSize: 13.5, color: c.ink, lineHeight: 1.6, borderRadius: 8 }}>
-                      <div style={{ borderLeft: `2px solid ${c.rule}`, paddingLeft: 12, marginBottom: 10, fontFamily: c.fSerif, fontSize: 13, color: c.ink3, fontStyle: 'italic' }}>
-                        « {lang === 'fr' ? 'Suis-je éligible au DAAD avec mon profil ?' : 'Am I eligible for the DAAD scholarship?'} »
-                      </div>
-                      <p><strong>{lang === 'fr' ? 'Bonjour' : 'Hello'}{user?.name ? ` ${user.name}` : ''}!</strong></p>
-                      <p style={{ color: c.ink2, marginTop: 6 }}>{lang === 'fr' ? 'Utilisez les actions ci-dessus ou posez-moi directement votre question.' : 'Use the actions above or ask me directly.'}</p>
-                    </div>
+          {/* ── Messages ── */}
+          <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
+            <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '28px 28px 16px' }}>
+
+              {/* Message d'accueil */}
+              {!hasMessages && (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', animation: 'fade-up 0.3s ease both' }}>
+                  <div style={{
+                    width: 38, height: 38,
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+                    borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
                   </div>
-                )}
-
-                {/* Messages */}
-                {messages.map((msg, i) => (
-                  <ChatMessage
-                    key={i} msg={msg} index={i}
-                    appliedNoms={appliedSet} onApply={handleApply}
-                    onDetails={setDrawer} allBourses={bourses}
-                    handleQuickReply={handleQuickReply} lang={lang} c={c}
-                  />
-                ))}
-
-                {/* Typing indicator */}
-                {loading && (
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                    <div style={{ width: 30, height: 30, background: '#0a1a2e', border: '1px solid #2a3a5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 8 }}>
-                      <span style={{ color: '#f5a623', fontSize: 12 }}>✦</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '12px 16px', background: c.paper2, border: `1px solid ${c.rule}`, borderLeft: `3px solid ${c.accent}`, borderRadius: 8 }}>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: c.accent, display: 'inline-block', animation: 'dotBounce 1.2s infinite ease-in-out', animationDelay: `${i * 0.2}s` }} />
-                      ))}
-                    </div>
+                  <div style={{
+                    background: 'var(--paper2)', border: '1px solid var(--rule)',
+                    borderRadius: 18, borderTopLeftRadius: 4,
+                    padding: '14px 18px', fontSize: 14, lineHeight: 1.6, color: 'var(--ink)'
+                  }}>
+                    Comment puis-je vous aider aujourd'hui ?
                   </div>
-                )}
+                </div>
+              )}
 
-                <ScrollToBottomButton onClick={scrollToBottom} visible={showScroll} c={c} />
-              </div>
+              {/* Messages */}
+              {messages.map((msg, idx) => (
+                <MessageBubble
+                  key={msg.id || idx}
+                  message={msg}
+                  isUser={msg.sender === 'user'}
+                  delay={idx * 0.025}
+                  isLast={idx === lastAiIndex}
+                  onAction={msg.sender === 'ai' ? handleSendMessage : null}
+                />
+              ))}
 
-              <div style={{ padding: '14px 18px', borderTop: `1px solid ${c.rule}`, background: c.paper2 }}>
-                <ChatInput input={input} setInput={setInput} onSend={() => handleSend()} loading={loading} />
-              </div>
+              {/* Typing indicator */}
+              {loading && (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fade-up 0.25s ease both' }}>
+                  <div style={{
+                    width: 38, height: 38,
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+                    borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                  </div>
+                  <div style={{
+                    background: 'var(--paper2)', border: '1px solid var(--rule)',
+                    borderRadius: 18, borderTopLeftRadius: 4,
+                    padding: '14px 18px', display: 'flex', gap: 6, alignItems: 'center'
+                  }}>
+                    {[0, 1, 2].map(i => (
+                      <span key={i} style={{
+                        width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)',
+                        animation: 'pulse-dot 1.2s infinite ease-in-out',
+                        animationDelay: `${i * 0.2}s`,
+                        display: 'inline-block',
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
           </div>
 
-          {/* Dashboard - Below chat */}
-          <MiniDashboard user={user} stats={dashboardStats} lang={lang} c={c} />
+          {/* Scroll button */}
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              style={{
+                position: 'absolute', bottom: 148, right: 28,
+                width: 36, height: 36,
+                background: 'var(--surface)', border: '1px solid var(--rule)',
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                transition: 'all 0.15s ease', zIndex: 15, color: 'var(--ink3)'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--rule)'; e.currentTarget.style.color = 'var(--ink3)'; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          )}
 
-          <div style={{ height: 80 }} />
-        </div>
-      </section>
+          {/* ── Zone input + suggestions ── */}
+          {/*
+            FIX #4: suggestions JUSTE SOUS l'input (ordre inversé en flex-column)
+            FIX #3 & #2: blocs de suggestions groupés avec titres
+          */}
+          <div style={{
+            flexShrink: 0,
+            background: 'var(--paper)',
+            borderTop: '1px solid var(--rule-soft)',
+          }}>
+            <div style={{
+              maxWidth: 'var(--chat-max-width)',
+              margin: '0 auto',
+              padding: '12px 24px 18px',
+            }}>
 
-      {/* Drawer */}
-      {drawer && (
-        <BourseDrawer
-          bourse={drawer}
-          onClose={() => setDrawer(null)}
-          starred={starredNoms.has(drawer.nom?.trim().toLowerCase()) || appliedSet.has(drawer.nom?.trim().toLowerCase())}
-          onStar={handleStar}
-          onChoose={handleApply}
-          applied={appliedSet.has(drawer.nom?.trim().toLowerCase()) || appliedNomsLocal.has(drawer.nom?.trim().toLowerCase())}
-          onApply={handleApply}
-          onAskAI={handleAskAI}
-          user={user}
-        />
-      )}
-    </div>
+              {/* Input */}
+              <form onSubmit={handleSubmit}>
+                <div
+                  style={{
+                    background: 'var(--surface)',
+                    border: '2px solid var(--rule)',
+                    borderRadius: 16,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '4px 6px 4px 18px',
+                    transition: 'all 0.18s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                  }}
+                  onFocusCapture={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,102,179,0.08)'; }}
+                  onBlurCapture={e => { e.currentTarget.style.borderColor = 'var(--rule)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)'; }}
+                >
+                  <textarea
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSuggestions(true)}
+                    placeholder="Écrivez votre message…"
+                    rows={1}
+                    disabled={loading}
+                    style={{
+                      flex: 1, background: 'transparent', border: 'none',
+                      padding: '14px 0', fontFamily: 'var(--f-sans)',
+                      fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
+                      resize: 'none', outline: 'none', minHeight: 52, maxHeight: 120
+                    }}
+                  />
+
+                  {/* Toggle suggestions */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(v => !v)}
+                    title="Afficher les suggestions"
+                    style={{
+                      width: 36, height: 36,
+                      background: showSuggestions ? 'var(--paper2)' : 'transparent',
+                      border: '1px solid var(--rule)',
+                      borderRadius: 9,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: showSuggestions ? 'var(--accent)' : 'var(--ink3)',
+                      flexShrink: 0,
+                      transition: 'all 0.12s ease',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--paper2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = showSuggestions ? 'var(--paper2)' : 'transparent'}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                    </svg>
+                  </button>
+
+                  {/* Send */}
+                  <button
+                    type="submit"
+                    disabled={!inputValue.trim() || loading}
+                    style={{
+                      width: 42, height: 42,
+                      background: !inputValue.trim() || loading ? 'var(--rule)' : 'var(--accent)',
+                      border: 'none', borderRadius: 11,
+                      cursor: !inputValue.trim() || loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.12s ease',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: !inputValue.trim() || loading ? 0.5 : 1, flexShrink: 0
+                    }}
+                    onMouseEnter={e => { if (inputValue.trim() && !loading) { e.currentTarget.style.background = 'var(--accent-ink)'; e.currentTarget.style.transform = 'scale(1.04)'; } }}
+                    onMouseLeave={e => { if (inputValue.trim() && !loading) { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.transform = 'scale(1)'; } }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                  </button>
+                </div>
+              </form>
+
+              {/* FIX #4: suggestions JUSTE SOUS l'input */}
+              {showSuggestions && (
+                <div style={{ marginTop: 12, animation: 'fade-up 0.2s ease both' }}>
+                  <SuggestionGroups onSelect={(text) => {
+                    setInputValue(text);
+                    setShowSuggestions(false);
+                    inputRef.current?.focus();
+                  }} />
+                </div>
+              )}
+
+              <p style={{ fontSize: 11, color: 'var(--ink4)', textAlign: 'center', marginTop: 10, fontFamily: 'var(--f-sans)' }}>
+                OppsTrack peut faire des erreurs. Vérifiez les informations importantes.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

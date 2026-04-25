@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback , useMemo} from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar, { ThemeProvider } from './components/Navbar'; // ← Import ThemeProvider
 import ChatToggleButton from './components/ChatToggleButton'; // ← Import du bouton chat
@@ -362,26 +362,30 @@ function AppContent() {
         </div>
       )}
 
-      <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
-        {view === 'accueil'         && <ChatPage             {...sharedProps} />}
-{view === 'accueil' && !user && (
-  <GuestPage
-    bourses={bourses}
-    onSignup={() => { /* ouvrir LoginModal */ }}
-    setView={setView}
-  />
-)}
-         {view === 'Home'       && <HomePage {...sharedProps} />}
-        {view === 'bourses'         && <BoursesPage          {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
-        {view === 'recommandations' && <RecommandationsPage  {...sharedProps} />}
-        {view === 'roadmap'         && <RoadmapPage          {...sharedProps} />}
-        {view === 'dashboard'       && <DashboardPage        {...sharedProps} />}
-        {view === 'profil'          && <ProfilPage           {...sharedProps} />}
-        {view === 'entretien'       && <EntretienPage        {...sharedProps} />}
-        {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
-        {view === "contact"         && <ContactPage setView={setView} user={user}/>}
-        {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
-      </main>
+<main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
+  {/* Accueil : assistant IA pour tous */}
+  {view === 'accueil' && <ChatPage {...sharedProps} />}
+
+  {/* Home : GuestPage si invité, HomePage si connecté */}
+  {view === 'Home' && (
+    user ? (
+      <HomePage {...sharedProps} />
+    ) : (
+      <GuestPage bourses={bourses} onSignup={() => {}} setView={setView} />
+    )
+  )}
+
+  {/* Autres vues */}
+  {view === 'bourses'         && <BoursesPage {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+  {view === 'recommandations' && <RecommandationsPage {...sharedProps} />}
+  {view === 'roadmap'         && <RoadmapPage {...sharedProps} />}
+  {view === 'dashboard'       && <DashboardPage {...sharedProps} />}
+  {view === 'profil'          && <ProfilPage {...sharedProps} />}
+  {view === 'entretien'       && <EntretienPage {...sharedProps} />}
+  {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
+  {view === 'contact'         && <ContactPage setView={setView} user={user} />}
+  {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
+</main>
 
       {/* ChatToggleButton - UN SEUL BOUTON */}
       <ChatToggleButton
