@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback , useMemo} from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar, { ThemeProvider } from './components/Navbar'; // ← Import ThemeProvider
 import ChatToggleButton from './components/ChatToggleButton'; // ← Import du bouton chat
