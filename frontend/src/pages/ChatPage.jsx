@@ -431,13 +431,7 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
     }}>
       {/* Logo + New Chat */}
       <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
-        <h1 style={{
-          fontFamily: 'var(--f-serif)',
-          fontSize: 22, fontWeight: 700,
-          color: 'var(--accent)',
-          letterSpacing: '-0.01em',
-          marginBottom: 14
-        }}>OppsTrack</h1>
+        
 
         {/* FIX #5: Bouton New Chat dans sidebar */}
         <button
@@ -912,38 +906,7 @@ export default function ChatInterface() {
               </p>
             </div>
 
-            {/* FIX #5: Bouton New Chat dans le header aussi */}
-            <button
-              onClick={handleNew}
-              style={{
-                padding: '8px 16px',
-                background: 'transparent',
-                border: '1.5px solid var(--rule)',
-                borderRadius: 10,
-                color: 'var(--ink2)',
-                fontFamily: 'var(--f-sans)',
-                fontSize: 13, fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 7,
-                transition: 'all 0.15s ease',
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--accent)';
-                e.currentTarget.style.borderColor = 'var(--accent)';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = 'var(--rule)';
-                e.currentTarget.style.color = 'var(--ink2)';
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Nouveau chat
-            </button>
+         
           </header>
 
           {/* ── Messages ── */}

@@ -649,11 +649,7 @@ const solid = view !== "Home" ? true : pastHero;
 
           {/* Right: CTA + hamburger */}
           <div style={{ display:"flex", alignItems:"center", gap:10, marginLeft:"auto" }}>
-            <button className="ot-cta"
-              style={{ opacity:solid?1:0, pointerEvents:solid?"auto":"none", transform:solid?"none":"translateY(-4px)" }}
-              onClick={()=>setView("bourses")}>
-              {lang==="fr"?"Explorer":"Explore"} <Icon.Arrow/>
-            </button>
+            
 
             <button className="ot-hamburger"
               onClick={()=>setMenuOpen(!menuOpen)}
