@@ -163,6 +163,7 @@ function buildPriorityActions(profile, scores, roadmap, lang) {
   return actions.sort((a,b)=>order[a.priority]-order[b.priority]).slice(0,6);
 }
 
+
 // ══════════════════════════════════════
 // UI COMPONENTS
 // ══════════════════════════════════════
@@ -193,13 +194,31 @@ function RadarChart({data,size=180,c}){
   const toXY=(i,pct)=>{const a=(i/n)*Math.PI*2-Math.PI/2,d=(pct/100)*r;return[cx+Math.cos(a)*d,cy+Math.sin(a)*d];};
   const lXY=(i)=>{const a=(i/n)*Math.PI*2-Math.PI/2,d=r+20;return[cx+Math.cos(a)*d,cy+Math.sin(a)*d];};
   const pts=data.map((d,i)=>toXY(i,d.value).join(',')).join(' ');
+  
+  const handleAxisClick = (label) => {
+    let message = '';
+    if (label === 'Lang.' || label === 'Lang.') message = 'Comment améliorer mon niveau de langue ?';
+    else if (label === 'Exp.') message = 'Je veux ajouter une expérience professionnelle';
+    else if (label === 'Proj.') message = 'Comment ajouter un projet académique ?';
+    else if (label === 'Motiv.') message = 'Aide-moi à rédiger ou améliorer ma lettre de motivation';
+    else if (label === 'Acad.') message = 'Comment renforcer ma partie académique ?';
+    if (message) window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
+  };
+  
   return(
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {[25,50,75,100].map(p=><polygon key={p} points={data.map((_,i)=>toXY(i,p).join(',')).join(' ')} fill="none" stroke={c.rule} strokeWidth={p===100?1.5:0.8}/>)}
       {data.map((_,i)=>{const[x,y]=toXY(i,100);return<line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={c.rule} strokeWidth="1"/>;  })}
       <polygon points={pts} fill={`${c.accent}18`} stroke={c.accent} strokeWidth="2"/>
       {data.map((d,i)=>{const[x,y]=toXY(i,d.value);return<circle key={i} cx={x} cy={y} r="4" fill={c.accent} stroke={c.surface} strokeWidth="1.5"/>;  })}
-      {data.map((d,i)=>{const[lx,ly]=lXY(i);return<text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="9.5" fontWeight="700" fill={c.ink2} fontFamily="'DM Sans',system-ui">{d.label}</text>;  })}
+      {data.map((d,i)=>{
+        const [lx,ly]=lXY(i);
+        return (
+          <g key={i} style={{cursor:'pointer'}} onClick={() => handleAxisClick(d.label)}>
+            <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="9.5" fontWeight="700" fill={c.accent} fontFamily="'DM Sans',system-ui">{d.label}</text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -575,12 +594,14 @@ function InsightsWidget({profile,scores,c,lang,setTab}){
   if(!profile.academicProjects?.length) warnings.push({text:fr?'Aucun projet académique — profil trop théorique':'No academic projects — profile too theoretical',severity:'high',section:'projects'});
   if(!profile.gpa) warnings.push({text:fr?'Moyenne non renseignée — critère clé':'GPA not set — key eligibility criterion',severity:'high',section:'academic'});
   if(!profile.workExperience?.length) warnings.push({text:fr?'Aucune expérience — renforce ton dossier':'No experience — strengthen your application',severity:'medium',section:'experience'});
-  if(!warnings.length)return(
+  
+  if(!warnings.length) return (
     <div style={{background:c.surface,border:`1px solid ${c.rule}`,padding:'24px',textAlign:'center'}}>
       <div style={{fontFamily:c.fSerif,fontSize:18,fontWeight:700,color:c.green,marginBottom:8}}>{fr?'Profil complet':'Complete profile'}</div>
       <div style={{fontFamily:c.fSans,fontSize:12,color:c.ink3}}>{fr?'Aucun problème critique détecté.':'No critical issues detected.'}</div>
     </div>
   );
+
   const sevConfig={critical:{label:'Critique',color:c.danger,bg:`${c.danger}08`,border:`${c.danger}30`},high:{label:'Élevé',color:c.warn,bg:`${c.warn}08`,border:`${c.warn}25`},medium:{label:'Moyen',color:c.ink3,bg:c.paper2,border:c.ruleSoft}};
   return(
     <div style={{background:c.surface,border:`1px solid ${c.rule}`,padding:'24px'}}>
@@ -719,6 +740,14 @@ export default function ProfilPage({user,setUser,handleLogout,handleQuickReply,s
   const parseScore=txt=>{const m=(txt||'').match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);return m?parseInt(m[1]):null;};
   const scores=useMemo(()=>(entretienScores||[]).map(s=>({...s,scoreNum:parseScore(s.score)})).filter(s=>s.scoreNum!==null),[entretienScores]);
   const sub=useMemo(()=>computeSubScores(profile,scores),[profile,scores]);
+  const [lastWeekScore, setLastWeekScore] = useState(() => {
+  const saved = localStorage.getItem('opps_last_week_score');
+  return saved ? parseInt(saved) : sub.global;
+});
+useEffect(() => {
+  localStorage.setItem('opps_last_week_score', sub.global);
+}, [sub.global]);
+const weeklyGain = sub.global - lastWeekScore;
   const tier=getTier(sub.global,c);
   const priorityActions=useMemo(()=>buildPriorityActions(profile,scores,roadmap,lang),[profile,scores,roadmap,lang]);
   const lastScore=scores[0]?.scoreNum??null;
@@ -857,86 +886,125 @@ export default function ProfilPage({user,setUser,handleLogout,handleQuickReply,s
       <div style={{maxWidth:1280,margin:'0 auto',padding:'32px 40px'}}>
 
         {/* ══════ DASHBOARD ══════ */}
-        {tab==='dashboard'&&(
-          <div style={{display:'flex',flexDirection:'column',gap:24}}>
+        {tab === 'dashboard' && (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-            {/* KPI Bar */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:1,background:c.rule,border:`1px solid ${c.rule}`}}>
-              {[
-                {label:lang==='fr'?'Score candidature':'Application score',val:`${sub.global}/100`,color:tier.color,sub:lang==='fr'?tier.label:tier.labelEn},
-                {label:lang==='fr'?'Profil complété':'Profile completed',val:`${completionScore}%`,color:completionScore>=70?c.green:completionScore>=50?c.accent:c.warn,sub:lang==='fr'?`${15-Math.round(completionScore/100*15)} champs restants`:`${15-Math.round(completionScore/100*15)} fields left`},
-                {label:lang==='fr'?'Candidatures':'Applications',val:roadmap.length,color:c.accent,sub:`${roadmapDone} ${lang==='fr'?'terminées':'completed'}`},
-                {label:lang==='fr'?'Entretiens IA':'AI interviews',val:scores.length,color:scores.length>=3?c.green:scores.length>=1?c.accent:c.ink3,sub:scores.length>0?`Dernier: ${scores[0].scoreNum}/100`:(lang==='fr'?'Aucun encore':'None yet')},
-                {label:lang==='fr'?'Favoris':'Favorites',val:favorites,color:c.accent,sub:lang==='fr'?'Bourses sauvegardées':'Saved scholarships'},
-              ].map((k,i)=>(
-                <div key={i} style={{background:c.surface,padding:'18px 20px',textAlign:'center'}}>
-                  <div style={{fontFamily:c.fSans,fontSize:10,fontWeight:600,color:c.ink3,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6}}>{k.label}</div>
-                  <div style={{fontFamily:c.fSerif,fontSize:28,fontWeight:700,color:k.color,lineHeight:1,marginBottom:4}}>{k.val}</div>
-                  <div style={{fontFamily:c.fSans,fontSize:10,color:c.ink3,fontWeight:500}}>{k.sub}</div>
-                </div>
-              ))}
-            </div>
-              {/* Complétude de profil */}
-<div style={{background:c.surface,border:`1px solid ${c.rule}`,padding:'24px',marginBottom:24}}>
-  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-    <div>
-      <div style={{fontFamily:c.fSerif,fontSize:18,fontWeight:700,color:c.ink}}>{lang==='fr'?'Complétude du profil':'Profile completeness'}</div>
-      <div style={{fontFamily:c.fSans,fontSize:12,color:c.ink3}}>{lang==='fr'?'Paré·e pour maximiser tes chances':'Ready to maximise your chances'}</div>
-    </div>
-    <div style={{textAlign:'right'}}>
-      <div style={{fontFamily:c.fSerif,fontSize:28,fontWeight:700,color:tier.color,lineHeight:1}}>{completionScore}%</div>
-    </div>
-  </div>
-  <div style={{height:8,background:c.rule,borderRadius:99,overflow:'hidden',marginBottom:12}}>
-    <div style={{height:'100%',width:`${completionScore}%`,background:`linear-gradient(90deg,${c.accent},${c.green})`,borderRadius:99,transition:'width 0.8s ease'}}/>
-  </div>
-  <div style={{display:'flex',justifyContent:'space-between',fontFamily:c.fSans,fontSize:11,color:c.ink3}}>
-    <span>✅ {completionScore}% {lang==='fr'?'complété':'completed'}</span>
-    <span>{100-completionScore}% {lang==='fr'?'restant':'remaining'}</span>
-  </div>
-</div>
-            {/* Score + Actions prioritaires */}
-            <div style={{display:'grid',gridTemplateColumns:'360px 1fr',gap:24}}>
-              <ScoreWidget sub={sub} tier={tier} profile={profile} c={c} lang={lang} onAnalyze={runAiAnalysis} aiAnalyzing={aiAnalyzing}/>
-              <PriorityActions actions={priorityActions} c={c} lang={lang} onAction={a=>{if(a.external)setView(a.section);else setTab(a.section);}}/>
-            </div>
+    {/* Ligne unique : Applicant Strength + Complétude du profil */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      {/* Applicant Strength */}
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '24px' }}>
+        <div style={{ fontFamily: c.fSerif, fontSize: 14, fontWeight: 600, color: c.ink2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Applicant Strength
+        </div>
+        <div style={{ fontFamily: c.fSerif, fontSize: 64, fontWeight: 700, color: tier.color, lineHeight: 1 }}>
+          {sub.global}<span style={{ fontSize: 20, color: c.ink3 }}>/100</span>
+        </div>
+        <div style={{ marginTop: 8, display: 'inline-block', background: tier.bg, border: `1px solid ${tier.border}`, color: tier.color, padding: '4px 12px', borderRadius: 20, fontFamily: c.fMono, fontSize: 12, fontWeight: 600 }}>
+          {sub.global >= 75 ? (lang === 'fr' ? 'Fort candidat' : 'Strong applicant') : sub.global >= 50 ? (lang === 'fr' ? 'Compétitif' : 'Competitive') : (lang === 'fr' ? 'En progression' : 'Developing')}
+        </div>
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ fontFamily: c.fSans, fontSize: 12, color: c.ink3 }}>Evolution this week</span>
+          <span style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: weeklyGain >= 0 ? c.green : c.danger }}>
+            {weeklyGain >= 0 ? '▲' : '▼'} {Math.abs(weeklyGain)}%
+          </span>
+        </div>
+      </div>
 
-            {/* AI Analysis */}
-            {aiAnalysis&&<AiAnalysisWidget analysis={aiAnalysis} tier={tier} sub={sub} insights={[]} c={c} lang={lang}/>}
-
-            {/* Radar + Entretiens */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
-              <div style={{background:c.surface,border:`1px solid ${c.rule}`,padding:'24px'}}>
-                <div style={{fontFamily:c.fSerif,fontSize:18,fontWeight:700,color:c.ink,marginBottom:6}}>{lang==='fr'?'Radar de compétences':'Skills radar'}</div>
-                <div style={{fontFamily:c.fSans,fontSize:12,color:c.ink3,marginBottom:16}}>{lang==='fr'?'Vue multidimensionnelle de votre profil':'Multi-dimensional profile view'}</div>
-                <div style={{display:'flex',justifyContent:'center'}}>
-                  <RadarChart c={c} size={200} data={[
-                    {label:lang==='fr'?'Acad.':'Acad.',value:sub.academic},
-                    {label:lang==='fr'?'Exp.':'Exp.',value:sub.experience},
-                    {label:'Proj.',value:sub.projects},
-                    {label:lang==='fr'?'Lang.':'Lang.',value:sub.languages},
-                    {label:'Motiv.',value:sub.motivation},
-                  ]}/>
-                </div>
-              </div>
-              <InterviewWidget scores={scores} setView={setView} c={c} lang={lang}/>
-            </div>
-
-            {/* Candidatures + Pays */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
-              <RoadmapWidget roadmap={roadmap} setRoadmap={setRoadmap} user={user} c={c} lang={lang} setView={setView}/>
-              <CountryReadinessWidget profile={profile} scores={scores} c={c} lang={lang}/>
-            </div>
-
-            {/* Alertes + Missions */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
-              <InsightsWidget profile={profile} scores={scores} c={c} lang={lang} setTab={setTab}/>
-              <MissionsWidget profile={profile} scores={scores} c={c} lang={lang} setTab={setTab} setView={setView}/>
-            </div>
-
+      {/* Complétude du profil */}
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink }}>{lang === 'fr' ? 'Complétude du profil' : 'Profile completeness'}</div>
+            <div style={{ fontFamily: c.fSans, fontSize: 12, color: c.ink3 }}>{lang === 'fr' ? 'Paré·e pour maximiser tes chances' : 'Ready to maximise your chances'}</div>
           </div>
-        )}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontFamily: c.fSerif, fontSize: 28, fontWeight: 700, color: tier.color, lineHeight: 1 }}>{completionScore}%</div>
+          </div>
+        </div>
+        <div style={{ height: 8, background: c.rule, borderRadius: 99, overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ height: '100%', width: `${completionScore}%`, background: `linear-gradient(90deg, ${c.accent}, ${c.green})`, borderRadius: 99, transition: 'width 0.8s ease' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: c.fSans, fontSize: 11, color: c.ink3 }}>
+          <span>✅ {completionScore}% {lang === 'fr' ? 'complété' : 'completed'}</span>
+          <span>{100 - completionScore}% {lang === 'fr' ? 'restant' : 'remaining'}</span>
+        </div>
+      </div>
+    </div>
 
+    {/* KPI Bar */}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, background: c.rule, border: `1px solid ${c.rule}` }}>
+      {[
+        { label: lang === 'fr' ? 'Score candidature' : 'Application score', val: `${sub.global}/100`, color: tier.color, sub: lang === 'fr' ? tier.label : tier.labelEn },
+        { label: lang === 'fr' ? 'Profil complété' : 'Profile completed', val: `${completionScore}%`, color: completionScore >= 70 ? c.green : completionScore >= 50 ? c.accent : c.warn, sub: lang === 'fr' ? `${15 - Math.round(completionScore / 100 * 15)} champs restants` : `${15 - Math.round(completionScore / 100 * 15)} fields left` },
+        { label: lang === 'fr' ? 'Candidatures' : 'Applications', val: roadmap.length, color: c.accent, sub: `${roadmapDone} ${lang === 'fr' ? 'terminées' : 'completed'}` },
+        { label: lang === 'fr' ? 'Entretiens IA' : 'AI interviews', val: scores.length, color: scores.length >= 3 ? c.green : scores.length >= 1 ? c.accent : c.ink3, sub: scores.length > 0 ? `Dernier: ${scores[0].scoreNum}/100` : (lang === 'fr' ? 'Aucun encore' : 'None yet') },
+        { label: lang === 'fr' ? 'Favoris' : 'Favorites', val: favorites, color: c.accent, sub: lang === 'fr' ? 'Bourses sauvegardées' : 'Saved scholarships' },
+      ].map((k, i) => (
+        <div key={i} style={{ background: c.surface, padding: '18px 20px', textAlign: 'center' }}>
+          <div style={{ fontFamily: c.fSans, fontSize: 10, fontWeight: 600, color: c.ink3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{k.label}</div>
+          <div style={{ fontFamily: c.fSerif, fontSize: 28, fontWeight: 700, color: k.color, lineHeight: 1, marginBottom: 4 }}>{k.val}</div>
+          <div style={{ fontFamily: c.fSans, fontSize: 10, color: c.ink3, fontWeight: 500 }}>{k.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    {/* Score + Actions prioritaires */}
+    <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 24 }}>
+      <ScoreWidget sub={sub} tier={tier} profile={profile} c={c} lang={lang} onAnalyze={runAiAnalysis} aiAnalyzing={aiAnalyzing} />
+      <div>
+        <PriorityActions actions={priorityActions} c={c} lang={lang} onAction={a => { if (a.external) setView(a.section); else setTab(a.section); }} />
+        {/* Simulation bloc */}
+        <div style={{ marginTop: 16, background: c.paper2, padding: '16px', borderRadius: 8 }}>
+          <div style={{ fontFamily: c.fSerif, fontSize: 14, fontWeight: 700, color: c.ink }}>
+            Simulation : si vous complétez votre motivation
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+            <span>Score actuel : <strong>{sub.global}</strong></span>
+            <span>→</span>
+            <span>Nouveau score : <strong style={{ color: c.green }}>{Math.min(100, sub.global + 10)}</strong></span>
+          </div>
+          <div style={{ height: 4, background: c.rule, borderRadius: 99, marginTop: 8 }}>
+            <div style={{ height: '100%', width: `${Math.min(100, sub.global + 10)}%`, background: c.accent, borderRadius: 99 }} />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* AI Analysis */}
+    {aiAnalysis && <AiAnalysisWidget analysis={aiAnalysis} tier={tier} sub={sub} insights={[]} c={c} lang={lang} />}
+
+    {/* Radar + Entretiens */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '24px' }}>
+        <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginBottom: 6 }}>{lang === 'fr' ? 'Radar de compétences' : 'Skills radar'}</div>
+        <div style={{ fontFamily: c.fSans, fontSize: 12, color: c.ink3, marginBottom: 16 }}>{lang === 'fr' ? 'Vue multidimensionnelle de votre profil' : 'Multi-dimensional profile view'}</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <RadarChart c={c} size={200} data={[
+            { label: lang === 'fr' ? 'Acad.' : 'Acad.', value: sub.academic },
+            { label: lang === 'fr' ? 'Exp.' : 'Exp.', value: sub.experience },
+            { label: 'Proj.', value: sub.projects },
+            { label: lang === 'fr' ? 'Lang.' : 'Lang.', value: sub.languages },
+            { label: 'Motiv.', value: sub.motivation },
+          ]} />
+        </div>
+      </div>
+      <InterviewWidget scores={scores} setView={setView} c={c} lang={lang} />
+    </div>
+
+    {/* Candidatures + Pays */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <RoadmapWidget roadmap={roadmap} setRoadmap={setRoadmap} user={user} c={c} lang={lang} setView={setView} />
+      <CountryReadinessWidget profile={profile} scores={scores} c={c} lang={lang} />
+    </div>
+
+    {/* Alertes + Missions */}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <InsightsWidget profile={profile} scores={scores} c={c} lang={lang} setTab={setTab} />
+      <MissionsWidget profile={profile} scores={scores} c={c} lang={lang} setTab={setTab} setView={setView} />
+    </div>
+
+  </div>
+)}
         {/* ══════ FORMULAIRES ══════ */}
         {tab!=='dashboard'&&(
           <div style={{maxWidth:800,margin:'0 auto'}}>

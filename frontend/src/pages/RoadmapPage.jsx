@@ -1,35 +1,110 @@
-// RoadmapPage.jsx — AI‑driven scholarship cockpit (corrigé)
+// RoadmapPage.jsx — Scholarship Cockpit (Kanban + Focus Mode)
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import ChatInput from '../components/ChatInput';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TOKENS (identical to homepage)
+   REMIX ICONS — inline SVG helper (pure B&W, no emoji)
+═══════════════════════════════════════════════════════════════════════════ */
+const RI_PATHS = {
+  trophy:        'M12 2a1 1 0 0 1 1 1v1h4a1 1 0 0 1 1 1v4c0 2.21-1.79 4-4 4h-.32A6.01 6.01 0 0 1 9 17.91V20h2a1 1 0 1 1 0 2H7a1 1 0 1 1 0-2h2v-2.09A6.01 6.01 0 0 1 4.32 13H4a4 4 0 0 1-4-4V5a1 1 0 0 1 1-1h4V3a1 1 0 0 1 1-1h6zm5 3h-3v7a2 2 0 0 0 2-2V5zm-8 0H6v4a2 2 0 0 0 2 2V5zm1 0v8a4 4 0 0 0 4-4V5h-4z',
+  fire:          'M12 23a7.5 7.5 0 0 1-5.138-12.963C8.204 8.774 11.5 6.5 11 1.5c3.147.757 4.3 3.273 4.0 5.5 1.798-1.747 1.798-4.5 1.5-6 2.5 2.5 2.5 6.5 0 9.5.5-1 .5-2.5 0-3.5-1 2-3 3.5-4 6.5-.5-1.5-.5-3 0-4.5C8.5 11 6.5 14 6.5 16c0 3.038 2.462 5.5 5.5 5.5z',
+  checkCircle:   'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z',
+  medal:         'M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17 5.8 21.3l2.4-7.4L2 9.4h7.6L12 2z',
+  calendar:      'M17 3h4a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4V1h2v2h6V1h2v2zm-2 2H9v2H7V5H4v4h16V5h-3v2h-2V5zm5 6H4v8h16v-8z',
+  bell:          'M12 22a2 2 0 0 1-2-2h4a2 2 0 0 1-2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+  map:           'M2 5l7-3 6 3 6-3v16l-6 3-6-3-7 3V5zm7-1.18v14.36l6 3V6.82l-6-3zM15 6.82v14.36l4-2V4.82l-4 2zM5 4.82L1 6.82v12.36l4-2V4.82z',
+  search:        'M18.031 16.617l4.283 4.282-1.415 1.415-4.282-4.283A8.96 8.96 0 0 1 11 20c-4.968 0-9-4.032-9-9s4.032-9 9-9 9 4.032 9 9a8.96 8.96 0 0 1-1.969 5.617zm-2.006-.742A6.977 6.977 0 0 0 18 11c0-3.868-3.133-7-7-7-3.868 0-7 3.132-7 7 0 3.867 3.132 7 7 7a6.977 6.977 0 0 0 4.875-1.975l.15-.15z',
+  edit:          'M6.414 16L16.556 5.858l-1.414-1.414L5 14.586V16h1.414zm.829 2H3v-4.243L14.435 2.322a1 1 0 0 1 1.414 0l2.829 2.829a1 1 0 0 1 0 1.414L7.243 18zM3 20h18v2H3v-2z',
+  robot:         'M12 2a2 2 0 0 1 2 2v1h3a1 1 0 0 1 1 1v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V6a1 1 0 0 1 1-1h3V4a2 2 0 0 1 2-2zm5 5H7v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7zm-5 7a6 6 0 0 1 6 6v1H6v-1a6 6 0 0 1 6-6zm-3.5-5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0zm5 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0z',
+  send:          'M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z',
+  delete:        'M17 6h5v2h-2v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8H2V6h5V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v3zm1 2H6v12h12V8zm-9 3h2v6H9v-6zm4 0h2v6h-2v-6zM9 4v2h6V4H9z',
+  refresh:       'M18.537 19.567A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3a8 8 0 1 0-2.46 5.772l1 1.795z',
+  arrowLeft:     'M7.828 11H20v2H7.828l4.95 4.95-1.414 1.414L4 12l7.364-7.364 1.414 1.414z',
+  arrowRight:    'M16.172 11l-5.364-5.364 1.414-1.414L20 12l-7.778 7.778-1.414-1.414L16.172 13H4v-2z',
+  sparkle:       'M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17 5.8 21.3l2.4-7.4L2 9.4h7.6L12 2z',
+  warning:       'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z',
+  file:          'M9 2.003V2h10.998C20.55 2 21 2.455 21 2.992v18.016a.993.993 0 0 1-.993.992H3.993A1 1 0 0 1 3 20.993V8l6-5.997zM5.828 8H9V4.828L5.828 8zM11 4v5a1 1 0 0 1-1 1H5v10h14V4h-8z',
+  upload:        'M4 19h16v2H4v-2zm9-4.828l6.071-6.071 1.414 1.414L12 18 3.515 9.515 4.929 8.1 11 14.172V2h2v12.172z',
+  target:        'M12 2C6.477 22 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-12a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z',
+  rocket:        'M6.69 8.44l3.637-7.273A1 1 0 0 1 11.23 1h1.54a1 1 0 0 1 .903.567L17.31 8.44l3.47 1.155a1 1 0 0 1 .67 1.254l-3.085 9.255A2 2 0 0 1 16.468 21H7.532a2 2 0 0 1-1.897-1.896L2.55 10.85a1 1 0 0 1 .67-1.255L6.69 8.44zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  pin:           'M11 21l-1-8H4l8-12 1 8h6L11 21z',
+  time:          'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8h4v2h-6V7h2v5z',
+  star:          'M12 18.26l-7.053 3.948 1.575-7.928-5.93-5.408 7.984-.814L12 2.5l3.424 5.56 7.984.814-5.93 5.408 1.575 7.928z',
+  check:         'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  close:         'M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95 1.414-1.414z',
+  user:          'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+  users:         'M2 22a8 8 0 1 1 16 0H2zm8-9c-3.315 0-6-2.685-6-6s2.685-6 6-6 6 2.685 6 6-2.685 6-6 6zm10 4.243A8.007 8.007 0 0 1 22 22h-2a6.007 6.007 0 0 0-1.5-3.93l1.5-1.827zm-3.241-6.207A5.99 5.99 0 0 0 18 7a5.99 5.99 0 0 0-1.241-3.664 3.999 3.999 0 1 1 0 7.328z',
+  chart:         'M5 3v16h16v2H3V3h2zm15.293 3.293l1.414 1.414L16 13.414l-3-2.999-4.293 4.292-1.414-1.414L13 7.586l3 2.999 4.293-4.292z',
+  lock:          'M18 8h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h2V7a6 6 0 1 1 12 0v1zm-2 0V7a4 4 0 1 0-8 0v1h8zm-5 6v2h2v-2h-2z',
+  clipboard:     'M6 4v4h12V4h2.007c.548 0 .993.445.993.993v16.014a.994.994 0 0 1-.993.993H3.993A.994.994 0 0 1 3 21.007V4.993C3 4.445 3.445 4 3.993 4H6zm2-2h8v4H8V2z',
+  lightning:     'M13 10h7l-9 13v-9H4l9-13z',
+  link:          'M17.657 14.828l-1.414-1.414L17.657 12A4 4 0 1 0 12 6.343l-1.414 1.414-1.414-1.414 1.414-1.414a6 6 0 0 1 8.485 8.485l-1.414 1.414zm-2.829 2.829l-1.414 1.414a6 6 0 1 1-8.485-8.485l1.414-1.414 1.414 1.414L6.343 12A4 4 0 1 0 12 17.657l1.414-1.414 1.414 1.414zm-.707-10.607l1.414 1.414-7.071 7.07-1.414-1.413 7.071-7.071z',
+  eye:           'M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3zm0 16a9.005 9.005 0 0 0 8.777-7 9.005 9.005 0 0 0-17.554 0A9.005 9.005 0 0 0 12 19zm0-2.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm0-2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  focus:         'M12 3c4.97 0 9 4.03 9 9s-4.03 9-9 9-9-4.03-9-9 4.03-9 9-9zm0 2a7 7 0 1 0 0 14A7 7 0 0 0 12 5zm0 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+  bookOpen:      'M21 4H3a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h9v-1H4V6h7v13h2V6h7v13h-8v1h9a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z',
+  more:          'M12 3c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 7c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 7c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z',
+  apps:          'M4 3h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM4 13h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1zM14 13h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1zM14 3h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z',
+  mail:          'M3 3h18a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm17 4.238l-7.928 7.1L4 7.216V19h16V7.238zM4.511 5l7.55 6.662L19.502 5H4.511z',
+  circle:        'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z',
+};
+
+function RI({ name, size = 16, color = 'currentColor', style = {} }) {
+  const d = RI_PATHS[name];
+  if (!d) return null;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill={color}
+      style={{ display: 'inline-block', flexShrink: 0, verticalAlign: 'middle', ...style }}
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
 ═══════════════════════════════════════════════════════════════════════════ */
 const tokens = (theme) => ({
-  accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
-  accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
-  ink:        theme === "dark" ? "#f2efe7" : "#141414",
-  ink2:       theme === "dark" ? "#cfccc2" : "#3a3a3a",
-  ink3:       theme === "dark" ? "#a19f96" : "#6b6b6b",
-  ink4:       theme === "dark" ? "#6d6b64" : "#9a9794",
-  paper:      theme === "dark" ? "#15140f" : "#faf8f3",
-  paper2:     theme === "dark" ? "#1d1c16" : "#f2efe7",
-  rule:       theme === "dark" ? "#2b2a22" : "#d9d5cb",
-  ruleSoft:   theme === "dark" ? "#24231c" : "#e8e4d9",
-  surface:    theme === "dark" ? "#1a1912" : "#ffffff",
-  danger:     "#b4321f",
-  warn:       "#b06a12",
-  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
-  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-  fMono:  `"DM Sans", monospace`,
+  accent:     theme === 'dark' ? '#4c9fd9' : '#1a56db',
+  accentSoft: theme === 'dark' ? '#1e3a5f' : '#eff6ff',
+  accentBorder:theme==='dark'?'#2563eb40':'#bfdbfe',
+  ink:        theme === 'dark' ? '#f2efe7' : '#141414',
+  ink2:       theme === 'dark' ? '#cfccc2' : '#3a3a3a',
+  ink3:       theme === 'dark' ? '#a19f96' : '#6b6b6b',
+  ink4:       theme === 'dark' ? '#6d6b64' : '#9a9794',
+  paper:      theme === 'dark' ? '#15140f' : '#f5f3ee',
+  paper2:     theme === 'dark' ? '#1d1c16' : '#f8f6f1',
+  surface:    theme === 'dark' ? '#1a1912' : '#ffffff',
+  rule:       theme === 'dark' ? '#2b2a22' : '#e5e3dc',
+  ruleSoft:   theme === 'dark' ? '#24231c' : '#f0ede8',
+  danger:     '#dc2626',
+  dangerSoft: '#fef2f2',
+  dangerBorder:'#fecaca',
+  warn:       '#d97706',
+  warnSoft:   '#fef9c3',
+  success:    '#16a34a',
+  successSoft:'#dcfce7',
+  successBorder:'#bbf7d0',
+  purple:     '#7c3aed',
+  purpleSoft: '#faf5ff',
+  purpleBorder:'#e9d5ff',
+  fSerif: `"Playfair Display","Times New Roman",Georgia,serif`,
+  fSans:  `"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`,
+  fMono:  `"DM Sans",monospace`,
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════════════ */
 const formatDate = (dateStr, lang) => {
   if (!dateStr) return null;
   const d = new Date(dateStr);
@@ -38,16 +113,16 @@ const formatDate = (dateStr, lang) => {
 
 const daysUntil = (dateStr) => {
   if (!dateStr) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const deadline = new Date(dateStr); deadline.setHours(0,0,0,0);
-  const diff = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-  return diff;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dl = new Date(dateStr); dl.setHours(0, 0, 0, 0);
+  return Math.ceil((dl - today) / 86400000);
 };
 
 const computePriority = (deadline, progress) => {
   const days = daysUntil(deadline);
   if (days === null) return 'LOW';
   if (days < 0) return 'EXPIRED';
+  if (days <= 4) return 'URGENT';
   if (days <= 7) return 'HIGH';
   if (days <= 14) return 'MEDIUM';
   if (progress < 30 && days <= 21) return 'HIGH';
@@ -55,23 +130,16 @@ const computePriority = (deadline, progress) => {
   return 'MEDIUM';
 };
 
-const computeEffort = (remainingSteps) => {
-  if (remainingSteps <= 2) return 'Low';
-  if (remainingSteps <= 5) return 'Medium';
-  return 'High';
-};
-
-const detectPhase = (title) => {
-  const t = title.toLowerCase();
-  if (t.includes('cv') || t.includes('résumé') || t.includes('research') || t.includes('profile')) return 'Preparation';
-  if (t.includes('letter') || t.includes('statement') || t.includes('essay') || t.includes('application form')) return 'Application';
-  if (t.includes('interview')) return 'Interview';
-  if (t.includes('decision') || t.includes('result') || t.includes('offer')) return 'Result';
-  return 'Application';
-};
+const priorityMeta = (p, c) => ({
+  URGENT:  { label: 'URGENT',     bg: c.dangerSoft,   color: c.danger,  border: c.dangerBorder },
+  HIGH:    { label: 'PRIORITAIRE',bg: '#fde8d8',      color: '#9a3412', border: '#fed7aa' },
+  MEDIUM:  { label: 'BIENTÔT',    bg: c.warnSoft,     color: c.warn,    border: '#fde68a' },
+  LOW:     { label: 'OK',         bg: c.successSoft,  color: c.success, border: c.successBorder },
+  EXPIRED: { label: 'EXPIRÉ',     bg: '#f1f5f9',      color: '#64748b', border: '#cbd5e1' },
+})[p] || { label: p, bg: '#f1f5f9', color: '#555', border: '#ddd' };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Custom Hook useBourses (unchanged, correct)
+   HOOKS
 ═══════════════════════════════════════════════════════════════════════════ */
 function useBourses(userId) {
   const [bourses, setBourses] = useState([]);
@@ -85,7 +153,7 @@ function useBourses(userId) {
     try {
       const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(userId), {
         params: { limit: 50, depth: 1 },
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(8000),
       });
       const docs = (res.data.docs || []).map(d => ({
         _id: d.id,
@@ -99,9 +167,17 @@ function useBourses(userId) {
         etapes: d.etapes || [],
         conseilGlobal: d.conseilGlobal || '',
         langue: d.langue || '',
+        match: d.match || 0,
+        matchLabel: d.matchLabel || '',
+        montant: d.montant || d.financement || '',
+        org: d.org || d.organisation || '',
+        col: d.col || d.colonne || 'recherche',
       }));
       const uniqueMap = new Map();
-      docs.forEach(b => { const key = `${b.nom?.toLowerCase().trim()}|${b.pays?.toLowerCase().trim()}|${b.deadline}`; if (!uniqueMap.has(key)) uniqueMap.set(key, b); });
+      docs.forEach(b => {
+        const key = `${b.nom?.toLowerCase().trim()}|${b.pays?.toLowerCase().trim()}|${b.deadline}`;
+        if (!uniqueMap.has(key)) uniqueMap.set(key, b);
+      });
       setBourses(Array.from(uniqueMap.values()));
       retryDelay.current = 5000;
       if (pollingActive) pollTimeoutRef.current = setTimeout(fetchData, retryDelay.current);
@@ -117,17 +193,9 @@ function useBourses(userId) {
   }, [userId, pollingActive]);
 
   useEffect(() => {
-    if (userId) {
-      setPollingActive(true);
-      fetchData();
-    } else {
-      setLoading(false);
-      setBourses([]);
-    }
-    return () => {
-      setPollingActive(false);
-      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
-    };
+    if (userId) { setPollingActive(true); fetchData(); }
+    else { setLoading(false); setBourses([]); }
+    return () => { setPollingActive(false); if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current); };
   }, [userId, fetchData]);
 
   const reload = useCallback(() => {
@@ -140,15 +208,12 @@ function useBourses(userId) {
   return { bourses, loading, reload };
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Translation hook (unchanged, but keep as is)
-═══════════════════════════════════════════════════════════════════════════ */
 function useTranslatedEtapes(etapes, lang) {
   const [translated, setTranslated] = useState(null);
   const [translating, setTranslating] = useState(false);
   const cacheKey = useMemo(() => {
     if (!etapes?.length) return null;
-    return 'tr_' + lang + '_' + etapes.map(e => e.titre?.slice(0,10)).join('|');
+    return 'tr_' + lang + '_' + etapes.map(e => e.titre?.slice(0, 10)).join('|');
   }, [etapes, lang]);
 
   useEffect(() => {
@@ -158,30 +223,18 @@ function useTranslatedEtapes(etapes, lang) {
       if (cached) { setTranslated(JSON.parse(cached)); return; }
     } catch {}
     setTranslating(true);
-    const prompt = `Translate these scholarship application steps from French to English.
-Return ONLY a JSON array with same structure: each item has titre, description, documents (array of strings), duree, deadline.
-Keep proper nouns and dates.
-Be concise.
-
-Input: ${JSON.stringify(etapes.map(e => ({
-      titre: e.titre || '',
-      description: e.description || '',
-      documents: e.documents || [],
-      duree: e.duree || '',
-      deadline: e.deadline || '',
-    })))}
-Return ONLY the JSON array.`;
+    const prompt = `Translate these scholarship steps from French to English. Return ONLY a JSON array with same structure: titre, description, documents (array), duree, deadline.\n\nInput: ${JSON.stringify(etapes.map(e => ({ titre: e.titre || '', description: e.description || '', documents: e.documents || [], duree: e.duree || '', deadline: e.deadline || '' })))}`;
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
     })
       .then(r => r.json())
       .then(data => {
         const text = data.content?.[0]?.text || '';
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+        const m = text.match(/\[[\s\S]*\]/);
+        if (m) {
+          const parsed = JSON.parse(m[0]);
           setTranslated(parsed);
           try { localStorage.setItem(cacheKey, JSON.stringify(parsed)); } catch {}
         }
@@ -194,453 +247,785 @@ Return ONLY the JSON array.`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Components
+   SUB-COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════ */
 
-function DocumentsManager({ documents, completedDocs, onUpload, c, lang }) {
-  const [uploading, setUploading] = useState(null);
-  const handleUpload = (docName) => {
-    setUploading(docName);
-    setTimeout(() => {
-      onUpload(docName);
-      setUploading(null);
-    }, 800);
-  };
-  if (!documents?.length) return null;
+// NOUVELLE TopBar – style identique au MiniHero de la page Bourse
+// TopBar – hero style identique à MiniHero + onglets en dessous
+function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
   return (
-    <div style={{ margin: '12px 0', padding: '10px 14px', background: c.paper2, borderLeft: `2px solid ${c.accent}` }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-        📄 {lang === 'fr' ? 'Documents requis' : 'Required documents'}
+    <div style={{ background: c.paper2 }}>
+      {/* Section Hero (strictement identique à MiniHero) */}
+      <div
+        style={{
+          background: c.paper2,
+          padding: '40px 32px',
+          textAlign: 'center',
+          borderBottom: `1px solid ${c.rule}`,
+          animation: 'fadeIn 0.6s ease',
+        }}
+      >
+        <h1
+          style={{
+            fontFamily: c.fSerif,
+            fontSize: 'clamp(32px, 5vw, 48px)',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: c.ink,
+            margin: 0,
+          }}
+        >
+          {lang === 'fr' ? (
+            <>
+              Ma{' '}
+              <em style={{ color: c.accent, fontStyle: 'italic' }}>
+                Roadmap Bourses
+              </em>
+              .
+            </>
+          ) : (
+            <>
+              My{' '}
+              <em style={{ color: c.accent, fontStyle: 'italic' }}>
+                Scholarship Roadmap
+              </em>
+              .
+            </>
+          )}
+        </h1>
+        <p
+          style={{
+            fontFamily: c.fSans,
+            fontSize: 16,
+            color: c.ink2,
+            marginTop: 12,
+            maxWidth: 600,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        >
+          {lang === 'fr'
+            ? `${totalCount} bourses suivies, progression personnalisée par l’IA.`
+            : `${totalCount} scholarships tracked, AI‑powered progress.`}
+        </p>
       </div>
-      {documents.map((doc, idx) => {
-        const isCompleted = completedDocs?.includes(doc);
-        return (
-          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: c.ink2 }}>
-            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {isCompleted ? <span style={{ color: '#2ecc71' }}>✓</span> : <span style={{ color: c.danger, width: 16 }}>◯</span>}
-              {doc}
-            </span>
-            {!isCompleted && (
-              <button
-                onClick={() => handleUpload(doc)}
-                disabled={uploading === doc}
-                style={{ fontSize: 10, padding: '4px 12px', background: c.accent, color: c.paper, border: 'none', borderRadius: 20, cursor: 'pointer', fontFamily: c.fMono }}
-              >
-                {uploading === doc ? '⏳' : (lang === 'fr' ? 'Ajouter' : 'Upload')}
-              </button>
-            )}
-          </div>
-        );
-      })}
+
+      {/* Barre d’onglets (Kanban / Progression) */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 2,
+          padding: '0 24px',
+          borderTop: `1px solid ${c.rule}`,
+        }}
+      >
+        {[
+          { id: 'kanban', labelFr: 'Vue Kanban', labelEn: 'Kanban View', icon: 'apps' },
+          { id: 'progression', labelFr: 'Progression', labelEn: 'Progress', icon: 'chart' },
+        ].map((tab) => {
+          const isActive = !focusMode && activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              style={{
+                padding: '10px 16px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                background: 'transparent',
+                color: isActive ? c.ink : c.ink3,
+                borderBottom: `2px solid ${isActive ? c.ink : 'transparent'}`,
+                fontFamily: c.fSans,
+                transition: 'all 0.15s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <RI name={tab.icon} size={14} />
+              {lang === 'fr' ? tab.labelFr : tab.labelEn}
+            </button>
+          );
+        })}
+        {focusMode && (
+          <button
+            style={{
+              padding: '10px 16px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: 'none',
+              background: 'transparent',
+              color: c.accent,
+              borderBottom: `2px solid ${c.accent}`,
+              fontFamily: c.fSans,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <RI name="focus" size={14} />
+            {lang === 'fr' ? 'Mode Focus' : 'Focus Mode'}
+          </button>
+        )}
+      </div> 
+      
     </div>
   );
 }
 
-// ─── Step Card (corrigé avec boutons précédent/suivant et IA) ──────────────
-function StepCard({ step, index, isCurrent, isCompleted, totalSteps, onNextStep, onPreviousStep, onGenerateDraft, onAskAI, documentsStatus, onUploadDocument, c, lang }) {
+function PriorityTag({ priority, c, style = {} }) {
+  const meta = priorityMeta(priority, c);
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, letterSpacing: '0.03em', ...style }}>
+      {meta.label}
+    </span>
+  );
+}
+
+function BourseCard({ bourse, onClick, onDelete, onRegenerate, c, lang }) {
+  const total = bourse.etapes?.length || 1;
+  const done = bourse.etapeCourante || 0;
+  const pct = Math.round((done / total) * 100);
+  const priority = computePriority(bourse.deadline, pct);
+  const daysLeft = daysUntil(bourse.deadline);
+  const matchColor = bourse.match >= 85 ? c.success : bourse.match >= 75 ? c.accent : c.warn;
+
   return (
     <div
-      className={`step-card ${isCurrent ? 'current' : ''} ${isCompleted ? 'completed' : ''}`}
+      onClick={onClick}
       style={{
-        display: 'flex',
-        gap: 14,
-        marginTop: index === 0 ? 0 : 16,
-        padding: '12px 0',
-        transition: 'all 0.2s ease',
+        background: c.surface,
+        border: `1px solid ${c.rule}`,
+        borderRadius: 10,
+        padding: 14,
+        width: '100%',
+        margin: '0 0 10px 0',
+        cursor: 'pointer',
+        transition: 'box-shadow 0.15s, transform 0.1s',
       }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 44 }}>
-        <div
-          className="step-circle"
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: isCompleted ? '#2ecc71' : isCurrent ? c.accent : c.paper2,
-            color: isCompleted || isCurrent ? c.paper : c.accent,
-            fontSize: 14,
-            fontWeight: 700,
-            border: `2px solid ${isCompleted ? '#2ecc71' : isCurrent ? c.accent : c.ruleSoft}`,
-            transition: 'all 0.2s cubic-bezier(0.2,0.9,0.4,1.1)',
-            cursor: isCurrent ? 'pointer' : 'default',
-          }}
-          onClick={() => { if (isCurrent && onNextStep) onNextStep(); }}
-        >
-          {isCompleted ? '✓' : (step.icon || index + 1)}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bourse.nom}</div>
+          <div style={{ fontSize: 11, color: c.ink3 }}>{bourse.org || bourse.pays}</div>
         </div>
-        {index < totalSteps - 1 && (
-          <div style={{ width: 2, flex: 1, minHeight: 20, margin: '6px 0', background: isCompleted ? '#2ecc71' : c.ruleSoft, transition: 'background 0.3s' }} />
-        )}
+        <PriorityTag priority={priority} c={c} style={{ marginLeft: 8, flexShrink: 0 }} />
       </div>
-      <div style={{ flex: 1, opacity: isCompleted ? 0.75 : 1 }}>
-        <div style={{ paddingTop: 4 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: c.ink }}>{step.titre}</div>
-              {step.deadline && (
-                <div style={{ fontSize: 10, color: c.warn, fontWeight: 600, marginTop: 2 }}>⏰ {step.deadline}</div>
-              )}
-            </div>
-            {step.duree && (
-              <div style={{ fontSize: 9, padding: '2px 8px', background: c.paper2, border: `1px solid ${c.ruleSoft}`, color: c.accent, fontFamily: c.fMono }}>
-                {step.duree}
-              </div>
-            )}
-          </div>
-          {isCurrent && (
-            <>
-              <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 8, color: c.ink2 }}>{step.description}</div>
 
-              {step.documents?.length > 0 && (
-                <DocumentsManager
-                  documents={step.documents}
-                  completedDocs={documentsStatus}
-                  onUpload={(docName) => onUploadDocument(step.titre, docName)}
+      {bourse.match > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, margin: '6px 0' }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: matchColor, flexShrink: 0 }} />
+          <span style={{ fontWeight: 600, color: c.ink }}>Match : {bourse.match}%</span>
+          {bourse.match >= 85 && (
+            <span style={{ fontSize: 10, fontWeight: 700, background: c.successSoft, color: c.success, padding: '1px 6px', borderRadius: 10, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <RI name="star" size={10} /> Excellent
+            </span>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: c.ink3, margin: '6px 0 4px' }}>
+        <span>Deadline dans <b style={{ color: daysLeft && daysLeft <= 7 ? c.danger : c.ink }}>{daysLeft}j</b></span>
+        <span>{formatDate(bourse.deadline, lang)}</span>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: c.ink3, margin: '6px 0 4px' }}>
+        <span>Progression</span>
+        <span style={{ fontWeight: 600, color: pct === 100 ? c.success : c.ink }}>{pct}%</span>
+      </div>
+      <div style={{ height: 6, background: c.rule, borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? c.success : c.accent, borderRadius: 3, transition: 'width 0.4s' }} />
+      </div>
+
+      <div style={{ fontSize: 11, color: c.ink3, marginBottom: 8 }}>
+        {done}/{total} tâches
+        {pct === 100 && <span style={{ color: c.success, fontWeight: 600, marginLeft: 6 }}><RI name="check" size={10} /> Complet</span>}
+      </div>
+
+      {bourse.conseilGlobal && (
+        <div style={{ background: c.paper2, borderRadius: 6, padding: '7px 10px', fontSize: 11, color: c.ink2, marginBottom: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <RI name="lightning" size={12} style={{ marginTop: 1 }} />
+          <span>{bourse.conseilGlobal}</span>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: c.ink }}>{bourse.montant}</span>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: c.ink3, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <RI name="pin" size={12} /> {bourse.pays}
+          </span>
+          <button onClick={e => { e.stopPropagation(); onRegenerate(); }} title="Régénérer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.warn, padding: '0 2px' }}>
+            <RI name="refresh" size={14} />
+          </button>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.danger, padding: '0 2px' }}>
+            <RI name="delete" size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TodayBanner({ bourses, onFocusBourse, c, lang }) {
+  const urgent = useMemo(() => {
+    const list = bourses
+      .filter(b => b.etapes?.length > 0 && b.etapeCourante < b.etapes.length)
+      .map(b => {
+        const step = b.etapes[Math.min(b.etapeCourante, b.etapes.length - 1)];
+        return { bourse: b, step, daysLeft: daysUntil(b.deadline) };
+      })
+      .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
+    return list[0] || null;
+  }, [bourses]);
+
+  if (!urgent) return null;
+  const remaining = urgent.bourse.etapes.length - urgent.bourse.etapeCourante;
+
+  return (
+    <div style={{ margin: '16px 24px', background: '#fff7f2', border: `1px solid #fcd9c0`, borderRadius: 10, padding: '16px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{ width: 36, height: 36, background: '#ff6b35', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <RI name="calendar" size={18} color="#fff" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            {lang === 'fr' ? 'À FAIRE AUJOURD\'HUI' : 'DO TODAY'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#141414' }}>{urgent.bourse.nom}</div>
+              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                {lang === 'fr' ? `Prochaine tâche : ${urgent.step?.titre}` : `Next task: ${urgent.step?.titre}`}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 11, color: '#888' }}>{remaining} {lang === 'fr' ? 'restante' : 'remaining'}</span>
+              <button
+                onClick={() => onFocusBourse(urgent.bourse._id)}
+                style={{ padding: '6px 14px', background: '#1a56db', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <RI name="rocket" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, onReload, c, lang }) {
+  const activeBourses = bourses.filter(b => b.col !== 'rejetees' && b.col !== 'acceptees');
+  const rejected = bourses.filter(b => b.col === 'rejetees');
+  const accepted = bourses.filter(b => b.col === 'acceptees');
+
+  return (
+    <div style={{ maxWidth: '85vw', margin: '0 auto' }}>
+      <TodayBanner bourses={bourses} onFocusBourse={onFocusBourse} c={c} lang={lang} />
+
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 24px', color: c.ink3 }}>
+          <div style={{ width: 22, height: 22, border: `3px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <span style={{ fontSize: 13 }}>{lang === 'fr' ? 'Chargement…' : 'Loading…'}</span>
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          <div style={{ padding: '16px 0' }}>
+            {activeBourses.length === 0 ? (
+              <div style={{
+                width: '100%',
+                border: `1.5px dashed ${c.rule}`,
+                borderRadius: 8,
+                padding: 32,
+                textAlign: 'center',
+                fontSize: 14,
+                color: c.ink4,
+                marginBottom: 24
+              }}>
+                {lang === 'fr' ? 'Aucune bourse active pour le moment' : 'No active scholarships at the moment'}
+              </div>
+            ) : (
+              activeBourses.map(b => (
+                <BourseCard
+                  key={b._id}
+                  bourse={b}
+                  onClick={() => onFocusBourse(b._id)}
+                  onDelete={() => onDelete(b)}
+                  onRegenerate={() => onRegenerate(b)}
                   c={c}
                   lang={lang}
                 />
-              )}
+              ))
+            )}
+          </div>
 
-              {/* Actions : Précédent, Suivant + IA */}
-              <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-                {index > 0 && (
-                  <button
-                    onClick={() => onPreviousStep()}
-                    style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}
-                  >
-                    ← {lang === 'fr' ? 'Étape précédente' : 'Previous step'}
-                  </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '0 0 24px' }}>
+            {[
+              { id: 'rejetees', items: rejected, labelFr: 'Rejetées', labelEn: 'Rejected', bg: '#fef2f2', color: '#991b1b', badgeBg: '#fecaca', icon: 'close' },
+              { id: 'acceptees', items: accepted, labelFr: 'Acceptées', labelEn: 'Accepted', bg: c.successSoft, color: '#166534', badgeBg: c.successBorder, icon: 'check' },
+            ].map(col => (
+              <div key={col.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, marginBottom: 12, background: col.bg, color: col.color, fontSize: 12, fontWeight: 600 }}>
+                  <RI name={col.icon} size={14} />
+                  <span style={{ flex: 1 }}>{lang === 'fr' ? col.labelFr : col.labelEn}</span>
+                  <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: col.badgeBg, color: col.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, padding: '0 6px' }}>{col.items.length}</span>
+                </div>
+                {col.items.length === 0 ? (
+                  <div style={{
+                    width: '100%',
+                    margin: '0 0 10px 0',
+                    border: `1.5px dashed ${col.badgeBg}`,
+                    borderRadius: 8,
+                    padding: 12,
+                    textAlign: 'center',
+                    fontSize: 12,
+                    color: c.ink4
+                  }}>
+                    {lang === 'fr' ? 'Aucune bourse' : 'No scholarships'}
+                  </div>
+                ) : (
+                  col.items.map(b => (
+                    <BourseCard key={b._id} bourse={b} onClick={() => onFocusBourse(b._id)} onDelete={() => onDelete(b)} onRegenerate={() => onRegenerate(b)} c={c} lang={lang} />
+                  ))
                 )}
-                {index < totalSteps - 1 && (
-                  <button
-                    onClick={() => onNextStep()}
-                    style={{ padding: '6px 14px', background: c.accent, color: c.paper, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}
-                  >
-                    {lang === 'fr' ? 'Étape suivante →' : 'Next step →'}
-                  </button>
-                )}
-                <button
-                  onClick={() => onGenerateDraft(step.titre)}
-                  style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}
-                >
-                  ✍️ {lang === 'fr' ? 'Générer un brouillon' : 'Generate draft'}
-                </button>
-                <button
-                  onClick={() => onAskAI(step.titre)}
-                  style={{ padding: '6px 14px', background: c.accent, color: c.paper, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}
-                >
-                  🤖 {lang === 'fr' ? 'Demander à l’IA' : 'Ask AI'}
-                </button>
               </div>
-            </>
-          )}
-        </div>
-      </div>
-      <style>{`
-        .step-card.current .step-circle {
-          box-shadow: 0 0 0 3px ${c.accent}40;
-          transform: scale(1.02);
-        }
-        .step-card.completed .step-circle {
-          animation: stepGlow 0.4s ease-out;
-        }
-        @keyframes stepGlow {
-          0% { box-shadow: 0 0 0 0 #2ecc71; transform: scale(0.95); }
-          70% { box-shadow: 0 0 0 10px #2ecc7140; }
-          100% { box-shadow: 0 0 0 0; transform: scale(1); }
-        }
-      `}</style>
+            ))}
+          </div>
+
+          <div style={{ padding: '0 0 24px' }}>
+            <button onClick={onReload} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, fontSize: 11, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <RI name="refresh" size={12} /> {lang === 'fr' ? 'Actualiser' : 'Refresh'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// ─── AI Coach Panel (corrigé : inclut le nom de la bourse) ───────────────
-function AICoachPanel({ bourse, currentStep, onAskAI, onGenerateDraft, c, lang }) {
-  const daysLeft = daysUntil(bourse.deadline);
-  let suggestion = '';
-  if (currentStep) {
-    suggestion = lang === 'fr'
-      ? `Prochaine action : ${currentStep.titre.toLowerCase()}`
-      : `Next action: ${currentStep.titre}`;
-  }
-  if (!currentStep && daysLeft !== null && daysLeft <= 7) {
-    suggestion = lang === 'fr'
-      ? `⚠️ Urgent : dépôt avant ${formatDate(bourse.deadline, lang)}`
-      : `⚠️ Urgent: submit by ${formatDate(bourse.deadline, lang)}`;
-  }
+function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc, c, lang }) {
+  const doneCount = etape.taches?.filter(t => t.done)?.length || 0;
+  const totalT = etape.taches?.length || 0;
+
   return (
-    <div style={{ margin: '16px 0 20px', padding: '14px 18px', background: c.paper2, borderLeft: `3px solid ${c.accent}`, borderRadius: 4 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: c.accent, marginBottom: 4 }}>🤖 AI Coach</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink }}>{suggestion || (lang === 'fr' ? 'Prêt à avancer ?' : 'Ready to move forward?')}</div>
+    <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 8, padding: '12px 16px', marginBottom: 8 }}>
+      <div
+        onClick={onToggle}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%',
+            background: doneCount === totalT && totalT > 0 ? c.accent : c.rule,
+            color: doneCount === totalT && totalT > 0 ? '#fff' : c.ink3,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, flexShrink: 0,
+          }}>
+            {doneCount === totalT && totalT > 0 ? <RI name="check" size={12} color="#fff" /> : index + 1}
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: c.ink }}>{etape.titre}</span>
+          {etape.deadline && (
+            <span style={{ fontSize: 10, color: c.warn, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <RI name="time" size={10} /> {etape.deadline}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, color: c.ink3 }}>{doneCount}/{totalT}</span>
+          <span style={{ fontSize: 13, color: c.ink4, transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>
+            <RI name="arrowRight" size={12} />
+          </span>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.ruleSoft}` }}>
+          {etape.description && (
+            <div style={{ fontSize: 12, color: c.ink2, marginBottom: 10, lineHeight: 1.6 }}>{etape.description}</div>
+          )}
+
+          {etape.taches?.map((t, ti) => (
+            <div key={ti} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${c.ruleSoft}` }}>
+              <div style={{
+                width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${t.done ? c.accent : c.rule}`,
+                background: t.done ? c.accent : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginRight: 10, flexShrink: 0,
+              }}>
+                {t.done && <RI name="check" size={10} color="#fff" />}
+              </div>
+              <span style={{ fontSize: 13, color: t.done ? c.ink3 : c.ink, textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</span>
+            </div>
+          ))}
+
+          {etape.documents?.length > 0 && (
+            <div style={{ margin: '12px 0 0', padding: '10px 12px', background: c.paper2, borderLeft: `2px solid ${c.accent}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <RI name="file" size={10} /> {lang === 'fr' ? 'Documents requis' : 'Required documents'}
+              </div>
+              {etape.documents.map((doc, di) => {
+                const done = completedDocs?.includes(doc);
+                return (
+                  <div key={di} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: c.ink2 }}>
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {done ? <RI name="checkCircle" size={12} color={c.success} /> : <RI name="circle" size={12} color={c.danger} />}
+                      {doc}
+                    </span>
+                    {!done && (
+                      <button onClick={() => onUploadDoc(doc)}
+                        style={{ fontSize: 10, padding: '3px 10px', background: c.accent, color: '#fff', border: 'none', borderRadius: 20, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <RI name="upload" size={10} /> {lang === 'fr' ? 'Ajouter' : 'Upload'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onGenerateDraft, onAskAI, onRegenerate, onDelete, onBack, c, lang }) {
+  const [expandedSteps, setExpandedSteps] = useState({ 0: true });
+  const { translated, translating } = useTranslatedEtapes(bourse.etapes, lang);
+  const etapesDisplay = lang === 'en' && translated ? translated : (bourse.etapes || []);
+  const total = etapesDisplay.length || 1;
+  const currentIdx = Math.min(bourse.etapeCourante || 0, total - 1);
+  const pct = Math.round(((bourse.etapeCourante || 0) / total) * 100);
+  const daysLeft = daysUntil(bourse.deadline);
+  const priority = computePriority(bourse.deadline, pct);
+  const currentStep = etapesDisplay[currentIdx];
+
+  const toggleStep = (idx) => setExpandedSteps(prev => ({ ...prev, [idx]: !prev[idx] }));
+
+  const risks = [];
+  if (daysLeft !== null && daysLeft < 7 && daysLeft >= 0)
+    risks.push(lang === 'fr' ? `Deadline dans ${daysLeft} jours` : `Deadline in ${daysLeft} days`);
+  if (daysLeft !== null && daysLeft < 0)
+    risks.push(lang === 'fr' ? 'Bourse expirée' : 'Scholarship expired');
+  if ((bourse.etapeCourante || 0) === 0 && daysLeft !== null && daysLeft < 14)
+    risks.push(lang === 'fr' ? 'Aucune étape commencée' : 'No step started');
+
+  return (
+    <div style={{ padding: '16px 24px 40px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <RI name="arrowRight" size={12} color={c.ink3} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>MODE FOCUS</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => onAskAI(currentStep?.titre, bourse.nom)} style={{ padding: '6px 12px', background: c.accent, color: c.paper, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            💬 {lang === 'fr' ? 'Conseil IA' : 'AI Advice'}
+          <button onClick={onBack} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Retour au Kanban' : 'Back to Kanban'}
           </button>
-          {currentStep && (
-            <button onClick={() => onGenerateDraft(currentStep.titre, bourse.nom)} style={{ padding: '6px 12px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-              ✍️ {lang === 'fr' ? 'Générer' : 'Generate'}
-            </button>
-          )}
+          <button onClick={onBack} style={{ padding: '6px 14px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="apps" size={12} /> {lang === 'fr' ? 'Voir toutes les bourses' : 'All scholarships'}
+          </button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function RiskAlert({ alerts, c, lang }) {
-  if (!alerts.length) return null;
-  return (
-    <div style={{ margin: '12px 0', padding: '10px 14px', background: '#fef2f2', borderLeft: `3px solid ${c.danger}` }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.danger, marginBottom: 6 }}>⚠️ {lang === 'fr' ? 'Risques détectés' : 'Risks detected'}</div>
-      {alerts.map((alert, idx) => (
-        <div key={idx} style={{ fontSize: 12, color: c.ink2, marginBottom: 4 }}>• {alert}</div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Scholarship Detail (avec gestion précise des étapes précédente/suivante) ──
-function ScholarshipDetail({ bourse, progress, daysLeft, onSetStep, onGenerateDraft, onAskAI, onUploadDocument, onRegenerate, onDelete, c, lang }) {
-  const { translated: translatedEtapes, translating } = useTranslatedEtapes(bourse.etapes, lang);
-  const etapesDisplay = (lang === 'en' && translatedEtapes) ? translatedEtapes : (bourse.etapes || []);
-  const totalSteps = etapesDisplay.length;
-  const currentIdx = Math.min(bourse.etapeCourante, totalSteps - 1);
-  const priority = computePriority(bourse.deadline, progress);
-  const effort = computeEffort(totalSteps - bourse.etapeCourante);
-  const priorityColor = { HIGH: c.danger, MEDIUM: c.warn, LOW: c.ink3, EXPIRED: '#666' }[priority];
-
-  const riskAlerts = [];
-  if (daysLeft !== null && daysLeft < 7 && daysLeft >= 0) riskAlerts.push(lang === 'fr' ? `Deadline dans ${daysLeft} jours` : `Deadline in ${daysLeft} days`);
-  if (daysLeft !== null && daysLeft < 0) riskAlerts.push(lang === 'fr' ? 'Bourse expirée' : 'Scholarship expired');
-  if (bourse.etapeCourante === 0 && daysLeft !== null && daysLeft < 14) riskAlerts.push(lang === 'fr' ? 'Aucune étape commencée' : 'No step started');
-  const currentStepHasDocs = etapesDisplay[currentIdx]?.documents?.length > 0;
-  if (currentStepHasDocs && !(bourse.completedDocs?.[etapesDisplay[currentIdx]?.titre]?.length)) {
-    riskAlerts.push(lang === 'fr' ? 'Documents manquants pour l’étape en cours' : 'Missing documents for current step');
-  }
-
-  const handleNextStep = () => {
-    if (currentIdx + 1 < totalSteps) onSetStep(currentIdx + 1);
-  };
-  const handlePreviousStep = () => {
-    if (currentIdx - 1 >= 0) onSetStep(currentIdx - 1);
-  };
-
-  return (
-    <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${c.ruleSoft}` }}>
-      {/* Narrative Header */}
-      <div style={{ marginTop: 16, marginBottom: 20, padding: '12px 16px', background: c.paper2, border: `1px solid ${c.ruleSoft}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ background: c.surface, border: `1.5px solid ${c.accentBorder}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: c.ink3, textTransform: 'uppercase' }}>{lang === 'fr' ? 'Votre candidature' : 'Your application'}</div>
-            <div style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, color: c.ink }}>{bourse.nom}</div>
+            <div style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink }}>{bourse.nom}</div>
+            <div style={{ fontSize: 12, color: c.ink3, marginTop: 3 }}>{bourse.org || bourse.pays}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+              {bourse.montant && <span style={{ fontSize: 13, fontWeight: 700, color: c.ink }}>{bourse.montant}</span>}
+              {bourse.pays && <span style={{ fontSize: 10, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: 20, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <RI name="pin" size={10} /> {bourse.pays}
+              </span>}
+              <PriorityTag priority={priority} c={c} />
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: c.accent }}>{progress}%</div>
-              <div style={{ fontSize: 10, color: c.ink3 }}>{lang === 'fr' ? 'Préparation' : 'Ready'}</div>
-            </div>
+          <div style={{ textAlign: 'right' }}>
             {daysLeft !== null && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: daysLeft < 7 ? c.danger : c.accent }}>{daysLeft}</div>
-                <div style={{ fontSize: 10, color: c.ink3 }}>{lang === 'fr' ? 'jours restants' : 'days left'}</div>
-              </div>
+              <>
+                <div style={{ fontSize: 36, fontWeight: 700, color: daysLeft <= 7 ? c.danger : c.accent, lineHeight: 1 }}>{daysLeft}</div>
+                <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? 'jours' : 'days'}</div>
+                <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? `avant le ${formatDate(bourse.deadline, lang)}` : `before ${formatDate(bourse.deadline, lang)}`}</div>
+              </>
             )}
-            <div style={{ padding: '4px 10px', background: `${priorityColor}20`, border: `1px solid ${priorityColor}`, fontSize: 11, fontWeight: 700, color: priorityColor }}>
-              {priority} · {effort} effort
-            </div>
           </div>
         </div>
-        {progress > 70 && daysLeft && daysLeft > 14 && (
-          <div style={{ marginTop: 10, fontSize: 11, color: '#2ecc71', fontWeight: 600 }}>🏆 {lang === 'fr' ? 'En avance sur le planning' : 'Ahead of schedule'}</div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: c.ink3, marginBottom: 6 }}>
+            <span>{lang === 'fr' ? 'Progression globale' : 'Overall progress'}</span>
+            <span style={{ fontWeight: 600, color: c.ink }}>{pct}%</span>
+          </div>
+          <div style={{ height: 8, background: c.rule, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? c.success : c.accent, borderRadius: 4, transition: 'width 0.4s' }} />
+          </div>
+          <div style={{ fontSize: 11, color: c.ink3, marginTop: 4 }}>
+            {bourse.etapeCourante || 0} {lang === 'fr' ? 'sur' : 'of'} {etapesDisplay.length} {lang === 'fr' ? 'étapes complétées' : 'steps completed'}
+          </div>
+        </div>
+
+        {bourse.match > 0 && (
+          <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <RI name="target" size={14} color="#166534" />
+            <span style={{ fontSize: 12, color: '#166534' }}>
+              {lang === 'fr'
+                ? `Score de compatibilité: ${bourse.match}% — Basé sur ton profil académique et ton expérience`
+                : `Compatibility score: ${bourse.match}% — Based on your academic profile and experience`}
+            </span>
+          </div>
         )}
       </div>
 
-      
-
-      <RiskAlert alerts={riskAlerts} c={c} lang={lang} />
-
-      {etapesDisplay.map((step, idx) => {
-        const isCompleted = idx < bourse.etapeCourante;
-        const isCurrent = idx === bourse.etapeCourante;
-        return (
-          <StepCard
-            key={idx}
-            step={step}
-            index={idx}
-            isCurrent={isCurrent}
-            isCompleted={isCompleted}
-            totalSteps={totalSteps}
-            onNextStep={handleNextStep}
-            onPreviousStep={handlePreviousStep}
-            onGenerateDraft={onGenerateDraft}
-            onAskAI={onAskAI}
-            documentsStatus={bourse.completedDocs?.[step.titre] || []}
-            onUploadDocument={onUploadDocument}
-            c={c}
-            lang={lang}
-          />
-        );
-      })}
-
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginTop: 24 }}>
-        <button onClick={onRegenerate} style={{ padding: '6px 12px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.warn, fontSize: 11, cursor: 'pointer' }}>
-          🔄 {lang === 'fr' ? 'Régénérer la roadmap' : 'Regenerate roadmap'}
-        </button>
-        <button onClick={onDelete} style={{ padding: '6px 12px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.danger, fontSize: 11, cursor: 'pointer' }}>
-          🗑️ {lang === 'fr' ? 'Supprimer' : 'Delete'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Scholarship List Item (inchangé) ───────────────────────────────────
-function ScholarshipListItem({ bourse, progress, daysLeft, isActive, onClick, onDelete, onRegenerate, c, lang }) {
-  const priority = computePriority(bourse.deadline, progress);
-  const priorityColor = { HIGH: c.danger, MEDIUM: c.warn, LOW: c.ink3 }[priority];
-  return (
-    <div style={{ border: `1px solid ${c.ruleSoft}`, background: isActive ? c.paper2 : c.surface, marginBottom: 12, cursor: 'pointer', transition: 'all 0.2s' }} onClick={onClick}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: c.ink }}>{bourse.nom}</div>
-            <div style={{ fontSize: 10, fontWeight: 600, background: priorityColor + '20', color: priorityColor, padding: '2px 8px', borderRadius: 20 }}>{priority}</div>
+      {currentStep && (
+        <div style={{ background: '#eff6ff', border: `1px solid ${c.accentBorder}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <RI name="rocket" size={14} color="#1e40af" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Prochaine action prioritaire' : 'Next priority action'}
+            </span>
           </div>
-          <div style={{ fontSize: 11, color: c.ink3, marginTop: 4, display: 'flex', gap: 16 }}>
-            {bourse.pays && <span>📍 {bourse.pays}</span>}
-            <span>📊 {progress}%</span>
-            {daysLeft !== null && <span>⏰ {daysLeft}j</span>}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.danger }}>🗑️</button>
-          <button onClick={(e) => { e.stopPropagation(); onRegenerate(); }} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.warn }}>🔄</button>
-          <div style={{ fontSize: 20, color: c.ink3, transform: isActive ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>›</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Today Focus Section (inchangé, mais pourrait être amélioré) ─────────
-function TodayFocus({ bourses, onAskAI, c, lang }) {
-  const tasks = useMemo(() => {
-    const items = [];
-    bourses.forEach(b => {
-      const total = b.etapes?.length || 1;
-      const currentIdx = Math.min(b.etapeCourante || 0, total - 1);
-      const currentStep = b.etapes?.[currentIdx];
-      if (currentStep) {
-        items.push({ scholarship: b.nom, task: currentStep.titre, daysLeft: daysUntil(b.deadline), priority: computePriority(b.deadline, (b.etapeCourante / total) * 100) });
-      }
-    });
-    items.sort((a,b) => {
-      if (a.priority === 'HIGH' && b.priority !== 'HIGH') return -1;
-      if (b.priority === 'HIGH' && a.priority !== 'HIGH') return 1;
-      if (a.daysLeft !== null && b.daysLeft !== null) return a.daysLeft - b.daysLeft;
-      return 0;
-    });
-    return items.slice(0, 3);
-  }, [bourses]);
-
-  if (tasks.length === 0) return null;
-  return (
-    <div style={{ marginBottom: 32, padding: '16px 20px', background: c.paper2, border: `1px solid ${c.accent}20`, borderRadius: 4 }}>
-      <h2 style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, margin: '0 0 12px 0' }}>🎯 {lang === 'fr' ? 'Focus du jour' : "Today's Focus"}</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {tasks.map((task, idx) => (
-          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: idx < tasks.length-1 ? `1px solid ${c.ruleSoft}` : 'none' }}>
-            <div>
-              <div style={{ fontWeight: 600, color: c.ink }}>{task.task}</div>
-              <div style={{ fontSize: 11, color: c.ink3 }}>{task.scholarship}</div>
-            </div>
-            <button onClick={() => onAskAI(task.task, task.scholarship)} style={{ padding: '4px 12px', background: c.accent, color: c.paper, border: 'none', fontSize: 11, cursor: 'pointer' }}>
-              {lang === 'fr' ? 'Aide IA' : 'AI Help'}
+          <div style={{ fontSize: 14, fontWeight: 600, color: c.ink, marginBottom: 10 }}>{currentStep.titre}</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => onSetStep(currentIdx + 1 < etapesDisplay.length ? currentIdx + 1 : currentIdx)}
+              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: c.fMono, letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <RI name="sparkle" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
             </button>
+            <button style={{ padding: '7px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
+              {lang === 'fr' ? 'Plus tard' : 'Later'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bourse.conseilGlobal && (
+        <div style={{ background: c.purpleSoft, border: `1px solid ${c.purpleBorder}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: c.purple, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RI name="sparkle" size={12} /> {lang === 'fr' ? 'Suggestions IA' : 'AI Suggestions'}
+          </div>
+          <div style={{ fontSize: 12, color: c.ink2, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{bourse.conseilGlobal}</div>
+          <button
+            onClick={() => onAskAI(currentStep?.titre, bourse.nom)}
+            style={{ marginTop: 12, padding: '6px 16px', background: c.purple, color: '#fff', border: 'none', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <RI name="robot" size={12} /> {lang === 'fr' ? 'Optimiser ma candidature' : 'Optimize my application'}
+          </button>
+        </div>
+      )}
+
+      {risks.length > 0 && (
+        <div style={{ background: c.dangerSoft, border: `1px solid ${c.dangerBorder}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: c.danger, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <RI name="warning" size={12} /> {lang === 'fr' ? 'Risques détectés' : 'Risks detected'}
+          </div>
+          {risks.map((r, i) => <div key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4 }}>• {r}</div>)}
+        </div>
+      )}
+
+      {etapesDisplay.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: c.ink3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RI name="clipboard" size={12} /> {lang === 'fr' ? 'Étapes détaillées' : 'Detailed steps'}
+          </div>
+          {translating && <div style={{ fontSize: 12, color: c.ink3, marginBottom: 8 }}>⏳ {lang === 'fr' ? 'Traduction en cours…' : 'Translating…'}</div>}
+          {etapesDisplay.map((etape, idx) => (
+            <StepBlock
+              key={idx}
+              etape={etape}
+              index={idx}
+              isOpen={!!expandedSteps[idx]}
+              onToggle={() => toggleStep(idx)}
+              completedDocs={completedDocs?.[etape.titre] || []}
+              onUploadDoc={(docName) => onUploadDocument(etape.titre, docName)}
+              c={c}
+              lang={lang}
+            />
+          ))}
+        </div>
+      )}
+
+      {etapesDisplay.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+          {currentIdx > 0 && (
+            <button onClick={() => onSetStep(currentIdx - 1)}
+              style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Étape précédente' : 'Previous step'}
+            </button>
+          )}
+          {currentIdx < etapesDisplay.length - 1 && (
+            <button onClick={() => onSetStep(currentIdx + 1)}
+              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {lang === 'fr' ? 'Étape suivante' : 'Next step'} <RI name="arrowRight" size={12} />
+            </button>
+          )}
+          <button onClick={() => onGenerateDraft(currentStep?.titre, bourse.nom)}
+            style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="edit" size={12} /> {lang === 'fr' ? 'Générer un brouillon' : 'Generate draft'}
+          </button>
+          <button onClick={() => onAskAI(currentStep?.titre, bourse.nom)}
+            style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="robot" size={12} /> {lang === 'fr' ? 'Demander à l\'IA' : 'Ask AI'}
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
+        <button onClick={onRegenerate}
+          style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.warn, fontSize: 11, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RI name="refresh" size={12} /> {lang === 'fr' ? 'Régénérer la roadmap' : 'Regenerate roadmap'}
+        </button>
+        <button onClick={onDelete}
+          style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.danger, fontSize: 11, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RI name="delete" size={12} /> {lang === 'fr' ? 'Supprimer' : 'Delete'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const BADGES_UNLOCKED = [
+  { icon: 'star', label: 'Première candidature', desc: 'Soumettre ta première candidature', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  { icon: 'target', label: 'Perfectionniste',      desc: 'Atteindre 100% sur une candidature',  color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  { icon: 'calendar', label: 'Semaine productive',   desc: '7 jours consécutifs actifs',           color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+];
+
+const BADGES_LOCKED = [
+  { icon: 'user', label: 'Triple menace',   desc: 'Soumettre 3 candidatures',              current: 2,  target: 3,  color: '#6b7280' },
+  { icon: 'circle', label: 'Mi-parcours',     desc: 'Atteindre 50% de progression globale',  current: 32, target: 50, color: '#6b7280' },
+  { icon: 'users', label: 'Expert bourses',  desc: 'Soumettre 5 candidatures',              current: 2,  target: 5,  color: '#6b7280' },
+  { icon: 'chart', label: 'Presque là',      desc: 'Atteindre 80% de progression globale',  current: 32, target: 80, color: '#6b7280' },
+];
+
+const LEVELS = ['Débutant', 'Novice', 'Intermédiaire', 'Avancé', 'Expert'];
+
+function ProgressionView({ bourses, avgProgress, streak, c, lang }) {
+  const submitted = bourses.filter(b => b.col === 'soumises' || b.col === 'acceptees').length;
+  const badgesCount = BADGES_UNLOCKED.length;
+
+  const statCards = [
+    { icon: 'trophy', label: lang === 'fr' ? 'Progression globale' : 'Global progress', value: `${avgProgress}%`, tag: lang === 'fr' ? 'Total' : 'Total', tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0', iconBg: '#fef3e2' },
+    { icon: 'calendar', label: lang === 'fr' ? 'Jours consécutifs' : 'Streak days',        value: streak,          tag: 'Streak',                           tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5', iconBg: '#fee2e2' },
+    { icon: 'checkCircle', label: lang === 'fr' ? 'Candidatures soumises' : 'Submitted',       value: submitted,       tag: lang === 'fr' ? 'Complétées' : 'Done', tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4', iconBg: '#dcfce7' },
+    { icon: 'medal', label: lang === 'fr' ? `sur 9 débloqués` : 'of 9 unlocked',         value: badgesCount,     tag: lang === 'fr' ? 'Badges' : 'Badges',  tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5', iconBg: '#fef9c3' },
+  ];
+
+  const currentLevelIdx = avgProgress < 20 ? 0 : avgProgress < 40 ? 1 : avgProgress < 60 ? 2 : avgProgress < 80 ? 3 : 4;
+  const nextLevelTarget = [20, 40, 60, 80, 100][currentLevelIdx] || 100;
+  const levelPct = Math.min(Math.round((avgProgress / nextLevelTarget) * 100), 100);
+
+  return (
+    <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        {statCards.map((s, i) => (
+          <div key={i} style={{ background: s.bg, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RI name={s.icon} size={18} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 700, color: c.ink, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 12, color: c.ink3, marginTop: 6 }}>{s.label}</div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-function RoadmapPreviewModal({ bourse, onConfirm, onCancel, c, lang }) {
-  const estimatedSteps = 5 + Math.floor(Math.random() * 4);
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel} />
-      <div style={{ position: 'relative', background: c.surface, maxWidth: 400, width: '90%', padding: 24, borderTop: `3px solid ${c.accent}` }}>
-        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, margin: '0 0 12px' }}>📋 {lang === 'fr' ? 'Aperçu de votre roadmap' : 'Roadmap preview'}</h3>
-        <p style={{ fontSize: 13, color: c.ink2, marginBottom: 8 }}>{lang === 'fr' ? `Nous allons générer environ ${estimatedSteps} étapes personnalisées pour "${bourse.nom}".` : `We'll generate about ${estimatedSteps} personalized steps for "${bourse.nom}".`}</p>
-        <p style={{ fontSize: 12, color: c.ink3, marginBottom: 24 }}>⏱️ {lang === 'fr' ? 'Temps estimé : 30-60 minutes par étape' : 'Estimated time: 30-60 min per step'}</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, cursor: 'pointer' }}>{lang === 'fr' ? 'Annuler' : 'Cancel'}</button>
-          <button onClick={onConfirm} style={{ padding: '8px 20px', background: c.accent, color: c.paper, border: 'none', cursor: 'pointer' }}>{lang === 'fr' ? 'Générer' : 'Generate'}</button>
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: c.ink }}>
+              {lang === 'fr' ? 'Niveau :' : 'Level:'} {LEVELS[currentLevelIdx]}
+            </div>
+            <div style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>
+              {lang === 'fr' ? 'Continue comme ça pour débloquer le niveau suivant !' : 'Keep going to unlock the next level!'}
+            </div>
+          </div>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RI name="trophy" size={22} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: c.ink3, marginBottom: 6, marginTop: 12 }}>
+          <span>{lang === 'fr' ? `Progression vers ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}` : `Progress to ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}`}</span>
+          <span style={{ fontWeight: 600, color: c.ink }}>{avgProgress}/{nextLevelTarget}</span>
+        </div>
+        <div style={{ height: 10, background: c.rule, borderRadius: 5, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ width: `${levelPct}%`, height: '100%', background: c.accent, borderRadius: 5, transition: 'width 0.5s' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {LEVELS.map((lv, i) => (
+            <span key={i} style={{
+              fontSize: 12, fontWeight: 600, padding: '4px 14px', borderRadius: 20,
+              background: i < currentLevelIdx ? c.accent : i === currentLevelIdx ? c.ink : c.rule,
+              color: i <= currentLevelIdx ? '#fff' : c.ink3,
+              border: `1px solid ${i === currentLevelIdx ? c.accent : 'transparent'}`,
+            }}>{lv}</span>
+          ))}
         </div>
       </div>
-    </div>
-  );
-}
 
-function GlobalStats({ bourses, c, lang }) {
-  const totalProgress = bourses.reduce((acc, b) => {
-    const total = b.etapes?.length || 1;
-    const current = b.etapeCourante || 0;
-    return acc + (current / total) * 100;
-  }, 0);
-  const avgProgress = bourses.length ? Math.round(totalProgress / bourses.length) : 0;
-  const activeCount = bourses.filter(b => b.etapeCourante < (b.etapes?.length || 1)).length;
-  return (
-    <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-      <div style={{ background: c.paper2, padding: '12px 20px', flex: 1, textAlign: 'center', border: `1px solid ${c.ruleSoft}` }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>{avgProgress}%</div>
-        <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? 'Progression moyenne' : 'Average progress'}</div>
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <RI name="medal" size={16} /> {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {BADGES_UNLOCKED.map((b, i) => (
+            <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fff', border: `1px solid ${b.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <RI name={b.icon} size={18} color={b.color} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#141414' }}>{b.label}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280' }}>{b.desc}</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div style={{ background: c.paper2, padding: '12px 20px', flex: 1, textAlign: 'center', border: `1px solid ${c.ruleSoft}` }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>{activeCount}</div>
-        <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? 'Candidatures actives' : 'Active applications'}</div>
-      </div>
-      <div style={{ background: c.paper2, padding: '12px 20px', flex: 1, textAlign: 'center', border: `1px solid ${c.ruleSoft}` }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: c.accent }}>5</div>
-        <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? 'Jours de suite' : 'Day streak'}</div>
-      </div>
-    </div>
-  );
-}
 
-function AISuggestions({ bourses, c, lang }) {
-  const suggestions = useMemo(() => {
-    const list = [];
-    bourses.forEach(b => {
-      const total = b.etapes?.length || 1;
-      const currentIdx = Math.min(b.etapeCourante || 0, total - 1);
-      const currentStep = b.etapes?.[currentIdx];
-      if (currentStep?.documents?.length && !b.completedDocs?.[currentStep.titre]?.length) {
-        list.push(`📄 ${lang === 'fr' ? 'Documents manquants pour' : 'Missing documents for'} ${b.nom} : ${currentStep.documents.join(', ')}`);
-      }
-    });
-    const deadlines = bourses.map(b => ({ nom: b.nom, date: b.deadline, days: daysUntil(b.deadline) }));
-    for (let i = 0; i < deadlines.length; i++) {
-      for (let j = i+1; j < deadlines.length; j++) {
-        if (deadlines[i].days !== null && deadlines[j].days !== null && Math.abs(deadlines[i].days - deadlines[j].days) <= 7) {
-          list.push(`⚠️ ${lang === 'fr' ? 'Dates limites proches' : 'Close deadlines'} : ${deadlines[i].nom} & ${deadlines[j].nom}`);
-          break;
-        }
-      }
-    }
-    return list.slice(0, 3);
-  }, [bourses, lang]);
-  if (suggestions.length === 0) return null;
-  return (
-    <div style={{ marginTop: 24, padding: '14px 18px', background: c.paper2, border: `1px solid ${c.warn}40` }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: c.warn, textTransform: 'uppercase', marginBottom: 8 }}>💡 AI Recommendations</div>
-      {suggestions.map((s, idx) => <div key={idx} style={{ fontSize: 12, color: c.ink2, marginBottom: 6 }}>• {s}</div>)}
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16 }}>
+          <RI name="medal" size={16} />
+          <span>{lang === 'fr' ? 'Prochains badges à débloquer' : 'Next badges to unlock'}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {BADGES_LOCKED.map((b, i) => {
+            const pct = Math.min(Math.round((b.current / b.target) * 100), 100);
+            return (
+              <div key={i} style={{ background: c.paper2, border: `1px solid ${c.rule}`, borderRadius: 8, padding: '12px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: c.rule, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <RI name={b.icon} size={16} color={c.ink3} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: c.ink }}>{b.label}</span>
+                      <span style={{ fontSize: 11, color: c.ink3 }}>{b.current}/{b.target}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: c.ink3, marginBottom: 8 }}>{b.desc}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: c.ink3, minWidth: 70 }}>Progression</span>
+                      <div style={{ flex: 1, height: 6, background: c.rule, borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: c.accent, borderRadius: 3, transition: 'width 0.4s' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -650,21 +1035,97 @@ function LoginModal({ onClose, c, lang }) {
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
   const send = async () => {
-    if (!email || !email.includes('@')){ setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
+    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
     setStatus('sending');
-    try { await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() }); setStatus('success'); }
-    catch(err){ setStatus('error'); setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error')); }
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
+    }
   };
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)' }} onClick={onClose}/>
-      <div style={{ position:'relative', zIndex:2001, width:400, maxWidth:'92vw', background:c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 20px', background:c.paper2, borderBottom:`1px solid ${c.rule}` }}><span style={{ fontSize:22 }}>🔐</span><span style={{ fontFamily:c.fSerif, fontWeight:700, fontSize:16, color:c.ink }}>{lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}</span><button style={{ marginLeft:'auto', background:'none', border:'none', fontSize:18, cursor:'pointer', color:c.ink3 }} onClick={onClose}>✕</button></div>
-        <div style={{ padding:'24px' }}>
-          {status === 'idle' && <><p style={{ color:c.ink2, fontSize:13, marginBottom:20, lineHeight:1.5 }}>{lang === 'fr' ? 'Entrez votre email pour recevoir un lien magique.' : 'Enter your email to receive a magic link.'}</p><input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} value={email} autoFocus onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} style={{ width:'100%', padding:'10px 12px', border:`1px solid ${c.ruleSoft}`, background:c.paper, color:c.ink, fontSize:13, outline:'none', fontFamily:c.fSans }}/>{errMsg && <div style={{ color:c.danger, fontSize:11, marginTop:6 }}>{errMsg}</div>}<button style={{ width:'100%', marginTop:16, padding:'10px', background:c.accent, color:c.paper, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:c.fMono, letterSpacing:'0.05em' }} onClick={send}>✉️ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}</button></>}
-          {status === 'sending' && <div style={{ textAlign:'center', padding:'24px 0' }}><div style={{ width:32, height:32, border:`3px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto' }}/><p style={{ color:c.ink2, marginTop:14 }}>{lang === 'fr' ? 'Envoi...' : 'Sending...'}</p></div>}
-          {status === 'success' && <div style={{ textAlign:'center', padding:'16px 0' }}><div style={{ fontSize:48, marginBottom:12 }}>✉️</div><div style={{ fontFamily:c.fSerif, fontSize:16, fontWeight:700, color:'#166534', marginBottom:8 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div><p style={{ color:c.ink2, fontSize:12 }}>{lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}</p><button style={{ width:'100%', marginTop:16, padding:'10px', background:'#166534', color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer' }} onClick={onClose}>✓ {lang === 'fr' ? 'Fermer' : 'Close'}</button></div>}
-          {status === 'error' && <div style={{ textAlign:'center', padding:'16px 0' }}><div style={{ fontSize:40, marginBottom:12 }}>⚠️</div><p style={{ color:c.danger, marginBottom:12 }}>{errMsg}</p><button style={{ width:'100%', marginTop:16, padding:'10px', background:c.accent, color:c.paper, border:'none', fontSize:12, fontWeight:600, cursor:'pointer' }} onClick={()=>{setStatus('idle');setErrMsg('');}}>Retry</button></div>}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
+      <div style={{ position: 'relative', zIndex: 2001, width: 420, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)', borderRadius: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
+          <RI name="lock" size={20} />
+          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 16, color: c.ink }}>{lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}</span>
+          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: c.ink3 }}>
+            <RI name="close" size={18} />
+          </button>
+        </div>
+        <div style={{ padding: 24 }}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: c.ink2, fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien magique.' : 'Enter your email to receive a magic link.'}
+              </p>
+              <input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} value={email} autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${c.rule}`, background: c.paper, color: c.ink, fontSize: 13, outline: 'none', fontFamily: c.fSans, borderRadius: 6 }}
+              />
+              {errMsg && <div style={{ color: c.danger, fontSize: 11, marginTop: 6 }}>{errMsg}</div>}
+              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <RI name="mail" size={14} /> {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={{ width: 32, height: 32, border: `3px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+              <p style={{ color: c.ink2, marginTop: 14 }}>{lang === 'fr' ? 'Envoi…' : 'Sending…'}</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}><RI name="mail" size={48} /></div>
+              <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
+              <p style={{ color: c.ink2, fontSize: 12 }}>{lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}</p>
+              <button onClick={onClose} style={{ width: '100%', marginTop: 16, padding: 10, background: '#166534', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <RI name="check" size={12} /> {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <RI name="warning" size={40} color={c.danger} />
+              <p style={{ color: c.danger, marginTop: 12 }}>{errMsg}</p>
+              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6 }}>
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoadmapPreviewModal({ bourse, onConfirm, onCancel, c, lang }) {
+  const steps = 5 + Math.floor(Math.random() * 4);
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel} />
+      <div style={{ position: 'relative', background: c.surface, maxWidth: 420, width: '90%', padding: 24, borderTop: `3px solid ${c.accent}`, borderRadius: 4, zIndex: 3001 }}>
+        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, margin: '0 0 12px', color: c.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <RI name="clipboard" size={20} /> {lang === 'fr' ? 'Aperçu de votre roadmap' : 'Roadmap preview'}
+        </h3>
+        <p style={{ fontSize: 13, color: c.ink2, marginBottom: 8 }}>
+          {lang === 'fr'
+            ? `Nous allons générer environ ${steps} étapes personnalisées pour "${bourse.nom}".`
+            : `We'll generate about ${steps} personalized steps for "${bourse.nom}".`}
+        </p>
+        <p style={{ fontSize: 12, color: c.ink3, marginBottom: 24 }}><RI name="time" size={12} /> {lang === 'fr' ? 'Temps estimé : 30–60 min par étape' : 'Estimated time: 30–60 min per step'}</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${c.rule}`, cursor: 'pointer', borderRadius: 6, fontFamily: c.fSans }}>
+            {lang === 'fr' ? 'Annuler' : 'Cancel'}
+          </button>
+          <button onClick={onConfirm} style={{ padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 6, fontFamily: c.fSans, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <RI name="send" size={14} /> {lang === 'fr' ? 'Générer' : 'Generate'}
+          </button>
         </div>
       </div>
     </div>
@@ -672,186 +1133,211 @@ function LoginModal({ onClose, c, lang }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN PAGE COMPONENT
+   MAIN PAGE
 ═══════════════════════════════════════════════════════════════════════════ */
-export default function RoadmapPage({ user, messages, input, setInput, loading: chatLoading, handleSend, chatContainerRef, handleQuickReply }) {
+export default function RoadmapPage({ user, handleQuickReply }) {
   const { lang } = useT();
   const { theme } = useTheme();
   const c = tokens(theme);
+
+  const [activeTab, setActiveTab] = useState('kanban');
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const { bourses, loading: boursesLoading, reload } = useBourses(user?.id);
-  const [activeBourseId, setActiveBourseId] = useState(null);
+  const [focusBourseId, setFocusBourseId] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedBourseForPreview, setSelectedBourseForPreview] = useState(null);
+  const [selectedForPreview, setSelectedForPreview] = useState(null);
   const [completedDocs, setCompletedDocs] = useState({});
 
-  const handleUploadDocument = (scholarshipId, stepTitle, docName) => {
+  const { bourses, loading, reload } = useBourses(user?.id);
+
+  // Nombre total de bourses actives (ni rejetées ni acceptées)
+  const activeCount = bourses.filter(b => b.col !== 'rejetees' && b.col !== 'acceptees').length;
+
+  const avgProgress = useMemo(() => {
+    if (!bourses.length) return 0;
+    const sum = bourses.reduce((acc, b) => {
+      const total = b.etapes?.length || 1;
+      return acc + ((b.etapeCourante || 0) / total) * 100;
+    }, 0);
+    return Math.round(sum / bourses.length);
+  }, [bourses]);
+
+  const handleFocusBourse = useCallback((id) => {
+    setFocusBourseId(id);
+    setActiveTab('kanban');
+  }, []);
+
+  const handleBackToKanban = useCallback(() => {
+    setFocusBourseId(null);
+  }, []);
+
+  const handleUploadDocument = useCallback((scholarshipId, stepTitle, docName) => {
     setCompletedDocs(prev => ({
       ...prev,
       [scholarshipId]: {
         ...prev[scholarshipId],
-        [stepTitle]: [...(prev[scholarshipId]?.[stepTitle] || []), docName]
-      }
+        [stepTitle]: [...(prev[scholarshipId]?.[stepTitle] || []), docName],
+      },
     }));
-  };
+  }, []);
 
-  // Nouvelle fonction : définit directement l'index de l'étape (pour précédent/suivant)
-  const handleSetStep = async (bourseId, newStepIndex) => {
-    const b = bourses.find(b => b._id === bourseId);
+  const handleSetStep = useCallback(async (bourseId, newStepIndex) => {
+    const b = bourses.find(x => x._id === bourseId);
     if (!b) return;
-    const maxStep = (b.etapes?.length || 1) - 1;
-    const clamped = Math.min(Math.max(newStepIndex, 0), maxStep);
+    const clamped = Math.min(Math.max(newStepIndex, 0), (b.etapes?.length || 1) - 1);
     try {
       await axiosInstance.patch(API_ROUTES.roadmap.update(b._id), { etapeCourante: clamped });
       reload();
     } catch (err) { console.error('Step update error:', err); }
-  };
+  }, [bourses, reload]);
 
-  const handleAskAI = (stepTitle, bourseNom) => {
+  const handleAskAI = useCallback((stepTitle, bourseNom) => {
     const message = lang === 'fr'
       ? `Aide-moi pour l'étape "${stepTitle}" de la bourse "${bourseNom}"`
       : `Help me with step "${stepTitle}" for "${bourseNom}" scholarship`;
     window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
-  };
+  }, [lang]);
 
-  const handleGenerateDraft = (stepTitle, bourseNom) => {
+  const handleGenerateDraft = useCallback((stepTitle, bourseNom) => {
     const message = lang === 'fr'
-      ? `Génère-moi un brouillon pour l'étape "${stepTitle}" de la bourse "${bourseNom}"`
+      ? `Génère un brouillon pour l'étape "${stepTitle}" de la bourse "${bourseNom}"`
       : `Generate a draft for step "${stepTitle}" for "${bourseNom}"`;
     window.dispatchEvent(new CustomEvent('openChatWithMessage', { detail: { message } }));
-  };
+  }, [lang]);
 
-  const handleRegenerate = async (bourse) => {
+  const handleRegenerate = useCallback(async (bourse) => {
     if (!bourse._id) return;
     try {
       await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
         roadmapId: bourse._id,
-        bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.url, deadline: bourse.deadline, financement: bourse.financement }
+        bourse: { nom: bourse.nom, pays: bourse.pays, url: bourse.url, deadline: bourse.deadline, financement: bourse.financement },
       });
       setTimeout(() => reload(), 2000);
     } catch (err) { console.error('Regeneration error:', err); }
-  };
+  }, [reload]);
 
-  const handleDeleteBourse = async (bourse) => {
+  const handleDelete = useCallback(async (bourse) => {
     if (!bourse._id) return;
     try {
       await axiosInstance.delete(API_ROUTES.roadmap.delete(bourse._id));
       reload();
-      if (activeBourseId === bourse._id) setActiveBourseId(null);
+      if (focusBourseId === bourse._id) setFocusBourseId(null);
     } catch (err) { console.error('Delete error:', err); }
-  };
+  }, [reload, focusBourseId]);
 
   if (!user) {
     return (
       <>
-        <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:c.paper, padding:24 }}>
-          <div style={{ background:c.surface, border:`1px solid ${c.rule}`, padding:'48px 40px', maxWidth:380, width:'100%', textAlign:'center' }}>
-            <div style={{ fontSize:56, marginBottom:16 }}>🗺️</div>
-            <h3 style={{ fontFamily:c.fSerif, fontSize:20, fontWeight:700, color:c.ink, margin:'0 0 8px' }}>{lang === 'fr' ? 'Roadmap non disponible' : 'Roadmap unavailable'}</h3>
-            <p style={{ color:c.ink2, fontSize:13, lineHeight:1.5, margin:'0 0 24px' }}>{lang === 'fr' ? 'Connectez-vous pour suivre vos candidatures.' : 'Sign in to track your applications.'}</p>
-            <button style={{ padding:'10px 28px', background:c.accent, color:c.paper, border:'none', fontSize:12, fontWeight:600, fontFamily:c.fMono, cursor:'pointer' }} onClick={()=>setShowLoginModal(true)}>🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}</button>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
+          <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '48px 40px', maxWidth: 380, width: '100%', textAlign: 'center', borderRadius: 12 }}>
+            <RI name="map" size={56} color={c.ink3} />
+            <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, color: c.ink, margin: '16px 0 8px' }}>
+              {lang === 'fr' ? 'Roadmap non disponible' : 'Roadmap unavailable'}
+            </h3>
+            <p style={{ color: c.ink2, fontSize: 13, lineHeight: 1.5, margin: '0 0 24px' }}>
+              {lang === 'fr' ? 'Connectez-vous pour suivre vos candidatures.' : 'Sign in to track your applications.'}
+            </p>
+            <button
+              onClick={() => setShowLoginModal(true)}
+              style={{ padding: '10px 28px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <RI name="lock" size={14} /> {lang === 'fr' ? 'Se connecter' : 'Sign in'}
+            </button>
           </div>
         </div>
-        {showLoginModal && <LoginModal onClose={()=>setShowLoginModal(false)} c={c} lang={lang}/>}
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>
     );
   }
 
-  const activeScholarship = bourses.find(b => b._id === activeBourseId);
-  const hasRoadmaps = bourses.length > 0;
+  const focusBourse = bourses.find(b => b._id === focusBourseId) || null;
+  const isFocusMode = !!focusBourse;
 
   return (
     <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px' }}>
-        {hasRoadmaps && <GlobalStats bourses={bourses} c={c} lang={lang} />}
-        {hasRoadmaps && <TodayFocus bourses={bourses} onAskAI={handleAskAI} c={c} lang={lang} />}
+      <TopBar
+        lang={lang}
+        c={c}
+        totalCount={activeCount}
+        onTabChange={(tab) => { setActiveTab(tab); setFocusBourseId(null); }}
+        activeTab={activeTab}
+        focusMode={isFocusMode}
+      />
 
-        <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            {boursesLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 24, color: c.ink3 }}>
-                <div style={{ width: 24, height: 24, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                <span style={{ fontSize: 13 }}>{lang === 'fr' ? 'Chargement de vos bourses…' : 'Loading your scholarships…'}</span>
+      {isFocusMode ? (
+        <FocusModeView
+          bourse={focusBourse}
+          completedDocs={completedDocs[focusBourse._id] || {}}
+          onUploadDocument={(stepTitle, docName) => handleUploadDocument(focusBourse._id, stepTitle, docName)}
+          onSetStep={(idx) => handleSetStep(focusBourse._id, idx)}
+          onGenerateDraft={handleGenerateDraft}
+          onAskAI={handleAskAI}
+          onRegenerate={() => handleRegenerate(focusBourse)}
+          onDelete={() => handleDelete(focusBourse)}
+          onBack={handleBackToKanban}
+          c={c}
+          lang={lang}
+        />
+      ) : (
+        <>
+          {activeTab === 'kanban' && (
+            <KanbanView
+              bourses={bourses}
+              loading={loading}
+              onFocusBourse={handleFocusBourse}
+              onDelete={handleDelete}
+              onRegenerate={handleRegenerate}
+              onReload={reload}
+              c={c}
+              lang={lang}
+            />
+          )}
+          {activeTab === 'progression' && (
+            <ProgressionView
+              bourses={bourses}
+              avgProgress={avgProgress}
+              streak={12} // à connecter plus tard si besoin
+              c={c}
+              lang={lang}
+            />
+          )}
+
+          {!loading && bourses.length === 0 && activeTab === 'kanban' && (
+            <div style={{ textAlign: 'center', padding: 48, margin: 24, border: `1px solid ${c.rule}`, background: c.surface, borderRadius: 12 }}>
+              <RI name="map" size={48} color={c.ink3} />
+              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginTop: 16, marginBottom: 8 }}>
+                {lang === 'fr' ? 'Aucune candidature en cours' : 'No active applications'}
               </div>
-            )}
-            {!boursesLoading && bourses.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 48, border: `1px solid ${c.ruleSoft}`, background: c.surface }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🗺️</div>
-                <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginBottom: 8 }}>{lang === 'fr' ? 'Aucune candidature en cours' : 'No active applications'}</div>
-                <div style={{ color: c.ink2, fontSize: 13, maxWidth: 360, margin: '0 auto' }}>
-                  {lang === 'fr'
-                    ? <>Allez dans <strong style={{ color: c.accent }}>Recommandations</strong> et cliquez sur <strong style={{ color: c.warn }}>🗺️ Postuler</strong> pour démarrer votre roadmap.</>
-                    : <>Go to <strong style={{ color: c.accent }}>Recommendations</strong> and click <strong style={{ color: c.warn }}>🗺️ Apply</strong> to start your roadmap.</>}
-                </div>
-                <button style={{ marginTop: 20, padding: '8px 20px', background: c.accent, color: c.paper, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={() => handleQuickReply(lang === 'fr' ? 'Recommande moi des bourses' : 'Recommend me scholarships')}>
-                  🎯 {lang === 'fr' ? 'Voir les recommandations' : 'See recommendations'}
-                </button>
+              <div style={{ color: c.ink2, fontSize: 13, maxWidth: 360, margin: '0 auto 20px' }}>
+                {lang === 'fr'
+                  ? <>Allez dans <strong style={{ color: c.accent }}>Recommandations</strong> et cliquez sur <strong style={{ color: c.warn }}>Postuler</strong> pour démarrer.</>
+                  : <>Go to <strong style={{ color: c.accent }}>Recommendations</strong> and click <strong style={{ color: c.warn }}>Apply</strong> to start.</>}
               </div>
-            )}
-            {!boursesLoading && bourses.map((b) => {
-              const total = b.etapes?.length || 1;
-              const progress = total ? Math.round(((b.etapeCourante || 0) / total) * 100) : 0;
-              const daysLeft = daysUntil(b.deadline);
-              return (
-                <ScholarshipListItem
-                  key={b._id}
-                  bourse={b}
-                  progress={progress}
-                  daysLeft={daysLeft}
-                  isActive={activeBourseId === b._id}
-                  onClick={() => setActiveBourseId(activeBourseId === b._id ? null : b._id)}
-                  onDelete={() => handleDeleteBourse(b)}
-                  onRegenerate={() => handleRegenerate(b)}
-                  c={c}
-                  lang={lang}
-                />
-              );
-            })}
-            {user && !boursesLoading && bourses.length > 0 && (
-              <button style={{ marginTop: 16, padding: '6px 12px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink3, fontSize: 11, cursor: 'pointer', fontFamily: c.fMono }} onClick={reload}>
-                🔄 {lang === 'fr' ? 'Actualiser' : 'Refresh'}
+              <button
+                onClick={() => handleQuickReply?.(lang === 'fr' ? 'Recommande moi des bourses' : 'Recommend me scholarships')}
+                style={{ padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <RI name="target" size={14} /> {lang === 'fr' ? 'Voir les recommandations' : 'See recommendations'}
               </button>
-            )}
-          </div>
+            </div>
+          )}
+        </>
+      )}
 
-          <div style={{ flex: 1.2 }}>
-            {activeScholarship ? (
-              <>
-                <ScholarshipDetail
-                  bourse={activeScholarship}
-                  progress={activeScholarship.etapes?.length ? Math.round(((activeScholarship.etapeCourante || 0) / activeScholarship.etapes.length) * 100) : 0}
-                  daysLeft={daysUntil(activeScholarship.deadline)}
-                  onSetStep={(idx) => handleSetStep(activeScholarship._id, idx)}
-                  onGenerateDraft={handleGenerateDraft}
-                  onAskAI={handleAskAI}
-                  onUploadDocument={(stepTitle, docName) => handleUploadDocument(activeScholarship._id, stepTitle, docName)}
-                  onRegenerate={() => handleRegenerate(activeScholarship)}
-                  onDelete={() => handleDeleteBourse(activeScholarship)}
-                  c={c}
-                  lang={lang}
-                />
-                <AISuggestions bourses={[activeScholarship]} c={c} lang={lang} />
-              </>
-            ) : bourses.length > 0 && (
-              <div style={{ textAlign: 'center', padding: 48, color: c.ink3, border: `1px solid ${c.ruleSoft}` }}>
-                {lang === 'fr' ? 'Sélectionnez une bourse pour voir le détail' : 'Select a scholarship to view details'}
-              </div>
-            )}
-          </div>
-        </div>
+      {showPreviewModal && selectedForPreview && (
+        <RoadmapPreviewModal
+          bourse={selectedForPreview}
+          onConfirm={() => setShowPreviewModal(false)}
+          onCancel={() => setShowPreviewModal(false)}
+          c={c}
+          lang={lang}
+        />
+      )}
 
-        {showPreviewModal && selectedBourseForPreview && (
-          <RoadmapPreviewModal
-            bourse={selectedBourseForPreview}
-            onConfirm={() => { setShowPreviewModal(false); }}
-            onCancel={() => setShowPreviewModal(false)}
-            c={c}
-            lang={lang}
-          />
-        )}
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+      `}</style>
     </main>
   );
 }
