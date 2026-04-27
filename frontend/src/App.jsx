@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback , useMemo} from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar, { ThemeProvider } from './components/Navbar'; // ← Import ThemeProvider
+import Navbar, { ThemeProvider, useTheme } from './components/Navbar'; // ← Ajoutez useTheme ici
 import ChatToggleButton from './components/ChatToggleButton'; // ← Import du bouton chat
 import ChatPage from './pages/ChatPage';
 import BoursesPage from './pages/BoursesPage';
@@ -22,8 +22,28 @@ import GuestPage from './pages/GuestPage';
 import HomePage from './pages/HomePage';
 
 
+const tokens = (theme) => ({
+  accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
+  ink:        theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:       theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:       theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:       theme === "dark" ? "#6d6b64" : "#9a9794",
+  paper:      theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:     theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule:       theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:   theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface:    theme === "dark" ? "#1a1912" : "#ffffff",
+  danger:     "#b4321f",
+  warn:       "#b06a12",
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"DM Sans", monospace`,
+});
 function AppContent() {
   const { t, lang, setLang } = useT();
+  const { theme } = useTheme();  // ← AJOUTE CETTE LIGNE
+  const c = tokens(theme);  
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
   const [bourses, setBourses]                 = useState([]);
@@ -388,91 +408,283 @@ function AppContent() {
 </main>
 
       {/* ChatToggleButton - UN SEUL BOUTON */}
-      <ChatToggleButton
-        isOpen={showFloatChat}
-        onClick={() => setShowFloatChat(prev => !prev)}
-        position="bottom-right"
-        offsetX={24}
-        offsetY={24}
-        showBadge={messages.filter(m => m.sender === 'ai' && !m.read).length > 0}
-        badgeCount={messages.filter(m => m.sender === 'ai' && !m.read).length}
-      />
+      {view !== 'accueil' && (
+  <ChatToggleButton
+    isOpen={showFloatChat}
+    onClick={() => setShowFloatChat(prev => !prev)}
+    position="bottom-right"
+    offsetX={24}
+    offsetY={24}
+    showBadge={messages.filter(m => m.sender === 'ai' && !m.read).length > 0}
+    badgeCount={messages.filter(m => m.sender === 'ai' && !m.read).length}
+  />
+)}
 
       {/* Chat flottant */}
-      {showFloatChat && (
+      {showFloatChat && view !== 'accueil' && (
+  <div style={{
+    position: 'fixed', bottom: 90, right: 24, width: 400,
+    maxWidth: 'calc(100vw - 48px)', height: 560,
+    background: c.paper,
+    borderRadius: 0,
+    boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.05)',
+    display: 'flex', flexDirection: 'column', zIndex: 1000,
+    overflow: 'hidden',
+    border: `1px solid ${c.rule}`,
+    fontFamily: c.fSans,
+  }}>
+    {/* Header */}
+    <div style={{
+      background: c.accent,
+      color: c.paper,
+      padding: '16px 20px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottom: `1px solid ${c.rule}`,
+    }}>
+      <div>
+        <span style={{
+          fontFamily: c.fSerif,
+          fontSize: 16,
+          fontWeight: 700,
+          letterSpacing: '-0.01em',
+        }}>
+          Assistant IA
+        </span>
+        <span style={{
+          fontFamily: c.fMono,
+          fontSize: 10,
+          marginLeft: 12,
+          opacity: 0.8,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          OppsTrack
+        </span>
+      </div>
+      <button
+        onClick={() => setShowFloatChat(false)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: c.paper,
+          fontSize: 20,
+          cursor: 'pointer',
+          padding: '0 4px',
+          opacity: 0.8,
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+        onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+      >
+        ✕
+      </button>
+    </div>
+
+    {/* Messages */}
+    <div
+      ref={floatContainerRef}
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px 20px',
+        position: 'relative',
+        background: c.paper,
+      }}
+    >
+      {messages.length === 0 && (
         <div style={{
-          position: 'fixed', bottom: 90, right: 24, width: 380,
-          maxWidth: 'calc(100vw - 48px)', height: 500, background: 'white',
-          borderRadius: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-          display: 'flex', flexDirection: 'column', zIndex: 1000,
-          overflow: 'hidden', border: '1px solid #e2e8f0',
+          textAlign: 'center',
+          color: c.ink3,
+          marginTop: 60,
+          fontFamily: c.fSans,
+          fontSize: 13,
+          lineHeight: 1.5,
         }}>
           <div style={{
-            background: '#1a3a6b', color: 'white', padding: '12px 16px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 12,
+            fontSize: 32,
+            color: c.accent,
+            opacity: 0.5,
           }}>
-            <span>🤖 Assistant IA OppsTrack</span>
-            <button onClick={() => setShowFloatChat(false)}
-              style={{ background: 'none', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>
-              ✕
-            </button>
+            ⌨️
           </div>
-
-          <div ref={floatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 12, position: 'relative' }}>
-            {messages.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#94a3b8', marginTop: 40 }}>
-                💬 Commencez une conversation avec l’IA sur vos bourses, votre profil, etc.
-              </div>
-            )}
-            {messages.map((msg, idx) => (
-              <div key={idx} style={{
-                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                background: msg.sender === 'user' ? '#1a3a6b' : '#f1f5f9',
-                color: msg.sender === 'user' ? 'white' : '#1a3a6b',
-                padding: '8px 14px', borderRadius: 18, maxWidth: '80%', fontSize: 13,
-                marginBottom: 8,
-              }}>
-                {msg.text}
-              </div>
-            ))}
-            {loading && (
-              <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '8px 14px', borderRadius: 18, fontSize: 13 }}>
-                L'IA réfléchit...
-              </div>
-            )}
-            {showFloatScroll && (
-              <button
-                onClick={() => floatContainerRef.current?.scrollTo({ top: floatContainerRef.current.scrollHeight, behavior: 'smooth' })}
-                style={{
-                  position: 'absolute', bottom: 16, right: 16, width: 36, height: 36,
-                  borderRadius: '50%', background: '#f5a623', border: 'none', color: '#1a3a6b',
-                  fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 10,
-                }}
-              >
-                ↓
-              </button>
-            )}
+          <div style={{ fontFamily: c.fSerif, fontSize: 16, color: c.ink2, marginBottom: 8 }}>
+            Assistant IA OppsTrack
           </div>
-
-          <div style={{ padding: 12, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyPress={e => e.key === 'Enter' && handleSend(input)}
-              placeholder="Écrivez votre message..."
-              style={{ flex: 1, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 40, outline: 'none' }}
-            />
-            <button
-              onClick={() => handleSend(input)}
-              disabled={loading}
-              style={{ background: '#f5a623', border: 'none', borderRadius: 40, padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Envoyer
-            </button>
+          <p>
+            Analyse de profil, recommandations de bourses,<br />
+            conseils personnalisés.
+          </p>
+        </div>
+      )}
+      {messages.map((msg, idx) => (
+        <div
+          key={idx}
+          style={{
+            display: 'flex',
+            justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              background: msg.sender === 'user' ? c.accent : c.paper2,
+              color: msg.sender === 'user' ? c.paper : c.ink,
+              padding: '10px 16px',
+              borderRadius: 0,
+              maxWidth: '85%',
+              fontSize: 13,
+              lineHeight: 1.5,
+              fontFamily: c.fSans,
+              border: msg.sender === 'user' ? 'none' : `1px solid ${c.ruleSoft}`,
+              letterSpacing: '0.01em',
+            }}
+          >
+            {msg.text}
           </div>
         </div>
+      ))}
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
+          <div style={{
+            background: c.paper2,
+            color: c.ink2,
+            padding: '10px 16px',
+            borderRadius: 0,
+            fontSize: 12,
+            fontFamily: c.fMono,
+            border: `1px solid ${c.ruleSoft}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              background: c.accent,
+              borderRadius: '50%',
+              animation: 'pulse 1.2s infinite',
+            }} />
+            <span style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              background: c.accent,
+              borderRadius: '50%',
+              animation: 'pulse 1.2s infinite 0.2s',
+            }} />
+            <span style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              background: c.accent,
+              borderRadius: '50%',
+              animation: 'pulse 1.2s infinite 0.4s',
+            }} />
+            <span style={{ marginLeft: 4 }}>
+              {lang === 'fr' ? 'L\'IA réfléchit...' : 'AI is thinking...'}
+            </span>
+          </div>
+        </div>
+      )}
+      {showFloatScroll && (
+        <button
+          onClick={() => floatContainerRef.current?.scrollTo({ top: floatContainerRef.current.scrollHeight, behavior: 'smooth' })}
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            right: 16,
+            width: 32,
+            height: 32,
+            borderRadius: 0,
+            background: c.accent,
+            border: 'none',
+            color: c.paper,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            transition: 'all 0.2s',
+            fontFamily: c.fMono,
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          ↓
+        </button>
+      )}
+    </div>
+
+    {/* Input */}
+    <div style={{
+      padding: '16px 20px',
+      borderTop: `1px solid ${c.rule}`,
+      background: c.surface,
+    }}>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && handleSend(input)}
+          placeholder={lang === 'fr' ? 'Écrivez votre message...' : 'Type your message...'}
+          style={{
+            flex: 1,
+            padding: '10px 14px',
+            border: `1px solid ${c.ruleSoft}`,
+            borderRadius: 0,
+            outline: 'none',
+            fontFamily: c.fSans,
+            fontSize: 13,
+            background: c.paper,
+            color: c.ink,
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={e => e.target.style.borderColor = c.accent}
+          onBlur={e => e.target.style.borderColor = c.ruleSoft}
+        />
+        <button
+          onClick={() => handleSend(input)}
+          disabled={loading || !input.trim()}
+          style={{
+            background: c.accent,
+            border: 'none',
+            borderRadius: 0,
+            padding: '10px 20px',
+            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+            fontWeight: 600,
+            fontFamily: c.fMono,
+            fontSize: 11,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: c.paper,
+            transition: 'all 0.2s',
+            opacity: loading || !input.trim() ? 0.5 : 1,
+          }}
+          onMouseEnter={e => {
+            if (!loading && input.trim()) {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }
+          }}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          {lang === 'fr' ? 'Envoyer' : 'Send'}
+        </button>
+      </div>
+    </div>
+
+    <style>{`
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.2); }
+      }
+    `}</style>
+  </div>
       )}
 
       {/* Footer */}

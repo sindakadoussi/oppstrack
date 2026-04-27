@@ -9,6 +9,91 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import { tCountry, tLevel, tFunding, tField, tDescription } from '@/utils/translateDB';
 
+
+function LoginModal({ onClose, c }) {
+  const { lang } = useT();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+
+  const send = async () => {
+    if (!email || !email.includes('@')) {
+      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email');
+      return;
+    }
+    setStatus('sending');
+    setErrMsg('');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(10,20,40,0.55)', backdropFilter: 'blur(6px)' }} />
+      <div style={{ position: 'relative', zIndex: 3001, width: 420, maxWidth: '92vw', background: c?.surface || '#fff', border: `1px solid ${c?.border || '#e5e0d5'}`, borderTop: `3px solid ${c?.accent || '#0066b3'}`, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', animation: 'modalIn 0.22s ease-out' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: `1px solid ${c?.border || '#e5e0d5'}`, background: c?.accent || '#0066b3' }}>
+          <div style={{ fontSize: 18, color: '#fff' }}>🔐</div>
+          <div style={{ fontFamily: c?.fSerif, fontSize: 16, fontWeight: 600, color: '#fff', flex: 1 }}>
+            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, borderRadius: 4 }}>×</button>
+        </div>
+        <div style={{ padding: '28px 24px' }}>
+          {status === 'idle' && (
+            <>
+              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien de connexion sécurisé.' : 'Enter your email to receive a secure magic link.'}
+              </p>
+              <input type="email" autoFocus placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
+                value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', border: `1.5px solid ${errMsg ? '#dc2626' : c?.border || '#e5e0d5'}`, background: c?.paper || '#faf8f3', color: c?.ink, fontFamily: c?.fSans, fontSize: 14, outline: 'none', borderRadius: 3 }} />
+              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 6 }}>{errMsg}</div>}
+              <button onClick={send} disabled={!email.trim()}
+                style={{ width: '100%', marginTop: 16, padding: '12px', background: !email.trim() ? (c?.borderLight || '#efebe5') : (c?.accent || '#0066b3'), color: !email.trim() ? c?.inkTertiary : '#fff', border: 'none', fontFamily: c?.fMono, fontSize: 13, fontWeight: 500, cursor: !email.trim() ? 'not-allowed' : 'pointer', borderRadius: 3, letterSpacing: '0.03em' }}>
+                ✉ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <div style={{ width: 36, height: 36, margin: '0 auto', border: `2px solid ${c?.borderLight}`, borderTopColor: c?.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, marginTop: 16, fontSize: 13 }}>{lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
+              <div style={{ fontFamily: c?.fSerif, fontSize: 18, fontWeight: 600, color: c?.success || '#0d7a6b', marginBottom: 10 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
+              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+                {lang === 'fr' ? 'Vérifiez votre boîte mail et pensez à vérifier les spams.' : 'Check your inbox and spam folder.'}
+              </p>
+              <button onClick={onClose} style={{ padding: '10px 28px', background: c?.success || '#0d7a6b', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c?.fMono, fontSize: 13, borderRadius: 3 }}>
+                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <p style={{ fontFamily: c?.fSans, color: '#dc2626', marginBottom: 16, fontSize: 14 }}>{errMsg}</p>
+              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ padding: '10px 24px', background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c?.fMono, fontSize: 12, borderRadius: 3 }}>
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(-8px); } to { opacity:1; transform:scale(1) translateY(0); } }`}</style>
+    </div>
+  );
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TOKENS — Professional Color Palette
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -835,8 +920,9 @@ export default function RecommandationsPage({
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  if (!user) {
-    return (
+ if (!user) {
+  return (
+    <>
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
         <div style={{ background: c.surface, border: `1px solid ${c.border}`, padding: '48px 40px', maxWidth: 400, width: '100%', textAlign: 'center' }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>○</div>
@@ -844,21 +930,23 @@ export default function RecommandationsPage({
             {lang === 'fr' ? 'Recommandations non disponibles' : 'Recommendations unavailable'}
           </h3>
           <p style={{ color: c.inkSecondary, fontSize: 13, lineHeight: 1.5, margin: '0 0 24px' }}>
-            {lang === 'fr'
-              ? 'Connectez-vous pour découvrir les bourses parfaitement adaptées à votre profil.'
-              : 'Sign in to discover scholarships perfectly suited to your profile.'}
+            {lang === 'fr' ? 'Connectez-vous pour découvrir les bourses parfaitement adaptées à votre profil.' : 'Sign in to discover scholarships perfectly suited to your profile.'}
           </p>
-          <button style={{ padding: '10px 28px', background: c.accent, color: c.paper, border: 'none', fontSize: 12, fontWeight: 500, fontFamily: c.fMono, cursor: 'pointer', transition: c.transition }}
+          <button
+            style={{ padding: '12px 32px', background: c.accent, color: c.paper, border: 'none', fontSize: 13, fontWeight: 500, fontFamily: c.fMono, cursor: 'pointer', transition: c.transition, letterSpacing: '0.03em' }}
             onClick={() => setShowLoginModal(true)}
             onMouseEnter={e => e.currentTarget.style.background = c.accentDark}
-            onMouseLeave={e => e.currentTarget.style.background = c.accent}>
-            Se connecter
+            onMouseLeave={e => e.currentTarget.style.background = c.accent}
+          >
+            {lang === 'fr' ? 'Se connecter' : 'Sign in'}
           </button>
         </div>
       </div>
-    );
-  }
 
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} />}
+    </>
+  );
+}
   const loadRecommandations = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);

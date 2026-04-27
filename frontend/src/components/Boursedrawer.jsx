@@ -1,5 +1,5 @@
 // components/BourseDrawer.jsx — version style éditorial (tokens unipd.it)
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import MatchDrawerIA from './MatchDrawerIA';
 import axiosInstance from '@/config/axiosInstance';
 import { useT } from '../i18n';
@@ -157,14 +157,62 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
   const [showMatch, setShowMatch] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Dans BourseDrawer.jsx, remplacez le useEffect existant par celui-ci :
+
+const [navbarHeight, setNavbarHeight] = useState(0);
+
+useEffect(() => {
+  const getNavbarHeight = () => {
+    const navbar = document.querySelector('.ot-nav');
+    if (!navbar) return 0;
+    
+    // Vérifier si la navbar est visible (pas cachée)
+    const isHidden = navbar.style.transform === 'translateY(-100%)' || 
+                     getComputedStyle(navbar).transform === 'matrix(1, 0, 0, 1, 0, -100%)' ||
+                     navbar.classList.contains('hidden');
+    
+    // Si la navbar est cachée, retourner 0
+    if (isHidden) return 0;
+    
+    return navbar.offsetHeight;
+  };
+  
+  // Fonction pour mettre à jour la hauteur
+  const updateHeight = () => {
+    setNavbarHeight(getNavbarHeight());
+  };
+  
+  // Initialiser
+  updateHeight();
+  
+  // Observer les changements de la navbar (scroll, classes, style)
+  const navbar = document.querySelector('.ot-nav');
+  if (navbar) {
+    const observer = new MutationObserver(updateHeight);
+    observer.observe(navbar, { 
+      attributes: true, 
+      attributeFilter: ['style', 'class'] 
+    });
+    
+    // Observer les changements de scroll via un intervalle léger
+    const scrollInterval = setInterval(updateHeight, 500);
+    
+    return () => {
+      observer.disconnect();
+      clearInterval(scrollInterval);
+    };
+  }
+  
+  return () => {};
+}, []);
+
+
   if (!bourse) return null;
 
   const dl = daysLeft(bourse.dateLimite, lang);
   const pct = user ? calcMatch(bourse, user) : null;
   const scoreColor = getScoreColor(pct);
 
-  // Hauteur approximative de la navbar (à ajuster si besoin). Pour éviter que le drawer ne passe dessous.
-  const NAVBAR_HEIGHT = 70; // pixels
 
   const t = {
     about: lang === 'fr' ? 'À propos' : 'About',
@@ -201,7 +249,7 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
   // Drawer commun (positionné sous la navbar)
   const drawerBaseStyle = {
     position: 'fixed',
-    top: NAVBAR_HEIGHT,
+      top: navbarHeight > 0 ? navbarHeight : 0,  // ← Si navbar cachée, top = 0
     right: 0,
     bottom: 0,
     zIndex: 901,
@@ -225,12 +273,9 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
         <div style={overlayStyle} onClick={onClose} />
         <div style={drawerBaseStyle}>
           <div style={{ padding: '20px 22px', borderBottom: `1px solid ${c.ruleSoft}`, background: c.paper2 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-              <div style={{ fontSize: 28, width: 52, height: 52, border: `1px solid ${c.rule}`, background: c.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {countryFlag(bourse.pays)}
-              </div>
-              <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: 12 }}>
+  <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
+</div>
             <h2 style={{ fontFamily: c.fSerif, fontSize: '1.2rem', fontWeight: 700, color: c.ink, marginBottom: 8 }}>{bourse.nom}</h2>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ ...tagLight(c), background: c.paper2, border: `1px solid ${c.ruleSoft}`, color: c.ink2 }}>{countryFlag(bourse.pays)} {tCountry(bourse.pays, lang)}</span>
@@ -261,12 +306,9 @@ export default function BourseDrawer({ bourse, onClose, onAskAI, onChoose, starr
       <div style={drawerBaseStyle}>
         {/* Header */}
         <div style={{ padding: '20px 22px', borderBottom: `1px solid ${c.ruleSoft}`, background: c.paper2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div style={{ fontSize: 28, width: 52, height: 52, border: `1px solid ${c.rule}`, background: c.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {countryFlag(bourse.pays)}
-            </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
-          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: 12 }}>
+  <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
+</div>
           <h2 style={{ fontFamily: c.fSerif, fontSize: '1.2rem', fontWeight: 700, color: c.ink, marginBottom: 8 }}>{bourse.nom}</h2>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span style={tagLight(c)}>{countryFlag(bourse.pays)} {tCountry(bourse.pays, lang)}</span>

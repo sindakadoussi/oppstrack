@@ -126,7 +126,7 @@ export const TRANSLATIONS = {
       qr_roadmap: 'Voir la roadmap',
       qr_entretien: 'Préparer un entretien',
       qr_cv: 'Analyser mon CV',
-      qr_guest: 'Mode invité',
+      qr_guest: 'Mode visiteur',
       cardsTitle: 'bourses recommandées',
       cardsSubtitle: 'selon votre profil',
       viewDetails: '🔍 Voir détails',

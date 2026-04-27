@@ -1,8 +1,24 @@
 import React from 'react';
 import { useT } from '../i18n';
+import { useTheme } from '../components/Navbar';
+
+const tokens = (theme) => ({
+  bg: theme === "dark" ? "#15140f" : "#ffffff",
+  ink: theme === "dark" ? "#f2efe7" : "#141414",
+  ink2: theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3: theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4: theme === "dark" ? "#6d6b64" : "#9a9794",
+  border: theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  accent: "#0066b3",
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans: `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono: `"DM Sans", monospace`,
+});
 
 export default function Footer({ setView }) {
   const { t, lang } = useT();
+  const { theme } = useTheme();
+  const C = tokens(theme);
   const currentYear = new Date().getFullYear();
 
   const cols = [
@@ -53,6 +69,92 @@ export default function Footer({ setView }) {
     }
   };
 
+  const footerStyles = {
+    background: C.bg,
+    color: C.ink2,
+    marginTop: 0,
+  };
+
+  const containerStyles = {
+    maxWidth: 1440,
+    margin: "0 auto",
+    padding: "72px 40px 48px",
+    display: "grid",
+    gridTemplateColumns: "1.8fr repeat(4, 1fr)",
+    gap: 48,
+  };
+
+  const logoStyles = {
+    fontFamily: C.fSerif,
+    fontSize: 32,
+    fontWeight: 700,
+    color: C.ink,
+    letterSpacing: "-0.015em",
+  };
+
+  const taglineStyles = {
+    fontFamily: C.fMono,
+    fontSize: 10.5,
+    color: C.ink3,
+    letterSpacing: "0.22em",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    marginTop: 10,
+  };
+
+  const descStyles = {
+    fontFamily: C.fSans,
+    fontSize: 13.5,
+    color: C.ink3,
+    lineHeight: 1.6,
+    marginTop: 18,
+    maxWidth: 340,
+  };
+
+  const headingStyles = {
+    fontFamily: C.fSans,
+    fontSize: 10,
+    color: C.ink3,
+    letterSpacing: "0.22em",
+    textTransform: "uppercase",
+    fontWeight: 700,
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottom: `1px solid ${C.border}`,
+  };
+
+  const linkStyles = {
+    display: "block",
+    fontFamily: C.fSerif,
+    fontSize: 15,
+    color: C.ink2,
+    textDecoration: "none",
+    padding: "7px 0",
+    cursor: "pointer",
+    transition: "color 0.2s ease",
+  };
+
+  const bottomBarStyles = {
+    borderTop: `1px solid ${C.border}`,
+    padding: "20px 40px",
+  };
+
+  const bottomContainerStyles = {
+    maxWidth: 1440,
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    fontFamily: C.fMono,
+    fontSize: 10.5,
+    color: C.ink4,
+    letterSpacing: "0.14em",
+  };
+
+  const legalStyles = {
+    textTransform: "uppercase",
+    letterSpacing: "0.22em",
+  };
+
   return (
     <footer style={footerStyles}>
       <div style={containerStyles}>
@@ -77,8 +179,8 @@ export default function Footer({ setView }) {
                 href="#"
                 style={linkStyles}
                 onClick={handleLinkClick(it.action)}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#0066b3")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#3a3a3a")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = C.accent)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = C.ink2)}
               >
                 {lang === "fr" ? it.fr : it.en}
               </a>
@@ -99,90 +201,3 @@ export default function Footer({ setView }) {
     </footer>
   );
 }
-
-// Styles objects
-const footerStyles = {
-  background: "#ffff",
-  color: "#3a3a3a",
-  marginTop: 0,
-};
-
-const containerStyles = {
-  maxWidth: 1440,
-  margin: "0 auto",
-  padding: "72px 40px 48px",
-  display: "grid",
-  gridTemplateColumns: "1.8fr repeat(4, 1fr)",
-  gap: 48,
-};
-
-const logoStyles = {
-  fontFamily: "'Libre Caslon Text', 'Times New Roman', Georgia, serif",
-  fontSize: 32,
-  fontWeight: 700,
-  color: "#141414",
-  letterSpacing: "-0.015em",
-};
-
-const taglineStyles = {
-  fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
-  fontSize: 10.5,
-  color: "#6b6b6b",
-  letterSpacing: "0.22em",
-  textTransform: "uppercase",
-  fontWeight: 600,
-  marginTop: 10,
-};
-
-const descStyles = {
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  fontSize: 13.5,
-  color: "#6b6b6b",
-  lineHeight: 1.6,
-  marginTop: 18,
-  maxWidth: 340,
-};
-
-const headingStyles = {
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  fontSize: 10,
-  color: "#6b6b6b",
-  letterSpacing: "0.22em",
-  textTransform: "uppercase",
-  fontWeight: 700,
-  marginBottom: 20,
-  paddingBottom: 10,
-  borderBottom: "1px solid #d9d5cb",
-};
-
-const linkStyles = {
-  display: "block",
-  fontFamily: "'Libre Caslon Text', 'Times New Roman', Georgia, serif",
-  fontSize: 15,
-  color: "#3a3a3a",
-  textDecoration: "none",
-  padding: "7px 0",
-  cursor: "pointer",
-  transition: "color 0.2s ease",
-};
-
-const bottomBarStyles = {
-  borderTop: "1px solid #d9d5cb",
-  padding: "20px 40px",
-};
-
-const bottomContainerStyles = {
-  maxWidth: 1440,
-  margin: "0 auto",
-  display: "flex",
-  justifyContent: "space-between",
-  fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
-  fontSize: 10.5,
-  color: "#9a9794",
-  letterSpacing: "0.14em",
-};
-
-const legalStyles = {
-  textTransform: "uppercase",
-  letterSpacing: "0.22em",
-};
