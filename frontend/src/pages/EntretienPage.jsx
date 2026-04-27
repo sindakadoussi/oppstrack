@@ -5,6 +5,7 @@ import { WEBHOOK_ROUTES } from '@/config/routes';
 import { API_ROUTES } from '@/config/routes';
 import './EntretienPage.css';
 import { useT, useDark } from '../i18n';
+import { useTheme } from '../components/Navbar';
 
 const TOTAL_Q = 8;
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -179,7 +180,7 @@ function LoginModal({ onClose }) {
 }
 
 /* ── EntretienDetail ── */
-function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate }) {
+function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate, dk=false }) {
   const { lang } = useT();
   const [activeTab, setActiveTab] = useState('summary');
   const parsed = parseEntretien(entretien.score);
@@ -223,13 +224,13 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
       <button className="ep-detail-back" onClick={onBack}>
         <span style={{ fontSize:18 }}>←</span> {lang==='fr'?'Retour à la liste':'Back to list'}
       </button>
-      <div className="ep-detail-header">
+      <div className="ep-detail-header" style={{ background: dk ? '#1d1c16' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:'#f8fafc', borderRadius:20, fontSize:13, fontWeight:600, color:'#475569' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background: dk ? '#15140f' : '#f8fafc', borderRadius:20, fontSize:13, fontWeight:600, color: dk ? '#a19f96' : '#475569' }}>
             <span style={{ fontSize:20 }}>🎓</span>
             <span>{entretien.context || (lang==='fr'?'Entretien de bourse':'Scholarship interview')}</span>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#475569' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color: dk ? '#a19f96' : '#475569' }}>
             <span>📅</span><span>{formatDate(entretien.createdAt)}</span>
           </div>
         </div>
@@ -240,7 +241,7 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
           </div>
           <div>
             <div style={{ fontSize:20, fontWeight:700, marginBottom:4, color:scoreColor.color }}>{scoreColor.icon} {scoreColor.grade}</div>
-            {parsed.verdict&&<div style={{ fontSize:14, color:'#475569' }}>{parsed.verdict}</div>}
+            {parsed.verdict&&<div style={{ fontSize:14, color: dk ? '#a19f96' : '#475569' }}>{parsed.verdict}</div>}
           </div>
         </div>
       </div>
@@ -269,29 +270,29 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
                 { icon:'📝', labelFr:'Questions',      labelEn:'Questions',      val:parsed.questionMetrics.length||'8' },
                 { icon:'🎯', labelFr:'Score',          labelEn:'Score',          val:parsed.score!==null?`${parsed.score}/100`:'—' },
               ].map(s=>(
-                <div key={s.labelFr} style={{ background:'#fff', borderRadius:14, padding:14, textAlign:'center', border:'1px solid rgba(15,23,42,.04)' }}>
+                <div key={s.labelFr} style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:14, textAlign:'center', border:'1px solid rgba(15,23,42,.04)' }}>
                   <div style={{ fontSize:24, marginBottom:6 }}>{s.icon}</div>
-                  <div style={{ fontSize:11, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:4 }}>{lang==='fr'?s.labelFr:s.labelEn}</div>
-                  <div style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>{s.val}</div>
+                  <div style={{ fontSize:11, color: dk ? '#a19f96' : '#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:4 }}>{lang==='fr'?s.labelFr:s.labelEn}</div>
+                  <div style={{ fontSize:18, fontWeight:700, color: dk ? '#f2efe7' : '#0f172a'}}>{s.val}</div>
                 </div>
               ))}
             </div>
             {content.pointsForts?.length>0&&(
-              <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
                 <div className="ep-detail-section-title">✅ {lang==='fr'?'Points forts identifiés':'Identified strengths'}</div>
                 <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
                   {content.pointsForts.slice(0,3).map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color:'#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
+                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
                   ))}
                 </ul>
               </div>
             )}
             {content.pointsAmeliorer?.length>0&&(
-              <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
                 <div className="ep-detail-section-title">📈 {lang==='fr'?"Axes d'amélioration":'Areas for improvement'}</div>
                 <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
                   {content.pointsAmeliorer.slice(0,3).map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color:'#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
+                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
                   ))}
                 </ul>
               </div>
@@ -301,11 +302,11 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         {activeTab==='strengths' && (
           <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
             {content.pointsForts?.length>0&&(
-              <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
                 <div className="ep-detail-section-title" style={{ color:'#34d399' }}>✅ {lang==='fr'?'POINTS FORTS':'STRENGTHS'}</div>
                 <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
                   {content.pointsForts.map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color:'#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
+                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
                       <span style={{ color:'#34d399', marginRight:8 }}>✓</span>{p}
                     </li>
                   ))}
@@ -313,11 +314,11 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
               </div>
             )}
             {content.pointsAmeliorer?.length>0&&(
-              <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
                 <div className="ep-detail-section-title" style={{ color:'#fbbf24' }}>⚠️ {lang==='fr'?'POINTS À AMÉLIORER':'AREAS TO IMPROVE'}</div>
                 <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
                   {content.pointsAmeliorer.map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color:'#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
+                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
                       <span style={{ color:'#fbbf24', marginRight:8 }}>!</span>{p}
                     </li>
                   ))}
@@ -329,43 +330,43 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
         {activeTab==='advice' && (
           <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
             {content.conseils?.length>0?(
-              <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
                 <div className="ep-detail-section-title" style={{ color:'#a78bfa' }}>💡 {lang==='fr'?'CONSEILS PERSONNALISÉS':'PERSONALIZED TIPS'}</div>
                 <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
                   {content.conseils.map((c,i)=>(
-                    <li key={i} style={{ fontSize:13, color:'#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start', padding:'12px 0', borderBottom:'1px solid rgba(15,23,42,.04)' }}>
+                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start', padding:'12px 0', borderBottom:'1px solid rgba(15,23,42,.04)' }}>
                       <span style={{ fontSize:18, marginRight:12 }}>🎯</span><span>{c}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ):(
-              <div style={{ textAlign:'center', padding:'40px 20px', color:'#475569' }}>
+              <div style={{ textAlign:'center', padding:'40px 20px', color: dk ? '#a19f96' : '#475569' }}>
                 <span style={{ fontSize:48 }}>📝</span>
                 <p>{lang==='fr'?'Des conseils personnalisés apparaîtront ici après votre entretien':'Personalized tips will appear here after your interview'}</p>
               </div>
             )}
-            <div style={{ background:'#f8fafc', borderRadius:16, padding:20, border:'1px solid rgba(15,23,42,.04)' }}>
+            <div style={{ background: dk ? '#15140f' : '#f8fafc', borderRadius:16, padding:20, border:'1px solid rgba(15,23,42,.04)' }}>
               <div style={{ fontSize:14, fontStyle:'italic', color:'#0f172a', lineHeight:1.5, marginBottom:12 }}>
                 {lang==='fr'
                   ?'"La préparation est la clé du succès. Chaque entretien est une opportunité d\'apprendre et de progresser."'
                   :'"Preparation is the key to success. Every interview is an opportunity to learn and grow."'}
               </div>
-              <div style={{ fontSize:11, color:'#475569', textAlign:'right' }}>— {lang==='fr'?'Jury IA':'AI Panel'}</div>
+              <div style={{ fontSize:11, color: dk ? '#a19f96' : '#475569', textAlign:'right' }}>— {lang==='fr'?'Jury IA':'AI Panel'}</div>
             </div>
           </div>
         )}
         {activeTab==='details' && (
-          <div style={{ background:'#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
+          <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
             <div className="ep-detail-section-title">📄 {lang==='fr'?'Rapport complet':'Full report'}</div>
-                        <div style={{ fontSize:13, lineHeight:1.7, color:'#334155', whiteSpace:'pre-wrap', maxHeight:400, overflowY:'auto' }}>
+                        <div style={{ fontSize:13, lineHeight:1.7, color: dk ? '#cfccc2' : '#334155', whiteSpace:'pre-wrap', maxHeight:400, overflowY:'auto' }}>
               {(content.rawText || parsed.rawText || '').split('\n').map((line, i) =>
                 line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)
                   ? <div key={i} style={{ fontWeight:700, color:'#255cae', marginTop:12, marginBottom:6, fontSize:12, letterSpacing:1 }}>{line}</div>
                   : line.trim() && line.match(/^[-•*]/)
-                    ? <div key={i} style={{ paddingLeft:20, marginBottom:6, color:'#475569' }}>{line}</div>
+                    ? <div key={i} style={{ paddingLeft:20, marginBottom:6, color: dk ? '#a19f96' : '#475569' }}>{line}</div>
                     : line.trim()
-                      ? <div key={i} style={{ marginBottom:4, color:'#475569' }}>{line}</div>
+                      ? <div key={i} style={{ marginBottom:4, color: dk ? '#a19f96' : '#475569' }}>{line}</div>
                       : <div key={i} style={{ height:8 }}/>
               )}
             </div>
@@ -384,6 +385,8 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
 /* ── HistoriquePanel ── */
 function HistoriquePanel({ userId, onClose }) {
   const { lang } = useT();
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -429,8 +432,8 @@ function HistoriquePanel({ userId, onClose }) {
   };
 
   return (
-    <div className="ep-hist-overlay">
-      <div className="ep-hist-drawer">
+     <div className="ep-hist-overlay">
+      <div className="ep-hist-drawer" style={{ background: dk ? '#1a1912' : undefined }}>
         <div className="ep-hist-head">
           <div>
             <div className="ep-hist-title">📋 {lang==='fr'?'Historique des entretiens':'Interview history'}</div>
@@ -449,7 +452,8 @@ function HistoriquePanel({ userId, onClose }) {
             {records.map(r=>{
               const parsed=parseEntretien(r.score);const sc=getScoreColor(parsed.score);
               return(
-                <button key={r.id} className="ep-hist-card" onClick={()=>setSelected(r)}>
+                 <button key={r.id} className="ep-hist-card" onClick={()=>setSelected(r)}
+                  style={{ background: dk ? '#1d1c16' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
                   <div className="ep-hist-score-badge" style={{background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
                     {parsed.score!==null?`${parsed.score}/100`:'—'}
                   </div>
@@ -467,7 +471,7 @@ function HistoriquePanel({ userId, onClose }) {
             })}
           </div>
         )}
-        {selected&&<EntretienDetail entretien={selected} onBack={()=>setSelected(null)} parseEntretien={parseEntretien} getScoreColor={getScoreColor} formatDate={formatDate}/>}
+        {selected&&<EntretienDetail entretien={selected} onBack={()=>setSelected(null)} parseEntretien={parseEntretien} getScoreColor={getScoreColor} formatDate={formatDate} dk={dk}/>}
       </div>
       <div className="ep-hist-backdrop" onClick={onClose}/>
     </div>
@@ -477,30 +481,41 @@ function HistoriquePanel({ userId, onClose }) {
 /* ── BoursePicker ── */
 function BoursePicker({ bourses, userId, onSelect }) {
   const { lang } = useT();
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
   const [showHist, setShowHist] = useState(false);
   const [query, setQuery] = useState('');
   const q=(query||'').trim().toLowerCase();
   const filtered=q.length===0?bourses:bourses.filter(b=>(b.nom||'').toLowerCase().includes(q)||(b.pays||'').toLowerCase().includes(q)||(b.niveau||'').toLowerCase().includes(q)||String(b.financement||'').toLowerCase().includes(q));
-
-  return (
-    <div className="ep-picker-root">
+return (
+    <div className="ep-picker-root" style={{ background: dk ? '#15140f' : undefined }}>
       <div className="ep-picker-inner">
-        <div className="ep-picker-topbar">
-          <div className="ep-picker-badge">{lang==='fr'?'ENTRETIEN VIRTUEL IA':'AI VIRTUAL INTERVIEW'}</div>
-          <div className="ep-picker-actions">
-            <input placeholder={lang==='fr'?'Rechercher une bourse, pays, niveau...':'Search scholarship, country, level...'}
-              value={query} onChange={e=>setQuery(e.target.value)} className="ep-picker-search"/>
-            <button className="ep-picker-hist-btn" onClick={()=>setShowHist(true)}>📋 {lang==='fr'?'Mes entretiens':'My interviews'}</button>
-          </div>
-        </div>
-        <h1 className="ep-picker-title">
+        
+
+        <h1 className="ep-picker-title" style={{ color: dk ? '#f2efe7' : undefined }}>
           {lang==='fr'?<>Préparez votre<br/><em>entretien de bourse</em></>:<>Prepare your<br/><em>scholarship interview</em></>}
         </h1>
-        <p className="ep-picker-sub">
+        <p className="ep-picker-sub" style={{ color: dk ? '#cfccc2' : undefined }}>
           {lang==='fr'
             ?<>Le jury IA vous posera <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</>
-            :(<>The AI panel will ask you <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> tailored to the scholarship, with real-time voice analysis.</>)}
+            :<>The AI panel will ask you <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> tailored to the scholarship, with real-time voice analysis.</>}
         </p>
+
+        {/* ── Search + Historique déplacés ici, sous le sous-titre ── */}
+        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:32 }}>
+          <input
+            placeholder={lang==='fr'?'Rechercher une bourse, pays, niveau...':'Search scholarship, country, level...'}
+            value={query} onChange={e=>setQuery(e.target.value)}
+            className="ep-picker-search"
+            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
+          />
+          <button className="ep-picker-hist-btn"
+            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
+            onClick={()=>setShowHist(true)}>
+            📋 {lang==='fr'?'Mes entretiens':'My interviews'}
+          </button>
+        </div>
+
         <div className="ep-picker-grid">
           {filtered.length===0&&(
             <div className="ep-picker-empty">
@@ -509,12 +524,9 @@ function BoursePicker({ bourses, userId, onSelect }) {
             </div>
           )}
           {filtered.map(b=>(
-            <div key={b.id} className="ep-bourse-card">
-              <div className="ep-bourse-card-top">
-                <span style={{fontSize:24}}>🎓</span>
-                <span className="ep-bourse-finance">{b.financement}</span>
-              </div>
-              <div className="ep-bourse-name">{b.nom}</div>
+            <div key={b.id} className="ep-bourse-card" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+              
+              <div className="ep-bourse-name" style={{ color: dk ? '#f2efe7' : undefined }}>{b.nom}</div>
               <div className="ep-bourse-meta">{b.pays} · {b.niveau}</div>
               <button className="ep-bourse-btn" onClick={()=>onSelect(b)}>🚀 {lang==='fr'?"Démarrer l'entretien":'Start interview'}</button>
             </div>
@@ -557,7 +569,9 @@ const INSTR_ITEMS_EN = [
 
 function EntretienSession({ bourse, user, conversationId, onFinish }) {
   const { lang } = useT();
-  const [phase, setPhase]           = useState('intro');
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
+  const [phase, setPhase] = useState('intro');
   const [qIndex, setQIndex]         = useState(0);
   const [currentQ, setCurrentQ]     = useState('');
   const [liveText, setLiveText]     = useState('');
@@ -788,8 +802,9 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
     :['Analyse du contenu','Pertinence à la bourse','Génération de la prochaine question','Score en cours…'];
 
   return (
-    <div className="ep-session-root">
-      <div className="ep-topbar">
+        <div className="ep-session-root" style={{ background: dk ? '#15140f' : undefined, color: dk ? '#f2efe7' : undefined }}>
+            <div className="ep-topbar" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
         <div className="ep-topbar-left">
           <div className={`ep-status-dot ${phase==='recording'?'recording':'idle'}`}/>
           <span className="ep-bourse-nom">{bourse.nom}</span>
@@ -809,7 +824,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
       </div>
 
       <div className="ep-body">
-        <div className="ep-left">
+        <div className="ep-left" style={{ background: dk ? '#15140f' : undefined }}>
           <div className="ep-video-box">
             {camError
               ?<div className="ep-no-cam"><span style={{fontSize:40}}>📷</span><p>{lang==='fr'?'Caméra indisponible':'Camera unavailable'}</p><small>{lang==='fr'?"L'entretien continue":'Interview continues'}</small></div>
@@ -826,10 +841,10 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           </div>
 
           {phase!=='intro'&&phase!=='result'&&(
-            <div className="ep-metrics-box">
+            <div className="ep-metrics-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                 <div className="ep-metrics-head">{lang==='fr'?'ANALYSE VOCALE EN DIRECT':'LIVE VOICE ANALYSIS'}</div>
-                {phase==='recording'&&<div style={{fontSize:10,color:'#475569'}}>{liveWordCount} {lang==='fr'?'mots':'words'}</div>}
+                {phase==='recording'&&<div style={{fontSize:10,color: dk ? '#a19f96' : '#475569'}}>{liveWordCount} {lang==='fr'?'mots':'words'}</div>}
               </div>
               {metrics.map(m=>(
                 <div key={m.label} className="ep-metric-row">
@@ -851,7 +866,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           )}
         </div>
 
-        <div className="ep-right">
+        <div className="ep-right" style={{ background: dk ? '#1d1c16' : undefined }}>
           {phase==='intro'&&(
             <div style={{width:'100%',maxWidth:500,display:'flex',flexDirection:'column',height:'100%'}}>
               <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:14,paddingBottom:8}}>
@@ -887,14 +902,16 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 <div className="ep-q-badge">{lang==='fr'?`Question ${qIndex+1} / ${TOTAL_Q}`:`Question ${qIndex+1} / ${TOTAL_Q}`}</div>
                 {phase==='recording'&&<div className="ep-timer-badge">{fmt(elapsed)}</div>}
               </div>
-              <div className="ep-q-bubble">
+              <div className="ep-q-bubble" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined, color: dk ? '#f2efe7' : undefined }}>
+
                 {aiLoading
                   ?<div className="ep-loading-dots">{[0,.15,.3].map(d=><div key={d} className="ep-dot" style={{animationDelay:`${d}s`}}/>)}</div>
                   :<p style={{margin:0,lineHeight:1.7}}>{currentQ}</p>
                 }
               </div>
               {phase==='recording'&&liveText&&(
-                <div className="ep-live-box">
+                <div className="ep-live-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                     <div className="ep-live-head">📝 {lang==='fr'?'TRANSCRIPTION EN DIRECT':'LIVE TRANSCRIPTION'}</div>
                     <div style={{fontSize:10,color:'#64748b'}}>{liveWordCount} {lang==='fr'?'mots':'words'} {liveWordCount>=40?'✓':liveWordCount>0?`(+${40-liveWordCount})`:''}</div>
@@ -906,7 +923,8 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                 </div>
               )}
               {phase==='analyzing'&&(
-                <div className="ep-analyze-box">
+                <div className="ep-analyze-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
                   <div className="ep-analyze-spinner"/>
                   <div>
                     <div style={{color:'#e2e8f0',fontWeight:600,marginBottom:10}}>{lang==='fr'?"L'IA analyse votre réponse…":'AI is analyzing your answer…'}</div>
@@ -944,7 +962,7 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                   {v:`${avgWpm} m/min`,                      lFr:'Vitesse moy.',      lEn:'Avg. speed'},
                   {v:`${avgWords} ${lang==='fr'?'mots':'words'}`, lFr:'Mots / réponse', lEn:'Words / answer'},
                 ].map(s=>(
-                  <div key={s.lFr} className="ep-stat-card">
+                  <div key={s.lFr} className="ep-stat-card" style={{ background: dk ? '#1a1912' : undefined }}>
                     <div className="ep-stat-val">{s.v}</div>
                     <div className="ep-stat-lbl">{lang==='fr'?s.lFr:s.lEn}</div>
                   </div>
@@ -961,20 +979,21 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
               {parsed.conseils&&<div className="ep-section-card purple"><div className="ep-section-head" style={{color:'#a78bfa'}}>💡 {lang==='fr'?'CONSEILS PERSONNALISÉS':'PERSONALIZED TIPS'}</div><div className="ep-section-body">{parsed.conseils}</div></div>}
               {!parsed.forts&&finalScore&&(
                 <div style={{padding:'18px 20px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.12)',maxHeight:300,overflowY:'auto'}}>
-                  <div style={{fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'ÉVALUATION DU JURY IA':'AI PANEL EVALUATION'}</div>
-                  <div style={{color:'#475569',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'}}>{finalScore}</div>
+                  <div style={{fontSize:10,letterSpacing:2,color: dk ? '#a19f96' : '#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'ÉVALUATION DU JURY IA':'AI PANEL EVALUATION'}</div>
+                  <div style={{color: dk ? '#a19f96' : '#475569',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'}}>{finalScore}</div>
                 </div>
               )}
               <div>
-                <div style={{fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'DÉROULEMENT — STATISTIQUES RÉELLES':'BREAKDOWN — ACTUAL STATISTICS'}</div>
+                <div style={{fontSize:10,letterSpacing:2,color: dk ? '#a19f96' : '#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'DÉROULEMENT — STATISTIQUES RÉELLES':'BREAKDOWN — ACTUAL STATISTICS'}</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:10}}>
                   {allAnswers.map((a,i)=>(
-                    <div key={i} className="ep-answer-item">
+                    <div key={i} className="ep-answer-item" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
                       <div className="ep-answer-num">{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,color:'#cbd5e1',marginBottom:3}}>{a.q.slice(0,70)}{a.q.length>70?'…':''}</div>
                         <div style={{fontSize:11,color:'#64748b'}}>⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} {lang==='fr'?'mots':'words'} · 🏃 {a.wpm||0} {lang==='fr'?'m/min':'w/min'}{a.voice&&` · ⏸ ${a.voice.pauseCount||0} ${lang==='fr'?'pauses':'pauses'} · 💬 ${a.voice.hesitations||0}s`}</div>
-                        {a.a&&a.a!=='(aucune réponse détectée)'&&a.a!=='(no answer detected)'&&<div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>}
+                        {a.a&&a.a!=='(aucune réponse détectée)'&&a.a!=='(no answer detected)'&&<div style={{fontSize:11,color: dk ? '#a19f96' : '#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>}
                       </div>
                     </div>
                   ))}

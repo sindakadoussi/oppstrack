@@ -347,6 +347,27 @@ const solid = view !== "Home" ? true : pastHero;
   const [userOpen,  setUserOpen]  = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
 
+  // Dans Navbar, après les useState et avant le return
+const [lastScrollY, setLastScrollY] = useState(0);
+const [showNavbar, setShowNavbar] = useState(true);
+
+useEffect(() => {
+  const handleScroll = () => {
+    const currentScrollY = window.scrollY;
+    if (currentScrollY > lastScrollY && currentScrollY > 100) {
+      // Scroll vers le bas → cacher la navbar
+      setShowNavbar(false);
+    } else if (currentScrollY < lastScrollY) {
+      // Scroll vers le haut → montrer la navbar
+      setShowNavbar(true);
+    }
+    setLastScrollY(currentScrollY);
+  };
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  return () => window.removeEventListener('scroll', handleScroll);
+}, [lastScrollY]);
+
   const alerts = useDeadlineAlerts(user);
   const { starred, reload } = useStarredBourses(user);
   const navItems   = getNavItems(t);
@@ -468,7 +489,14 @@ const solid = view !== "Home" ? true : pastHero;
         }
       `}</style>
 
-      <header ref={wrapRef} className={`ot-nav ${solid ? "solid" : "ghost"}`}>
+      <header 
+  ref={wrapRef} 
+  className={`ot-nav ${solid ? "solid" : "ghost"} ${!showNavbar ? "hidden" : ""}`}
+  style={{
+    transform: showNavbar ? 'translateY(0)' : 'translateY(-100%)',
+    transition: 'transform 0.3s ease-in-out',
+  }}
+>
 
         {/* ══════════ STRIP ══════════ */}
         <div className={`ot-strip ${solid ? "solid" : "ghost"}`}>

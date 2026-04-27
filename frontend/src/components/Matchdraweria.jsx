@@ -51,6 +51,37 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
   const [analyse,  setAnalyse]  = useState(null);
   const [tab,      setTab]      = useState('apercu');
 
+  const [navbarHeight, setNavbarHeight] = useState(0);
+  useEffect(() => {
+  const getNavbarHeight = () => {
+    const navbar = document.querySelector('.ot-nav');
+    if (!navbar) return 0;
+    
+    const transform = getComputedStyle(navbar).transform;
+    const isHidden = transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)';
+    
+    return isHidden ? 0 : navbar.offsetHeight;
+  };
+  
+  const updateHeight = () => setNavbarHeight(getNavbarHeight());
+  
+  updateHeight();
+  
+  window.addEventListener('scroll', updateHeight);
+  
+  const navbar = document.querySelector('.ot-nav');
+  if (navbar) {
+    const observer = new MutationObserver(updateHeight);
+    observer.observe(navbar, { attributes: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', updateHeight);
+    };
+  }
+  
+  return () => window.removeEventListener('scroll', updateHeight);
+}, []);
+
   const NAVBAR_HEIGHT = 70; // à ajuster selon la hauteur réelle de votre navbar
 
   const t = {
@@ -145,7 +176,7 @@ export default function MatchDrawerIA({ bourse, user, onBack }) {
       <div
         style={{
           position: 'fixed',
-          top: NAVBAR_HEIGHT,
+          top: navbarHeight,
           right: 0,
           bottom: 0,
           zIndex: 901,

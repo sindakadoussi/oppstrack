@@ -154,9 +154,8 @@ function AIPreviewPanel({ bourse, user, onClose, c, lang }) {
   );
 }
 
-/* =============== CARD VERTICALE (métadonnées structurées, sans hover AI) =============== */
+/* =============== CARD VERTICALE (sans image, domaine en ligne complète) =============== */
 function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang, index }) {
-  const imageUrl = getImageUrl(bourse.image);
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
   const animationDelay = `${index * 0.05}s`;
 
@@ -222,16 +221,7 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
         e.currentTarget.style.borderLeft = '0px solid transparent';
       }}
     >
-      {/* Image */}
-      <div style={{ flexShrink: 0, width: 100, height: 100 }}>
-        {imageUrl ? (
-          <img src={imageUrl} alt={bourse.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: c.ruleSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: c.ink3 }}>🎓</div>
-        )}
-      </div>
-
-      {/* Contenu */}
+      {/* Contenu - sans image */}
       <div style={{ flex: 1 }}>
         {/* Ligne titre + deadline + statut */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
@@ -265,7 +255,7 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
           “{getInsight()}”
         </p>
 
-        {/* Grille des métadonnées (pays, niveau, domaine) */}
+        {/* Grille des métadonnées (pays, niveau) - sans domaine ici */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
           {bourse.pays && (
             <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -277,14 +267,16 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
               <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {bourse.niveau}
             </div>
           )}
-          {bourse.domaine && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
-            </div>
-          )}
         </div>
 
-        {/* Financement (deuxième ligne) */}
+        {/* Domaine - ligne complète séparée */}
+        {bourse.domaine && (
+          <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
+          </div>
+        )}
+
+        {/* Financement */}
         {bourse.financement && (
           <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {bourse.financement}

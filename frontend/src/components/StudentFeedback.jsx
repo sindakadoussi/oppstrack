@@ -1,11 +1,38 @@
 // StudentFeedback.jsx
 import React, { useState, useEffect } from 'react';
 import { useT } from '../i18n';
+import { useTheme } from '../components/Navbar';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 
-export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la prop user
+const tokens = (theme) => ({
+  bg: theme === "dark" ? "#15140f" : "#f5f7fa",
+  bgCard: theme === "dark" ? "#1a1912" : "#ffffff",
+  bgHero: theme === "dark" ? "#1a1912" : "#255cae",
+  ink: theme === "dark" ? "#f2efe7" : "#141414",
+  ink2: theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3: theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4: theme === "dark" ? "#6d6b64" : "#9a9794",
+  border: theme === "dark" ? "#2b2a22" : "#e1e5e9",
+  borderLight: theme === "dark" ? "#24231c" : "#f0f0f0",
+  accent: "#0066b3",
+  accentLight: "#4c9fd9",
+  danger: "#b4321f",
+  dangerBg: theme === "dark" ? "rgba(180,50,31,0.15)" : "#fed7d7",
+  dangerText: theme === "dark" ? "#ff6b5c" : "#742a2a",
+  successBg: theme === "dark" ? "rgba(0,102,179,0.15)" : "#255cae",
+  starActive: "#f5a623",
+  starInactive: theme === "dark" ? "#4a4a4a" : "#cbd5e0",
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans: `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono: `"DM Sans", monospace`,
+});
+
+export default function StudentFeedback({ setView, user }) {
   const { lang } = useT();
+  const { theme } = useTheme();
+  const C = tokens(theme);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,7 +43,6 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
-  // ✅ Pré-remplir avec les données utilisateur si disponibles
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -98,7 +124,7 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
   };
 
   return (
-    <div className="feedback-page">
+    <div className="feedback-page" style={{ background: C.bg }}>
       <div className="back-button-container">
         <button 
           onClick={() => {
@@ -106,6 +132,11 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           className="back-button"
+          style={{
+            background: C.bgCard,
+            border: `1px solid ${C.border}`,
+            color: C.accent,
+          }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -114,10 +145,10 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         </button>
       </div>
 
-      <div className="feedback-hero">
+      <div className="feedback-hero" style={{ background: C.bgHero }}>
         <div className="feedback-hero-content">
-          <h1>{lang === 'fr' ? 'Donnez votre avis' : 'Share your feedback'}</h1>
-          <p>
+          <h1 style={{ color: '#fff' }}>{lang === 'fr' ? 'Donnez votre avis' : 'Share your feedback'}</h1>
+          <p style={{ color: 'rgba(255,255,255,0.95)' }}>
             {lang === 'fr' 
               ? 'Votre opinion nous aide à améliorer OppsTrack pour tous les étudiants.' 
               : 'Your opinion helps us improve OppsTrack for all students.'}
@@ -126,48 +157,54 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
       </div>
 
       <div className="feedback-container">
-        <div className="feedback-form-section">
-          <div className="form-header">
-            <h2>{lang === 'fr' ? 'Partagez votre expérience' : 'Share your experience'}</h2>
-            <p>{lang === 'fr' ? 'Nous lisons chaque avis avec attention' : 'We read every feedback carefully'}</p>
+        <div className="feedback-form-section" style={{ background: C.bgCard, boxShadow: `0 10px 40px rgba(0,0,0,${theme === 'dark' ? '0.3' : '0.1'})` }}>
+          <div className="form-header" style={{ background: C.bgHero }}>
+            <h2 style={{ color: '#fff' }}>{lang === 'fr' ? 'Partagez votre expérience' : 'Share your experience'}</h2>
+            <p style={{ color: 'rgba(255,255,255,0.9)' }}>{lang === 'fr' ? 'Nous lisons chaque avis avec attention' : 'We read every feedback carefully'}</p>
           </div>
 
           {submitStatus?.type === 'success' ? (
             <div className="success-message">
-              <div className="success-icon">✓</div>
-              <h3>{submitStatus.message}</h3>
-              <p>{lang === 'fr' ? 'Votre avis a bien été enregistré.' : 'Your feedback has been recorded.'}</p>
+              <div className="success-icon" style={{ background: C.accent }}>✓</div>
+              <h3 style={{ color: C.ink }}>{submitStatus.message}</h3>
+              <p style={{ color: C.ink3 }}>{lang === 'fr' ? 'Votre avis a bien été enregistré.' : 'Your feedback has been recorded.'}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="feedback-form">
               <div className="form-group">
-                <label htmlFor="name">{lang === 'fr' ? 'Nom complet' : 'Full name'} *</label>
+                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Nom complet' : 'Full name'} *</label>
                 <input
                   type="text"
-                  id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   placeholder={lang === 'fr' ? 'Jean Dupont' : 'John Doe'}
-                  className={submitStatus?.type === 'error' && !formData.name ? 'error' : ''}
+                  style={{
+                    background: C.bg,
+                    border: `2px solid ${submitStatus?.type === 'error' && !formData.name ? C.danger : C.border}`,
+                    color: C.ink,
+                  }}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email *</label>
+                <label style={{ color: C.ink }}>Email *</label>
                 <input
                   type="email"
-                  id="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="exemple@email.com"
-                  className={submitStatus?.type === 'error' && !formData.email ? 'error' : ''}
+                  style={{
+                    background: C.bg,
+                    border: `2px solid ${submitStatus?.type === 'error' && !formData.email ? C.danger : C.border}`,
+                    color: C.ink,
+                  }}
                 />
               </div>
 
               <div className="form-group">
-                <label>{lang === 'fr' ? 'Note' : 'Rating'} *</label>
+                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Note' : 'Rating'} *</label>
                 <div className="rating-stars">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -175,13 +212,15 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
                       type="button"
                       className={`star-btn ${formData.rating >= star ? 'active' : ''}`}
                       onClick={() => handleRatingClick(star)}
-                      aria-label={`Noter ${star} étoiles`}
+                      style={{
+                        color: formData.rating >= star ? C.starActive : C.starInactive,
+                      }}
                     >
                       ★
                     </button>
                   ))}
                 </div>
-                <span className="rating-label">
+                <span className="rating-label" style={{ color: C.ink3 }}>
                   {formData.rating === 1 && (lang === 'fr' ? 'Très insatisfait' : 'Very dissatisfied')}
                   {formData.rating === 2 && (lang === 'fr' ? 'Insatisfait' : 'Dissatisfied')}
                   {formData.rating === 3 && (lang === 'fr' ? 'Moyen' : 'Average')}
@@ -191,9 +230,8 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
               </div>
 
               <div className="form-group">
-                <label htmlFor="comment">{lang === 'fr' ? 'Votre message' : 'Your message'} *</label>
+                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Votre message' : 'Your message'} *</label>
                 <textarea
-                  id="comment"
                   name="comment"
                   value={formData.comment}
                   onChange={handleChange}
@@ -201,12 +239,16 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
                   placeholder={lang === 'fr' 
                     ? 'Partagez votre expérience avec OppsTrack, suggestions d\'amélioration...' 
                     : 'Share your experience with OppsTrack, suggestions for improvement...'}
-                  className={submitStatus?.type === 'error' && !formData.comment ? 'error' : ''}
+                  style={{
+                    background: C.bg,
+                    border: `2px solid ${submitStatus?.type === 'error' && !formData.comment ? C.danger : C.border}`,
+                    color: C.ink,
+                  }}
                 />
               </div>
 
               <div className="form-group checkbox-group">
-                <label className="checkbox-label">
+                <label className="checkbox-label" style={{ color: C.ink3 }}>
                   <input
                     type="checkbox"
                     name="agreeTerms"
@@ -222,12 +264,20 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
               </div>
 
               {submitStatus?.type === 'error' && (
-                <div className="error-message-global">
+                <div className="error-message-global" style={{ background: C.dangerBg, color: C.dangerText }}>
                   {submitStatus.message}
                 </div>
               )}
 
-              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+              <button 
+                type="submit" 
+                className="submit-btn" 
+                disabled={isSubmitting}
+                style={{
+                  background: C.accent,
+                  color: '#fff',
+                }}
+              >
                 {isSubmitting ? (
                   <>
                     <span className="spinner"></span>
@@ -242,11 +292,11 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         </div>
       </div>
 
-
-      <style jsx>{`
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=DM+Sans:opsz,wght@9..40,100;9..40,200;9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900;9..40,1000&display=swap');
+        
         .feedback-page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
         .back-button-container {
@@ -261,40 +311,35 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
           align-items: center;
           gap: 8px;
           padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid #e1e5e9;
           border-radius: 50px;
           cursor: pointer;
           font-size: 0.9rem;
           font-weight: 500;
-          color: #667eea;
+          font-family: ${C.fSans};
           transition: all 0.3s ease;
           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
 
         .back-button:hover {
-          background: white;
           transform: translateX(-5px);
-          box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
-          border-color: #667eea;
+          box-shadow: ${theme === 'dark' ? '0 5px 15px rgba(76,159,217,0.2)' : '0 5px 15px rgba(0,102,179,0.2)'};
         }
 
         .feedback-hero {
-          background: #255cae;
           padding: 60px 20px;
           text-align: center;
-          color: white;
         }
 
         .feedback-hero-content h1 {
           font-size: 3rem;
           margin-bottom: 1rem;
           font-weight: 700;
+          font-family: ${C.fSerif};
         }
 
         .feedback-hero-content p {
           font-size: 1.2rem;
-          opacity: 0.95;
+          font-family: ${C.fSans};
         }
 
         .feedback-container {
@@ -304,26 +349,23 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .feedback-form-section {
-          background: white;
           border-radius: 20px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
           overflow: hidden;
         }
 
         .form-header {
-          background: #255cae;
           padding: 40px;
           text-align: center;
-          color: white;
         }
 
         .form-header h2 {
           font-size: 1.8rem;
           margin-bottom: 10px;
+          font-family: ${C.fSerif};
         }
 
         .form-header p {
-          opacity: 0.95;
+          font-family: ${C.fSans};
         }
 
         .feedback-form {
@@ -338,30 +380,25 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
           display: block;
           margin-bottom: 8px;
           font-weight: 500;
-          color: #333;
+          font-family: ${C.fSans};
+          font-size: 13px;
         }
 
         .form-group input,
         .form-group textarea {
           width: 100%;
           padding: 12px 15px;
-          border: 2px solid #e1e5e9;
           border-radius: 10px;
           font-size: 1rem;
           transition: all 0.3s ease;
-          font-family: inherit;
+          font-family: ${C.fSans};
+          outline: none;
         }
 
         .form-group input:focus,
         .form-group textarea:focus {
-          outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-group input.error,
-        .form-group textarea.error {
-          border-color: #e74c3c;
+          border-color: ${C.accent} !important;
+          box-shadow: 0 0 0 3px rgba(0,102,179,0.1);
         }
 
         .rating-stars {
@@ -375,13 +412,8 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
           border: none;
           font-size: 32px;
           cursor: pointer;
-          color: #cbd5e0;
-          transition: color 0.2s, transform 0.1s;
+          transition: transform 0.1s;
           padding: 0;
-        }
-
-        .star-btn.active {
-          color: #f5a623;
         }
 
         .star-btn:hover {
@@ -389,8 +421,8 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .rating-label {
-          font-size: 13px;
-          color: #718096;
+          font-size: 12px;
+          font-family: ${C.fSans};
         }
 
         .checkbox-group {
@@ -403,8 +435,8 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
           gap: 10px;
           cursor: pointer;
           font-weight: normal;
-          font-size: 13px;
-          color: #4a5568;
+          font-size: 12px;
+          font-family: ${C.fSans};
         }
 
         .checkbox-label input {
@@ -414,23 +446,20 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .error-message-global {
-          background: #fed7d7;
-          color: #742a2a;
           padding: 12px;
           border-radius: 10px;
           margin-bottom: 20px;
-          font-size: 14px;
+          font-size: 13px;
           text-align: center;
+          font-family: ${C.fSans};
         }
 
         .submit-btn {
           width: 100%;
           padding: 14px;
-          background: #255cae;
-          color: white;
           border: none;
           border-radius: 10px;
-          font-size: 1rem;
+          font-size: 13px;
           font-weight: 600;
           cursor: pointer;
           transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -438,11 +467,13 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
           align-items: center;
           justify-content: center;
           gap: 10px;
+          font-family: ${C.fSans};
+          letter-spacing: 0.5px;
         }
 
         .submit-btn:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+          box-shadow: ${theme === 'dark' ? '0 5px 20px rgba(76,159,217,0.4)' : '0 5px 20px rgba(0,102,179,0.4)'};
         }
 
         .submit-btn:disabled {
@@ -471,8 +502,6 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         .success-icon {
           width: 80px;
           height: 80px;
-          background: #255cae;
-          color: white;
           font-size: 3rem;
           border-radius: 50%;
           display: flex;
@@ -482,13 +511,13 @@ export default function StudentFeedback({ setView, user }) { // ✅ Ajout de la 
         }
 
         .success-message h3 {
-          font-size: 1.8rem;
-          color: #333;
+          font-size: 1.5rem;
           margin-bottom: 15px;
+          font-family: ${C.fSerif};
         }
 
         .success-message p {
-          color: #666;
+          font-family: ${C.fSans};
           margin-bottom: 30px;
         }
 

@@ -1,5 +1,43 @@
-// ChatInterface.jsx — v2 avec toutes les améliorations UX
+// ChatPage.jsx — design identique, liaison n8n + Payload corrigée
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import axios from 'axios';
+import { useTheme } from '../components/Navbar';
+import { useT } from '../i18n';
+
+// ── Config (adapte ces URLs à ton projet) ──
+const WEBHOOK_URL = import.meta.env?.VITE_WEBHOOK_URL
+  ? `${import.meta.env.VITE_WEBHOOK_URL}/webhook/webhook`
+  : 'http://localhost:5678/webhook/webhook';
+
+const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:3000';
+
+// Sauvegarde dans Payload CMS
+async function saveToPayload(text, role, conversationId) {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.post(`${API_BASE}/api/messages`, {
+      text,
+      role,
+      conversationId,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `JWT ${token}` } : {}),
+      },
+    });
+  } catch (e) {
+    console.warn('[Payload] Échec sauvegarde:', e.message);
+  }
+}
+
+// Appel n8n
+async function callN8n(payload) {
+  const res = await axios.post(WEBHOOK_URL, payload, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 120000,
+  });
+  return res.data;
+}
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=DM+Sans:opsz,wght@9..40,100;9..40,200;9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900;9..40,1000&display=swap');
@@ -144,7 +182,6 @@ const styles = `
     padding: 8px 12px 4px;
   }
 
-  /* ── Action bar after AI message ── */
   .action-bar {
     display: flex;
     flex-wrap: wrap;
@@ -177,7 +214,6 @@ const styles = `
   }
   .action-chip:active { transform: translateY(0); }
 
-  /* ── Suggestion blocks ── */
   .sugg-section { margin-bottom: 16px; }
   .sugg-section-title {
     font-size: 10px;
@@ -224,134 +260,20 @@ const styles = `
   }
 `;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ──
 const generateId = () => Math.random().toString(36).slice(2);
 
-const formatDateLabel = (iso) => {
+const formatDateLabel = (iso, lang) => {
   const d = new Date(iso);
   const now = new Date();
   const diff = Math.floor((now - d) / 86400000);
-  if (diff === 0) return "Aujourd'hui";
-  if (diff === 1) return 'Hier';
-  if (diff < 7) return 'Cette semaine';
-  return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  if (diff === 0) return lang === 'fr' ? "Aujourd'hui" : "Today";
+  if (diff === 1) return lang === 'fr' ? 'Hier' : 'Yesterday';
+  if (diff < 7) return lang === 'fr' ? 'Cette semaine' : 'This week';
+  return d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' });
 };
 
-// ── Suggestion groups ──────────────────────────────────────────────────────
-const SUGGESTION_GROUPS = [
-  {
-    title: '🎯 Trouver des bourses',
-    items: [
-      { emoji: '🎯', text: 'Trouve-moi des bourses adaptées à mon profil' },
-      { emoji: '⚡', text: 'Quelles bourses sont encore ouvertes maintenant ?' },
-      { emoji: '💰', text: 'Bourses 100% financées pour moi' },
-      { emoji: '🌍', text: 'Quelles bourses à l\'étranger me correspondent ?' },
-      { emoji: '🇫🇷', text: 'Quelles bourses en France sont accessibles pour moi ?' },
-    ],
-  },
-  {
-    title: '📊 Analyse intelligente',
-    items: [
-      { emoji: '📊', text: 'Quelle est ma probabilité d\'être accepté ?' },
-      { emoji: '🔍', text: 'Analyse mon profil et dis-moi mes chances' },
-      { emoji: '⚠️', text: 'Qu\'est-ce qui bloque ma candidature ?' },
-      { emoji: '🧠', text: 'Quelle stratégie dois-je suivre ?' },
-    ],
-  },
-  {
-    title: '🚀 Action rapide',
-    items: [
-      { emoji: '🚀', text: 'Aide-moi à postuler à une bourse' },
-      { emoji: '📝', text: 'Rédige ma lettre de motivation' },
-      { emoji: '📄', text: 'Améliore mon CV' },
-      { emoji: '🎙️', text: 'Simule un entretien de bourse' },
-    ],
-  },
-  {
-    title: '⏰ Urgence',
-    items: [
-      { emoji: '⏰', text: 'Quelles bourses ferment cette semaine ?' },
-      { emoji: '🔥', text: 'Donne-moi les bourses les plus urgentes' },
-      { emoji: '📅', text: 'Quelles deadlines approchent ?' },
-    ],
-  },
-  {
-    title: '🎓 Explorer par destination',
-    items: [
-      { emoji: '🎓', text: 'Je veux étudier en Europe' },
-      { emoji: '🌎', text: 'Je veux étudier au Canada' },
-      { emoji: '🇬🇧', text: 'Je veux étudier au Royaume-Uni' },
-      { emoji: '🇩🇪', text: 'Je veux étudier en Allemagne' },
-    ],
-  },
-];
-
-// ── Action chips after AI message ────────────────────────────────────────────
-const ACTION_CHIPS = [
-  { icon: '📄', label: 'Ajouter à ma roadmap', prompt: 'Ajouter cette bourse à ma roadmap' },
-  { icon: '📊', label: 'Analyser cette bourse', prompt: 'Analyse cette bourse en détail' },
-  { icon: '⚖️', label: 'Comparer avec une autre', prompt: 'Compare cette bourse avec une autre similaire' },
-  { icon: '✉️', label: 'Préparer ma candidature', prompt: 'Aide-moi à préparer ma candidature pour cette bourse' },
-];
-
-const DEMO_CONVERSATIONS = [
-  {
-    id: 'demo1',
-    title: 'Bourses pour master en France',
-    updatedAt: new Date().toISOString(),
-    messages: [
-      { id: 'd1a', sender: 'user', text: 'Bourses pour master en France', timestamp: new Date().toISOString() },
-      { id: 'd1b', sender: 'ai', text: 'Voici les meilleures bourses pour un master en France…', timestamp: new Date().toISOString(), showActions: true }
-    ]
-  },
-  {
-    id: 'demo2',
-    title: 'Comment rédiger une lettre de motivation ?',
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    messages: [
-      { id: 'd2a', sender: 'user', text: 'Comment rédiger une lettre de motivation ?', timestamp: new Date(Date.now() - 86400000).toISOString() }
-    ]
-  },
-  {
-    id: 'demo3',
-    title: 'Visa étudiant Erasmus',
-    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    messages: [
-      { id: 'd3a', sender: 'user', text: 'Visa étudiant Erasmus', timestamp: new Date(Date.now() - 3 * 86400000).toISOString() }
-    ]
-  }
-];
-
-const generateAIResponse = (query) => {
-  return `Merci pour votre question : **${query}**
-
-## Voici ce que je peux vous proposer
-
-Je suis votre assistant dédié à la recherche de bourses d'études. Voici comment je peux vous aider :
-
-• **Rechercher** des bourses adaptées à votre profil
-• **Analyser** votre éligibilité pour différentes opportunités
-• **Préparer** vos dossiers de candidature
-• **Optimiser** vos chances de réussite
-
-### Bourses recommandées
-
-**Bourse Eiffel**
-Pays : France | Niveau : Master, Doctorat
-Financement : Jusqu'à 1,181€ par mois
-
-**Bourse Fulbright**
-Pays : États-Unis | Niveau : Master, Doctorat
-Financement : Frais de scolarité + allocation
-
-**Bourse Erasmus Mundus**
-Pays : Europe | Niveau : Master
-Financement : Jusqu'à 1,400€ par mois
-
-N'hésitez pas à me donner plus de détails sur votre parcours pour des recommandations personnalisées.`;
-};
-
-// ── Context Menu ─────────────────────────────────────────────────────────────
+// ── Context Menu ──
 function ContextMenu({ onRename, onDelete, onClose }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -381,8 +303,8 @@ function ContextMenu({ onRename, onDelete, onClose }) {
   );
 }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete }) {
+// ── Sidebar ──
+function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete, lang }) {
   const [search, setSearch] = useState('');
   const [openMenu, setOpenMenu] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
@@ -401,12 +323,12 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
   const grouped = useMemo(() => {
     const groups = {};
     filtered.forEach(c => {
-      const label = formatDateLabel(c.updatedAt);
+      const label = formatDateLabel(c.updatedAt, lang);
       if (!groups[label]) groups[label] = [];
       groups[label].push(c);
     });
     return groups;
-  }, [filtered]);
+  }, [filtered, lang]);
 
   const handleRenameSubmit = (id) => {
     if (renameValue.trim()) onRename(id, renameValue.trim());
@@ -421,7 +343,6 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
       borderRight: '1px solid var(--rule)',
       display: 'flex',
       flexDirection: 'column',
-      // FIX #6: sidebar ne recouvre plus le footer — position sticky dans son flex parent
       position: 'sticky',
       top: 0,
       height: '100vh',
@@ -429,11 +350,7 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
       animation: 'slide-in-left 0.25s ease both',
       overflowY: 'hidden',
     }}>
-      {/* Logo + New Chat */}
       <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
-        
-
-        {/* FIX #5: Bouton New Chat dans sidebar */}
         <button
           onClick={onNew}
           style={{
@@ -455,26 +372,24 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          Nouvelle discussion
+          {lang === 'fr' ? 'Nouvelle discussion' : 'New chat'}
         </button>
       </div>
 
-      {/* Search */}
       <div style={{ padding: '12px 14px 8px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
         <div style={{ position: 'relative' }}>
           <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink4)', pointerEvents: 'none' }}
             width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input className="search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…" />
+          <input className="search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === 'fr' ? 'Rechercher…' : 'Search…'} />
         </div>
       </div>
 
-      {/* Conversation list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
         {Object.keys(grouped).length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--ink4)', textAlign: 'center', marginTop: 24, fontFamily: 'var(--f-sans)' }}>
-            Aucune conversation
+            {lang === 'fr' ? 'Aucune conversation' : 'No conversations'}
           </p>
         )}
         {Object.entries(grouped).map(([label, convs]) => (
@@ -485,8 +400,7 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
                 key={conv.id}
                 className="conv-item"
                 style={{
-                  borderRadius: 8,
-                  marginBottom: 2,
+                  borderRadius: 8, marginBottom: 2,
                   background: conv.id === activeId ? 'var(--paper2)' : 'transparent',
                   border: conv.id === activeId ? '1px solid var(--rule-soft)' : '1px solid transparent',
                   transition: 'all 0.12s ease'
@@ -526,7 +440,7 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
                         fontFamily: 'var(--f-sans)'
                       }}>{conv.title}</div>
                       <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 1, fontFamily: 'var(--f-sans)' }}>
-                        {new Date(conv.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(conv.updatedAt).toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                     <button
@@ -566,17 +480,19 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete 
   );
 }
 
-// ── Action Bar (après chaque message AI) ─────────────────────────────────────
-function ActionBar({ onAction }) {
+// ── Action Bar ──
+function ActionBar({ onAction, lang }) {
+  const ACTION_CHIPS = [
+    { icon: '📄', label: lang === 'fr' ? 'Ajouter à ma roadmap' : 'Add to roadmap', prompt: lang === 'fr' ? 'Ajouter cette bourse à ma roadmap' : 'Add this scholarship to my roadmap' },
+    { icon: '📊', label: lang === 'fr' ? 'Analyser cette bourse' : 'Analyze scholarship', prompt: lang === 'fr' ? 'Analyse cette bourse en détail' : 'Analyze this scholarship in detail' },
+    { icon: '⚖️', label: lang === 'fr' ? 'Comparer' : 'Compare', prompt: lang === 'fr' ? 'Compare cette bourse avec une autre similaire' : 'Compare this scholarship with a similar one' },
+    { icon: '✉️', label: lang === 'fr' ? 'Préparer candidature' : 'Prepare application', prompt: lang === 'fr' ? 'Aide-moi à préparer ma candidature pour cette bourse' : 'Help me prepare my application for this scholarship' },
+  ];
+
   return (
     <div className="action-bar">
       {ACTION_CHIPS.map((chip, i) => (
-        <button
-          key={i}
-          className="action-chip"
-          onClick={() => onAction(chip.prompt)}
-          title={chip.label}
-        >
+        <button key={i} className="action-chip" onClick={() => onAction(chip.prompt)} title={chip.label}>
           <span style={{ fontSize: 12 }}>{chip.icon}</span>
           {chip.label}
         </button>
@@ -585,8 +501,8 @@ function ActionBar({ onAction }) {
   );
 }
 
-// ── Message Bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction }) {
+// ── Message Bubble ──
+function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction, lang }) {
   const formattedContent = useMemo(() => {
     if (!message.text) return null;
     const lines = message.text.split('\n');
@@ -650,7 +566,6 @@ function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction })
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24, animation: `fade-up 0.28s ease-out both`, animationDelay: `${delay}s` }}>
-      {/* Avatar */}
       <div style={{
         width: 38, height: 38,
         background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
@@ -661,9 +576,7 @@ function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction })
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
-
       <div style={{ flex: 1 }}>
-        {/* Bubble */}
         <div style={{
           background: 'var(--paper2)',
           borderRadius: 18, borderTopLeftRadius: 4,
@@ -671,37 +584,72 @@ function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction })
         }}>
           {formattedContent}
         </div>
-
-        {/* Action bar — uniquement après le dernier message AI ou si showActions */}
         {(isLast || message.showActions) && onAction && (
-          <ActionBar onAction={onAction} />
+          <ActionBar onAction={onAction} lang={lang} />
         )}
       </div>
     </div>
   );
 }
 
-// ── Suggestion Groups (juste sous l'input) ───────────────────────────────────
-function SuggestionGroups({ onSelect }) {
+// ── Suggestion Groups ──
+function SuggestionGroups({ onSelect, lang }) {
+  const SUGGESTION_GROUPS = [
+    {
+      title: lang === 'fr' ? '🎯 Trouver des bourses' : '🎯 Find scholarships',
+      items: [
+        { emoji: '🎯', text: lang === 'fr' ? 'Trouve-moi des bourses adaptées à mon profil' : 'Find scholarships matching my profile' },
+        { emoji: '⚡', text: lang === 'fr' ? 'Quelles bourses sont encore ouvertes maintenant ?' : 'Which scholarships are still open?' },
+        { emoji: '💰', text: lang === 'fr' ? 'Bourses 100% financées pour moi' : '100% funded scholarships for me' },
+        { emoji: '🌍', text: lang === 'fr' ? 'Quelles bourses à l\'étranger me correspondent ?' : 'Which international scholarships suit me?' },
+        { emoji: '🇫🇷', text: lang === 'fr' ? 'Quelles bourses en France sont accessibles pour moi ?' : 'Which scholarships in France are accessible to me?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '📊 Analyse intelligente' : '📊 Smart Analysis',
+      items: [
+        { emoji: '📊', text: lang === 'fr' ? 'Quelle est ma probabilité d\'être accepté ?' : 'What is my probability of being accepted?' },
+        { emoji: '🔍', text: lang === 'fr' ? 'Analyse mon profil et dis-moi mes chances' : 'Analyze my profile and tell me my chances' },
+        { emoji: '⚠️', text: lang === 'fr' ? 'Qu\'est-ce qui bloque ma candidature ?' : 'What is blocking my application?' },
+        { emoji: '🧠', text: lang === 'fr' ? 'Quelle stratégie dois-je suivre ?' : 'What strategy should I follow?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '🚀 Action rapide' : '🚀 Quick Action',
+      items: [
+        { emoji: '🚀', text: lang === 'fr' ? 'Aide-moi à postuler à une bourse' : 'Help me apply for a scholarship' },
+        { emoji: '📝', text: lang === 'fr' ? 'Rédige ma lettre de motivation' : 'Write my motivation letter' },
+        { emoji: '📄', text: lang === 'fr' ? 'Améliore mon CV' : 'Improve my CV' },
+        { emoji: '🎙️', text: lang === 'fr' ? 'Simule un entretien de bourse' : 'Simulate a scholarship interview' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '⏰ Urgence' : '⏰ Urgent',
+      items: [
+        { emoji: '⏰', text: lang === 'fr' ? 'Quelles bourses ferment cette semaine ?' : 'Which scholarships close this week?' },
+        { emoji: '🔥', text: lang === 'fr' ? 'Donne-moi les bourses les plus urgentes' : 'Give me the most urgent scholarships' },
+        { emoji: '📅', text: lang === 'fr' ? 'Quelles deadlines approchent ?' : 'Which deadlines are approaching?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '🎓 Explorer par destination' : '🎓 Explore by destination',
+      items: [
+        { emoji: '🎓', text: lang === 'fr' ? 'Je veux étudier en Europe' : 'I want to study in Europe' },
+        { emoji: '🌎', text: lang === 'fr' ? 'Je veux étudier au Canada' : 'I want to study in Canada' },
+        { emoji: '🇬🇧', text: lang === 'fr' ? 'Je veux étudier au Royaume-Uni' : 'I want to study in the UK' },
+        { emoji: '🇩🇪', text: lang === 'fr' ? 'Je veux étudier en Allemagne' : 'I want to study in Germany' },
+      ],
+    },
+  ];
+
   return (
-    <div style={{
-      maxHeight: 320,
-      overflowY: 'auto',
-      padding: '4px 0 12px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 14,
-    }}>
+    <div style={{ maxHeight: 320, overflowY: 'auto', padding: '4px 0 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {SUGGESTION_GROUPS.map((group, gi) => (
         <div key={gi} className="sugg-section">
           <div className="sugg-section-title">{group.title}</div>
           <div className="sugg-grid">
             {group.items.map((item, ii) => (
-              <button
-                key={ii}
-                className="sugg-chip"
-                onClick={() => onSelect(item.text)}
-              >
+              <button key={ii} className="sugg-chip" onClick={() => onSelect(item.text)}>
                 <span className="sugg-emoji">{item.emoji}</span>
                 {item.text}
               </button>
@@ -713,18 +661,37 @@ function SuggestionGroups({ onSelect }) {
   );
 }
 
-// ── Main Export ───────────────────────────────────────────────────────────────
+// ── Main Export ──
 export default function ChatInterface() {
-  const [theme] = useState(() => {
-    try { return localStorage.getItem('theme') || 'light'; } catch { return 'light'; }
+  const { theme } = useTheme();
+  const { lang } = useT();
+
+  // conversationId persistant par session
+  const conversationId = useRef(null);
+  if (!conversationId.current) {
+    const saved = sessionStorage.getItem('chat_conv_id');
+    conversationId.current = saved || `chat-${Date.now()}`;
+    if (!saved) sessionStorage.setItem('chat_conv_id', conversationId.current);
+  }
+
+  // user depuis localStorage (si intégré dans OppsTrack)
+  const [currentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('opps_user') || 'null'); } catch { return null; }
   });
+
   const [conversations, setConversations] = useState(() => {
     try {
       const s = localStorage.getItem('opps-conversations');
-      return s ? JSON.parse(s) : DEMO_CONVERSATIONS;
-    } catch { return DEMO_CONVERSATIONS; }
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
   });
-  const [activeId, setActiveId] = useState(() => conversations[0]?.id || null);
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      const s = localStorage.getItem('opps-conversations');
+      const convs = s ? JSON.parse(s) : [];
+      return convs[0]?.id || null;
+    } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -738,13 +705,10 @@ export default function ChatInterface() {
   const messages = activeConv?.messages || [];
   const hasMessages = messages.length > 0;
 
+  // Persister conversations localement
   useEffect(() => {
     try { localStorage.setItem('opps-conversations', JSON.stringify(conversations)); } catch {}
   }, [conversations]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -761,23 +725,16 @@ export default function ChatInterface() {
     return () => el.removeEventListener('scroll', h);
   }, [messages]);
 
-  // FIX #5: handleNew réinitialise tout
   const handleNew = useCallback(() => {
     const id = generateId();
-    const conv = {
-      id,
-      title: 'Nouvelle conversation',
-      updatedAt: new Date().toISOString(),
-      messages: []
-    };
+    const conv = { id, title: lang === 'fr' ? 'Nouvelle conversation' : 'New conversation', updatedAt: new Date().toISOString(), messages: [] };
     setConversations(prev => [conv, ...prev]);
     setActiveId(id);
     setInputValue('');
     setShowSuggestions(false);
-    // scroll en haut
     if (containerRef.current) containerRef.current.scrollTop = 0;
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
+  }, [lang]);
 
   const handleSelect = useCallback((id) => {
     setActiveId(id);
@@ -797,6 +754,7 @@ export default function ChatInterface() {
     });
   }, [activeId]);
 
+  // handleSendMessage — SEUL point d'envoi
   const handleSendMessage = useCallback(async (text) => {
     if (!text.trim() || loading) return;
     setShowSuggestions(false);
@@ -804,43 +762,132 @@ export default function ChatInterface() {
     let targetId = activeId;
     if (!targetId) {
       targetId = generateId();
-      const conv = { id: targetId, title: text.slice(0, 42), updatedAt: new Date().toISOString(), messages: [] };
+      const conv = {
+        id: targetId,
+        title: text.slice(0, 42),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      };
       setConversations(prev => [conv, ...prev]);
       setActiveId(targetId);
     }
 
-    const userMsg = { id: generateId(), sender: 'user', text: text.trim(), timestamp: new Date().toISOString() };
+    const userMsg = {
+      id: generateId(),
+      sender: 'user',
+      text: text.trim(),
+      timestamp: new Date().toISOString(),
+    };
 
     setConversations(prev => prev.map(c => {
       if (c.id !== targetId) return c;
       const msgs = [...c.messages, userMsg];
-      return { ...c, messages: msgs, title: c.messages.length === 0 ? text.slice(0, 42) : c.title, updatedAt: new Date().toISOString() };
+      return {
+        ...c,
+        messages: msgs,
+        title: c.messages.length === 0 ? text.slice(0, 42) : c.title,
+        updatedAt: new Date().toISOString(),
+      };
     }));
 
     setInputValue('');
     setLoading(true);
 
-    setTimeout(() => {
+    saveToPayload(text.trim(), 'user', conversationId.current);
+
+    try {
+      const n8nPayload = {
+        text: text.trim(),
+        conversationId: conversationId.current,
+        id: currentUser?.id || null,
+        email: currentUser?.email || null,
+        pays: currentUser?.pays || '',
+        niveau: currentUser?.niveau || '',
+        domaine: currentUser?.domaine || '',
+        name: currentUser?.name || '',
+        user_profile: currentUser ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          pays: currentUser.pays,
+          niveau: currentUser.niveau,
+          domaine: currentUser.domaine,
+          is_complete: !!(currentUser.pays && currentUser.niveau && currentUser.domaine),
+        } : null,
+      };
+
+      const data = await callN8n(n8nPayload);
+      const aiText = data?.output || data?.message || data?.text || data?.response || '';
+
+      let finalText = aiText;
+      if (!finalText) {
+        finalText = lang === 'fr' 
+          ? '⚠️ n8n a répondu sans texte. Vérifie la configuration du nœud "Respond to Webhook" dans ton workflow.'
+          : '⚠️ n8n responded without text. Check the "Respond to Webhook" node configuration in your workflow.';
+        console.warn('[n8n] Réponse vide:', data);
+      }
+
       const aiMsg = {
         id: generateId(),
         sender: 'ai',
-        text: generateAIResponse(text),
+        text: finalText,
         timestamp: new Date().toISOString(),
-        showActions: true,  // toujours afficher les actions sur les nouveaux messages AI
+        showActions: true,
+      };
+
+      setConversations(prev => prev.map(c =>
+        c.id === targetId
+          ? { ...c, messages: [...c.messages, aiMsg], updatedAt: new Date().toISOString() }
+          : c
+      ));
+
+      saveToPayload(finalText, 'assistant', conversationId.current);
+
+    } catch (err) {
+      console.error('[n8n] Erreur:', err);
+
+      let errorText;
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorText = lang === 'fr'
+          ? '⏳ **Délai dépassé** — n8n met trop de temps à répondre.\n\nVérifie que ton workflow est actif et répond correctement.'
+          : '⏳ **Timeout** — n8n is taking too long to respond.\n\nCheck that your workflow is active and responding correctly.';
+      } else if (err.message?.includes('Network Error') || err.code === 'ERR_NETWORK') {
+        errorText = lang === 'fr'
+          ? `🔌 **n8n inaccessible** sur \`${WEBHOOK_URL}\`\n\n• Lance n8n : \`npx n8n start\`\n• Active ton workflow dans l'interface n8n\n• Vérifie \`VITE_WEBHOOK_URL\` dans \`.env\``
+          : `🔌 **n8n unreachable** at \`${WEBHOOK_URL}\`\n\n• Run n8n: \`npx n8n start\`\n• Activate your workflow in n8n interface\n• Check \`VITE_WEBHOOK_URL\` in \`.env\``;
+      } else if (err.response?.status === 404) {
+        errorText = lang === 'fr'
+          ? `⚠️ **Webhook introuvable (404)**\n\nL'URL \`${WEBHOOK_URL}\` n'existe pas.\nVérifie le chemin du webhook dans ton workflow n8n.`
+          : `⚠️ **Webhook not found (404)**\n\nThe URL \`${WEBHOOK_URL}\` does not exist.\nCheck the webhook path in your n8n workflow.`;
+      } else if (err.response?.status >= 500) {
+        errorText = lang === 'fr'
+          ? `❌ **Erreur interne n8n (${err.response.status})**\n\nLe workflow a planté. Consulte les logs d'exécution dans n8n.`
+          : `❌ **n8n internal error (${err.response.status})**\n\nThe workflow crashed. Check the execution logs in n8n.`;
+      } else {
+        errorText = `❌ **Erreur** : ${err.message}`;
+      }
+
+      const errMsg = {
+        id: generateId(),
+        sender: 'ai',
+        text: errorText,
+        timestamp: new Date().toISOString(),
       };
       setConversations(prev => prev.map(c =>
-        c.id === targetId ? { ...c, messages: [...c.messages, aiMsg], updatedAt: new Date().toISOString() } : c
+        c.id === targetId
+          ? { ...c, messages: [...c.messages, errMsg], updatedAt: new Date().toISOString() }
+          : c
       ));
+    } finally {
       setLoading(false);
-    }, 1200);
-  }, [loading, activeId]);
+    }
+  }, [loading, activeId, currentUser, lang]);
 
   const handleSubmit = (e) => { e.preventDefault(); handleSendMessage(inputValue); };
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(inputValue); }
   };
 
-  // Trouver l'index du dernier message AI
   const lastAiIndex = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].sender === 'ai') return i;
@@ -851,11 +898,6 @@ export default function ChatInterface() {
   return (
     <>
       <style>{styles}</style>
-      {/*
-        FIX #6: Layout principal en flexbox horizontal.
-        Le sidebar est sticky dans ce flex container.
-        Le footer (rendu par le parent) reste en dessous de ce flex wrapper.
-      */}
       <div style={{
         display: 'flex',
         height: '100vh',
@@ -863,7 +905,6 @@ export default function ChatInterface() {
         fontFamily: 'var(--f-sans)',
         overflow: 'hidden',
       }}>
-
         <Sidebar
           conversations={conversations}
           activeId={activeId}
@@ -871,9 +912,9 @@ export default function ChatInterface() {
           onNew={handleNew}
           onRename={handleRename}
           onDelete={handleDelete}
+          lang={lang}
         />
 
-        {/* Zone principale */}
         <main style={{
           flex: 1,
           display: 'flex',
@@ -882,8 +923,6 @@ export default function ChatInterface() {
           overflow: 'hidden',
           minWidth: 0,
         }}>
-
-          {/* ── Header ── */}
           <header style={{
             padding: '18px 32px 14px',
             borderBottom: '1px solid var(--rule-soft)',
@@ -899,21 +938,17 @@ export default function ChatInterface() {
                 letterSpacing: '-0.015em',
                 color: 'var(--ink)', marginBottom: 3
               }}>
-                {!hasMessages ? 'Bonjour !' : (activeConv?.title || 'Assistant IA')}
+                {!hasMessages ? (lang === 'fr' ? 'Bonjour !' : 'Hello!') : (activeConv?.title || (lang === 'fr' ? 'Assistant IA' : 'AI Assistant'))}
               </h1>
               <p style={{ fontSize: 13, color: 'var(--ink3)' }}>
-                Posez-moi votre question ci-dessous.
+                {lang === 'fr' ? 'Posez-moi votre question ci-dessous.' : 'Ask me your question below.'}
               </p>
             </div>
-
-         
           </header>
 
-          {/* ── Messages ── */}
           <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
             <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '28px 28px 16px' }}>
 
-              {/* Message d'accueil */}
               {!hasMessages && (
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', animation: 'fade-up 0.3s ease both' }}>
                   <div style={{
@@ -930,12 +965,11 @@ export default function ChatInterface() {
                     borderRadius: 18, borderTopLeftRadius: 4,
                     padding: '14px 18px', fontSize: 14, lineHeight: 1.6, color: 'var(--ink)'
                   }}>
-                    Comment puis-je vous aider aujourd'hui ?
+                    {lang === 'fr' ? 'Comment puis-je vous aider aujourd\'hui ?' : 'How can I help you today?'}
                   </div>
                 </div>
               )}
 
-              {/* Messages */}
               {messages.map((msg, idx) => (
                 <MessageBubble
                   key={msg.id || idx}
@@ -944,10 +978,10 @@ export default function ChatInterface() {
                   delay={idx * 0.025}
                   isLast={idx === lastAiIndex}
                   onAction={msg.sender === 'ai' ? handleSendMessage : null}
+                  lang={lang}
                 />
               ))}
 
-              {/* Typing indicator */}
               {loading && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fade-up 0.25s ease both' }}>
                   <div style={{
@@ -980,7 +1014,6 @@ export default function ChatInterface() {
             </div>
           </div>
 
-          {/* Scroll button */}
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
@@ -1001,23 +1034,9 @@ export default function ChatInterface() {
             </button>
           )}
 
-          {/* ── Zone input + suggestions ── */}
-          {/*
-            FIX #4: suggestions JUSTE SOUS l'input (ordre inversé en flex-column)
-            FIX #3 & #2: blocs de suggestions groupés avec titres
-          */}
-          <div style={{
-            flexShrink: 0,
-            background: 'var(--paper)',
-            borderTop: '1px solid var(--rule-soft)',
-          }}>
-            <div style={{
-              maxWidth: 'var(--chat-max-width)',
-              margin: '0 auto',
-              padding: '12px 24px 18px',
-            }}>
+          <div style={{ flexShrink: 0, background: 'var(--paper)', borderTop: '1px solid var(--rule-soft)' }}>
+            <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '12px 24px 18px' }}>
 
-              {/* Input */}
               <form onSubmit={handleSubmit}>
                 <div
                   style={{
@@ -1038,7 +1057,7 @@ export default function ChatInterface() {
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onFocus={() => setShowSuggestions(true)}
-                    placeholder="Écrivez votre message…"
+                    placeholder={lang === 'fr' ? 'Écrivez votre message…' : 'Type your message…'}
                     rows={1}
                     disabled={loading}
                     style={{
@@ -1049,11 +1068,10 @@ export default function ChatInterface() {
                     }}
                   />
 
-                  {/* Toggle suggestions */}
                   <button
                     type="button"
                     onClick={() => setShowSuggestions(v => !v)}
-                    title="Afficher les suggestions"
+                    title={lang === 'fr' ? 'Afficher les suggestions' : 'Show suggestions'}
                     style={{
                       width: 36, height: 36,
                       background: showSuggestions ? 'var(--paper2)' : 'transparent',
@@ -1073,7 +1091,6 @@ export default function ChatInterface() {
                     </svg>
                   </button>
 
-                  {/* Send */}
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || loading}
@@ -1097,19 +1114,18 @@ export default function ChatInterface() {
                 </div>
               </form>
 
-              {/* FIX #4: suggestions JUSTE SOUS l'input */}
               {showSuggestions && (
                 <div style={{ marginTop: 12, animation: 'fade-up 0.2s ease both' }}>
                   <SuggestionGroups onSelect={(text) => {
                     setInputValue(text);
                     setShowSuggestions(false);
                     inputRef.current?.focus();
-                  }} />
+                  }} lang={lang} />
                 </div>
               )}
 
               <p style={{ fontSize: 11, color: 'var(--ink4)', textAlign: 'center', marginTop: 10, fontFamily: 'var(--f-sans)' }}>
-                OppsTrack peut faire des erreurs. Vérifiez les informations importantes.
+                {lang === 'fr' ? 'OppsTrack peut faire des erreurs. Vérifiez les informations importantes.' : 'OppsTrack may make mistakes. Verify important information.'}
               </p>
             </div>
           </div>
