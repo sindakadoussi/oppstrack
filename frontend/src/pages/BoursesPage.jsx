@@ -158,7 +158,7 @@ function AIPreviewPanel({ bourse, user, onClose, c, lang }) {
 function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang, index }) {
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
   const animationDelay = `${index * 0.05}s`;
-
+const [applyLoading, setApplyLoading] = useState(false);
   // ----- Détermination du statut -----
   const getStatus = () => {
     if (bourse.statut === 'expiree') {
@@ -302,9 +302,25 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
           <button onClick={(e) => { e.stopPropagation(); onStar(bourse, starred); }} style={{ ...actionButton(c, 'ghost'), background: starred ? c.accent : 'transparent', color: starred ? c.paper : c.ink3, border: `1px solid ${c.rule}` }}>
             {starred ? '★' : '☆'} Favori
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onApply(bourse); }} style={{ ...actionButton(c, applied ? 'success' : 'primary'), background: applied ? '#2e6b3e' : c.accent, color: '#fff' }}>
-            {applied ? '✓' : '+'} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
-          </button>
+           <button
+    onClick={async (e) => {
+      e.stopPropagation();
+      if (applied || applyLoading) return;
+      setApplyLoading(true);
+      await onApply(bourse);
+      setApplyLoading(false);
+    }}
+    style={{
+      ...actionButton(c, applied ? 'success' : 'primary'),
+      background: applied ? '#2e6b3e' : c.accent,
+      color: '#fff',
+      opacity: applyLoading ? 0.6 : 1,
+      cursor: (applied || applyLoading) ? 'default' : 'pointer'
+    }}
+    disabled={applied || applyLoading}
+  >
+    {applyLoading ? '⏳' : (applied ? '✓' : '+')} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
+  </button>
           <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'primary'), background: c.accent, color: '#fff' }}>
             Match IA
           </button>

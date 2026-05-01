@@ -488,54 +488,147 @@ function BoursePicker({ bourses, userId, onSelect }) {
   const q=(query||'').trim().toLowerCase();
   const filtered=q.length===0?bourses:bourses.filter(b=>(b.nom||'').toLowerCase().includes(q)||(b.pays||'').toLowerCase().includes(q)||(b.niveau||'').toLowerCase().includes(q)||String(b.financement||'').toLowerCase().includes(q));
 return (
-    <div className="ep-picker-root" style={{ background: dk ? '#15140f' : undefined }}>
-      <div className="ep-picker-inner">
-        
+  <div style={{ background: dk ? '#15140f' : '#faf8f3', minHeight: '100vh', fontFamily: 'inherit' }}>
 
-        <h1 className="ep-picker-title" style={{ color: dk ? '#f2efe7' : undefined }}>
-          {lang==='fr'?<>Préparez votre<br/><em>entretien de bourse</em></>:<>Prepare your<br/><em>scholarship interview</em></>}
-        </h1>
-        <p className="ep-picker-sub" style={{ color: dk ? '#cfccc2' : undefined }}>
-          {lang==='fr'
-            ?<>Le jury IA vous posera <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</>
-            :<>The AI panel will ask you <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> tailored to the scholarship, with real-time voice analysis.</>}
-        </p>
+    {/* ── HERO ── */}
+    <div style={{
+      background: dk ? '#1d1c16' : '#f2efe7',
+      padding: '40px 32px',
+      textAlign: 'center',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+    }}>
+    
+      <h1 style={{
+        fontFamily: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+        fontSize: 'clamp(32px, 5vw, 48px)',
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        color: dk ? '#f2efe7' : '#141414',
+        margin: '0 0 16px',
+      }}>
+        {lang === 'fr'
+          ? <>{`Préparez votre `}<em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>entretien de bourse</em>.</>
+          : <>{`Prepare your `}<em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>scholarship interview</em>.</>}
+      </h1>
+      <p style={{
+        fontSize: 16, color: dk ? '#cfccc2' : '#3a3a3a',
+        maxWidth: 580, margin: '0 auto',
+        lineHeight: 1.7,
+      }}>
+        {lang === 'fr'
+          ? <>Le jury IA vous posera <strong style={{ color: '#166534' }}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</>
+          : <>The AI panel will ask you <strong style={{ color: '#166534' }}>{TOTAL_Q} questions</strong> tailored to the scholarship, with real-time voice analysis.</>}
+      </p>
+    </div>
 
-        {/* ── Search + Historique déplacés ici, sous le sous-titre ── */}
-        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:32 }}>
-          <input
-            placeholder={lang==='fr'?'Rechercher une bourse, pays, niveau...':'Search scholarship, country, level...'}
-            value={query} onChange={e=>setQuery(e.target.value)}
-            className="ep-picker-search"
-            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
-          />
-          <button className="ep-picker-hist-btn"
-            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
-            onClick={()=>setShowHist(true)}>
-            📋 {lang==='fr'?'Mes entretiens':'My interviews'}
-          </button>
+    {/* ── SEARCH + HISTORIQUE — section blanche ── */}
+    <div style={{
+      background: dk ? '#1a1912' : '#ffffff',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      padding: '20px 32px',
+    }}>
+      <div style={{
+        display: 'flex', gap: 12, alignItems: 'center',
+        flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 680, margin: '0 auto',
+      }}>
+        <input
+          placeholder={lang === 'fr' ? 'Rechercher une bourse, pays, niveau...' : 'Search scholarship, country, level...'}
+          value={query} onChange={e => setQuery(e.target.value)}
+          style={{
+            flex: 1, minWidth: 260,
+            padding: '12px 18px',
+            borderRadius: 8,
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            background: dk ? '#15140f' : '#f2efe7',
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+        <button
+          onClick={() => setShowHist(true)}
+          style={{
+            padding: '11px 20px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+          📋 {lang === 'fr' ? 'Mes entretiens' : 'My interviews'}
+        </button>
+      </div>
+    </div>
+
+    {/* ── GRILLE CARTES ── */}
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px' }}>
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 0', color: dk ? '#a19f96' : '#6b6b6b' }}>
+          <span style={{ fontSize: 36 }}>🔎</span>
+          <p style={{ marginTop: 12 }}>{lang === 'fr' ? 'Aucune bourse trouvée.' : 'No scholarship found.'}</p>
         </div>
-
-        <div className="ep-picker-grid">
-          {filtered.length===0&&(
-            <div className="ep-picker-empty">
-              <span style={{fontSize:36}}>🔎</span>
-              <p>{lang==='fr'?'Aucune bourse trouvée.':'No scholarship found.'}</p>
-            </div>
-          )}
-          {filtered.map(b=>(
-            <div key={b.id} className="ep-bourse-card" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
-              
-              <div className="ep-bourse-name" style={{ color: dk ? '#f2efe7' : undefined }}>{b.nom}</div>
-              <div className="ep-bourse-meta">{b.pays} · {b.niveau}</div>
-              <button className="ep-bourse-btn" onClick={()=>onSelect(b)}>🚀 {lang==='fr'?"Démarrer l'entretien":'Start interview'}</button>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 20,
+        }}>
+          {filtered.map(b => (
+            <div key={b.id} style={{
+              display: 'flex', flexDirection: 'column', gap: 14,
+              padding: 24,
+              borderRadius: 12,
+              background: dk ? '#1d1c16' : '#f2efe7',
+              border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 24 }}>🎓</span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6,
+                  background: 'rgba(22,101,52,0.1)', color: '#166534',
+                  border: '1px solid rgba(22,101,52,0.3)',
+                  fontFamily: 'monospace',
+                }}>{b.financement}</span>
+              </div>
+              <div style={{
+                fontSize: 16, fontWeight: 700,
+                color: dk ? '#f2efe7' : '#141414',
+                lineHeight: 1.3,
+                fontFamily: `"Libre Caslon Text", Georgia, serif`,
+              }}>
+                {b.nom}
+              </div>
+              <div style={{ fontSize: 12, color: dk ? '#a19f96' : '#6b6b6b', fontFamily: 'monospace' }}>
+                {b.pays} · {b.niveau}
+              </div>
+              <button
+                onClick={() => onSelect(b)}
+                style={{
+                  marginTop: 8, padding: '12px 20px', borderRadius: 8, border: 'none',
+                  background: `linear-gradient(135deg, ${dk ? '#4c9fd9' : '#0066b3'}, ${dk ? '#2563eb' : '#004f8a'})`,
+                  color: '#fff', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', width: '100%',
+                  boxShadow: '0 4px 12px rgba(0,102,179,0.2)',
+                }}>
+                🚀 {lang === 'fr' ? "Démarrer l'entretien" : 'Start interview'}
+              </button>
             </div>
           ))}
         </div>
-      </div>
-      {showHist&&<HistoriquePanel userId={userId} onClose={()=>setShowHist(false)}/>}
+      )}
     </div>
-  );
+
+    {showHist && <HistoriquePanel userId={userId} onClose={() => setShowHist(false)} />}
+  </div>
+);
 }
 
 /* ── EntretienSession ── */

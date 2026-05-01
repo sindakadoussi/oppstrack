@@ -140,6 +140,7 @@ const tokens = (theme) => ({
   transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
 });
 
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MATCH SCORING SYSTEM
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -268,58 +269,46 @@ const getEffortLevel = (score, weaknesses) => {
   return { label: 'Long-term goal' };
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   COMPONENTS
-═══════════════════════════════════════════════════════════════════════════ */
-
-const DecisionHeader = ({ c, lang, onViewBestMatches }) => (
-  <div style={{ marginBottom: 48 }}>
-    <div style={{ maxWidth: 800 }}>
+/* ─── Recommendations Hero (style identique à MiniHero de BoursesPage) ─── */
+function RecommendationsHero({ c, lang, totalCount }) {
+  return (
+    <div style={{
+      background: c.paper2,
+      padding: '40px 32px',
+      textAlign: 'center',
+      borderBottom: `1px solid ${c.rule}`,
+      animation: 'fadeIn 0.6s ease',
+    }}>
       <h1 style={{
         fontFamily: c.fSerif,
-        fontSize: 40,
+        fontSize: 'clamp(32px, 5vw, 48px)',
         fontWeight: 700,
-        color: c.ink,
-        marginBottom: 16,
         letterSpacing: '-0.02em',
-        animation: 'fadeInUp 0.4s ease-out',
+        color: c.ink,
+        margin: 0,
       }}>
-        {lang === 'fr' ? 'Vos meilleures opportunités' : 'Your best opportunities'}
+        {lang === "fr" ? (
+          <>Vos <em style={{ color: c.accent, fontStyle: 'italic' }}>recommandations personnalisées</em>.</>
+        ) : (
+          <>Your <em style={{ color: c.accent, fontStyle: "italic" }}>personalized recommendations</em>.</>
+        )}
       </h1>
       <p style={{
         fontFamily: c.fSans,
-        fontSize: 15,
-        color: c.inkSecondary,
-        lineHeight: 1.6,
-        marginBottom: 28,
-        animation: 'fadeInUp 0.4s ease-out 0.1s both',
+        fontSize: 16,
+        color: c.ink2,
+        marginTop: 12,
+        maxWidth: 600,
+        marginLeft: 'auto',
+        marginRight: 'auto',
       }}>
-        {lang === 'fr'
-          ? 'Basé sur votre profil académique, notre algorithme calcule un score de compatibilité précis pour chaque bourse. Concentrez-vous sur les opportunités où vous avez le plus de chances.'
-          : 'Based on your academic profile, our algorithm calculates a precise compatibility score for each scholarship. Focus on opportunities where you have the best chances.'}
+        {lang === "fr"
+          ? `Basé sur votre profil, ${totalCount} bourse${totalCount > 1 ? 's' : ''} éligible${totalCount > 1 ? 's' : ''} avec score de compatibilité.`
+          : `Based on your profile, ${totalCount} eligible scholarship${totalCount !== 1 ? 's' : ''} with match score.`}
       </p>
-      <button
-        onClick={onViewBestMatches}
-        style={{
-          background: c.accent,
-          color: c.paper,
-          border: 'none',
-          padding: '12px 32px',
-          fontSize: 13,
-          fontWeight: 500,
-          fontFamily: c.fMono,
-          letterSpacing: '0.03em',
-          cursor: 'pointer',
-          transition: c.transition,
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = c.accentDark; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = c.accent; e.currentTarget.style.transform = 'translateY(0)'; }}
-      >
-        {lang === 'fr' ? 'Voir mes meilleures chances' : 'View my best matches'}
-      </button>
     </div>
-  </div>
-);
+  );
+}
 
 const MatchSummary = ({ scholarships, c, lang }) => {
   const stats = useMemo(() => {
@@ -1238,7 +1227,7 @@ export default function RecommandationsPage({
       `}</style>
 
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 80px' }}>
-        <DecisionHeader c={c} lang={lang} onViewBestMatches={viewBestMatches} />
+        <RecommendationsHero c={c} lang={lang} totalCount={allScholarships.length} />
         <MatchSummary scholarships={allScholarships} c={c} lang={lang} />
         <MatchFilters filters={filters} setFilters={setFilters} c={c} lang={lang} />
 
