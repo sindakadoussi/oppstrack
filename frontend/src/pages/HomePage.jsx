@@ -108,10 +108,21 @@ function BigHeading({ children, c, style = {} }) {
 
 /* =============== SECTION 1: HERO =============== */
 function Hero({ c, lang, navigate }) {
+  const [user, setUser] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
   const [cardsVisible, setCardsVisible] = useState([false, false, false]);
 
   useEffect(() => {
+    // Récupérer l'utilisateur depuis localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Erreur parsing user:', e);
+      }
+    }
+
     setTimeout(() => setHeroVisible(true), 150);
     [600, 850, 1100].forEach((delay, i) => {
       setTimeout(() => setCardsVisible(prev => { const next = [...prev]; next[i] = true; return next; }), delay);
@@ -138,6 +149,9 @@ function Hero({ c, lang, navigate }) {
     { pays: "France · Paris", nom: "Eiffel Excellence", match: 87 },
   ];
 
+  // Extraire le nom de l'utilisateur (même logique que le Dashboard)
+  const userName = user?.name || user?.email?.split('@')[0] || '';
+
   return (
     <>
       <style>{`
@@ -149,7 +163,7 @@ function Hero({ c, lang, navigate }) {
           inset: 0;
           background-image: url('/ceremonie.jpg');
           background-size: cover;
-          background-position: center top;   /* ancrage haut pour ne pas couper le sujet */
+          background-position: center top;
           filter: brightness(.86);
           transform: scale(1.06);
           transition: transform 14s ease-out;
@@ -177,14 +191,6 @@ function Hero({ c, lang, navigate }) {
         @keyframes blink { 50% { opacity: 0; } }
       `}</style>
 
-      {/*
-        ── FIX HERO ──
-        La section démarre à top:0 et occupe 100vh.
-        La navbar est fixed par-dessus (z-index:1000).
-        On ne met AUCUN margin-top ni padding-top sur la section elle-même :
-        le gradient de fondu en bas suffit à la transition.
-        Le contenu interne utilise paddingTop: NAV_H + espace visuel.
-      */}
       <section style={{
         position: "relative",
         height: "100vh",
@@ -192,22 +198,20 @@ function Hero({ c, lang, navigate }) {
         display: "flex",
         alignItems: "center",
         overflow: "hidden",
-        /* Pas de marginTop : la navbar fixe passe par-dessus */
       }}>
-        {/* Image de fond — remplit toute la section y compris sous la navbar */}
+        {/* Image de fond */}
         <div className="hero-bg-img" />
 
-        {/* Dégradé bas vers paper pour transition fluide avec la section suivante */}
+        {/* Dégradé */}
         <div style={{
           position: "absolute", inset: 0,
           background: `linear-gradient(to bottom, rgba(20,15,5,.55) 0%, rgba(20,15,5,.7) 60%, ${c.paper} 100%)`,
         }} />
 
-        {/* Contenu : décalé vers le bas pour passer sous la navbar */}
+        {/* Contenu */}
         <div style={{
           position: "relative", zIndex: 2,
           maxWidth: 1440, margin: "0 auto",
-          /* paddingTop = hauteur navbar + marge visuelle */
           padding: `${NAV_H + 80}px 48px 120px`,
           width: "100%",
           opacity: heroVisible ? 1 : 0,
@@ -223,9 +227,17 @@ function Hero({ c, lang, navigate }) {
                 color: "#f2efe7", margin: 0,
               }}>
                 {lang === "fr" ? (
-                  <><em style={{ color: c.accent, fontStyle: "italic" }}>Bienvenue,</em> prêt(e) à décrocher ta bourse internationale ?</>
+                  <>
+                    <em style={{ color: c.accent, fontStyle: "italic" }}>
+                      Bienvenue{userName && ` ${userName}`},
+                    </em> prêt(e) à décrocher ta bourse internationale ?
+                  </>
                 ) : (
-                  <> <em style={{ color: c.accent, fontStyle: "italic" }}>Welcome,</em> ready to secure your international scholarship?</>
+                  <>
+                    <em style={{ color: c.accent, fontStyle: "italic" }}>
+                      Welcome{userName && ` ${userName}`},
+                    </em> ready to secure your international scholarship?
+                  </>
                 )}
               </h1>
               <p style={{
@@ -236,11 +248,11 @@ function Hero({ c, lang, navigate }) {
                   ? "OppsTrack centralise les bourses entièrement financées dans le monde, analyse votre profil et vous guide jusqu'à la candidature."
                   : "OppsTrack centralizes fully funded scholarships worldwide, analyzes your profile and guides you through your application."}
               </p>
-             
             </div>
 
             <div style={{ position: "relative", height: 480 }}>
-              <div style={cardStyle(cardsVisible[0], { top: 0, left: 0, width: 264 })}>
+              {/* Carte 1 - DAAD */}
+              <div style={cardStyle(cardsVisible[0], { top: 20, left: 0, width: 264 })}>
                 <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>{scholarships[0].pays}</div>
                 <div style={{ fontFamily: c.fSerif, fontSize: 17, fontWeight: 700, marginTop: 6 }}>{scholarships[0].nom}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14 }}>
@@ -252,13 +264,15 @@ function Hero({ c, lang, navigate }) {
                 </div>
               </div>
 
-              <div style={cardStyle(cardsVisible[1], { top: 80, right: 0, width: 240, borderLeft: `3px solid ${c.danger}` })}>
+              {/* Carte 2 - Chevening (urgent) */}
+              <div style={cardStyle(cardsVisible[1], { top: 140, right: 0, width: 240, borderLeft: `3px solid ${c.danger}` })}>
                 <div style={{ fontSize: 9.5, color: c.danger, letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 700 }}>Deadline · today</div>
                 <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, marginTop: 4 }}>{scholarships[1].nom}</div>
                 <div style={{ fontFamily: c.fSans, fontSize: 11, color: "rgba(242,239,231,.42)", marginTop: 6, letterSpacing: ".1em" }}>{scholarships[1].deadline}</div>
               </div>
 
-              <div style={cardStyle(cardsVisible[2], { bottom: 0, left: 20, width: 244 })}>
+              {/* Carte 3 - Eiffel (rapprochée) */}
+              <div style={cardStyle(cardsVisible[2], { bottom: 20, left: 70, width: 244 })}>
                 <div style={{ fontSize: 9.5, color: "rgba(242,239,231,.42)", letterSpacing: ".18em", textTransform: "uppercase", fontWeight: 600 }}>France · Paris</div>
                 <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, marginTop: 6 }}>{scholarships[2].nom}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>

@@ -8,6 +8,28 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS — identiques à la homepage et BoursesPage
+═══════════════════════════════════════════════════════════════════════════ */
+const tokens = (theme) => ({
+  accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentInk:  theme === "dark" ? "#8ec1e6" : "#004f8a",
+  ink:        theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:       theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:       theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:       theme === "dark" ? "#6d6b64" : "#9a9794",
+  paper:      theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:     theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule:       theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:   theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface:    theme === "dark" ? "#1a1912" : "#ffffff",
+  danger:     "#b4321f",
+  warn:       "#b06a12",
+  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+  fSans:  `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"JetBrains Mono", ui-monospace, Menlo, monospace`,
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    REMIX ICONS — inline SVG helper (pure B&W, no emoji)
 ═══════════════════════════════════════════════════════════════════════════ */
 const RI_PATHS = {
@@ -71,38 +93,6 @@ function RI({ name, size = 16, color = 'currentColor', style = {} }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════════════════════════════════════ */
-const tokens = (theme) => ({
-  accent:     theme === 'dark' ? '#4c9fd9' : '#1a56db',
-  accentSoft: theme === 'dark' ? '#1e3a5f' : '#eff6ff',
-  accentBorder:theme==='dark'?'#2563eb40':'#bfdbfe',
-  ink:        theme === 'dark' ? '#f2efe7' : '#141414',
-  ink2:       theme === 'dark' ? '#cfccc2' : '#3a3a3a',
-  ink3:       theme === 'dark' ? '#a19f96' : '#6b6b6b',
-  ink4:       theme === 'dark' ? '#6d6b64' : '#9a9794',
-  paper:      theme === 'dark' ? '#15140f' : '#f5f3ee',
-  paper2:     theme === 'dark' ? '#1d1c16' : '#f8f6f1',
-  surface:    theme === 'dark' ? '#1a1912' : '#ffffff',
-  rule:       theme === 'dark' ? '#2b2a22' : '#e5e3dc',
-  ruleSoft:   theme === 'dark' ? '#24231c' : '#f0ede8',
-  danger:     '#dc2626',
-  dangerSoft: '#fef2f2',
-  dangerBorder:'#fecaca',
-  warn:       '#d97706',
-  warnSoft:   '#fef9c3',
-  success:    '#16a34a',
-  successSoft:'#dcfce7',
-  successBorder:'#bbf7d0',
-  purple:     '#7c3aed',
-  purpleSoft: '#faf5ff',
-  purpleBorder:'#e9d5ff',
-  fSerif: `"Playfair Display","Times New Roman",Georgia,serif`,
-  fSans:  `"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`,
-  fMono:  `"DM Sans",monospace`,
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════════════════ */
 const formatDate = (dateStr, lang) => {
@@ -131,11 +121,11 @@ const computePriority = (deadline, progress) => {
 };
 
 const priorityMeta = (p, c) => ({
-  URGENT:  { label: 'URGENT',     bg: c.dangerSoft,   color: c.danger,  border: c.dangerBorder },
-  HIGH:    { label: 'PRIORITAIRE',bg: '#fde8d8',      color: '#9a3412', border: '#fed7aa' },
-  MEDIUM:  { label: 'BIENTÔT',    bg: c.warnSoft,     color: c.warn,    border: '#fde68a' },
-  LOW:     { label: 'OK',         bg: c.successSoft,  color: c.success, border: c.successBorder },
-  EXPIRED: { label: 'EXPIRÉ',     bg: '#f1f5f9',      color: '#64748b', border: '#cbd5e1' },
+  URGENT:  { label: 'URGENT',     bg: '#fef2f2', color: c.danger,  border: '#fecaca' },
+  HIGH:    { label: 'PRIORITAIRE',bg: '#fffbeb', color: c.warn,    border: '#fde68a' },
+  MEDIUM:  { label: 'BIENTÔT',    bg: '#eff6ff', color: c.accent,  border: '#bfdbfe' },
+  LOW:     { label: 'OK',         bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' },
+  EXPIRED: { label: 'EXPIRÉ',     bg: '#f1f5f9', color: '#64748b', border: '#cbd5e1' },
 })[p] || { label: p, bg: '#f1f5f9', color: '#555', border: '#ddd' };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -156,6 +146,7 @@ function useBourses(userId) {
         signal: AbortSignal.timeout(8000),
       });
       const docs = (res.data.docs || []).map(d => ({
+        notes: d.notes || '',
         _id: d.id,
         nom: d.nom,
         pays: d.pays || '',
@@ -250,12 +241,11 @@ function useTranslatedEtapes(etapes, lang) {
    SUB-COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════ */
 
-// NOUVELLE TopBar – style identique au MiniHero de la page Bourse
-// TopBar – hero style identique à MiniHero + onglets en dessous
+// TopBar – hero style identique à MiniHero (BoursesPage)
 function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
   return (
-    <div style={{ background: c.paper2 }}>
-      {/* Section Hero (strictement identique à MiniHero) */}
+    <div>
+      {/* Hero section – background c.paper2 */}
       <div
         style={{
           background: c.paper2,
@@ -310,68 +300,71 @@ function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
         </p>
       </div>
 
-      {/* Barre d’onglets (Kanban / Progression) */}
+      {/* Section des boutons - utilise les couleurs du thème */}
       <div
         style={{
-          display: 'flex',
-          gap: 2,
-          padding: '0 24px',
-          borderTop: `1px solid ${c.rule}`,
+          background: c.surface,
+          borderBottom: `1px solid ${c.rule}`,
+          padding: '0 32px',
         }}
       >
-        {[
-          { id: 'kanban', labelFr: 'Vue Kanban', labelEn: 'Kanban View', icon: 'apps' },
-          { id: 'progression', labelFr: 'Progression', labelEn: 'Progress', icon: 'chart' },
-        ].map((tab) => {
-          const isActive = !focusMode && activeTab === tab.id;
-          return (
+        <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: 24 }}>
+          {[
+            { id: 'kanban', labelFr: 'Suivi', labelEn: 'Tracking' },
+            { id: 'progression', labelFr: 'Progression', labelEn: 'Progress' },
+          ].map((tab) => {
+            const isActive = !focusMode && activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  background: isActive ? c.accent : 'transparent',
+                  color: isActive ? '#ffffff' : c.ink3,
+                  border: isActive ? 'none' : `1px solid ${c.rule}`,
+                  borderRadius: 0,
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: 'pointer',
+                  fontFamily: c.fMono,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {lang === 'fr' ? tab.labelFr : tab.labelEn}
+              </button>
+            );
+          })}
+          {focusMode && (
             <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
               style={{
-                padding: '10px 16px',
-                fontSize: 12,
+                flex: 1,
+                padding: '12px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: c.accent,
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 0,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: 'none',
-                background: 'transparent',
-                color: isActive ? c.ink : c.ink3,
-                borderBottom: `2px solid ${isActive ? c.ink : 'transparent'}`,
-                fontFamily: c.fSans,
-                transition: 'all 0.15s',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
+                fontFamily: c.fMono,
+                transition: 'all 0.2s ease',
               }}
             >
-              <RI name={tab.icon} size={14} />
-              {lang === 'fr' ? tab.labelFr : tab.labelEn}
+              {lang === 'fr' ? 'Mode Focus' : 'Focus Mode'}
             </button>
-          );
-        })}
-        {focusMode && (
-          <button
-            style={{
-              padding: '10px 16px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: 'none',
-              background: 'transparent',
-              color: c.accent,
-              borderBottom: `2px solid ${c.accent}`,
-              fontFamily: c.fSans,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <RI name="focus" size={14} />
-            {lang === 'fr' ? 'Mode Focus' : 'Focus Mode'}
-          </button>
-        )}
-      </div> 
-      
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -379,7 +372,12 @@ function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
 function PriorityTag({ priority, c, style = {} }) {
   const meta = priorityMeta(priority, c);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, letterSpacing: '0.03em', ...style }}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 700,
+      padding: '2px 8px', borderRadius: 20, background: meta.bg, color: meta.color,
+      border: `1px solid ${meta.border}`, letterSpacing: '0.03em', fontFamily: c.fMono,
+      ...style
+    }}>
       {meta.label}
     </span>
   );
@@ -391,27 +389,25 @@ function BourseCard({ bourse, onClick, onDelete, onRegenerate, c, lang }) {
   const pct = Math.round((done / total) * 100);
   const priority = computePriority(bourse.deadline, pct);
   const daysLeft = daysUntil(bourse.deadline);
-  const matchColor = bourse.match >= 85 ? c.success : bourse.match >= 75 ? c.accent : c.warn;
+  const matchColor = bourse.match >= 85 ? '#10b981' : bourse.match >= 75 ? c.accent : c.warn;
 
   return (
     <div
       onClick={onClick}
       style={{
         background: c.surface,
-        border: `1px solid ${c.rule}`,
-        borderRadius: 10,
-        padding: 14,
-        width: '100%',
-        margin: '0 0 10px 0',
+        border: `1px solid ${c.ruleSoft}`,
+        padding: 16,
+        marginBottom: 12,
         cursor: 'pointer',
         transition: 'box-shadow 0.15s, transform 0.1s',
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bourse.nom}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: c.ink, marginBottom: 2 }}>{bourse.nom}</div>
           <div style={{ fontSize: 11, color: c.ink3 }}>{bourse.org || bourse.pays}</div>
         </div>
         <PriorityTag priority={priority} c={c} style={{ marginLeft: 8, flexShrink: 0 }} />
@@ -420,42 +416,37 @@ function BourseCard({ bourse, onClick, onDelete, onRegenerate, c, lang }) {
       {bourse.match > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, margin: '6px 0' }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: matchColor, flexShrink: 0 }} />
-          <span style={{ fontWeight: 600, color: c.ink }}>Match : {bourse.match}%</span>
-          {bourse.match >= 85 && (
-            <span style={{ fontSize: 10, fontWeight: 700, background: c.successSoft, color: c.success, padding: '1px 6px', borderRadius: 10, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <RI name="star" size={10} /> Excellent
-            </span>
-          )}
+          <span style={{ fontWeight: 500, color: c.ink2 }}>Match : {bourse.match}%</span>
         </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: c.ink3, margin: '6px 0 4px' }}>
-        <span>Deadline dans <b style={{ color: daysLeft && daysLeft <= 7 ? c.danger : c.ink }}>{daysLeft}j</b></span>
+        <span>Deadline dans <b style={{ color: daysLeft && daysLeft <= 7 ? c.danger : c.ink2 }}>{daysLeft}j</b></span>
         <span>{formatDate(bourse.deadline, lang)}</span>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: c.ink3, margin: '6px 0 4px' }}>
         <span>Progression</span>
-        <span style={{ fontWeight: 600, color: pct === 100 ? c.success : c.ink }}>{pct}%</span>
+        <span style={{ fontWeight: 600, color: pct === 100 ? '#10b981' : c.accent }}>{pct}%</span>
       </div>
-      <div style={{ height: 6, background: c.rule, borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? c.success : c.accent, borderRadius: 3, transition: 'width 0.4s' }} />
+      <div style={{ height: 4, background: c.ruleSoft, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#10b981' : c.accent }} />
       </div>
 
       <div style={{ fontSize: 11, color: c.ink3, marginBottom: 8 }}>
         {done}/{total} tâches
-        {pct === 100 && <span style={{ color: c.success, fontWeight: 600, marginLeft: 6 }}><RI name="check" size={10} /> Complet</span>}
+        {pct === 100 && <span style={{ color: '#10b981', fontWeight: 600, marginLeft: 6 }}><RI name="check" size={10} /> Complet</span>}
       </div>
 
       {bourse.conseilGlobal && (
-        <div style={{ background: c.paper2, borderRadius: 6, padding: '7px 10px', fontSize: 11, color: c.ink2, marginBottom: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+        <div style={{ background: c.paper2, padding: '6px 10px', fontSize: 11, color: c.ink2, marginBottom: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
           <RI name="lightning" size={12} style={{ marginTop: 1 }} />
           <span>{bourse.conseilGlobal}</span>
         </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: c.ink }}>{bourse.montant}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{bourse.montant}</span>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: c.ink3, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
             <RI name="pin" size={12} /> {bourse.pays}
@@ -488,27 +479,27 @@ function TodayBanner({ bourses, onFocusBourse, c, lang }) {
   const remaining = urgent.bourse.etapes.length - urgent.bourse.etapeCourante;
 
   return (
-    <div style={{ margin: '16px 24px', background: '#fff7f2', border: `1px solid #fcd9c0`, borderRadius: 10, padding: '16px 20px' }}>
+    <div style={{ margin: '16px 0', background: '#fffbeb', border: `1px solid #fde68a`, padding: '16px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ width: 36, height: 36, background: '#ff6b35', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 36, height: 36, background: c.warn, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <RI name="calendar" size={18} color="#fff" />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
             {lang === 'fr' ? 'À FAIRE AUJOURD\'HUI' : 'DO TODAY'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#141414' }}>{urgent.bourse.nom}</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: c.ink }}>{urgent.bourse.nom}</div>
+              <div style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>
                 {lang === 'fr' ? `Prochaine tâche : ${urgent.step?.titre}` : `Next task: ${urgent.step?.titre}`}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, color: '#888' }}>{remaining} {lang === 'fr' ? 'restante' : 'remaining'}</span>
+              <span style={{ fontSize: 11, color: c.ink3 }}>{remaining} {lang === 'fr' ? 'restante' : 'remaining'}</span>
               <button
                 onClick={() => onFocusBourse(urgent.bourse._id)}
-                style={{ padding: '6px 14px', background: '#1a56db', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                style={{ padding: '6px 14px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <RI name="rocket" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
               </button>
@@ -521,115 +512,101 @@ function TodayBanner({ bourses, onFocusBourse, c, lang }) {
 }
 
 function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, onReload, c, lang }) {
-  const activeBourses = bourses.filter(b => b.col !== 'rejetees' && b.col !== 'acceptees');
+  // ✅ FONCTION DE TRI PAR DEADLINE
+  const sortByDeadline = (a, b) => {
+    const dateA = a.deadline ? new Date(a.deadline) : null;
+    const dateB = b.deadline ? new Date(b.deadline) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Bourses sans deadline vont à la fin
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    // Vérifier si expirées
+    const isExpiredA = dateA < today;
+    const isExpiredB = dateB < today;
+
+    // Les expirées vont à la fin, triées par date (plus récemment expirée en premier)
+    if (isExpiredA && isExpiredB) return dateB - dateA;
+    if (isExpiredA) return 1;
+    if (isExpiredB) return -1;
+
+    // Les actives sont triées par deadline croissante (plus proche en premier)
+    return dateA - dateB;
+  };
+
+  // ✅ FILTRAGE + TRI
+  const activeBourses = bourses
+    .filter(b => b.col !== 'rejetees' && b.col !== 'acceptees')
+    .sort(sortByDeadline);
+  
   const rejected = bourses.filter(b => b.col === 'rejetees');
   const accepted = bourses.filter(b => b.col === 'acceptees');
 
   return (
-    <div style={{ maxWidth: '85vw', margin: '0 auto' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px' }}>
       <TodayBanner bourses={bourses} onFocusBourse={onFocusBourse} c={c} lang={lang} />
 
       {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 24px', color: c.ink3 }}>
-          <div style={{ width: 22, height: 22, border: `3px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: c.ink3 }}>
+          <div style={{ width: 22, height: 22, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
           <span style={{ fontSize: 13 }}>{lang === 'fr' ? 'Chargement…' : 'Loading…'}</span>
         </div>
       )}
 
       {!loading && (
         <>
-          <div style={{ padding: '16px 0' }}>
-            {activeBourses.length === 0 ? (
-              <div style={{
-                width: '100%',
-                border: `1.5px dashed ${c.rule}`,
-                borderRadius: 8,
-                padding: 32,
-                textAlign: 'center',
-                fontSize: 14,
-                color: c.ink4,
-                marginBottom: 24
-              }}>
-                {lang === 'fr' ? 'Aucune bourse active pour le moment' : 'No active scholarships at the moment'}
-              </div>
-            ) : (
-              activeBourses.map(b => (
-                <BourseCard
-                  key={b._id}
-                  bourse={b}
-                  onClick={() => onFocusBourse(b._id)}
-                  onDelete={() => onDelete(b)}
-                  onRegenerate={() => onRegenerate(b)}
-                  c={c}
-                  lang={lang}
-                />
-              ))
-            )}
-          </div>
+          {activeBourses.length === 0 ? (
+            <div style={{ border: `1.5px dashed ${c.rule}`, padding: 32, textAlign: 'center', fontSize: 14, color: c.ink3, marginBottom: 24 }}>
+              {lang === 'fr' ? 'Aucune bourse active pour le moment' : 'No active scholarships at the moment'}
+            </div>
+          ) : (
+            activeBourses.map(b => (
+              <BourseCard
+                key={b._id}
+                bourse={b}
+                onClick={() => onFocusBourse(b._id)}
+                onDelete={() => onDelete(b)}
+                onRegenerate={() => onRegenerate(b)}
+                c={c}
+                lang={lang}
+              />
+            ))
+          )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '0 0 24px' }}>
-            {[
-              { id: 'rejetees', items: rejected, labelFr: 'Rejetées', labelEn: 'Rejected', bg: '#fef2f2', color: '#991b1b', badgeBg: '#fecaca', icon: 'close' },
-              { id: 'acceptees', items: accepted, labelFr: 'Acceptées', labelEn: 'Accepted', bg: c.successSoft, color: '#166534', badgeBg: c.successBorder, icon: 'check' },
-            ].map(col => (
-              <div key={col.id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, marginBottom: 12, background: col.bg, color: col.color, fontSize: 12, fontWeight: 600 }}>
-                  <RI name={col.icon} size={14} />
-                  <span style={{ flex: 1 }}>{lang === 'fr' ? col.labelFr : col.labelEn}</span>
-                  <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: col.badgeBg, color: col.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, padding: '0 6px' }}>{col.items.length}</span>
-                </div>
-                {col.items.length === 0 ? (
-                  <div style={{
-                    width: '100%',
-                    margin: '0 0 10px 0',
-                    border: `1.5px dashed ${col.badgeBg}`,
-                    borderRadius: 8,
-                    padding: 12,
-                    textAlign: 'center',
-                    fontSize: 12,
-                    color: c.ink4
-                  }}>
-                    {lang === 'fr' ? 'Aucune bourse' : 'No scholarships'}
-                  </div>
-                ) : (
-                  col.items.map(b => (
-                    <BourseCard key={b._id} bourse={b} onClick={() => onFocusBourse(b._id)} onDelete={() => onDelete(b)} onRegenerate={() => onRegenerate(b)} c={c} lang={lang} />
-                  ))
-                )}
-              </div>
-            ))}
-          </div>
+          
 
-          <div style={{ padding: '0 0 24px' }}>
-            <button onClick={onReload} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, fontSize: 11, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <RI name="refresh" size={12} /> {lang === 'fr' ? 'Actualiser' : 'Refresh'}
-            </button>
-          </div>
+          <button onClick={onReload} style={{ marginTop: 24, padding: '6px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink3, fontSize: 11, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <RI name="refresh" size={12} /> {lang === 'fr' ? 'Actualiser' : 'Refresh'}
+          </button>
         </>
       )}
     </div>
   );
 }
 
-function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc, c, lang }) {
-  const doneCount = etape.taches?.filter(t => t.done)?.length || 0;
-  const totalT = etape.taches?.length || 0;
+function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc, tasksState, onToggleTask, c, lang }) {
+  const hasTaches = (etape.taches?.length || 0) > 0;
+  const totalT = hasTaches ? etape.taches.length : (etape.documents?.length || 0);
+  const doneCount = hasTaches
+    ? etape.taches.filter((_, ti) => tasksState[`${index}_${ti}`]).length
+    : (completedDocs || []).length;
 
   return (
-    <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 8, padding: '12px 16px', marginBottom: 8 }}>
-      <div
-        onClick={onToggle}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
-      >
+    <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, padding: '12px 16px', marginBottom: 8 }}>
+      {/* En-tête de l'étape */}
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 22, height: 22, borderRadius: '50%',
-            background: doneCount === totalT && totalT > 0 ? c.accent : c.rule,
-            color: doneCount === totalT && totalT > 0 ? '#fff' : c.ink3,
+            background: totalT > 0 && doneCount >= totalT ? c.accent : c.ruleSoft,
+            color: totalT > 0 && doneCount >= totalT ? '#fff' : c.ink3,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 11, fontWeight: 700, flexShrink: 0,
           }}>
-            {doneCount === totalT && totalT > 0 ? <RI name="check" size={12} color="#fff" /> : index + 1}
+            {totalT > 0 && doneCount >= totalT ? <RI name="check" size={12} color="#fff" /> : index + 1}
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: c.ink }}>{etape.titre}</span>
           {etape.deadline && (
@@ -639,35 +616,47 @@ function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc,
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, color: c.ink3 }}>{doneCount}/{totalT}</span>
-          <span style={{ fontSize: 13, color: c.ink4, transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>
+          <span style={{ fontSize: 11, color: c.ink3 }}>
+  {doneCount}/{totalT} {!hasTaches && totalT > 0 ? (lang === 'fr' ? 'docs' : 'docs') : ''}
+</span>          <span style={{ transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>
             <RI name="arrowRight" size={12} />
           </span>
         </div>
       </div>
 
+      {/* Contenu détaillé (visible si isOpen) */}
       {isOpen && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.ruleSoft}` }}>
           {etape.description && (
             <div style={{ fontSize: 12, color: c.ink2, marginBottom: 10, lineHeight: 1.6 }}>{etape.description}</div>
           )}
 
-          {etape.taches?.map((t, ti) => (
-            <div key={ti} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${c.ruleSoft}` }}>
-              <div style={{
-                width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${t.done ? c.accent : c.rule}`,
-                background: t.done ? c.accent : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginRight: 10, flexShrink: 0,
-              }}>
-                {t.done && <RI name="check" size={10} color="#fff" />}
+          {/* Liste des tâches */}
+          {etape.taches?.map((t, ti) => {
+            const isDone = tasksState[`${index}_${ti}`];
+            return (
+              <div key={ti} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${c.ruleSoft}` }}>
+                <div
+                  onClick={() => onToggleTask(ti)}
+                  style={{
+                    width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${isDone ? c.accent : c.rule}`,
+                    background: isDone ? c.accent : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginRight: 10, cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  {isDone && <RI name="check" size={10} color="#fff" />}
+                </div>
+                <span style={{ fontSize: 12, color: isDone ? c.ink3 : c.ink, textDecoration: isDone ? 'line-through' : 'none' }}>
+                  {t.label}
+                </span>
               </div>
-              <span style={{ fontSize: 13, color: t.done ? c.ink3 : c.ink, textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</span>
-            </div>
-          ))}
+            );
+          })}
 
+          {/* Documents requis */}
           {etape.documents?.length > 0 && (
-            <div style={{ margin: '12px 0 0', padding: '10px 12px', background: c.paper2, borderLeft: `2px solid ${c.accent}` }}>
+            <div style={{ margin: '12px 0', padding: '10px 12px', background: c.paper2, borderLeft: `2px solid ${c.accent}` }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <RI name="file" size={10} /> {lang === 'fr' ? 'Documents requis' : 'Required documents'}
               </div>
@@ -676,12 +665,12 @@ function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc,
                 return (
                   <div key={di} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: c.ink2 }}>
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {done ? <RI name="checkCircle" size={12} color={c.success} /> : <RI name="circle" size={12} color={c.danger} />}
+                      {done ? <RI name="checkCircle" size={12} color="#10b981" /> : <RI name="circle" size={12} color={c.danger} />}
                       {doc}
                     </span>
                     {!done && (
                       <button onClick={() => onUploadDoc(doc)}
-                        style={{ fontSize: 10, padding: '3px 10px', background: c.accent, color: '#fff', border: 'none', borderRadius: 20, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        style={{ fontSize: 10, padding: '3px 10px', background: c.accent, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <RI name="upload" size={10} /> {lang === 'fr' ? 'Ajouter' : 'Upload'}
                       </button>
                     )}
@@ -697,7 +686,7 @@ function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc,
 }
 
 function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onGenerateDraft, onAskAI, onRegenerate, onDelete, onBack, c, lang }) {
-  const [expandedSteps, setExpandedSteps] = useState({ 0: true });
+  const [expandedSteps, setExpandedSteps] = useState(() => ({ [bourse.etapeCourante || 0]: true }));
   const { translated, translating } = useTranslatedEtapes(bourse.etapes, lang);
   const etapesDisplay = lang === 'en' && translated ? translated : (bourse.etapes || []);
   const total = etapesDisplay.length || 1;
@@ -706,6 +695,48 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
   const daysLeft = daysUntil(bourse.deadline);
   const priority = computePriority(bourse.deadline, pct);
   const currentStep = etapesDisplay[currentIdx];
+
+  const goToStep = (idx) => {
+  onSetStep(idx, bourse._id);
+  setExpandedSteps({ [idx]: true }); // ouvre l'étape cible, ferme les autres
+};
+  // Charger l'état initial des tâches
+  const STORAGE_KEY = `roadmap_tasks_${bourse._id}`;
+  const DOCS_KEY = `roadmap_docs_${bourse._id}`;
+const [localDocs, setLocalDocs] = useState(() => {
+  try { return JSON.parse(localStorage.getItem(DOCS_KEY) || '{}'); } catch { return {}; }
+});
+useEffect(() => {
+  localStorage.setItem(DOCS_KEY, JSON.stringify(localDocs));
+}, [localDocs]);
+
+const handleUploadDoc = (stepTitle, docName) => {
+  setLocalDocs(prev => ({
+    ...prev,
+    [stepTitle]: [...(prev[stepTitle] || []), docName],
+  }));
+  // Aussi appeler le parent pour la session courante
+  onUploadDocument(stepTitle, docName);
+};
+  const [tasksState, setTasksState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  // Sauvegarder à chaque modification
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksState));
+  }, [tasksState]);
+
+  // Fonction pour basculer une tâche
+  const toggleTask = (stepIndex, taskIndex) => {
+    setTasksState(prev => ({
+      ...prev,
+      [`${stepIndex}_${taskIndex}`]: !prev[`${stepIndex}_${taskIndex}`]
+    }));
+  };
 
   const toggleStep = (idx) => setExpandedSteps(prev => ({ ...prev, [idx]: !prev[idx] }));
 
@@ -718,29 +749,25 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
     risks.push(lang === 'fr' ? 'Aucune étape commencée' : 'No step started');
 
   return (
-    <div style={{ padding: '16px 24px 40px' }}>
+    <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <RI name="arrowRight" size={12} color={c.ink3} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>MODE FOCUS</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>MODE FOCUS</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onBack} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Retour au Kanban' : 'Back to Kanban'}
-          </button>
-          <button onClick={onBack} style={{ padding: '6px 14px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <RI name="apps" size={12} /> {lang === 'fr' ? 'Voir toutes les bourses' : 'All scholarships'}
+          <button onClick={onBack} style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Retour' : 'Back'}
           </button>
         </div>
       </div>
 
-      <div style={{ background: c.surface, border: `1.5px solid ${c.accentBorder}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+      <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, padding: 20, marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink }}>{bourse.nom}</div>
             <div style={{ fontSize: 12, color: c.ink3, marginTop: 3 }}>{bourse.org || bourse.pays}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-              {bourse.montant && <span style={{ fontSize: 13, fontWeight: 700, color: c.ink }}>{bourse.montant}</span>}
+              {bourse.montant && <span style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{bourse.montant}</span>}
               {bourse.pays && <span style={{ fontSize: 10, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: 20, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <RI name="pin" size={10} /> {bourse.pays}
               </span>}
@@ -752,7 +779,6 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
               <>
                 <div style={{ fontSize: 36, fontWeight: 700, color: daysLeft <= 7 ? c.danger : c.accent, lineHeight: 1 }}>{daysLeft}</div>
                 <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? 'jours' : 'days'}</div>
-                <div style={{ fontSize: 11, color: c.ink3 }}>{lang === 'fr' ? `avant le ${formatDate(bourse.deadline, lang)}` : `before ${formatDate(bourse.deadline, lang)}`}</div>
               </>
             )}
           </div>
@@ -763,66 +789,49 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
             <span>{lang === 'fr' ? 'Progression globale' : 'Overall progress'}</span>
             <span style={{ fontWeight: 600, color: c.ink }}>{pct}%</span>
           </div>
-          <div style={{ height: 8, background: c.rule, borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? c.success : c.accent, borderRadius: 4, transition: 'width 0.4s' }} />
-          </div>
-          <div style={{ fontSize: 11, color: c.ink3, marginTop: 4 }}>
-            {bourse.etapeCourante || 0} {lang === 'fr' ? 'sur' : 'of'} {etapesDisplay.length} {lang === 'fr' ? 'étapes complétées' : 'steps completed'}
+          <div style={{ height: 6, background: c.ruleSoft, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#10b981' : c.accent }} />
           </div>
         </div>
 
         {bourse.match > 0 && (
-          <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center' }}>
             <RI name="target" size={14} color="#166534" />
             <span style={{ fontSize: 12, color: '#166534' }}>
               {lang === 'fr'
-                ? `Score de compatibilité: ${bourse.match}% — Basé sur ton profil académique et ton expérience`
-                : `Compatibility score: ${bourse.match}% — Based on your academic profile and experience`}
+                ? `Score de compatibilité: ${bourse.match}%`
+                : `Compatibility score: ${bourse.match}%`}
             </span>
           </div>
         )}
       </div>
 
       {currentStep && (
-        <div style={{ background: '#eff6ff', border: `1px solid ${c.accentBorder}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+        <div style={{ background: '#eff6ff', border: `1px solid #bfdbfe`, padding: '14px 16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <RI name="rocket" size={14} color="#1e40af" />
             <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {lang === 'fr' ? 'Prochaine action prioritaire' : 'Next priority action'}
+              {lang === 'fr' ? 'Prochaine action' : 'Next action'}
             </span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 600, color: c.ink, marginBottom: 10 }}>{currentStep.titre}</div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onClick={() => onSetStep(currentIdx + 1 < etapesDisplay.length ? currentIdx + 1 : currentIdx)}
-              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: c.fMono, letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              onClick={() => goToStep(currentIdx + 1 < etapesDisplay.length ? currentIdx + 1 : currentIdx)}
+              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <RI name="sparkle" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
             </button>
-            <button style={{ padding: '7px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
+            <button style={{ padding: '7px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
               {lang === 'fr' ? 'Plus tard' : 'Later'}
             </button>
           </div>
         </div>
       )}
 
-      {bourse.conseilGlobal && (
-        <div style={{ background: c.purpleSoft, border: `1px solid ${c.purpleBorder}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.purple, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <RI name="sparkle" size={12} /> {lang === 'fr' ? 'Suggestions IA' : 'AI Suggestions'}
-          </div>
-          <div style={{ fontSize: 12, color: c.ink2, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{bourse.conseilGlobal}</div>
-          <button
-            onClick={() => onAskAI(currentStep?.titre, bourse.nom)}
-            style={{ marginTop: 12, padding: '6px 16px', background: c.purple, color: '#fff', border: 'none', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <RI name="robot" size={12} /> {lang === 'fr' ? 'Optimiser ma candidature' : 'Optimize my application'}
-          </button>
-        </div>
-      )}
-
       {risks.length > 0 && (
-        <div style={{ background: c.dangerSoft, border: `1px solid ${c.dangerBorder}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+        <div style={{ background: '#fef2f2', border: `1px solid #fecaca`, padding: '10px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: c.danger, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <RI name="warning" size={12} /> {lang === 'fr' ? 'Risques détectés' : 'Risks detected'}
+            <RI name="warning" size={12} /> {lang === 'fr' ? 'Risques' : 'Risks'}
           </div>
           {risks.map((r, i) => <div key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4 }}>• {r}</div>)}
         </div>
@@ -833,7 +842,7 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
           <div style={{ fontSize: 12, fontWeight: 700, color: c.ink3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
             <RI name="clipboard" size={12} /> {lang === 'fr' ? 'Étapes détaillées' : 'Detailed steps'}
           </div>
-          {translating && <div style={{ fontSize: 12, color: c.ink3, marginBottom: 8 }}>⏳ {lang === 'fr' ? 'Traduction en cours…' : 'Translating…'}</div>}
+          {translating && <div style={{ fontSize: 12, color: c.ink3, marginBottom: 8 }}>⏳ {lang === 'fr' ? 'Traduction…' : 'Translating…'}</div>}
           {etapesDisplay.map((etape, idx) => (
             <StepBlock
               key={idx}
@@ -841,8 +850,10 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
               index={idx}
               isOpen={!!expandedSteps[idx]}
               onToggle={() => toggleStep(idx)}
-              completedDocs={completedDocs?.[etape.titre] || []}
-              onUploadDoc={(docName) => onUploadDocument(etape.titre, docName)}
+              completedDocs={localDocs?.[etape.titre] || []}
+onUploadDoc={(docName) => handleUploadDoc(etape.titre, docName)}
+              tasksState={tasksState}
+              onToggleTask={(taskIdx) => toggleTask(idx, taskIdx)}
               c={c}
               lang={lang}
             />
@@ -853,77 +864,51 @@ function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onG
       {etapesDisplay.length > 0 && (
         <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
           {currentIdx > 0 && (
-            <button onClick={() => onSetStep(currentIdx - 1)}
-              style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Étape précédente' : 'Previous step'}
+            <button onClick={() => goToStep(currentIdx - 1)}
+              style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <RI name="arrowLeft" size={12} /> {lang === 'fr' ? 'Précédent' : 'Previous'}
             </button>
           )}
           {currentIdx < etapesDisplay.length - 1 && (
-            <button onClick={() => onSetStep(currentIdx + 1)}
-              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {lang === 'fr' ? 'Étape suivante' : 'Next step'} <RI name="arrowRight" size={12} />
+            <button onClick={() => goToStep(currentIdx + 1)}
+              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {lang === 'fr' ? 'Suivant' : 'Next'} <RI name="arrowRight" size={12} />
             </button>
           )}
           <button onClick={() => onGenerateDraft(currentStep?.titre, bourse.nom)}
-            style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <RI name="edit" size={12} /> {lang === 'fr' ? 'Générer un brouillon' : 'Generate draft'}
+            style={{ padding: '7px 16px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RI name="edit" size={12} /> {lang === 'fr' ? 'Brouillon' : 'Draft'}
           </button>
           <button onClick={() => onAskAI(currentStep?.titre, bourse.nom)}
-            style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <RI name="robot" size={12} /> {lang === 'fr' ? 'Demander à l\'IA' : 'Ask AI'}
           </button>
         </div>
       )}
-
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-        <button onClick={onRegenerate}
-          style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.warn, fontSize: 11, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <RI name="refresh" size={12} /> {lang === 'fr' ? 'Régénérer la roadmap' : 'Regenerate roadmap'}
-        </button>
-        <button onClick={onDelete}
-          style={{ padding: '6px 14px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.danger, fontSize: 11, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <RI name="delete" size={12} /> {lang === 'fr' ? 'Supprimer' : 'Delete'}
-        </button>
-      </div>
     </div>
   );
 }
 
-const BADGES_UNLOCKED = [
-  { icon: 'star', label: 'Première candidature', desc: 'Soumettre ta première candidature', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  { icon: 'target', label: 'Perfectionniste',      desc: 'Atteindre 100% sur une candidature',  color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  { icon: 'calendar', label: 'Semaine productive',   desc: '7 jours consécutifs actifs',           color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-];
 
-const BADGES_LOCKED = [
-  { icon: 'user', label: 'Triple menace',   desc: 'Soumettre 3 candidatures',              current: 2,  target: 3,  color: '#6b7280' },
-  { icon: 'circle', label: 'Mi-parcours',     desc: 'Atteindre 50% de progression globale',  current: 32, target: 50, color: '#6b7280' },
-  { icon: 'users', label: 'Expert bourses',  desc: 'Soumettre 5 candidatures',              current: 2,  target: 5,  color: '#6b7280' },
-  { icon: 'chart', label: 'Presque là',      desc: 'Atteindre 80% de progression globale',  current: 32, target: 80, color: '#6b7280' },
-];
-
-const LEVELS = ['Débutant', 'Novice', 'Intermédiaire', 'Avancé', 'Expert'];
-
-function ProgressionView({ bourses, avgProgress, streak, c, lang }) {
-  const submitted = bourses.filter(b => b.col === 'soumises' || b.col === 'acceptees').length;
+function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
+  const submitted = (bourses || []).filter(b => b.col === 'soumises' || b.col === 'acceptees').length;
   const badgesCount = BADGES_UNLOCKED.length;
-
   const statCards = [
-    { icon: 'trophy', label: lang === 'fr' ? 'Progression globale' : 'Global progress', value: `${avgProgress}%`, tag: lang === 'fr' ? 'Total' : 'Total', tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0', iconBg: '#fef3e2' },
-    { icon: 'calendar', label: lang === 'fr' ? 'Jours consécutifs' : 'Streak days',        value: streak,          tag: 'Streak',                           tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5', iconBg: '#fee2e2' },
-    { icon: 'checkCircle', label: lang === 'fr' ? 'Candidatures soumises' : 'Submitted',       value: submitted,       tag: lang === 'fr' ? 'Complétées' : 'Done', tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4', iconBg: '#dcfce7' },
-    { icon: 'medal', label: lang === 'fr' ? `sur 9 débloqués` : 'of 9 unlocked',         value: badgesCount,     tag: lang === 'fr' ? 'Badges' : 'Badges',  tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5', iconBg: '#fef9c3' },
+    {      label: lang==='fr'?'Progression globale':'Global progress',     value: `${avgProgress}%`, tag: lang==='fr'?'Total':'Total',         tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0',  },
+    {  label: lang==='fr'?'Jours consécutifs':'Streak days',           value: streak,            tag: 'Streak',                            tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5',  },
+    { label: lang==='fr'?'Candidatures soumises':'Submitted',         value: submitted,         tag: lang==='fr'?'Complétées':'Done',      tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4'},
+    {    label: lang==='fr'?`sur 9 débloqués`:'of 9 unlocked',          value: badgesCount,       tag: lang==='fr'?'Badges':'Badges',       tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5' },
   ];
-
   const currentLevelIdx = avgProgress < 20 ? 0 : avgProgress < 40 ? 1 : avgProgress < 60 ? 2 : avgProgress < 80 ? 3 : 4;
   const nextLevelTarget = [20, 40, 60, 80, 100][currentLevelIdx] || 100;
   const levelPct = Math.min(Math.round((avgProgress / nextLevelTarget) * 100), 100);
 
   return (
     <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+      {/* Stats cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {statCards.map((s, i) => (
-          <div key={i} style={{ background: s.bg, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+          <div key={i} style={{ background: s.bg, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RI name={s.icon} size={18} />
@@ -936,75 +921,63 @@ function ProgressionView({ bourses, avgProgress, streak, c, lang }) {
         ))}
       </div>
 
-      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+      {/* Niveau */}
+      <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: c.ink }}>
-              {lang === 'fr' ? 'Niveau :' : 'Level:'} {LEVELS[currentLevelIdx]}
-            </div>
-            <div style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>
-              {lang === 'fr' ? 'Continue comme ça pour débloquer le niveau suivant !' : 'Keep going to unlock the next level!'}
-            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: c.ink }}>{lang==='fr'?'Niveau :':'Level:'} {LEVELS[currentLevelIdx]}</div>
+            <div style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>{lang==='fr'?'Continue comme ça pour débloquer le niveau suivant !':'Keep going to unlock the next level!'}</div>
           </div>
           <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <RI name="trophy" size={22} />
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: c.ink3, marginBottom: 6, marginTop: 12 }}>
-          <span>{lang === 'fr' ? `Progression vers ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}` : `Progress to ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}`}</span>
+          <span>{lang==='fr'?`Progression vers ${LEVELS[Math.min(currentLevelIdx+1,4)]}`:`Progress to ${LEVELS[Math.min(currentLevelIdx+1,4)]}`}</span>
           <span style={{ fontWeight: 600, color: c.ink }}>{avgProgress}/{nextLevelTarget}</span>
         </div>
-        <div style={{ height: 10, background: c.rule, borderRadius: 5, overflow: 'hidden', marginBottom: 14 }}>
+        <div style={{ height: 10, background: c.ruleSoft, borderRadius: 5, overflow: 'hidden', marginBottom: 14 }}>
           <div style={{ width: `${levelPct}%`, height: '100%', background: c.accent, borderRadius: 5, transition: 'width 0.5s' }} />
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {LEVELS.map((lv, i) => (
-            <span key={i} style={{
-              fontSize: 12, fontWeight: 600, padding: '4px 14px', borderRadius: 20,
-              background: i < currentLevelIdx ? c.accent : i === currentLevelIdx ? c.ink : c.rule,
-              color: i <= currentLevelIdx ? '#fff' : c.ink3,
-              border: `1px solid ${i === currentLevelIdx ? c.accent : 'transparent'}`,
-            }}>{lv}</span>
+            <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 14px', borderRadius: 20, background: i < currentLevelIdx ? c.accent : i === currentLevelIdx ? c.ink : c.ruleSoft, color: i <= currentLevelIdx ? '#fff' : c.ink3, border: `1px solid ${i === currentLevelIdx ? c.accent : 'transparent'}` }}>{lv}</span>
           ))}
         </div>
       </div>
 
-      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <RI name="medal" size={16} /> {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
+      {/* Badges débloqués */}
+     {/* Badges débloqués */}
+<div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+  <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+    {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
+  </div>
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+    {BADGES_UNLOCKED.map((b, i) => (
+      <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: c.ink, marginBottom: 2 }}>{b.label}</div>
+          <div style={{ fontSize: 11, color: c.ink3 }}>{b.desc}</div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {BADGES_UNLOCKED.map((b, i) => (
-            <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fff', border: `1px solid ${b.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <RI name={b.icon} size={18} color={b.color} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#141414' }}>{b.label}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280' }}>{b.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
-              </span>
-            </div>
-          ))}
-        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
+        </span>
       </div>
-
-      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, borderRadius: 12, padding: '20px 24px' }}>
+    ))}
+  </div>
+</div>
+      {/* Badges à débloquer */}
+      <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16 }}>
-          <RI name="medal" size={16} />
-          <span>{lang === 'fr' ? 'Prochains badges à débloquer' : 'Next badges to unlock'}</span>
+        {lang==='fr'?'Prochains badges à débloquer':'Next badges to unlock'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {BADGES_LOCKED.map((b, i) => {
             const pct = Math.min(Math.round((b.current / b.target) * 100), 100);
             return (
-              <div key={i} style={{ background: c.paper2, border: `1px solid ${c.rule}`, borderRadius: 8, padding: '12px 16px' }}>
+              <div key={i} style={{ background: c.paper2, border: `1px solid ${c.ruleSoft}`, borderRadius: 8, padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: c.rule, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: c.ruleSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <RI name={b.icon} size={16} color={c.ink3} />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -1015,7 +988,7 @@ function ProgressionView({ bourses, avgProgress, streak, c, lang }) {
                     <div style={{ fontSize: 11, color: c.ink3, marginBottom: 8 }}>{b.desc}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 11, color: c.ink3, minWidth: 70 }}>Progression</span>
-                      <div style={{ flex: 1, height: 6, background: c.rule, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: 6, background: c.ruleSoft, borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: c.accent, borderRadius: 3, transition: 'width 0.4s' }} />
                       </div>
                     </div>
@@ -1029,6 +1002,20 @@ function ProgressionView({ bourses, avgProgress, streak, c, lang }) {
     </div>
   );
 }
+
+const BADGES_UNLOCKED = [
+  {     label: 'Première candidature', desc: 'Soumettre ta première candidature',   color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  {   label: 'Perfectionniste',       desc: 'Atteindre 100% sur une candidature', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  {  label: 'Semaine productive',    desc: '7 jours consécutifs actifs',          color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+];
+const BADGES_LOCKED = [
+  { icon: 'user',   label: 'Triple menace',  desc: 'Soumettre 3 candidatures',             current: 2,  target: 3,  color: '#6b7280' },
+  { icon: 'circle', label: 'Mi-parcours',    desc: 'Atteindre 50% de progression globale', current: 32, target: 50, color: '#6b7280' },
+  { icon: 'users',  label: 'Expert bourses', desc: 'Soumettre 5 candidatures',             current: 2,  target: 5,  color: '#6b7280' },
+  { icon: 'chart',  label: 'Presque là',     desc: 'Atteindre 80% de progression globale', current: 32, target: 80, color: '#6b7280' },
+];
+const LEVELS = ['Débutant', 'Novice', 'Intermédiaire', 'Avancé', 'Expert'];
+
 
 function LoginModal({ onClose, c, lang }) {
   const [email, setEmail] = useState('');
@@ -1048,7 +1035,7 @@ function LoginModal({ onClose, c, lang }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-      <div style={{ position: 'relative', zIndex: 2001, width: 420, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)', borderRadius: 4 }}>
+      <div style={{ position: 'relative', zIndex: 2001, width: 420, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
           <RI name="lock" size={20} />
           <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 16, color: c.ink }}>{lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}</span>
@@ -1065,17 +1052,17 @@ function LoginModal({ onClose, c, lang }) {
               <input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} value={email} autoFocus
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
-                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${c.rule}`, background: c.paper, color: c.ink, fontSize: 13, outline: 'none', fontFamily: c.fSans, borderRadius: 6 }}
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${c.ruleSoft}`, background: c.paper, color: c.ink, fontSize: 13, outline: 'none', fontFamily: c.fSans }}
               />
               {errMsg && <div style={{ color: c.danger, fontSize: 11, marginTop: 6 }}>{errMsg}</div>}
-              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <RI name="mail" size={14} /> {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
               </button>
             </>
           )}
           {status === 'sending' && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ width: 32, height: 32, border: `3px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+              <div style={{ width: 32, height: 32, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
               <p style={{ color: c.ink2, marginTop: 14 }}>{lang === 'fr' ? 'Envoi…' : 'Sending…'}</p>
             </div>
           )}
@@ -1084,7 +1071,7 @@ function LoginModal({ onClose, c, lang }) {
               <div style={{ fontSize: 48, marginBottom: 12 }}><RI name="mail" size={48} /></div>
               <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
               <p style={{ color: c.ink2, fontSize: 12 }}>{lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}</p>
-              <button onClick={onClose} style={{ width: '100%', marginTop: 16, padding: 10, background: '#166534', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button onClick={onClose} style={{ width: '100%', marginTop: 16, padding: 10, background: '#166534', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <RI name="check" size={12} /> {lang === 'fr' ? 'Fermer' : 'Close'}
               </button>
             </div>
@@ -1093,39 +1080,11 @@ function LoginModal({ onClose, c, lang }) {
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <RI name="warning" size={40} color={c.danger} />
               <p style={{ color: c.danger, marginTop: 12 }}>{errMsg}</p>
-              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6 }}>
+              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                 {lang === 'fr' ? 'Réessayer' : 'Retry'}
               </button>
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoadmapPreviewModal({ bourse, onConfirm, onCancel, c, lang }) {
-  const steps = 5 + Math.floor(Math.random() * 4);
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onCancel} />
-      <div style={{ position: 'relative', background: c.surface, maxWidth: 420, width: '90%', padding: 24, borderTop: `3px solid ${c.accent}`, borderRadius: 4, zIndex: 3001 }}>
-        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, margin: '0 0 12px', color: c.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <RI name="clipboard" size={20} /> {lang === 'fr' ? 'Aperçu de votre roadmap' : 'Roadmap preview'}
-        </h3>
-        <p style={{ fontSize: 13, color: c.ink2, marginBottom: 8 }}>
-          {lang === 'fr'
-            ? `Nous allons générer environ ${steps} étapes personnalisées pour "${bourse.nom}".`
-            : `We'll generate about ${steps} personalized steps for "${bourse.nom}".`}
-        </p>
-        <p style={{ fontSize: 12, color: c.ink3, marginBottom: 24 }}><RI name="time" size={12} /> {lang === 'fr' ? 'Temps estimé : 30–60 min par étape' : 'Estimated time: 30–60 min per step'}</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${c.rule}`, cursor: 'pointer', borderRadius: 6, fontFamily: c.fSans }}>
-            {lang === 'fr' ? 'Annuler' : 'Cancel'}
-          </button>
-          <button onClick={onConfirm} style={{ padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 6, fontFamily: c.fSans, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <RI name="send" size={14} /> {lang === 'fr' ? 'Générer' : 'Generate'}
-          </button>
         </div>
       </div>
     </div>
@@ -1143,13 +1102,11 @@ export default function RoadmapPage({ user, handleQuickReply }) {
   const [activeTab, setActiveTab] = useState('kanban');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [focusBourseId, setFocusBourseId] = useState(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedForPreview, setSelectedForPreview] = useState(null);
   const [completedDocs, setCompletedDocs] = useState({});
+  const [focusBourse, setFocusBourse] = useState(null);
 
   const { bourses, loading, reload } = useBourses(user?.id);
 
-  // Nombre total de bourses actives (ni rejetées ni acceptées)
   const activeCount = bourses.filter(b => b.col !== 'rejetees' && b.col !== 'acceptees').length;
 
   const avgProgress = useMemo(() => {
@@ -1162,33 +1119,68 @@ export default function RoadmapPage({ user, handleQuickReply }) {
   }, [bourses]);
 
   const handleFocusBourse = useCallback((id) => {
+  const found = bourses.find(b => b._id === id);
+  if (found) {
+    setFocusBourse({ ...found });
     setFocusBourseId(id);
     setActiveTab('kanban');
-  }, []);
+    // Restaurer les docs depuis notes
+    try {
+      const saved = found.notes ? JSON.parse(found.notes) : {};
+      setCompletedDocs(prev => ({ ...prev, [id]: saved }));
+    } catch {}
+  }
+}, [bourses]);
 
   const handleBackToKanban = useCallback(() => {
-    setFocusBourseId(null);
-  }, []);
+  setFocusBourseId(null);
+  setFocusBourse(null);
+}, []);
 
-  const handleUploadDocument = useCallback((scholarshipId, stepTitle, docName) => {
-    setCompletedDocs(prev => ({
+  const handleUploadDocument = useCallback(async (scholarshipId, stepTitle, docName) => {
+  setCompletedDocs(prev => {
+    const updated = {
       ...prev,
       [scholarshipId]: {
         ...prev[scholarshipId],
         [stepTitle]: [...(prev[scholarshipId]?.[stepTitle] || []), docName],
       },
-    }));
-  }, []);
+    };
+    // Persist en base
+    const docsPayload = updated[scholarshipId] || {};
+    axiosInstance.patch(API_ROUTES.roadmap.update(scholarshipId), {
+      notes: JSON.stringify(docsPayload), // stocke dans le champ notes
+    }).catch(err => console.error('Docs save error:', err));
+    return updated;
+  });
+}, []);
 
   const handleSetStep = useCallback(async (bourseId, newStepIndex) => {
-    const b = bourses.find(x => x._id === bourseId);
-    if (!b) return;
-    const clamped = Math.min(Math.max(newStepIndex, 0), (b.etapes?.length || 1) - 1);
-    try {
-      await axiosInstance.patch(API_ROUTES.roadmap.update(b._id), { etapeCourante: clamped });
-      reload();
-    } catch (err) { console.error('Step update error:', err); }
-  }, [bourses, reload]);
+  if (!bourseId) return;
+  const etapesCount = focusBourse?.etapes?.length || 1;
+  const clamped = Math.min(Math.max(newStepIndex, 0), etapesCount - 1);
+  console.log('[handleSetStep] bourseId:', bourseId, '| newStep:', newStepIndex, '| clamped:', clamped, '| etapesCount:', etapesCount);
+  setFocusBourse(prev => prev ? { ...prev, etapeCourante: clamped } : null);
+  try {
+    const res = await axiosInstance.patch(`/api/roadmap/${bourseId}`, { etapeCourante: clamped });
+    console.log('[PATCH response]', res.data);
+  } catch (err) {
+    console.error('Step update error:', err);
+  }
+}, [focusBourse]);
+
+// Synchronise focusBourse quand le polling ramène des données fraîches
+useEffect(() => {
+  if (!focusBourseId || !bourses.length) return;
+  const fresh = bourses.find(b => b._id === focusBourseId);
+  if (!fresh) return;
+  setFocusBourse(prev => {
+    if (!prev) return { ...fresh };
+    // Garde l'etapeCourante locale si elle est plus récente
+    return { ...fresh, etapeCourante: prev.etapeCourante };
+  });
+}, [bourses, focusBourseId]);
+
 
   const handleAskAI = useCallback((stepTitle, bourseNom) => {
     const message = lang === 'fr'
@@ -1228,7 +1220,7 @@ export default function RoadmapPage({ user, handleQuickReply }) {
     return (
       <>
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
-          <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '48px 40px', maxWidth: 380, width: '100%', textAlign: 'center', borderRadius: 12 }}>
+          <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, padding: '48px 40px', maxWidth: 380, width: '100%', textAlign: 'center' }}>
             <RI name="map" size={56} color={c.ink3} />
             <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, color: c.ink, margin: '16px 0 8px' }}>
               {lang === 'fr' ? 'Roadmap non disponible' : 'Roadmap unavailable'}
@@ -1238,7 +1230,7 @@ export default function RoadmapPage({ user, handleQuickReply }) {
             </p>
             <button
               onClick={() => setShowLoginModal(true)}
-              style={{ padding: '10px 28px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '10px 28px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RI name="lock" size={14} /> {lang === 'fr' ? 'Se connecter' : 'Sign in'}
             </button>
@@ -1250,8 +1242,9 @@ export default function RoadmapPage({ user, handleQuickReply }) {
     );
   }
 
-  const focusBourse = bourses.find(b => b._id === focusBourseId) || null;
+
   const isFocusMode = !!focusBourse;
+
 
   return (
     <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
@@ -1259,14 +1252,15 @@ export default function RoadmapPage({ user, handleQuickReply }) {
         lang={lang}
         c={c}
         totalCount={activeCount}
-        onTabChange={(tab) => { setActiveTab(tab); setFocusBourseId(null); }}
+        onTabChange={(tab) => { setActiveTab(tab); setFocusBourseId(null); setFocusBourse(null); }}
         activeTab={activeTab}
         focusMode={isFocusMode}
       />
 
       {isFocusMode ? (
         <FocusModeView
-          bourse={focusBourse}
+  key={`focus-${focusBourse._id}`}
+  bourse={focusBourse}
           completedDocs={completedDocs[focusBourse._id] || {}}
           onUploadDocument={(stepTitle, docName) => handleUploadDocument(focusBourse._id, stepTitle, docName)}
           onSetStep={(idx) => handleSetStep(focusBourse._id, idx)}
@@ -1293,17 +1287,11 @@ export default function RoadmapPage({ user, handleQuickReply }) {
             />
           )}
           {activeTab === 'progression' && (
-            <ProgressionView
-              bourses={bourses}
-              avgProgress={avgProgress}
-              streak={12} // à connecter plus tard si besoin
-              c={c}
-              lang={lang}
-            />
+            <ProgressionView bourses={bourses} avgProgress={avgProgress} streak={0} c={c} lang={lang} />
           )}
 
           {!loading && bourses.length === 0 && activeTab === 'kanban' && (
-            <div style={{ textAlign: 'center', padding: 48, margin: 24, border: `1px solid ${c.rule}`, background: c.surface, borderRadius: 12 }}>
+            <div style={{ textAlign: 'center', padding: 48, margin: 24, border: `1px solid ${c.ruleSoft}`, background: c.surface }}>
               <RI name="map" size={48} color={c.ink3} />
               <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: c.ink, marginTop: 16, marginBottom: 8 }}>
                 {lang === 'fr' ? 'Aucune candidature en cours' : 'No active applications'}
@@ -1315,7 +1303,7 @@ export default function RoadmapPage({ user, handleQuickReply }) {
               </div>
               <button
                 onClick={() => handleQuickReply?.(lang === 'fr' ? 'Recommande moi des bourses' : 'Recommend me scholarships')}
-                style={{ padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                style={{ padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <RI name="target" size={14} /> {lang === 'fr' ? 'Voir les recommandations' : 'See recommendations'}
               </button>
@@ -1324,17 +1312,8 @@ export default function RoadmapPage({ user, handleQuickReply }) {
         </>
       )}
 
-      {showPreviewModal && selectedForPreview && (
-        <RoadmapPreviewModal
-          bourse={selectedForPreview}
-          onConfirm={() => setShowPreviewModal(false)}
-          onCancel={() => setShowPreviewModal(false)}
-          c={c}
-          lang={lang}
-        />
-      )}
-
       <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes spin { to { transform: rotate(360deg); } }
         * { box-sizing: border-box; }
       `}</style>

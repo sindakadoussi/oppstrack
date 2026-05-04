@@ -180,20 +180,32 @@ function LoginModal({ onClose }) {
 }
 
 /* ── EntretienDetail ── */
-function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate, dk=false }) {
+function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate, dk = false }) {
   const { lang } = useT();
   const [activeTab, setActiveTab] = useState('summary');
   const parsed = parseEntretien(entretien.score);
   const scoreColor = getScoreColor(parsed.score);
 
-  const [content, setContent] = useState({ verdict:parsed.verdict, pointsForts:parsed.pointsForts, pointsAmeliorer:parsed.pointsAmeliorer, conseils:parsed.conseils, rawText:parsed.rawText });
+  const [content, setContent] = useState({ 
+    verdict: parsed.verdict, 
+    pointsForts: parsed.pointsForts, 
+    pointsAmeliorer: parsed.pointsAmeliorer, 
+    conseils: parsed.conseils, 
+    rawText: parsed.rawText 
+  });
   const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     const srcLang = detectLang(parsed.rawText);
     const tgtLang = lang === 'fr' ? 'fr' : 'en';
     if (srcLang === tgtLang) {
-      setContent({ verdict:parsed.verdict, pointsForts:parsed.pointsForts, pointsAmeliorer:parsed.pointsAmeliorer, conseils:parsed.conseils, rawText:parsed.rawText });
+      setContent({ 
+        verdict: parsed.verdict, 
+        pointsForts: parsed.pointsForts, 
+        pointsAmeliorer: parsed.pointsAmeliorer, 
+        conseils: parsed.conseils, 
+        rawText: parsed.rawText 
+      });
       return;
     }
     setTranslating(true);
@@ -204,122 +216,222 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
       Promise.all(parsed.conseils.map(c => translateText(c, srcLang, tgtLang))),
       parsed.rawText ? translateText(parsed.rawText, srcLang, tgtLang) : Promise.resolve(''),
     ]).then(([verdict, forts, amelio, conseils, raw]) => {
-      setContent({ verdict:verdict||parsed.verdict, pointsForts:forts.length?forts:parsed.pointsForts, pointsAmeliorer:amelio.length?amelio:parsed.pointsAmeliorer, conseils:conseils.length?conseils:parsed.conseils, rawText:raw||parsed.rawText });
+      setContent({ 
+        verdict: verdict || parsed.verdict, 
+        pointsForts: forts.length ? forts : parsed.pointsForts, 
+        pointsAmeliorer: amelio.length ? amelio : parsed.pointsAmeliorer, 
+        conseils: conseils.length ? conseils : parsed.conseils, 
+        rawText: raw || parsed.rawText 
+      });
       setTranslating(false);
     }).catch(() => {
-      setContent({ verdict:parsed.verdict, pointsForts:parsed.pointsForts, pointsAmeliorer:parsed.pointsAmeliorer, conseils:parsed.conseils, rawText:parsed.rawText });
+      setContent({ 
+        verdict: parsed.verdict, 
+        pointsForts: parsed.pointsForts, 
+        pointsAmeliorer: parsed.pointsAmeliorer, 
+        conseils: parsed.conseils, 
+        rawText: parsed.rawText 
+      });
       setTranslating(false);
     });
   }, [lang, parsed.rawText]);
 
   const TABS = [
-    { id:'summary',   labelFr:'📊 Résumé',  labelEn:'📊 Summary'  },
-    { id:'strengths', labelFr:'✅ Analyse',  labelEn:'✅ Analysis'  },
-    { id:'advice',    labelFr:'💡 Conseils', labelEn:'💡 Tips'      },
-    { id:'details',   labelFr:'📝 Détails',  labelEn:'📝 Details'   },
+    { id: 'summary',   labelFr: '📊 Résumé',  labelEn: '📊 Summary'  },
+    { id: 'strengths', labelFr: '✅ Analyse',  labelEn: '✅ Analysis'  },
+    { id: 'advice',    labelFr: '💡 Conseils', labelEn: '💡 Tips'      },
+    { id: 'details',   labelFr: '📝 Détails',  labelEn: '📝 Details'   },
   ];
 
   return (
-    <div className="ep-detail-container">
-      <button className="ep-detail-back" onClick={onBack}>
-        <span style={{ fontSize:18 }}>←</span> {lang==='fr'?'Retour à la liste':'Back to list'}
+    <div className="ep-detail-container" style={{ background: dk ? '#1a1912' : '#ffffff' }}>
+      <button 
+        className="ep-detail-back" 
+        onClick={onBack}
+        style={{ 
+          color: dk ? '#a19f96' : '#666', 
+          background: 'transparent', 
+          border: 'none', 
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 16,
+          fontSize: 13
+        }}
+      >
+        <span style={{ fontSize: 18 }}>←</span> {lang === 'fr' ? 'Retour à la liste' : 'Back to list'}
       </button>
-      <div className="ep-detail-header" style={{ background: dk ? '#1d1c16' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background: dk ? '#15140f' : '#f8fafc', borderRadius:20, fontSize:13, fontWeight:600, color: dk ? '#a19f96' : '#475569' }}>
-            <span style={{ fontSize:20 }}>🎓</span>
-            <span>{entretien.context || (lang==='fr'?'Entretien de bourse':'Scholarship interview')}</span>
+
+      <div className="ep-detail-header" style={{ 
+        background: dk ? '#1d1c16' : '#faf8f3', 
+        borderColor: dk ? '#2b2a22' : '#e5e5e5',
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 20,
+        border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8, 
+            padding: '6px 14px', 
+            background: dk ? '#15140f' : '#f8fafc', 
+            borderRadius: 20, 
+            fontSize: 13, 
+            fontWeight: 600, 
+            color: dk ? '#a19f96' : '#475569' 
+          }}>
+            <span style={{ fontSize: 20 }}>🎓</span>
+            <span>{entretien.context || (lang === 'fr' ? 'Entretien de bourse' : 'Scholarship interview')}</span>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color: dk ? '#a19f96' : '#475569' }}>
-            <span>📅</span><span>{formatDate(entretien.createdAt)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: dk ? '#a19f96' : '#475569' }}>
+            <span>📅</span>
+            <span>{formatDate(entretien.createdAt)}</span>
           </div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
-          <div className="ep-detail-score-circle" style={{ background:scoreColor.bg, border:`2px solid ${scoreColor.color}` }}>
-            <span className="ep-detail-score-val">{parsed.score!==null?parsed.score:'?'}</span>
-            <span className="ep-detail-score-max">/100</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div className="ep-detail-score-circle" style={{ 
+            background: scoreColor.bg, 
+            border: `2px solid ${scoreColor.color}`,
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <span className="ep-detail-score-val" style={{ fontSize: 28, fontWeight: 700, color: scoreColor.color }}>
+              {parsed.score !== null ? parsed.score : '?'}
+            </span>
+            <span className="ep-detail-score-max" style={{ fontSize: 11, color: dk ? '#a19f96' : '#64748b' }}>/100</span>
           </div>
           <div>
-            <div style={{ fontSize:20, fontWeight:700, marginBottom:4, color:scoreColor.color }}>{scoreColor.icon} {scoreColor.grade}</div>
-            {parsed.verdict&&<div style={{ fontSize:14, color: dk ? '#a19f96' : '#475569' }}>{parsed.verdict}</div>}
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4, color: scoreColor.color }}>
+              {scoreColor.icon} {scoreColor.grade}
+            </div>
+            {parsed.verdict && (
+              <div style={{ fontSize: 14, color: dk ? '#a19f96' : '#475569' }}>
+                {parsed.verdict}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {translating && (
-        <div style={{ display:'flex',alignItems:'center',gap:8,padding:'6px 12px',margin:'4px 0',borderRadius:6,background:'#fffbeb',border:'1px solid #fde68a',fontSize:11,color:'#92400e' }}>
-          <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid #fde68a',borderTopColor:'#d97706',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
-          {lang==='fr'?'Traduction du rapport...':'Translating report...'}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 8, 
+          padding: '6px 12px', 
+          margin: '4px 0', 
+          borderRadius: 6, 
+          background: '#fffbeb', 
+          border: '1px solid #fde68a', 
+          fontSize: 11, 
+          color: '#92400e' 
+        }}>
+          <div style={{ 
+            width: 12, 
+            height: 12, 
+            borderRadius: '50%', 
+            border: '2px solid #fde68a', 
+            borderTopColor: '#d97706', 
+            animation: 'spin 0.8s linear infinite', 
+            flexShrink: 0 
+          }} />
+          {lang === 'fr' ? 'Traduction du rapport...' : 'Translating report...'}
         </div>
       )}
-      <div className="ep-detail-tabs">
-        {TABS.map(t=>(
-          <button key={t.id} className={`ep-detail-tab ${activeTab===t.id?'active':''}`}
-            onClick={()=>setActiveTab(t.id)}>
-            {lang==='fr'?t.labelFr:t.labelEn}
+
+      <div className="ep-detail-tabs" style={{ 
+        borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+        display: 'flex',
+        gap: 0,
+        marginBottom: 20
+      }}>
+        {TABS.map(t => (
+          <button 
+            key={t.id} 
+            className={`ep-detail-tab ${activeTab === t.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.id)}
+            style={{ 
+              color: activeTab === t.id ? (dk ? '#4c9fd9' : '#0066b3') : (dk ? '#a19f96' : '#6b6b6b'),
+              borderBottom: activeTab === t.id ? `2px solid ${dk ? '#4c9fd9' : '#0066b3'}` : 'none',
+              background: 'transparent',
+              border: 'none',
+              padding: '10px 16px',
+              fontSize: 13,
+              fontWeight: activeTab === t.id ? 600 : 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
+          >
+            {lang === 'fr' ? t.labelFr : t.labelEn}
           </button>
         ))}
       </div>
 
-      <div style={{ flex:1, overflowY:'auto', minHeight:300 }}>
-        {activeTab==='summary' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 300 }}>
+        {activeTab === 'summary' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[
-                { icon:'⏱️', labelFr:'Durée totale',  labelEn:'Total duration', val:parsed.questionMetrics.length>0?`${Math.floor(parsed.questionMetrics.length*1.5)}:00`:'—' },
-                { icon:'📝', labelFr:'Questions',      labelEn:'Questions',      val:parsed.questionMetrics.length||'8' },
-                { icon:'🎯', labelFr:'Score',          labelEn:'Score',          val:parsed.score!==null?`${parsed.score}/100`:'—' },
-              ].map(s=>(
-                <div key={s.labelFr} style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:14, textAlign:'center', border:'1px solid rgba(15,23,42,.04)' }}>
-                  <div style={{ fontSize:24, marginBottom:6 }}>{s.icon}</div>
-                  <div style={{ fontSize:11, color: dk ? '#a19f96' : '#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:4 }}>{lang==='fr'?s.labelFr:s.labelEn}</div>
-                  <div style={{ fontSize:18, fontWeight:700, color: dk ? '#f2efe7' : '#0f172a'}}>{s.val}</div>
+                { icon: '⏱️', labelFr: 'Durée totale', labelEn: 'Total duration', val: parsed.questionMetrics?.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—' },
+                { icon: '📝', labelFr: 'Questions', labelEn: 'Questions', val: parsed.questionMetrics?.length || '8' },
+                { icon: '🎯', labelFr: 'Score', labelEn: 'Score', val: parsed.score !== null ? `${parsed.score}/100` : '—' },
+              ].map(s => (
+                <div key={s.labelFr} style={{ 
+                  background: dk ? '#1d1c16' : '#fff', 
+                  borderRadius: 14, 
+                  padding: 14, 
+                  textAlign: 'center', 
+                  border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontSize: 11, color: dk ? '#a19f96' : '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                    {lang === 'fr' ? s.labelFr : s.labelEn}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: dk ? '#f2efe7' : '#0f172a' }}>{s.val}</div>
                 </div>
               ))}
             </div>
-            {content.pointsForts?.length>0&&(
-              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-                <div className="ep-detail-section-title">✅ {lang==='fr'?'Points forts identifiés':'Identified strengths'}</div>
-                <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
-                  {content.pointsForts.slice(0,3).map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {content.pointsAmeliorer?.length>0&&(
-              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-                <div className="ep-detail-section-title">📈 {lang==='fr'?"Axes d'amélioration":'Areas for improvement'}</div>
-                <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
-                  {content.pointsAmeliorer.slice(0,3).map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10 }}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-        {activeTab==='strengths' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            {content.pointsForts?.length>0&&(
-              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-                <div className="ep-detail-section-title" style={{ color:'#34d399' }}>✅ {lang==='fr'?'POINTS FORTS':'STRENGTHS'}</div>
-                <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
-                  {content.pointsForts.map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
-                      <span style={{ color:'#34d399', marginRight:8 }}>✓</span>{p}
+            {content.pointsForts?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>
+                  ✅ {lang === 'fr' ? 'Points forts identifiés' : 'Identified strengths'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {content.pointsForts.slice(0, 3).map((p, i) => (
+                    <li key={i} style={{ fontSize: 13, color: dk ? '#cfccc2' : '#334155', lineHeight: 1.6, marginBottom: 10 }}>
+                      {p}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            {content.pointsAmeliorer?.length>0&&(
-              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-                <div className="ep-detail-section-title" style={{ color:'#fbbf24' }}>⚠️ {lang==='fr'?'POINTS À AMÉLIORER':'AREAS TO IMPROVE'}</div>
-                <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
-                  {content.pointsAmeliorer.map((p,i)=>(
-                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start' }}>
-                      <span style={{ color:'#fbbf24', marginRight:8 }}>!</span>{p}
+            {content.pointsAmeliorer?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', marginBottom: 12 }}>
+                  📈 {lang === 'fr' ? "Axes d'amélioration" : 'Areas for improvement'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {content.pointsAmeliorer.slice(0, 3).map((p, i) => (
+                    <li key={i} style={{ fontSize: 13, color: dk ? '#cfccc2' : '#334155', lineHeight: 1.6, marginBottom: 10 }}>
+                      {p}
                     </li>
                   ))}
                 </ul>
@@ -327,56 +439,195 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
             )}
           </div>
         )}
-        {activeTab==='advice' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-            {content.conseils?.length>0?(
-              <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-                <div className="ep-detail-section-title" style={{ color:'#a78bfa' }}>💡 {lang==='fr'?'CONSEILS PERSONNALISÉS':'PERSONALIZED TIPS'}</div>
-                <ul style={{ margin:0, paddingLeft:0, listStyle:'none' }}>
-                  {content.conseils.map((c,i)=>(
-                    <li key={i} style={{ fontSize:13, color: dk ? '#cfccc2' : '#334155', lineHeight:1.6, marginBottom:10, display:'flex', alignItems:'flex-start', padding:'12px 0', borderBottom:'1px solid rgba(15,23,42,.04)' }}>
-                      <span style={{ fontSize:18, marginRight:12 }}>🎯</span><span>{c}</span>
+
+        {activeTab === 'strengths' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {content.pointsForts?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>
+                  ✅ {lang === 'fr' ? 'POINTS FORTS' : 'STRENGTHS'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.pointsForts.map((p, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start' 
+                    }}>
+                      <span style={{ color: '#34d399', marginRight: 8 }}>✓</span>{p}
                     </li>
                   ))}
                 </ul>
               </div>
-            ):(
-              <div style={{ textAlign:'center', padding:'40px 20px', color: dk ? '#a19f96' : '#475569' }}>
-                <span style={{ fontSize:48 }}>📝</span>
-                <p>{lang==='fr'?'Des conseils personnalisés apparaîtront ici après votre entretien':'Personalized tips will appear here after your interview'}</p>
+            )}
+            {content.pointsAmeliorer?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', marginBottom: 12 }}>
+                  ⚠️ {lang === 'fr' ? 'POINTS À AMÉLIORER' : 'AREAS TO IMPROVE'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.pointsAmeliorer.map((p, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start' 
+                    }}>
+                      <span style={{ color: '#fbbf24', marginRight: 8 }}>!</span>{p}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-            <div style={{ background: dk ? '#15140f' : '#f8fafc', borderRadius:16, padding:20, border:'1px solid rgba(15,23,42,.04)' }}>
-              <div style={{ fontSize:14, fontStyle:'italic', color:'#0f172a', lineHeight:1.5, marginBottom:12 }}>
-                {lang==='fr'
-                  ?'"La préparation est la clé du succès. Chaque entretien est une opportunité d\'apprendre et de progresser."'
-                  :'"Preparation is the key to success. Every interview is an opportunity to learn and grow."'}
+          </div>
+        )}
+
+        {activeTab === 'advice' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {content.conseils?.length > 0 ? (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
+                  💡 {lang === 'fr' ? 'CONSEILS PERSONNALISÉS' : 'PERSONALIZED TIPS'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.conseils.map((c, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      padding: '12px 0', 
+                      borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+                    }}>
+                      <span style={{ fontSize: 18, marginRight: 12 }}>🎯</span>
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div style={{ fontSize:11, color: dk ? '#a19f96' : '#475569', textAlign:'right' }}>— {lang==='fr'?'Jury IA':'AI Panel'}</div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: dk ? '#a19f96' : '#475569' }}>
+                <span style={{ fontSize: 48 }}>📝</span>
+                <p>{lang === 'fr' ? 'Des conseils personnalisés apparaîtront ici après votre entretien' : 'Personalized tips will appear here after your interview'}</p>
+              </div>
+            )}
+            <div style={{ 
+              background: dk ? '#15140f' : '#f8fafc', 
+              borderRadius: 16, 
+              padding: 20, 
+              border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+            }}>
+              <div style={{ fontSize: 14, fontStyle: 'italic', color: dk ? '#cfccc2' : '#0f172a', lineHeight: 1.5, marginBottom: 12 }}>
+                {lang === 'fr'
+                  ? '"La préparation est la clé du succès. Chaque entretien est une opportunité d\'apprendre et de progresser."'
+                  : '"Preparation is the key to success. Every interview is an opportunity to learn and grow."'}
+              </div>
+              <div style={{ fontSize: 11, color: dk ? '#a19f96' : '#475569', textAlign: 'right' }}>
+                — {lang === 'fr' ? 'Jury IA' : 'AI Panel'}
+              </div>
             </div>
           </div>
         )}
-        {activeTab==='details' && (
-          <div style={{ background: dk ? '#1d1c16' : '#fff', borderRadius:14, padding:16, border:'1px solid rgba(15,23,42,.04)' }}>
-            <div className="ep-detail-section-title">📄 {lang==='fr'?'Rapport complet':'Full report'}</div>
-                        <div style={{ fontSize:13, lineHeight:1.7, color: dk ? '#cfccc2' : '#334155', whiteSpace:'pre-wrap', maxHeight:400, overflowY:'auto' }}>
+
+        {activeTab === 'details' && (
+          <div style={{ 
+            background: dk ? '#1d1c16' : '#fff', 
+            borderRadius: 14, 
+            padding: 16, 
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+          }}>
+            <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: dk ? '#4c9fd9' : '#0066b3', marginBottom: 12 }}>
+              📄 {lang === 'fr' ? 'Rapport complet' : 'Full report'}
+            </div>
+            <div style={{ 
+              fontSize: 13, 
+              lineHeight: 1.7, 
+              color: dk ? '#cfccc2' : '#334155', 
+              whiteSpace: 'pre-wrap', 
+              maxHeight: 400, 
+              overflowY: 'auto' 
+            }}>
               {(content.rawText || parsed.rawText || '').split('\n').map((line, i) =>
-                line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)
-                  ? <div key={i} style={{ fontWeight:700, color:'#255cae', marginTop:12, marginBottom:6, fontSize:12, letterSpacing:1 }}>{line}</div>
-                  : line.trim() && line.match(/^[-•*]/)
-                    ? <div key={i} style={{ paddingLeft:20, marginBottom:6, color: dk ? '#a19f96' : '#475569' }}>{line}</div>
-                    : line.trim()
-                      ? <div key={i} style={{ marginBottom:4, color: dk ? '#a19f96' : '#475569' }}>{line}</div>
-                      : <div key={i} style={{ height:8 }}/>
+                line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|STRENGTHS|AREAS|TIPS/i) ? (
+                  <div key={i} style={{ fontWeight: 700, color: dk ? '#4c9fd9' : '#0066b3', marginTop: 12, marginBottom: 6, fontSize: 12, letterSpacing: 1 }}>
+                    {line}
+                  </div>
+                ) : line.trim() && line.match(/^[-•*]/) ? (
+                  <div key={i} style={{ paddingLeft: 20, marginBottom: 6, color: dk ? '#a19f96' : '#475569' }}>
+                    {line}
+                  </div>
+                ) : line.trim() ? (
+                  <div key={i} style={{ marginBottom: 4, color: dk ? '#a19f96' : '#475569' }}>
+                    {line}
+                  </div>
+                ) : (
+                  <div key={i} style={{ height: 8 }} />
+                )
               )}
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ display:'flex', gap:12, paddingTop:16, borderTop:'1px solid rgba(15,23,42,.04)', marginTop:8 }}>
-        <button className="ep-detail-action-btn" onClick={()=>window.print()}>🖨️ {lang==='fr'?'Imprimer':'Print'}</button>
-        <button className="ep-detail-action-btn" onClick={()=>{navigator.clipboard.writeText(parsed.rawText);alert(lang==='fr'?'Rapport copié':'Report copied');}}>📋 {lang==='fr'?'Copier':'Copy'}</button>
+      <div style={{ 
+        display: 'flex', 
+        gap: 12, 
+        paddingTop: 16, 
+        borderTop: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`, 
+        marginTop: 8 
+      }}>
+        <button 
+          className="ep-detail-action-btn" 
+          onClick={() => window.print()}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+            color: dk ? '#a19f96' : '#475569',
+            fontSize: 12,
+            cursor: 'pointer',
+            borderRadius: 6
+          }}
+        >
+          🖨️ {lang === 'fr' ? 'Imprimer' : 'Print'}
+        </button>
+        <button 
+          className="ep-detail-action-btn" 
+          onClick={() => { navigator.clipboard.writeText(parsed.rawText); alert(lang === 'fr' ? 'Rapport copié' : 'Report copied'); }}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+            color: dk ? '#a19f96' : '#475569',
+            fontSize: 12,
+            cursor: 'pointer',
+            borderRadius: 6
+          }}
+        >
+          📋 {lang === 'fr' ? 'Copier' : 'Copy'}
+        </button>
       </div>
     </div>
   );
@@ -432,110 +683,436 @@ function HistoriquePanel({ userId, onClose }) {
   };
 
   return (
-     <div className="ep-hist-overlay">
-      <div className="ep-hist-drawer" style={{ background: dk ? '#1a1912' : undefined }}>
-        <div className="ep-hist-head">
+    <div className="ep-hist-overlay">
+      <div className="ep-hist-drawer" style={{ background: dk ? '#1a1912' : '#ffffff' }}>
+        <div className="ep-hist-head" style={{ borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` }}>
           <div>
-            <div className="ep-hist-title">📋 {lang==='fr'?'Historique des entretiens':'Interview history'}</div>
-            <div className="ep-hist-sub">
-              {!userId?(lang==='fr'?'Connectez-vous pour accéder à vos rapports':'Sign in to access your reports')
-                :`${records.length} ${lang==='fr'?`entretien${records.length>1?'s':''}·Dernier:`:`interview${records.length>1?'s':''} · Last:`} ${records[0]?formatDate(records[0].createdAt):'—'}`}
+            <div className="ep-hist-title" style={{ color: dk ? '#f2efe7' : '#141414' }}>
+              📋 {lang === 'fr' ? 'Historique des entretiens' : 'Interview history'}
+            </div>
+            <div className="ep-hist-sub" style={{ color: dk ? '#a19f96' : '#6b6b6b' }}>
+              {!userId ? (lang === 'fr' ? 'Connectez-vous pour accéder à vos rapports' : 'Sign in to access your reports')
+                : `${records.length} ${lang === 'fr' ? `entretien${records.length > 1 ? 's' : ''} · Dernier:` : `interview${records.length > 1 ? 's' : ''} · Last:`} ${records[0] ? formatDate(records[0].createdAt) : '—'}`}
             </div>
           </div>
-          <button className="ep-hist-close" onClick={onClose}>✕</button>
+          <button className="ep-hist-close" onClick={onClose} style={{ color: dk ? '#a19f96' : '#666' }}>✕</button>
         </div>
-        {!userId&&<div className="ep-hist-center"><div style={{fontSize:64,marginBottom:16}}>🔐</div><p style={{color:'#94a3b8',textAlign:'center',maxWidth:280}}>{lang==='fr'?'Connectez-vous pour voir vos entretiens passés':'Sign in to see your past interviews'}</p></div>}
-        {userId&&loading&&<div className="ep-hist-center"><div className="ep-hist-spinner"/><p style={{color:'#64748b',marginTop:12}}>{lang==='fr'?'Chargement...':'Loading...'}</p></div>}
-        {userId&&!loading&&records.length===0&&<div className="ep-hist-center"><div style={{fontSize:72,marginBottom:16}}>📭</div><p style={{color:'#94a3b8',fontSize:16}}>{lang==='fr'?'Aucun entretien enregistré':'No interview recorded'}</p></div>}
-        {userId&&!loading&&records.length>0&&!selected&&(
+
+        {!userId && (
+          <div className="ep-hist-center">
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🔐</div>
+            <p style={{ color: dk ? '#a19f96' : '#6b6b6b', textAlign: 'center', maxWidth: 280 }}>
+              {lang === 'fr' ? 'Connectez-vous pour voir vos entretiens passés' : 'Sign in to see your past interviews'}
+            </p>
+          </div>
+        )}
+
+        {userId && loading && (
+          <div className="ep-hist-center">
+            <div className="ep-hist-spinner" />
+            <p style={{ color: dk ? '#a19f96' : '#64748b', marginTop: 12 }}>
+              {lang === 'fr' ? 'Chargement...' : 'Loading...'}
+            </p>
+          </div>
+        )}
+
+        {userId && !loading && records.length === 0 && (
+          <div className="ep-hist-center">
+            <div style={{ fontSize: 72, marginBottom: 16 }}>📭</div>
+            <p style={{ color: dk ? '#a19f96' : '#64748b', fontSize: 16 }}>
+              {lang === 'fr' ? 'Aucun entretien enregistré' : 'No interview recorded'}
+            </p>
+          </div>
+        )}
+
+        {userId && !loading && records.length > 0 && !selected && (
           <div className="ep-hist-list">
-            {records.map(r=>{
-              const parsed=parseEntretien(r.score);const sc=getScoreColor(parsed.score);
-              return(
-                 <button key={r.id} className="ep-hist-card" onClick={()=>setSelected(r)}
-                  style={{ background: dk ? '#1d1c16' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
-                  <div className="ep-hist-score-badge" style={{background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
-                    {parsed.score!==null?`${parsed.score}/100`:'—'}
+            {records.map(r => {
+              const parsed = parseEntretien(r.score);
+              const sc = getScoreColor(parsed.score);
+              return (
+                <button 
+                  key={r.id} 
+                  className="ep-hist-card" 
+                  onClick={() => setSelected(r)}
+                  style={{ 
+                    background: dk ? '#1d1c16' : '#faf8f3', 
+                    borderColor: dk ? '#2b2a22' : '#e5e5e5',
+                    borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`
+                  }}
+                >
+                  <div className="ep-hist-score-badge" style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.border}` }}>
+                    {parsed.score !== null ? `${parsed.score}/100` : '—'}
                   </div>
                   <div className="ep-hist-card-mid">
-                    <div className="ep-hist-card-date">{formatDate(r.createdAt)}</div>
-                    <div className="ep-hist-card-title">{r.context||(lang==='fr'?'Entretien bourse':'Scholarship interview')}</div>
-                    <div className="ep-hist-card-verdict">
-                      <span style={{color:sc.color}}>{sc.icon} {sc.grade}</span>
-                      {parsed.verdict&&<span style={{marginLeft:8,color:'#64748b'}}>· {parsed.verdict.slice(0,40)}</span>}
+                    <div className="ep-hist-card-date" style={{ color: dk ? '#a19f96' : '#6b6b6b' }}>
+                      {formatDate(r.createdAt)}
+                    </div>
+                    <div className="ep-hist-card-title" style={{ color: dk ? '#f2efe7' : '#141414', fontWeight: 600 }}>
+                      {r.context || (lang === 'fr' ? 'Entretien bourse' : 'Scholarship interview')}
+                    </div>
+                    <div className="ep-hist-card-verdict" style={{ color: dk ? '#cfccc2' : '#3a3a3a' }}>
+                      <span style={{ color: sc.color }}>{sc.icon} {sc.grade}</span>
+                      {parsed.verdict && (
+                        <span style={{ marginLeft: 8, color: dk ? '#a19f96' : '#64748b' }}>
+                          · {parsed.verdict.slice(0, 40)}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="ep-hist-arrow">→</div>
+                  <div className="ep-hist-arrow" style={{ color: dk ? '#a19f96' : '#9a9794' }}>→</div>
                 </button>
               );
             })}
           </div>
         )}
-        {selected&&<EntretienDetail entretien={selected} onBack={()=>setSelected(null)} parseEntretien={parseEntretien} getScoreColor={getScoreColor} formatDate={formatDate} dk={dk}/>}
+
+        {selected && (
+          <EntretienDetail 
+            entretien={selected} 
+            onBack={() => setSelected(null)} 
+            parseEntretien={parseEntretien} 
+            getScoreColor={getScoreColor} 
+            formatDate={formatDate} 
+            dk={dk} 
+          />
+        )}
       </div>
-      <div className="ep-hist-backdrop" onClick={onClose}/>
+      <div className="ep-hist-backdrop" onClick={onClose} />
     </div>
   );
 }
 
+
 /* ── BoursePicker ── */
-function BoursePicker({ bourses, userId, onSelect }) {
+function BoursePicker({ bourses, userId, onSelect, appliedBourses = [] }) {
   const { lang } = useT();
   const { theme } = useTheme();
   const dk = theme === 'dark';
   const [showHist, setShowHist] = useState(false);
   const [query, setQuery] = useState('');
   const q=(query||'').trim().toLowerCase();
-  const filtered=q.length===0?bourses:bourses.filter(b=>(b.nom||'').toLowerCase().includes(q)||(b.pays||'').toLowerCase().includes(q)||(b.niveau||'').toLowerCase().includes(q)||String(b.financement||'').toLowerCase().includes(q));
+  // Filtrer uniquement les bourses postulées
+const appliedNoms = new Set(appliedBourses.map(b => b.nom?.trim().toLowerCase()));
+const boursesPostulees = bourses.filter(b => appliedNoms.has(b.nom?.trim().toLowerCase()));
+const [entretienScores, setEntretienScores] = useState({});
+  useEffect(() => {
+    if (!userId) return;
+    axiosInstance.get('/api/entretiens', {
+      params: { 'where[user][equals]': userId, sort: '-createdAt', limit: 100 }
+    })
+      .then(res => {
+        const scores = {};
+        (res.data.docs || []).forEach(e => {
+          const bourseNom = e.context?.trim().toLowerCase();
+          if (bourseNom && !scores[bourseNom]) {
+            // Parser le score
+            const scoreMatch = (e.score || '').match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
+            if (scoreMatch) {
+              scores[bourseNom] = parseInt(scoreMatch[1]);
+            }
+          }
+        });
+        setEntretienScores(scores);
+      })
+      .catch(err => console.error('Erreur chargement scores entretiens:', err));
+  }, [userId]);
+const filtered = q.length === 0 
+  ? boursesPostulees 
+  : boursesPostulees.filter(b => 
+      (b.nom || '').toLowerCase().includes(q) || 
+      (b.pays || '').toLowerCase().includes(q) || 
+      (b.niveau || '').toLowerCase().includes(q) || 
+      String(b.financement || '').toLowerCase().includes(q)
+    );
 return (
-    <div className="ep-picker-root" style={{ background: dk ? '#15140f' : undefined }}>
-      <div className="ep-picker-inner">
-        
+  <div style={{ background: dk ? '#15140f' : '#faf8f3', minHeight: '100vh', fontFamily: 'inherit' }}>
 
-        <h1 className="ep-picker-title" style={{ color: dk ? '#f2efe7' : undefined }}>
-          {lang==='fr'?<>Préparez votre<br/><em>entretien de bourse</em></>:<>Prepare your<br/><em>scholarship interview</em></>}
-        </h1>
-        <p className="ep-picker-sub" style={{ color: dk ? '#cfccc2' : undefined }}>
-          {lang==='fr'
-            ?<>Le jury IA vous posera <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</>
-            :<>The AI panel will ask you <strong style={{color:'#166534'}}>{TOTAL_Q} questions</strong> tailored to the scholarship, with real-time voice analysis.</>}
-        </p>
+    {/* ── HERO ── */}
+    <div style={{
+      background: dk ? '#1d1c16' : '#f2efe7',
+      padding: '40px 32px',
+      textAlign: 'center',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+    }}>
+    
+     <h1
+  style={{
+    fontFamily: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+    fontSize: 'clamp(32px, 5vw, 48px)',
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    color: dk ? '#f2efe7' : '#141414',
+    margin: '0 0 16px',
+  }}
+>
+  {lang === 'fr' ? (
+    <>
+      Un entraînement{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        intelligent
+      </em>{" "}
+      pour réussir{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        vos entretiens
+      </em>.
+    </>
+  ) : (
+    <>
+      Prepare your{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        scholarship interview
+      </em>.
+    </>
+  )}
+</h1>
+      <p style={{
+        fontSize: 16, color: dk ? '#cfccc2' : '#3a3a3a',
+        maxWidth: 580, margin: '0 auto',
+        lineHeight: 1.7,
+      }}>
+        {lang === 'fr'
+          ? <>Questions personnalisées, analyse vocale et feedback détaillé.</>
+          : <>Personalized questions, voice analysis and detailed feedback.</>}
+      </p>
+    </div>
 
-        {/* ── Search + Historique déplacés ici, sous le sous-titre ── */}
-        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:32 }}>
-          <input
-            placeholder={lang==='fr'?'Rechercher une bourse, pays, niveau...':'Search scholarship, country, level...'}
-            value={query} onChange={e=>setQuery(e.target.value)}
-            className="ep-picker-search"
-            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
-          />
-          <button className="ep-picker-hist-btn"
-            style={{ background: dk ? '#1d1c16' : undefined, color: dk ? '#f2efe7' : undefined, borderColor: dk ? '#2b2a22' : undefined }}
-            onClick={()=>setShowHist(true)}>
-            📋 {lang==='fr'?'Mes entretiens':'My interviews'}
-          </button>
-        </div>
-
-        <div className="ep-picker-grid">
-          {filtered.length===0&&(
-            <div className="ep-picker-empty">
-              <span style={{fontSize:36}}>🔎</span>
-              <p>{lang==='fr'?'Aucune bourse trouvée.':'No scholarship found.'}</p>
-            </div>
-          )}
-          {filtered.map(b=>(
-            <div key={b.id} className="ep-bourse-card" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
-              
-              <div className="ep-bourse-name" style={{ color: dk ? '#f2efe7' : undefined }}>{b.nom}</div>
-              <div className="ep-bourse-meta">{b.pays} · {b.niveau}</div>
-              <button className="ep-bourse-btn" onClick={()=>onSelect(b)}>🚀 {lang==='fr'?"Démarrer l'entretien":'Start interview'}</button>
-            </div>
-          ))}
-        </div>
+    {/* ── SEARCH + HISTORIQUE — section blanche ── */}
+    <div style={{
+      background: dk ? '#1a1912' : '#ffffff',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      padding: '20px 32px',
+    }}>
+      <div style={{
+        display: 'flex', gap: 12, alignItems: 'center',
+        flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 680, margin: '0 auto',
+      }}>
+        <input
+          placeholder={lang === 'fr' ? 'Rechercher une bourse, pays, niveau...' : 'Search scholarship, country, level...'}
+          value={query} onChange={e => setQuery(e.target.value)}
+          style={{
+            flex: 1, minWidth: 260,
+            padding: '12px 18px',
+            borderRadius: 8,
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            background: dk ? '#15140f' : '#f2efe7',
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+        <button
+          onClick={() => setShowHist(true)}
+          style={{
+            padding: '11px 20px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+          📋 {lang === 'fr' ? 'Mes entretiens' : 'My interviews'}
+        </button>
       </div>
-      {showHist&&<HistoriquePanel userId={userId} onClose={()=>setShowHist(false)}/>}
+    </div>
+
+    {/* ── GRILLE CARTES ── */}
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px' }}>
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 0', color: dk ? '#a19f96' : '#6b6b6b' }}>
+          <span style={{ fontSize: 36 }}>🔎</span>
+          <p style={{ marginTop: 12 }}>{lang === 'fr' ? 'Aucune bourse trouvée.' : 'No scholarship found.'}</p>
+        </div>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 20,
+        }}>
+          {filtered.map(b => {
+  const bourseKey = b.nom?.trim().toLowerCase();
+  const lastScore = entretienScores[bourseKey];
+  const deadlineDate = b.dateLimite ? new Date(b.dateLimite) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isExpired = deadlineDate && deadlineDate < today;
+  const daysLeft = deadlineDate ? Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24)) : null;
+
+  return (
+    <div key={b.id} style={{
+      display: 'flex', flexDirection: 'column', gap: 14,
+      padding: 24,
+      borderRadius: 12,
+      background: dk ? '#1d1c16' : '#f2efe7',
+      border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      opacity: isExpired ? 0.6 : 1,
+    }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
+    >
+      
+
+      {/* Nom de la bourse */}
+      <div style={{
+        fontSize: 16, fontWeight: 700,
+        color: dk ? '#f2efe7' : '#141414',
+        lineHeight: 1.3,
+        fontFamily: `"Libre Caslon Text", Georgia, serif`,
+      }}>
+        {b.nom}
+      </div>
+
+      {/* Infos : Pays + Niveau */}
+      <div style={{ 
+        display: 'flex', 
+        gap: 12, 
+        fontSize: 12, 
+        color: dk ? '#a19f96' : '#6b6b6b', 
+        fontFamily: 'monospace',
+        flexWrap: 'wrap'
+      }}>
+        <span>📍 {b.pays}</span>
+        <span>·</span>
+        <span>🎓 {b.niveau}</span>
+      </div>
+
+      {/* Deadline */}
+      {deadlineDate && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: isExpired 
+            ? (dk ? 'rgba(180,50,31,0.15)' : 'rgba(180,50,31,0.08)') 
+            : daysLeft <= 30 
+              ? (dk ? 'rgba(176,106,18,0.15)' : 'rgba(176,106,18,0.08)')
+              : (dk ? 'rgba(76,159,217,0.15)' : 'rgba(0,102,179,0.08)'),
+          border: `1px solid ${
+            isExpired 
+              ? (dk ? 'rgba(180,50,31,0.3)' : 'rgba(180,50,31,0.2)') 
+              : daysLeft <= 30 
+                ? (dk ? 'rgba(176,106,18,0.3)' : 'rgba(176,106,18,0.2)')
+                : (dk ? 'rgba(76,159,217,0.3)' : 'rgba(0,102,179,0.2)')
+          }`,
+        }}>
+          <span style={{ fontSize: 16 }}>
+            {isExpired ? '🔴' : daysLeft <= 30 ? '⚠️' : ''}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: 10, 
+              fontWeight: 700, 
+              textTransform: 'uppercase', 
+              color: dk ? '#a19f96' : '#6b6b6b',
+              letterSpacing: 1,
+              marginBottom: 2
+            }}>
+              {lang === 'fr' ? 'Deadline' : 'Deadline'}
+            </div>
+            <div style={{ 
+              fontSize: 13, 
+              fontWeight: 700,
+              color: isExpired 
+                ? '#b4321f' 
+                : daysLeft <= 30 
+                  ? '#b06a12'
+                  : (dk ? '#4c9fd9' : '#0066b3')
+            }}>
+              {deadlineDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+              {!isExpired && daysLeft !== null && (
+                <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.8 }}>
+                  ({daysLeft} {lang === 'fr' ? 'j' : 'd'})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Score précédent si disponible */}
+      {lastScore !== undefined && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: dk ? 'rgba(76,159,217,0.1)' : 'rgba(0,102,179,0.06)',
+          border: `1px solid ${dk ? 'rgba(76,159,217,0.25)' : 'rgba(0,102,179,0.15)'}`,
+        }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: 10, 
+              fontWeight: 700, 
+              textTransform: 'uppercase',
+              color: dk ? '#a19f96' : '#6b6b6b',
+              letterSpacing: 1,
+              marginBottom: 2
+            }}>
+              {lang === 'fr' ? 'Dernier score' : 'Last score'}
+            </div>
+            <div style={{ 
+              fontSize: 18, 
+              fontWeight: 800,
+              color: dk ? '#4c9fd9' : '#0066b3',
+              fontFamily: 'monospace'
+            }}>
+              {lastScore}/100
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Infos supplémentaires */}
+      
+
+      {/* Bouton d'action */}
+      <button
+        onClick={() => onSelect(b)}
+        disabled={isExpired}
+        style={{
+          marginTop: 8, 
+          padding: '12px 20px', 
+          borderRadius: 8, 
+          border: 'none',
+          background: isExpired 
+            ? (dk ? '#2b2a22' : '#d9d5cb')
+            : `linear-gradient(135deg, ${dk ? '#4c9fd9' : '#0066b3'}, ${dk ? '#2563eb' : '#004f8a'})`,
+          color: isExpired ? (dk ? '#6d6b64' : '#9a9794') : '#fff',
+          fontSize: 13, 
+          fontWeight: 700,
+          cursor: isExpired ? 'not-allowed' : 'pointer',
+          width: '100%',
+          boxShadow: isExpired ? 'none' : '0 4px 12px rgba(0,102,179,0.2)',
+          opacity: isExpired ? 0.5 : 1,
+        }}>
+        {isExpired 
+          ? (lang === 'fr' ? '🔒 Deadline expirée' : '🔒 Deadline expired')
+          : `🚀 ${lang === 'fr' ? "Démarrer l'entretien" : 'Start interview'}`
+        }
+      </button>
     </div>
   );
+})}
+        </div>
+      )}
+    </div>
+
+    {showHist && <HistoriquePanel userId={userId} onClose={() => setShowHist(false)} />}
+  </div>
+);
 }
 
 /* ── EntretienSession ── */
@@ -909,6 +1486,44 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
                   :<p style={{margin:0,lineHeight:1.7}}>{currentQ}</p>
                 }
               </div>
+              {/* Bouton répéter la question */}
+{(phase === 'waiting' || phase === 'recording') && currentQ && (
+  <button
+    onClick={async () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        await tts(currentQ, lang);
+      }
+    }}
+    style={{
+      padding: '8px 16px',
+      borderRadius: 8,
+      background: 'transparent',
+      border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      color: dk ? '#a19f96' : '#6b6b6b',
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      fontFamily: 'inherit',
+      transition: 'all 0.2s',
+    }}
+    onMouseEnter={e => {
+      e.currentTarget.style.background = dk ? '#1d1c16' : '#f2efe7';
+      e.currentTarget.style.borderColor = dk ? '#4c9fd9' : '#0066b3';
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.background = 'transparent';
+      e.currentTarget.style.borderColor = dk ? '#2b2a22' : '#d9d5cb';
+    }}
+  >
+    <span style={{ fontSize: 16 }}>🔊</span>
+    <span>{lang === 'fr' ? 'Répéter la question' : 'Repeat question'}</span>
+  </button>
+)}
               {phase==='recording'&&liveText&&(
                 <div className="ep-live-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
 
@@ -1022,23 +1637,72 @@ export default function EntretienPage({ user, bourses=[], conversationId, setVie
   const { lang } = useT();
   const [showLogin, setShowLogin] = useState(false);
   const [selected, setSelected]  = useState(null);
+  const [appliedBourses, setAppliedBourses] = useState([]);
+
+  // ✅ CHARGER LES BOURSES POSTULÉES
+  useEffect(() => {
+    if (!user?.id) return;
+    axiosInstance.get('/api/roadmap', {
+      params: { 'where[userId][equals]': user.id, limit: 100 }
+    })
+      .then(res => setAppliedBourses(res.data.docs || []))
+      .catch(err => console.error('Erreur chargement roadmap:', err));
+  }, [user?.id]);
 
   if (!user) return (
-    <>
-      <div className="ep-locked">
-        <div className="ep-locked-card">
-          <div style={{ fontSize:56, marginBottom:16 }}>🧑‍⚖️</div>
-          <h3>{lang==='fr'?'Entretien virtuel non disponible':'AI interview unavailable'}</h3>
-          <p>{lang==='fr'
-            ?'Connectez-vous pour pratiquer vos entretiens de bourse avec notre jury IA et obtenir une évaluation personnalisée.'
-            :'Sign in to practice your scholarship interviews with our AI panel and get personalized feedback.'}</p>
-          <button className="ep-lock-btn" onClick={()=>setShowLogin(true)}>🔐 {lang==='fr'?'Se connecter':'Sign in'}</button>
-        </div>
-      </div>
-      {showLogin&&<LoginModal onClose={()=>setShowLogin(false)}/>}
-    </>
+   <>
+  <div className="ep-locked">
+    <div style={{
+      background: '#ffffff',
+      border: `1px solid #e0e0e0`,
+      padding: '48px 40px',
+      maxWidth: 480,
+      width: '100%',
+      textAlign: 'center',
+      boxShadow: 'none',
+      borderRadius: 0,  // ← rectangle parfait
+    }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🧑‍⚖️</div>
+      <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: '#333' }}>
+        {lang === 'fr' ? 'Entretien virtuel non disponible' : 'AI interview unavailable'}
+      </h3>
+      <p style={{ fontSize: 14, color: '#666', lineHeight: 1.5, marginBottom: 24 }}>
+        {lang === 'fr'
+          ? 'Connectez-vous pour pratiquer vos entretiens de bourse avec notre jury IA et obtenir une évaluation personnalisée.'
+          : 'Sign in to practice your scholarship interviews with our AI panel and get personalized feedback.'}
+      </p>
+      <button
+        onClick={() => setShowLogin(true)}
+        style={{
+          padding: '12px 28px',
+          background: '#0066b3',
+          color: '#ffffff',
+          border: 'none',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          fontFamily: 'monospace',
+          borderRadius: 0,  // ← rectangle
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}
+      </button>
+    </div>
+  </div>
+  {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+</>
   );
 
-  if (!selected) return <BoursePicker bourses={bourses} userId={user?.id} onSelect={setSelected}/>;
+  if (!selected) return (
+  <BoursePicker 
+    bourses={bourses} 
+    userId={user?.id} 
+    onSelect={setSelected}
+    appliedBourses={appliedBourses}  // ← PASSER ICI
+  />
+);
   return <EntretienSession bourse={selected} user={user} conversationId={conversationId} onFinish={()=>setSelected(null)}/>;
 }

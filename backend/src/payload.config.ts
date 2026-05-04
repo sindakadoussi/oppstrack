@@ -62,4 +62,5 @@ export default buildConfig({
 
   sharp,
   plugins: [],
+
 })

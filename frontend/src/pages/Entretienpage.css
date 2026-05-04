@@ -1618,3 +1618,36 @@ button:active:not(:disabled) {
     justify-content: center;
   }
 }
+/* Mode sombre pour l'historique */
+.dark .ep-hist-card-title,
+.dark .ep-detail-header,
+.dark .ep-stat-card,
+.dark .ep-section-card {
+  color: #f2efe7;
+}
+
+.dark .ep-hist-card-date,
+.dark .ep-hist-card-verdict,
+.dark .ep-stat-lbl,
+.dark .ep-section-body {
+  color: #a19f96;
+}
+
+.dark .ep-detail-tab {
+  color: #a19f96;
+}
+
+.dark .ep-detail-tab.active {
+  color: #4c9fd9;
+  border-bottom-color: #4c9fd9;
+}
+
+.dark .ep-answer-item {
+  background: #1d1c16;
+  border-color: #2b2a22;
+}
+
+.dark .ep-answer-item .ep-answer-num {
+  background: #2b2a22;
+  color: #a19f96;
+}

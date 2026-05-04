@@ -158,7 +158,7 @@ function AIPreviewPanel({ bourse, user, onClose, c, lang }) {
 function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, applied, onApply, onMatch, c, lang, index }) {
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
   const animationDelay = `${index * 0.05}s`;
-
+const [applyLoading, setApplyLoading] = useState(false);
   // ----- Détermination du statut -----
   const getStatus = () => {
     if (bourse.statut === 'expiree') {
@@ -184,13 +184,7 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
   };
   const status = getStatus();
 
-  const getInsight = () => {
-    const domaine = (bourse.domaine || '').toLowerCase();
-    if (domaine.includes('public policy') || domaine.includes('politique publique')) return 'Idéal pour étudiants en politiques publiques';
-    if (domaine.includes('data science') || domaine.includes('ia')) return 'Parfait pour les carrières tech & IA';
-    if (bourse.niveau === 'Master' || bourse.niveau === 'PhD') return 'Programme très compétitif';
-    return 'Entièrement financé';
-  };
+ 
 
   return (
     <article
@@ -250,10 +244,8 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
           </div>
         </div>
 
-        {/* Insight contextuel */}
-        <p style={{ fontFamily: c.fSerif, fontSize: 14, fontStyle: 'italic', color: c.ink3, marginBottom: 12 }}>
-          “{getInsight()}”
-        </p>
+       {/* APRÈS la section Financement/Deadline, AVANT les Documents requis */}
+
 
         {/* Grille des métadonnées (pays, niveau) - sans domaine ici */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
@@ -268,6 +260,8 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
             </div>
           )}
         </div>
+
+        
 
         {/* Domaine - ligne complète séparée */}
         {bourse.domaine && (
@@ -302,9 +296,25 @@ function VerticalBourseCard({ bourse, user, onAskAI, onClick, starred, onStar, a
           <button onClick={(e) => { e.stopPropagation(); onStar(bourse, starred); }} style={{ ...actionButton(c, 'ghost'), background: starred ? c.accent : 'transparent', color: starred ? c.paper : c.ink3, border: `1px solid ${c.rule}` }}>
             {starred ? '★' : '☆'} Favori
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onApply(bourse); }} style={{ ...actionButton(c, applied ? 'success' : 'primary'), background: applied ? '#2e6b3e' : c.accent, color: '#fff' }}>
-            {applied ? '✓' : '+'} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
-          </button>
+           <button
+    onClick={async (e) => {
+      e.stopPropagation();
+      if (applied || applyLoading) return;
+      setApplyLoading(true);
+      await onApply(bourse);
+      setApplyLoading(false);
+    }}
+    style={{
+      ...actionButton(c, applied ? 'success' : 'primary'),
+      background: applied ? '#2e6b3e' : c.accent,
+      color: '#fff',
+      opacity: applyLoading ? 0.6 : 1,
+      cursor: (applied || applyLoading) ? 'default' : 'pointer'
+    }}
+    disabled={applied || applyLoading}
+  >
+    {applyLoading ? '⏳' : (applied ? '✓' : '+')} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
+  </button>
           <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'primary'), background: c.accent, color: '#fff' }}>
             Match IA
           </button>
@@ -497,9 +507,9 @@ function MiniHero({ c, lang, totalCount }) {
       }}>
         
        {lang === "fr" ? (
-                  <>Trouvez votre <em style={{ color: c.accent, fontStyle: 'italic' }}>prochaine bourse internationale</em>.</>
+                  <>Trouvez votre <em style={{ color: c.accent, fontStyle: 'italic' }}>prochaine bourse </em>.</>
                 ) : (
-                  <> <em style={{ color: c.accent, fontStyle: "italic" }}>Find your</em>  next international scholarship.</>
+                  <> <em style={{ color: c.accent, fontStyle: "italic" }}>Find your</em>  next  scholarship.</>
                 )}
       </h1>
       <p style={{
@@ -511,7 +521,7 @@ function MiniHero({ c, lang, totalCount }) {
         marginLeft: 'auto',
         marginRight: 'auto',
       }}>
-        +{totalCount} opportunités entièrement financées dans le monde. Personnalisées par l’IA.
+        Découvrez +{totalCount} opportunités entièrement financées et évaluez instantanément votre compatibilité.
       </p>
     </div>
   );
@@ -608,6 +618,23 @@ function Pagination({ currentPage, totalPages, onPageChange, c, lang }) {
   );
 }
 
+/* =============== HELPER : Vérifier si test de langue requis =============== */
+const hasLanguageTestRequired = (bourse) => {
+  const docs = bourse.documentsRequis || [];
+  return docs.some(doc => {
+    const nomLower = (doc.nom || '').toLowerCase();
+    return nomLower.includes('toefl') || 
+           nomLower.includes('ielts') || 
+           nomLower.includes('tef') ||
+           nomLower.includes('tcf') ||
+           nomLower.includes('delf') ||
+           nomLower.includes('dalf') ||
+           nomLower.includes('test de langue') ||
+           nomLower.includes('language test') ||
+           nomLower.includes('certificat de langue');
+  });
+};
+
 /* =============== PAGE PRINCIPALE =============== */
 export default function BoursesPage({
   bourses,
@@ -626,6 +653,8 @@ export default function BoursesPage({
   const { theme } = useTheme();
   const c = tokens(theme);
 
+  const [filterOpenOnly, setFilterOpenOnly] = useState(false);
+  const [filterNoLanguageTest, setFilterNoLanguageTest] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [search, setSearch] = useState('');
   const [filterNiveau, setFilterNiveau] = useState('');
@@ -761,22 +790,22 @@ const handleAskAI = (bourse) => {
 
   // Filtrage
   const filtered = useMemo(() => {
-    let result = bourses.filter(b => {
-      if (b.statut === 'expiree') return false;
-      const q = debouncedSearch.toLowerCase();
-      const matchSearch = !q || b.nom?.toLowerCase().includes(q) || b.pays?.toLowerCase().includes(q) || b.domaine?.toLowerCase().includes(q);
-      const matchNiveau = !filterNiveau || b.niveau?.includes(filterNiveau);
-      const matchPays = !filterPays || b.pays === filterPays;
-      return matchSearch && matchNiveau && matchPays;
-    });
-    if (sortBy === 'deadline') {
-      result.sort((a, b) => (a.dateLimite ? new Date(a.dateLimite).getTime() : Infinity) - (b.dateLimite ? new Date(b.dateLimite).getTime() : Infinity));
-    } else if (sortBy === 'funding') {
-      const fundingScore = (f) => { const s = (f || '').toLowerCase(); if (s.includes('100') || s.includes('total') || s.includes('complet')) return 3; if (s.includes('partiel') || s.includes('50')) return 2; return s ? 1 : 0; };
-      result.sort((a, b) => fundingScore(b.financement) - fundingScore(a.financement));
-    }
-    return result;
-  }, [bourses, debouncedSearch, filterNiveau, filterPays, sortBy]);
+  let result = bourses.filter(b => {
+    if (b.statut === 'expiree') return false;
+    const q = debouncedSearch.toLowerCase();
+    const matchSearch = !q || b.nom?.toLowerCase().includes(q) || b.pays?.toLowerCase().includes(q) || b.domaine?.toLowerCase().includes(q);
+    const matchNiveau = !filterNiveau || b.niveau?.includes(filterNiveau);
+    const matchPays = !filterPays || b.pays === filterPays;
+    const matchNoLanguageTest = !filterNoLanguageTest || !hasLanguageTestRequired(b);
+    
+    // ✅ NOUVEAU FILTRE "Bourses ouvertes"
+    const matchOpenOnly = !filterOpenOnly || (b.dateLimite && new Date(b.dateLimite) >= new Date());
+
+    return matchSearch && matchNiveau && matchPays && matchNoLanguageTest && matchOpenOnly;
+  });
+  
+  return result;
+}, [bourses, debouncedSearch, filterNiveau, filterPays, filterNoLanguageTest, filterOpenOnly]);
 
   // Gestion de l'affichage selon connexion
   let visibleBoursesAll = filtered;
@@ -847,11 +876,6 @@ const handleAskAI = (bourse) => {
               <option value="">{t('bourses', 'filterPays')}</option>
               {paysList.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={selectStyle(c)}>
-              <option value="relevance">{lang === 'fr' ? 'Pertinence' : 'Relevance'}</option>
-              <option value="deadline">{lang === 'fr' ? 'Deadline' : 'Deadline'}</option>
-              <option value="funding">{lang === 'fr' ? 'Financement' : 'Funding'}</option>
-            </select>
             {(search || filterNiveau || filterPays) && (
               <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c) }}>
                 ✕ Effacer
@@ -877,10 +901,51 @@ const handleAskAI = (bourse) => {
         </div>
       </div>
 
-      {/* Barre de contexte intelligente */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 32px' }}>
-        <SmartContextBar filteredBourses={filtered} user={user} c={c} lang={lang} />
-      </div>
+      {/* Boutons de filtre rapide */}
+<div style={{ 
+  maxWidth: 1000, 
+  margin: '0 auto', 
+  padding: '24px 32px', 
+  display: 'flex', 
+  gap: 16, 
+  flexWrap: 'wrap',
+  justifyContent: 'center'
+}}>
+  <button
+  onClick={() => setFilterNoLanguageTest(!filterNoLanguageTest)}
+  style={{
+    padding: '12px 24px',
+    background: filterNoLanguageTest ? c.accent : 'transparent',
+    border: `1px solid ${c.accent}`,
+    color: filterNoLanguageTest ? '#fff' : c.accent,
+    fontFamily: c.fSans,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    letterSpacing: '0.05em',
+  }}
+>
+   {lang === 'fr' ? 'Sans test de langue obligatoire' : 'No mandatory language test'}
+</button>
+ <button
+  onClick={() => setFilterOpenOnly(!filterOpenOnly)}
+  style={{
+    padding: '12px 24px',
+    background: filterOpenOnly ? c.accent : 'transparent',
+    border: `1px solid ${c.accent}`,
+    color: filterOpenOnly ? '#fff' : c.accent,
+    fontFamily: c.fSans,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    letterSpacing: '0.05em',
+  }}
+>
+   {lang === 'fr' ? 'Bourses ouvertes' : 'Open scholarships'}
+</button>
+</div>
 
       {/* Liste des bourses */}
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 32px 64px' }}>
