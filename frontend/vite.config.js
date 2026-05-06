@@ -5,6 +5,10 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
+     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
+  alias: {
+    '@': path.resolve(__dirname, './src'),
+  },
     alias: {
       '@': path.resolve(__dirname, './src'),
       // Force une seule instance de React pour éviter les conflits avec Recharts
