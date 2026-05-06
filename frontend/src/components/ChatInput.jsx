@@ -118,8 +118,23 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (input.trim() && !loading) {
+        // Arrêter le micro si il est en cours d'enregistrement
+        if (isRecording) {
+          stopRecording();
+        }
         onSend();
       }
+    }
+  };
+
+  // Fonction modifiée pour gérer l'envoi avec arrêt automatique du micro
+  const handleSendWithStop = () => {
+    if (input.trim() && !loading) {
+      // ARRÊTER LE MICRO AUTOMATIQUEMENT avant d'envoyer
+      if (isRecording) {
+        stopRecording();
+      }
+      onSend();
     }
   };
 
@@ -156,10 +171,10 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
           </button>
         )}
         
-        {/* Bouton d'envoi */}
+        {/* Bouton d'envoi MODIFIÉ - appel handleSendWithStop au lieu de onSend direct */}
         <button
           className="send-btn"
-          onClick={onSend}
+          onClick={handleSendWithStop}
           disabled={!input.trim() || loading}
         >
           {loading ? '...' : '➤'}
@@ -170,7 +185,7 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
         .chat-input-wrapper {
           padding: 12px 16px;
           border-top: 1px solid rgba(99,102,241,0.1);
-          background: rgba(0,0,0,0.2);
+          background: rgb(255, 255, 255);
         }
         
         .chat-input-container {
@@ -193,7 +208,7 @@ export default function ChatInput({ input, setInput, onSend, loading }) {
           flex: 1;
           background: transparent;
           border: none;
-          color: #e2e8f0;
+          color: #0b0b0b;
           font-size: 14px;
           line-height: 1.5;
           padding: 8px 4px;

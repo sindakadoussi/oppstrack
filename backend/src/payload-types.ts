@@ -73,6 +73,9 @@ export interface Config {
     bourses: Bourse;
     candidatures: Candidature;
     entretiens: Entretien;
+    favoris: Favoris;
+    roadmap: Roadmap;
+    feedbacks: Feedback;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +89,9 @@ export interface Config {
     bourses: BoursesSelect<false> | BoursesSelect<true>;
     candidatures: CandidaturesSelect<false> | CandidaturesSelect<true>;
     entretiens: EntretiensSelect<false> | EntretiensSelect<true>;
+    favoris: FavorisSelect<false> | FavorisSelect<true>;
+    roadmap: RoadmapSelect<false> | RoadmapSelect<true>;
+    feedbacks: FeedbacksSelect<false> | FeedbacksSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -270,6 +276,7 @@ export interface User {
         id?: string | null;
       }[]
     | null;
+  avatar?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -295,10 +302,7 @@ export interface User {
  */
 export interface Media {
   id: string;
-  /**
-   * Texte alternatif pour l'accessibilité
-   */
-  alt: string;
+  alt?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -310,24 +314,6 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    card?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -349,28 +335,37 @@ export interface Bourse {
   id: string;
   nom: string;
   pays: string;
-  domaine?:
-    | (
-        | 'Sciences'
-        | 'Ingénierie'
-        | 'Médecine'
-        | 'Droit'
-        | 'Économie'
-        | 'Arts'
-        | 'Informatique'
-        | 'Agriculture'
-        | 'Tous domaines'
-      )
-    | null;
+  /**
+   * Domaines d'études couverts par la bourse (rempli automatiquement par le workflow)
+   */
+  domaine?: string | null;
   langue?: ('Anglais' | 'Français' | 'Arabe' | 'Autre') | null;
   tunisienEligible?: ('oui' | 'non' | 'inconnu') | null;
   statut?: ('active' | 'expiree' | 'a_venir') | null;
   niveau: string;
   description: string;
+  eligibilite?: {
+    nationalitesEligibles?: string | null;
+    niveauRequis?: string | null;
+    ageMax?: number | null;
+    conditionsSpeciales?: string | null;
+  };
+  documentsRequis?:
+    | {
+        nom: string;
+        obligatoire?: boolean | null;
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   financement?: string | null;
   dateLimite?: string | null;
   dateOuverture?: string | null;
   lienOfficiel: string;
+  /**
+   * Logo ou image représentative de la bourse
+   */
+  image?: (string | null) | Media;
   updatedAt: string;
   createdAt: string;
 }
@@ -397,6 +392,79 @@ export interface Entretien {
   score?: string | null;
   conversationId?: string | null;
   context?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Bourses favorites par étudiant
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "favoris".
+ */
+export interface Favoris {
+  id: string;
+  /**
+   * Un seul document de favoris par utilisateur
+   */
+  user: string | User;
+  userEmail?: string | null;
+  bourses?:
+    | {
+        nom: string;
+        pays?: string | null;
+        lienOfficiel?: string | null;
+        financement?: string | null;
+        dateLimite?: string | null;
+        ajouteLe?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "roadmap".
+ */
+export interface Roadmap {
+  id: string;
+  userId: string;
+  userEmail?: string | null;
+  nom: string;
+  pays?: string | null;
+  lienOfficiel?: string | null;
+  financement?: string | null;
+  dateLimite?: string | null;
+  ajouteLe?: string | null;
+  statut?: ('en_cours' | 'soumis' | 'accepte' | 'refuse') | null;
+  etapeCourante?: number | null;
+  notes?: string | null;
+  etapes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  conseilGlobal?: string | null;
+  langue?: string | null;
+  deadlineFinale?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedbacks".
+ */
+export interface Feedback {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  comment: string;
+  approved?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -447,6 +515,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'entretiens';
         value: string | Entretien;
+      } | null)
+    | ({
+        relationTo: 'favoris';
+        value: string | Favoris;
+      } | null)
+    | ({
+        relationTo: 'roadmap';
+        value: string | Roadmap;
+      } | null)
+    | ({
+        relationTo: 'feedbacks';
+        value: string | Feedback;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -637,6 +717,7 @@ export interface UsersSelect<T extends boolean = true> {
         ajouteLe?: T;
         id?: T;
       };
+  avatar?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -671,30 +752,6 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        card?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -720,10 +777,27 @@ export interface BoursesSelect<T extends boolean = true> {
   statut?: T;
   niveau?: T;
   description?: T;
+  eligibilite?:
+    | T
+    | {
+        nationalitesEligibles?: T;
+        niveauRequis?: T;
+        ageMax?: T;
+        conditionsSpeciales?: T;
+      };
+  documentsRequis?:
+    | T
+    | {
+        nom?: T;
+        obligatoire?: T;
+        description?: T;
+        id?: T;
+      };
   financement?: T;
   dateLimite?: T;
   dateOuverture?: T;
   lienOfficiel?: T;
+  image?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -748,6 +822,63 @@ export interface EntretiensSelect<T extends boolean = true> {
   score?: T;
   conversationId?: T;
   context?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "favoris_select".
+ */
+export interface FavorisSelect<T extends boolean = true> {
+  user?: T;
+  userEmail?: T;
+  bourses?:
+    | T
+    | {
+        nom?: T;
+        pays?: T;
+        lienOfficiel?: T;
+        financement?: T;
+        dateLimite?: T;
+        ajouteLe?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "roadmap_select".
+ */
+export interface RoadmapSelect<T extends boolean = true> {
+  userId?: T;
+  userEmail?: T;
+  nom?: T;
+  pays?: T;
+  lienOfficiel?: T;
+  financement?: T;
+  dateLimite?: T;
+  ajouteLe?: T;
+  statut?: T;
+  etapeCourante?: T;
+  notes?: T;
+  etapes?: T;
+  conseilGlobal?: T;
+  langue?: T;
+  deadlineFinale?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feedbacks_select".
+ */
+export interface FeedbacksSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  rating?: T;
+  comment?: T;
+  approved?: T;
   updatedAt?: T;
   createdAt?: T;
 }

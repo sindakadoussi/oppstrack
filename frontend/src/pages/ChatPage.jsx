@@ -1,476 +1,1136 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ChatMessage from '../components/ChatMessage';
-import ChatInput from '../components/ChatInput';
+// ChatPage.jsx — design identique, liaison n8n + Payload corrigée
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import axios from 'axios';
+import { useTheme } from '../components/Navbar';
+import { useT } from '../i18n';
 
-const API_BASE = 'http://localhost:3000/api';
+// ── Config (adapte ces URLs à ton projet) ──
+const WEBHOOK_URL = import.meta.env?.VITE_WEBHOOK_URL
+  ? `${import.meta.env.VITE_WEBHOOK_URL}/webhook/webhook`
+  : 'http://localhost:5678/webhook/webhook';
 
-const quickReplies = [
-  { emoji: '🎓', label: 'Trouver mes bourses', text: 'Quelles bourses correspondent à mon profil ?' },
-  { emoji: '🔐', label: 'Me connecter', text: 'Je veux me connecter' },
-  { emoji: '🗺️', label: 'Voir la roadmap', text: 'Montre-moi la roadmap pour postuler' },
-  { emoji: '🎙️', label: 'Préparer un entretien', text: "Je veux m'entraîner pour un entretien de bourse" },
-  { emoji: '📄', label: 'Analyser mon CV', text: 'Je veux analyser mon CV' },
-  { emoji: '❌', label: 'Mode invité', text: 'Non, je ne veux pas me connecter, continuer en invité' },
-];
+const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:3000';
 
-// ─── Hook stats réelles depuis Payload ──────────────────────────────────────
-function useHeroStats() {
-  const [stats, setStats] = useState({
-    totalBourses:    null, // null = chargement en cours
-    pctFinancees:    null,
-    loaded:          false,
-  });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // 1 seul appel — on récupère tout avec limit élevé
-        const res = await fetch(
-          `${API_BASE}/bourses?limit=500&depth=0`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-        if (!res.ok) throw new Error('Payload inaccessible');
-        const data = await res.json();
-
-        const docs        = data.docs || [];
-        const total       = data.totalDocs ?? docs.length;
-
-        // % financées = bourses dont financement contient "100" ou "Totale" ou "Complète"
-        const financees   = docs.filter(b => {
-          const f = (b.financement || '').toLowerCase();
-          return f.includes('100') || f.includes('total') || f.includes('complet') || f.includes('intégral');
-        });
-
-        const pct = total > 0
-          ? Math.round((financees.length / total) * 100)
-          : null;
-
-        setStats({
-          totalBourses: total,
-          pctFinancees: pct,
-          loaded:       true,
-        });
-      } catch {
-        // Payload inaccessible → garder les valeurs marketing par défaut
-        setStats({ totalBourses: 500, pctFinancees: 98, loaded: true });
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  return stats;
+// Sauvegarde dans Payload CMS
+async function saveToPayload(text, role, conversationId) {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.post(`${API_BASE}/api/messages`, {
+      text,
+      role,
+      conversationId,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `JWT ${token}` } : {}),
+      },
+    });
+  } catch (e) {
+    console.warn('[Payload] Échec sauvegarde:', e.message);
+  }
 }
 
-// ─── Composant stat animé ────────────────────────────────────────────────────
-function StatNumber({ value, suffix = '', loading }) {
-  const [displayed, setDisplayed] = useState(0);
+// Appel n8n
+async function callN8n(payload) {
+  const res = await axios.post(WEBHOOK_URL, payload, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 120000,
+  });
+  return res.data;
+}
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=DM+Sans:opsz,wght@9..40,100;9..40,200;9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900;9..40,1000&display=swap');
+
+  :root {
+    --accent: #0066b3;
+    --accent-ink: #004f8a;
+    --accent2: #f5a623;
+    --ink: #141414;
+    --ink2: #3a3a3a;
+    --ink3: #6b6b6b;
+    --ink4: #9a9794;
+    --paper: #faf8f3;
+    --paper2: #f2efe7;
+    --rule: #d9d5cb;
+    --rule-soft: #e8e4d9;
+    --surface: #ffffff;
+    --danger: #b4321f;
+    --success: #166534;
+    --f-serif: "Playfair Display", "Times New Roman", Georgia, serif;
+    --f-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --chat-max-width: 800px;
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --transition-fast: 0.12s ease;
+    --transition-base: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    --sidebar-width: 280px;
+  }
+
+  [data-theme="dark"] {
+    --accent: #4c9fd9;
+    --accent-ink: #8ec1e6;
+    --ink: #f2efe7;
+    --ink2: #cfccc2;
+    --ink3: #a19f96;
+    --ink4: #6d6b64;
+    --paper: #15140f;
+    --paper2: #1d1c16;
+    --rule: #2b2a22;
+    --rule-soft: #24231c;
+    --surface: #1a1912;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulse-dot {
+    0%, 60%, 100% { transform: scale(0.7); opacity: 0.4; }
+    30% { transform: scale(1.1); opacity: 1; }
+  }
+  @keyframes ctx-pop {
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes action-bar-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+  ::selection { background: var(--accent); color: white; }
+  body { margin: 0; padding: 0; }
+
+  .conv-item { position: relative; }
+  .conv-item:hover .conv-menu-btn { opacity: 1 !important; }
+
+  .ctx-menu {
+    position: absolute;
+    right: 8px;
+    top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 6px;
+    z-index: 100;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    animation: ctx-pop 0.15s ease both;
+  }
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink2);
+    font-family: var(--f-sans);
+    transition: all 0.1s ease;
+    white-space: nowrap;
+  }
+  .ctx-item:hover { background: var(--paper2); color: var(--ink); }
+  .ctx-item.danger:hover { background: #fef2f2; color: var(--danger); }
+
+  .rename-input {
+    background: var(--paper2);
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 13px;
+    padding: 4px 8px;
+    outline: none;
+    width: 100%;
+  }
+  .search-input {
+    background: var(--paper2);
+    border: 1.5px solid var(--rule);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 13px;
+    padding: 8px 12px 8px 34px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .date-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink4);
+    padding: 8px 12px 4px;
+  }
+
+  .action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    animation: action-bar-in 0.22s ease both;
+  }
+  .action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    font-family: var(--f-sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.13s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .action-chip:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+  }
+  .action-chip:active { transform: translateY(0); }
+
+  .sugg-section { margin-bottom: 16px; }
+  .sugg-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink4);
+    margin-bottom: 6px;
+    padding: 0 2px;
+    font-family: var(--f-sans);
+  }
+  .sugg-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sugg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 22px;
+    font-family: var(--f-sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.13s ease;
+    user-select: none;
+  }
+  .sugg-chip:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+  }
+  .sugg-chip:active { transform: translateY(0); }
+  .sugg-emoji {
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+`;
+
+// ── Helpers ──
+const generateId = () => Math.random().toString(36).slice(2);
+
+const formatDateLabel = (iso, lang) => {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  if (diff === 0) return lang === 'fr' ? "Aujourd'hui" : "Today";
+  if (diff === 1) return lang === 'fr' ? 'Hier' : 'Yesterday';
+  if (diff < 7) return lang === 'fr' ? 'Cette semaine' : 'This week';
+  return d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' });
+};
+
+// ── Context Menu ──
+function ContextMenu({ onRename, onDelete, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="ctx-menu" ref={ref}>
+      <div className="ctx-item" onClick={onRename}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Renommer
+      </div>
+      <div className="ctx-item danger" onClick={onDelete}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/>
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+        Supprimer
+      </div>
+    </div>
+  );
+}
+
+// ── Sidebar ──
+function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete, lang }) {
+  const [search, setSearch] = useState('');
+  const [openMenu, setOpenMenu] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameRef = useRef(null);
 
   useEffect(() => {
-    if (loading || value === null) return;
-    // Petite animation counter
-    const target = parseInt(value);
-    const duration = 800;
-    const steps = 30;
-    const increment = target / steps;
-    let current = 0;
-    let step = 0;
-    const timer = setInterval(() => {
-      step++;
-      current = Math.min(Math.round(increment * step), target);
-      setDisplayed(current);
-      if (step >= steps) clearInterval(timer);
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [value, loading]);
+    if (renamingId && renameRef.current) renameRef.current.focus();
+  }, [renamingId]);
 
-  if (loading || value === null) {
-    return <span className="stat-num stat-loading">—</span>;
+  const filtered = useMemo(() => {
+    if (!search.trim()) return conversations;
+    return conversations.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+  }, [conversations, search]);
+
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach(c => {
+      const label = formatDateLabel(c.updatedAt, lang);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(c);
+    });
+    return groups;
+  }, [filtered, lang]);
+
+  const handleRenameSubmit = (id) => {
+    if (renameValue.trim()) onRename(id, renameValue.trim());
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
+  return (
+    <aside style={{
+      width: 'var(--sidebar-width)',
+      background: 'var(--surface)',
+      borderRight: '1px solid var(--rule)',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'sticky',
+      top: 0,
+      height: '100vh',
+      flexShrink: 0,
+      animation: 'slide-in-left 0.25s ease both',
+      overflowY: 'hidden',
+    }}>
+      <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
+        <button
+          onClick={onNew}
+          style={{
+            width: '100%',
+            padding: '9px 14px',
+            background: 'var(--accent)',
+            border: 'none',
+            borderRadius: 10,
+            color: 'white',
+            fontFamily: 'var(--f-sans)',
+            fontSize: 13, fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+            transition: 'background 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-ink)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          {lang === 'fr' ? 'Nouvelle discussion' : 'New chat'}
+        </button>
+      </div>
+
+      <div style={{ padding: '12px 14px 8px', borderBottom: '1px solid var(--rule-soft)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink4)', pointerEvents: 'none' }}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input className="search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === 'fr' ? 'Rechercher…' : 'Search…'} />
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+        {Object.keys(grouped).length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--ink4)', textAlign: 'center', marginTop: 24, fontFamily: 'var(--f-sans)' }}>
+            {lang === 'fr' ? 'Aucune conversation' : 'No conversations'}
+          </p>
+        )}
+        {Object.entries(grouped).map(([label, convs]) => (
+          <div key={label}>
+            <div className="date-label">{label}</div>
+            {convs.map(conv => (
+              <div
+                key={conv.id}
+                className="conv-item"
+                style={{
+                  borderRadius: 8, marginBottom: 2,
+                  background: conv.id === activeId ? 'var(--paper2)' : 'transparent',
+                  border: conv.id === activeId ? '1px solid var(--rule-soft)' : '1px solid transparent',
+                  transition: 'all 0.12s ease'
+                }}
+                onMouseEnter={e => { if (conv.id !== activeId) e.currentTarget.style.background = 'var(--paper2)'; }}
+                onMouseLeave={e => { if (conv.id !== activeId) e.currentTarget.style.background = 'transparent'; }}
+              >
+                {renamingId === conv.id ? (
+                  <div style={{ padding: '8px 10px' }}>
+                    <input
+                      ref={renameRef}
+                      className="rename-input"
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenameSubmit(conv.id);
+                        if (e.key === 'Escape') { setRenamingId(null); setRenameValue(''); }
+                      }}
+                      onBlur={() => handleRenameSubmit(conv.id)}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', padding: '9px 8px', cursor: 'pointer', gap: 8 }}
+                    onClick={() => onSelect(conv.id)}
+                  >
+                    <svg style={{ flexShrink: 0, color: conv.id === activeId ? 'var(--accent)' : 'var(--ink4)' }}
+                      width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: conv.id === activeId ? 600 : 400,
+                        color: conv.id === activeId ? 'var(--accent)' : 'var(--ink2)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        fontFamily: 'var(--f-sans)'
+                      }}>{conv.title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 1, fontFamily: 'var(--f-sans)' }}>
+                        {new Date(conv.updatedAt).toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <button
+                      className="conv-menu-btn"
+                      style={{
+                        background: 'transparent', border: 'none',
+                        padding: '3px 4px', borderRadius: 5,
+                        cursor: 'pointer', color: 'var(--ink3)',
+                        flexShrink: 0,
+                        opacity: openMenu === conv.id ? 1 : 0,
+                        transition: 'opacity 0.12s ease, background 0.12s ease',
+                        display: 'flex', alignItems: 'center'
+                      }}
+                      onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--rule-soft)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === conv.id && (
+                      <ContextMenu
+                        onClose={() => setOpenMenu(null)}
+                        onRename={() => { setOpenMenu(null); setRenamingId(conv.id); setRenameValue(conv.title); }}
+                        onDelete={() => { setOpenMenu(null); onDelete(conv.id); }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+// ── Action Bar ──
+function ActionBar({ onAction, lang }) {
+  const ACTION_CHIPS = [
+    { icon: '📄', label: lang === 'fr' ? 'Ajouter à ma roadmap' : 'Add to roadmap', prompt: lang === 'fr' ? 'Ajouter cette bourse à ma roadmap' : 'Add this scholarship to my roadmap' },
+    { icon: '📊', label: lang === 'fr' ? 'Analyser cette bourse' : 'Analyze scholarship', prompt: lang === 'fr' ? 'Analyse cette bourse en détail' : 'Analyze this scholarship in detail' },
+    { icon: '⚖️', label: lang === 'fr' ? 'Comparer' : 'Compare', prompt: lang === 'fr' ? 'Compare cette bourse avec une autre similaire' : 'Compare this scholarship with a similar one' },
+    { icon: '✉️', label: lang === 'fr' ? 'Préparer candidature' : 'Prepare application', prompt: lang === 'fr' ? 'Aide-moi à préparer ma candidature pour cette bourse' : 'Help me prepare my application for this scholarship' },
+  ];
+
+  return (
+    <div className="action-bar">
+      {ACTION_CHIPS.map((chip, i) => (
+        <button key={i} className="action-chip" onClick={() => onAction(chip.prompt)} title={chip.label}>
+          <span style={{ fontSize: 12 }}>{chip.icon}</span>
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Message Bubble ──
+function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction, lang }) {
+  const formattedContent = useMemo(() => {
+    if (!message.text) return null;
+    const lines = message.text.split('\n');
+    const elements = [];
+
+    const parseInline = (text) =>
+      text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i}>{part.slice(2, -2)}</strong>
+          : part
+      );
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const t = line.trim();
+      if (!t) { elements.push(<div key={`s-${i}`} style={{ height: 8 }} />); continue; }
+      if (t.startsWith('## ')) {
+        elements.push(<h2 key={i} style={{ fontSize: 17, fontWeight: 700, margin: '16px 0 8px', fontFamily: 'var(--f-serif)', color: 'var(--ink)' }}>{parseInline(t.slice(3))}</h2>);
+        continue;
+      }
+      if (t.startsWith('### ')) {
+        elements.push(<h3 key={i} style={{ fontSize: 14, fontWeight: 600, margin: '12px 0 6px', color: 'var(--ink2)' }}>{parseInline(t.slice(4))}</h3>);
+        continue;
+      }
+      if (t.match(/^[-*]\s/)) {
+        elements.push(
+          <div key={i} style={{ margin: '5px 0 5px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }}>•</span>
+            <span style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>{parseInline(t.slice(2))}</span>
+          </div>
+        );
+        continue;
+      }
+      const bold = t.match(/^\*\*(.+?)\*\*$/);
+      if (bold) {
+        elements.push(
+          <div key={i} style={{ margin: '10px 0 6px', padding: '7px 12px', background: 'var(--paper2)', borderLeft: '3px solid var(--accent)', borderRadius: 7 }}>
+            <strong style={{ fontSize: 13 }}>{bold[1]}</strong>
+          </div>
+        );
+        continue;
+      }
+      elements.push(<p key={i} style={{ margin: '0 0 10px', lineHeight: 1.65, fontSize: 14 }}>{parseInline(line)}</p>);
+    }
+    return elements;
+  }, [message.text]);
+
+  if (isUser) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20, animation: `fade-up 0.28s ease-out both`, animationDelay: `${delay}s` }}>
+        <div style={{
+          maxWidth: '72%', background: 'var(--accent)', color: 'white',
+          padding: '12px 18px', borderRadius: 18, borderBottomRightRadius: 4,
+          fontSize: 14, lineHeight: 1.55, fontFamily: 'var(--f-sans)'
+        }}>
+          {message.text}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <span className="stat-num">
-      {displayed}{suffix}
-    </span>
+    <div style={{ display: 'flex', gap: 12, marginBottom: 24, animation: `fade-up 0.28s ease-out both`, animationDelay: `${delay}s` }}>
+      <div style={{
+        width: 38, height: 38,
+        background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+        borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, marginTop: 2
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          background: 'var(--paper2)',
+          borderRadius: 18, borderTopLeftRadius: 4,
+          padding: '12px 18px', color: 'var(--ink)', fontFamily: 'var(--f-sans)'
+        }}>
+          {formattedContent}
+        </div>
+        {(isLast || message.showActions) && onAction && (
+          <ActionBar onAction={onAction} lang={lang} />
+        )}
+      </div>
+    </div>
   );
 }
 
-// ─── Composant ScrollButton ─────────────────────────────────────────────────
-function ScrollToBottomButton({ onClick, visible }) {
-  if (!visible) return null;
-  
+// ── Suggestion Groups ──
+function SuggestionGroups({ onSelect, lang }) {
+  const SUGGESTION_GROUPS = [
+    {
+      title: lang === 'fr' ? '🎯 Trouver des bourses' : '🎯 Find scholarships',
+      items: [
+        { emoji: '🎯', text: lang === 'fr' ? 'Trouve-moi des bourses adaptées à mon profil' : 'Find scholarships matching my profile' },
+        { emoji: '⚡', text: lang === 'fr' ? 'Quelles bourses sont encore ouvertes maintenant ?' : 'Which scholarships are still open?' },
+        { emoji: '💰', text: lang === 'fr' ? 'Bourses 100% financées pour moi' : '100% funded scholarships for me' },
+        { emoji: '🌍', text: lang === 'fr' ? 'Quelles bourses à l\'étranger me correspondent ?' : 'Which international scholarships suit me?' },
+        { emoji: '🇫🇷', text: lang === 'fr' ? 'Quelles bourses en France sont accessibles pour moi ?' : 'Which scholarships in France are accessible to me?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '📊 Analyse intelligente' : '📊 Smart Analysis',
+      items: [
+        { emoji: '📊', text: lang === 'fr' ? 'Quelle est ma probabilité d\'être accepté ?' : 'What is my probability of being accepted?' },
+        { emoji: '🔍', text: lang === 'fr' ? 'Analyse mon profil et dis-moi mes chances' : 'Analyze my profile and tell me my chances' },
+        { emoji: '⚠️', text: lang === 'fr' ? 'Qu\'est-ce qui bloque ma candidature ?' : 'What is blocking my application?' },
+        { emoji: '🧠', text: lang === 'fr' ? 'Quelle stratégie dois-je suivre ?' : 'What strategy should I follow?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '🚀 Action rapide' : '🚀 Quick Action',
+      items: [
+        { emoji: '🚀', text: lang === 'fr' ? 'Aide-moi à postuler à une bourse' : 'Help me apply for a scholarship' },
+        { emoji: '📝', text: lang === 'fr' ? 'Rédige ma lettre de motivation' : 'Write my motivation letter' },
+        { emoji: '📄', text: lang === 'fr' ? 'Améliore mon CV' : 'Improve my CV' },
+        { emoji: '🎙️', text: lang === 'fr' ? 'Simule un entretien de bourse' : 'Simulate a scholarship interview' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '⏰ Urgence' : '⏰ Urgent',
+      items: [
+        { emoji: '⏰', text: lang === 'fr' ? 'Quelles bourses ferment cette semaine ?' : 'Which scholarships close this week?' },
+        { emoji: '🔥', text: lang === 'fr' ? 'Donne-moi les bourses les plus urgentes' : 'Give me the most urgent scholarships' },
+        { emoji: '📅', text: lang === 'fr' ? 'Quelles deadlines approchent ?' : 'Which deadlines are approaching?' },
+      ],
+    },
+    {
+      title: lang === 'fr' ? '🎓 Explorer par destination' : '🎓 Explore by destination',
+      items: [
+        { emoji: '🎓', text: lang === 'fr' ? 'Je veux étudier en Europe' : 'I want to study in Europe' },
+        { emoji: '🌎', text: lang === 'fr' ? 'Je veux étudier au Canada' : 'I want to study in Canada' },
+        { emoji: '🇬🇧', text: lang === 'fr' ? 'Je veux étudier au Royaume-Uni' : 'I want to study in the UK' },
+        { emoji: '🇩🇪', text: lang === 'fr' ? 'Je veux étudier en Allemagne' : 'I want to study in Germany' },
+      ],
+    },
+  ];
+
   return (
-    <button className="scroll-to-bottom-btn" onClick={onClick} title="Aller en bas">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    </button>
+    <div style={{ maxHeight: 320, overflowY: 'auto', padding: '4px 0 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {SUGGESTION_GROUPS.map((group, gi) => (
+        <div key={gi} className="sugg-section">
+          <div className="sugg-section-title">{group.title}</div>
+          <div className="sugg-grid">
+            {group.items.map((item, ii) => (
+              <button key={ii} className="sugg-chip" onClick={() => onSelect(item.text)}>
+                <span className="sugg-emoji">{item.emoji}</span>
+                {item.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
-// ─── ChatPage ────────────────────────────────────────────────────────────────
-export default function ChatPage({
-  user, messages, input, setInput, loading,
-  handleSend, handleQuickReply, chatContainerRef, setView
-}) {
-  const heroStats = useHeroStats();
+// ── Main Export ──
+export default function ChatInterface() {
+  const { theme } = useTheme();
+  const { lang } = useT();
+
+  // conversationId persistant par session
+  const conversationId = useRef(null);
+  if (!conversationId.current) {
+    const saved = sessionStorage.getItem('chat_conv_id');
+    conversationId.current = saved || `chat-${Date.now()}`;
+    if (!saved) sessionStorage.setItem('chat_conv_id', conversationId.current);
+  }
+
+  // user depuis localStorage (si intégré dans OppsTrack)
+  const [currentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('opps_user') || 'null'); } catch { return null; }
+  });
+
+  const [conversations, setConversations] = useState(() => {
+    try {
+      const s = localStorage.getItem('opps-conversations');
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      const s = localStorage.getItem('opps-conversations');
+      const convs = s ? JSON.parse(s) : [];
+      return convs[0]?.id || null;
+    } catch { return null; }
+  });
+  const [loading, setLoading] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const localChatContainerRef = useRef(null);
-  const containerRef = chatContainerRef || localChatContainerRef;
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Fonction pour scroller en bas
-  const scrollToBottom = () => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  };
+  const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Vérifier si on est en bas du scroll
-  const checkScrollPosition = () => {
-    if (containerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollButton(!isNearBottom);
-    }
-  };
+  const activeConv = useMemo(() => conversations.find(c => c.id === activeId) || null, [conversations, activeId]);
+  const messages = activeConv?.messages || [];
+  const hasMessages = messages.length > 0;
 
-  // Scroller en bas à chaque nouveau message
+  // Persister conversations localement
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
+    try { localStorage.setItem('opps-conversations', JSON.stringify(conversations)); } catch {}
+  }, [conversations]);
 
-  // Scroller en bas au chargement initial
-  useEffect(() => {
-    setTimeout(scrollToBottom, 100);
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, []);
 
-  // Ajouter l'écouteur d'événement scroll
+  useEffect(() => { scrollToBottom(); }, [messages, loading, scrollToBottom]);
+
   useEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScrollPosition);
-      // Vérifier la position initiale
-      checkScrollPosition();
-      
-      return () => {
-        container.removeEventListener('scroll', checkScrollPosition);
+    const el = containerRef.current;
+    if (!el) return;
+    const h = () => setShowScrollButton(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
+    el.addEventListener('scroll', h);
+    h();
+    return () => el.removeEventListener('scroll', h);
+  }, [messages]);
+
+  const handleNew = useCallback(() => {
+    const id = generateId();
+    const conv = { id, title: lang === 'fr' ? 'Nouvelle conversation' : 'New conversation', updatedAt: new Date().toISOString(), messages: [] };
+    setConversations(prev => [conv, ...prev]);
+    setActiveId(id);
+    setInputValue('');
+    setShowSuggestions(false);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [lang]);
+
+  const handleSelect = useCallback((id) => {
+    setActiveId(id);
+    setInputValue('');
+    setShowSuggestions(false);
+  }, []);
+
+  const handleRename = useCallback((id, title) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  }, []);
+
+  const handleDelete = useCallback((id) => {
+    setConversations(prev => {
+      const next = prev.filter(c => c.id !== id);
+      if (id === activeId) setActiveId(next[0]?.id || null);
+      return next;
+    });
+  }, [activeId]);
+
+  // handleSendMessage — SEUL point d'envoi
+  const handleSendMessage = useCallback(async (text) => {
+    if (!text.trim() || loading) return;
+    setShowSuggestions(false);
+
+    let targetId = activeId;
+    if (!targetId) {
+      targetId = generateId();
+      const conv = {
+        id: targetId,
+        title: text.slice(0, 42),
+        updatedAt: new Date().toISOString(),
+        messages: [],
       };
+      setConversations(prev => [conv, ...prev]);
+      setActiveId(targetId);
     }
-  }, [containerRef.current]);
+
+    const userMsg = {
+      id: generateId(),
+      sender: 'user',
+      text: text.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setConversations(prev => prev.map(c => {
+      if (c.id !== targetId) return c;
+      const msgs = [...c.messages, userMsg];
+      return {
+        ...c,
+        messages: msgs,
+        title: c.messages.length === 0 ? text.slice(0, 42) : c.title,
+        updatedAt: new Date().toISOString(),
+      };
+    }));
+
+    setInputValue('');
+    setLoading(true);
+
+    saveToPayload(text.trim(), 'user', conversationId.current);
+
+    try {
+      const n8nPayload = {
+        text: text.trim(),
+        conversationId: conversationId.current,
+        id: currentUser?.id || null,
+        email: currentUser?.email || null,
+        pays: currentUser?.pays || '',
+        niveau: currentUser?.niveau || '',
+        domaine: currentUser?.domaine || '',
+        name: currentUser?.name || '',
+        user_profile: currentUser ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          pays: currentUser.pays,
+          niveau: currentUser.niveau,
+          domaine: currentUser.domaine,
+          is_complete: !!(currentUser.pays && currentUser.niveau && currentUser.domaine),
+        } : null,
+      };
+
+      const data = await callN8n(n8nPayload);
+      const aiText = data?.output || data?.message || data?.text || data?.response || '';
+
+      let finalText = aiText;
+      if (!finalText) {
+        finalText = lang === 'fr' 
+          ? '⚠️ n8n a répondu sans texte. Vérifie la configuration du nœud "Respond to Webhook" dans ton workflow.'
+          : '⚠️ n8n responded without text. Check the "Respond to Webhook" node configuration in your workflow.';
+        console.warn('[n8n] Réponse vide:', data);
+      }
+
+      const aiMsg = {
+        id: generateId(),
+        sender: 'ai',
+        text: finalText,
+        timestamp: new Date().toISOString(),
+        showActions: true,
+      };
+
+      setConversations(prev => prev.map(c =>
+        c.id === targetId
+          ? { ...c, messages: [...c.messages, aiMsg], updatedAt: new Date().toISOString() }
+          : c
+      ));
+
+      saveToPayload(finalText, 'assistant', conversationId.current);
+
+    } catch (err) {
+      console.error('[n8n] Erreur:', err);
+
+      let errorText;
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorText = lang === 'fr'
+          ? '⏳ **Délai dépassé** — n8n met trop de temps à répondre.\n\nVérifie que ton workflow est actif et répond correctement.'
+          : '⏳ **Timeout** — n8n is taking too long to respond.\n\nCheck that your workflow is active and responding correctly.';
+      } else if (err.message?.includes('Network Error') || err.code === 'ERR_NETWORK') {
+        errorText = lang === 'fr'
+          ? `🔌 **n8n inaccessible** sur \`${WEBHOOK_URL}\`\n\n• Lance n8n : \`npx n8n start\`\n• Active ton workflow dans l'interface n8n\n• Vérifie \`VITE_WEBHOOK_URL\` dans \`.env\``
+          : `🔌 **n8n unreachable** at \`${WEBHOOK_URL}\`\n\n• Run n8n: \`npx n8n start\`\n• Activate your workflow in n8n interface\n• Check \`VITE_WEBHOOK_URL\` in \`.env\``;
+      } else if (err.response?.status === 404) {
+        errorText = lang === 'fr'
+          ? `⚠️ **Webhook introuvable (404)**\n\nL'URL \`${WEBHOOK_URL}\` n'existe pas.\nVérifie le chemin du webhook dans ton workflow n8n.`
+          : `⚠️ **Webhook not found (404)**\n\nThe URL \`${WEBHOOK_URL}\` does not exist.\nCheck the webhook path in your n8n workflow.`;
+      } else if (err.response?.status >= 500) {
+        errorText = lang === 'fr'
+          ? `❌ **Erreur interne n8n (${err.response.status})**\n\nLe workflow a planté. Consulte les logs d'exécution dans n8n.`
+          : `❌ **n8n internal error (${err.response.status})**\n\nThe workflow crashed. Check the execution logs in n8n.`;
+      } else {
+        errorText = `❌ **Erreur** : ${err.message}`;
+      }
+
+      const errMsg = {
+        id: generateId(),
+        sender: 'ai',
+        text: errorText,
+        timestamp: new Date().toISOString(),
+      };
+      setConversations(prev => prev.map(c =>
+        c.id === targetId
+          ? { ...c, messages: [...c.messages, errMsg], updatedAt: new Date().toISOString() }
+          : c
+      ));
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, activeId, currentUser, lang]);
+
+  const handleSubmit = (e) => { e.preventDefault(); handleSendMessage(inputValue); };
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(inputValue); }
+  };
+
+  const lastAiIndex = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender === 'ai') return i;
+    }
+    return -1;
+  }, [messages]);
 
   return (
-    <div className="chat-page">
-      {/* Hero */}
-      <div className="chat-hero">
-        <div className="hero-badge">✨ Propulsé par l'IA</div>
-        <h1 className="hero-title">
-          Trouvez votre bourse<br />
-          <span className="hero-gradient">100% financée</span>
-        </h1>
-        <p className="hero-sub">
-          Discutez avec notre IA. Elle analyse votre profil, recommande les meilleures opportunités
-          et vous guide à chaque étape.
-        </p>
-
-        {/* Stats dynamiques */}
-        <div className="hero-stats">
-          <div className="stat">
-            <StatNumber
-              value={heroStats.totalBourses}
-              suffix={heroStats.totalBourses >= 500 ? '+' : ''}
-              loading={!heroStats.loaded}
-            />
-            <span className="stat-label">Bourses</span>
-          </div>
-
-          <div className="stat-divider" />
-
-          <div className="stat">
-            <StatNumber
-              value={heroStats.pctFinancees}
-              suffix="%"
-              loading={!heroStats.loaded}
-            />
-            <span className="stat-label">Financées</span>
-          </div>
-
-          <div className="stat-divider" />
-
-          <div className="stat">
-            <span className="stat-num">24/7</span>
-            <span className="stat-label">IA active</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat Box */}
-      <div className="chat-box">
-        {/* Messages */}
-        <div className="chat-messages" ref={containerRef}>
-          {messages.length === 0 && (
-            <div className="welcome-screen">
-              <div className="welcome-robot">🤖</div>
-              <div className="welcome-bubble">
-                <p><strong>Bonjour{user?.name ? ` ${user.name}` : ''} !</strong> 👋</p>
-                <p>Je suis votre assistant OppsTrack. Je peux :</p>
-                <ul>
-                  <li>🎓 Recommander des bourses selon votre profil</li>
-                  <li>📋 Vous guider sur les démarches à suivre</li>
-                  <li>🎙️ Vous préparer à vos entretiens</li>
-                  <li>📄 Analyser votre CV et lettre de motivation</li>
-                </ul>
-                <p>Par où voulez-vous commencer ?</p>
-              </div>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <ChatMessage key={i} msg={msg} index={i}  showVoiceBadge={msg.voiceInput}  />
-          ))}
-
-          {loading && (
-            <div className="msg ai">
-              <div className="msg-avatar"><span>🤖</span></div>
-              <div className="msg-bubble typing-bubble">
-                <span className="dot"></span>
-                <span className="dot"></span>
-                <span className="dot"></span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Replies */}
-        <div className="quick-replies">
-          {quickReplies.map((qr, i) => (
-            <button
-              key={i}
-              className="quick-reply-btn"
-              onClick={() => handleQuickReply(qr.text)}
-              disabled={loading}
-            >
-              <span>{qr.emoji}</span>
-              <span>{qr.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Input */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          onSend={() => handleSend()}
-          loading={loading}
+    <>
+      <style>{styles}</style>
+      <div style={{
+        display: 'flex',
+        height: '100vh',
+        background: 'var(--paper)',
+        fontFamily: 'var(--f-sans)',
+        overflow: 'hidden',
+      }}>
+        <Sidebar
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={handleSelect}
+          onNew={handleNew}
+          onRename={handleRename}
+          onDelete={handleDelete}
+          lang={lang}
         />
+
+        <main style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'hidden',
+          minWidth: 0,
+        }}>
+          <header style={{
+            padding: '18px 32px 14px',
+            borderBottom: '1px solid var(--rule-soft)',
+            background: 'var(--paper)',
+            flexShrink: 0,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'
+          }}>
+            <div style={{ flex: 1 }}>
+              <h1 style={{
+                fontFamily: 'var(--f-serif)',
+                fontSize: 'clamp(22px, 3vw, 30px)',
+                fontWeight: 700,
+                letterSpacing: '-0.015em',
+                color: 'var(--ink)', marginBottom: 3
+              }}>
+                {!hasMessages ? (lang === 'fr' ? 'Bonjour !' : 'Hello!') : (activeConv?.title || (lang === 'fr' ? 'Assistant IA' : 'AI Assistant'))}
+              </h1>
+              <p style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                {lang === 'fr' ? 'Posez-moi votre question ci-dessous.' : 'Ask me your question below.'}
+              </p>
+            </div>
+          </header>
+
+          <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
+            <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '28px 28px 16px' }}>
+
+              {!hasMessages && (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', animation: 'fade-up 0.3s ease both' }}>
+                  <div style={{
+                    width: 38, height: 38,
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+                    borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </div>
+                  <div style={{
+                    background: 'var(--paper2)', border: '1px solid var(--rule)',
+                    borderRadius: 18, borderTopLeftRadius: 4,
+                    padding: '14px 18px', fontSize: 14, lineHeight: 1.6, color: 'var(--ink)'
+                  }}>
+                    {lang === 'fr' ? 'Comment puis-je vous aider aujourd\'hui ?' : 'How can I help you today?'}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg, idx) => (
+                <MessageBubble
+                  key={msg.id || idx}
+                  message={msg}
+                  isUser={msg.sender === 'user'}
+                  delay={idx * 0.025}
+                  isLast={idx === lastAiIndex}
+                  onAction={msg.sender === 'ai' ? handleSendMessage : null}
+                  lang={lang}
+                />
+              ))}
+
+              {loading && (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fade-up 0.25s ease both' }}>
+                  <div style={{
+                    width: 38, height: 38,
+                    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-ink) 100%)',
+                    borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                  </div>
+                  <div style={{
+                    background: 'var(--paper2)', border: '1px solid var(--rule)',
+                    borderRadius: 18, borderTopLeftRadius: 4,
+                    padding: '14px 18px', display: 'flex', gap: 6, alignItems: 'center'
+                  }}>
+                    {[0, 1, 2].map(i => (
+                      <span key={i} style={{
+                        width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)',
+                        animation: 'pulse-dot 1.2s infinite ease-in-out',
+                        animationDelay: `${i * 0.2}s`,
+                        display: 'inline-block',
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              style={{
+                position: 'absolute', bottom: 148, right: 28,
+                width: 36, height: 36,
+                background: 'var(--surface)', border: '1px solid var(--rule)',
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                transition: 'all 0.15s ease', zIndex: 15, color: 'var(--ink3)'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--rule)'; e.currentTarget.style.color = 'var(--ink3)'; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          )}
+
+          <div style={{ flexShrink: 0, background: 'var(--paper)', borderTop: '1px solid var(--rule-soft)' }}>
+            <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '12px 24px 18px' }}>
+
+              <form onSubmit={handleSubmit}>
+                <div
+                  style={{
+                    background: 'var(--surface)',
+                    border: '2px solid var(--rule)',
+                    borderRadius: 16,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '4px 6px 4px 18px',
+                    transition: 'all 0.18s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                  }}
+                  onFocusCapture={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,102,179,0.08)'; }}
+                  onBlurCapture={e => { e.currentTarget.style.borderColor = 'var(--rule)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)'; }}
+                >
+                  <textarea
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSuggestions(true)}
+                    placeholder={lang === 'fr' ? 'Écrivez votre message…' : 'Type your message…'}
+                    rows={1}
+                    disabled={loading}
+                    style={{
+                      flex: 1, background: 'transparent', border: 'none',
+                      padding: '14px 0', fontFamily: 'var(--f-sans)',
+                      fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
+                      resize: 'none', outline: 'none', minHeight: 52, maxHeight: 120
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(v => !v)}
+                    title={lang === 'fr' ? 'Afficher les suggestions' : 'Show suggestions'}
+                    style={{
+                      width: 36, height: 36,
+                      background: showSuggestions ? 'var(--paper2)' : 'transparent',
+                      border: '1px solid var(--rule)',
+                      borderRadius: 9,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: showSuggestions ? 'var(--accent)' : 'var(--ink3)',
+                      flexShrink: 0,
+                      transition: 'all 0.12s ease',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--paper2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = showSuggestions ? 'var(--paper2)' : 'transparent'}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                    </svg>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={!inputValue.trim() || loading}
+                    style={{
+                      width: 42, height: 42,
+                      background: !inputValue.trim() || loading ? 'var(--rule)' : 'var(--accent)',
+                      border: 'none', borderRadius: 11,
+                      cursor: !inputValue.trim() || loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.12s ease',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: !inputValue.trim() || loading ? 0.5 : 1, flexShrink: 0
+                    }}
+                    onMouseEnter={e => { if (inputValue.trim() && !loading) { e.currentTarget.style.background = 'var(--accent-ink)'; e.currentTarget.style.transform = 'scale(1.04)'; } }}
+                    onMouseLeave={e => { if (inputValue.trim() && !loading) { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.transform = 'scale(1)'; } }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                  </button>
+                </div>
+              </form>
+
+              {showSuggestions && (
+                <div style={{ marginTop: 12, animation: 'fade-up 0.2s ease both' }}>
+                  <SuggestionGroups onSelect={(text) => {
+                    setInputValue(text);
+                    setShowSuggestions(false);
+                    inputRef.current?.focus();
+                  }} lang={lang} />
+                </div>
+              )}
+
+              <p style={{ fontSize: 11, color: 'var(--ink4)', textAlign: 'center', marginTop: 10, fontFamily: 'var(--f-sans)' }}>
+                {lang === 'fr' ? 'OppsTrack peut faire des erreurs. Vérifiez les informations importantes.' : 'OppsTrack may make mistakes. Verify important information.'}
+              </p>
+            </div>
+          </div>
+        </main>
       </div>
-
-      {/* Bouton flèche pour aller en bas */}
-      <ScrollToBottomButton onClick={scrollToBottom} visible={showScrollButton} />
-
-      <style>{`
-        .chat-page {
-          display: flex; flex-direction: column; align-items: center;
-          width: 100%; max-width: 760px; margin: 0 auto;
-          padding: 32px 16px;
-          position: relative;
-        }
-        .chat-hero { text-align: center; margin-bottom: 32px; }
-        .hero-badge {
-          display: inline-block; padding: 6px 16px;
-          background: rgba(99,102,241,0.15);
-          border: 1px solid rgba(99,102,241,0.3);
-          border-radius: 20px; color: #818cf8;
-          font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
-          margin-bottom: 20px;
-        }
-        .hero-title {
-          font-size: clamp(1.8rem, 4vw, 2.6rem);
-          font-weight: 900; line-height: 1.2;
-          color: #f1f5f9; margin-bottom: 16px;
-          letter-spacing: -1px;
-        }
-        .hero-gradient {
-          background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .hero-sub {
-          color: #64748b; font-size: 15px; max-width: 500px;
-          margin: 0 auto 24px; line-height: 1.6;
-        }
-        .hero-stats {
-          display: flex; align-items: center; justify-content: center;
-          gap: 24px; flex-wrap: wrap;
-        }
-        .stat { display: flex; flex-direction: column; align-items: center; }
-        .stat-num {
-          font-size: 1.4rem; font-weight: 800;
-          background: linear-gradient(135deg, #818cf8, #c084fc);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          min-width: 52px; text-align: center;
-        }
-        /* Skeleton pendant le chargement */
-        .stat-loading {
-          background: rgba(99,102,241,0.15) !important;
-          -webkit-text-fill-color: transparent;
-          border-radius: 4px;
-          animation: shimmer 1.4s infinite;
-        }
-        @keyframes shimmer {
-          0%,100% { opacity: 0.4; }
-          50%      { opacity: 1; }
-        }
-        .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-divider { width: 1px; height: 32px; background: rgba(99,102,241,0.2); }
-
-        .chat-box {
-          width: 100%;
-          background: rgba(15, 15, 30, 0.8);
-          border: 1px solid rgba(99,102,241,0.2);
-          border-radius: 20px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.4),
-                      inset 0 1px 0 rgba(255,255,255,0.05);
-          overflow: hidden;
-          position: relative;
-        }
-        .chat-messages {
-          height: 420px; overflow-y: auto; padding: 20px 16px;
-          scroll-behavior: smooth;
-        }
-        .chat-messages::-webkit-scrollbar { width: 4px; }
-        .chat-messages::-webkit-scrollbar-track { background: transparent; }
-        .chat-messages::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
-
-        .welcome-screen {
-          display: flex; gap: 12px; align-items: flex-start;
-          padding: 16px; margin: 8px 0;
-        }
-        .welcome-robot { font-size: 32px; flex-shrink: 0; margin-top: 4px; }
-        .welcome-bubble {
-          background: rgba(99,102,241,0.1);
-          border: 1px solid rgba(99,102,241,0.2);
-          border-radius: 0 16px 16px 16px;
-          padding: 16px 20px; color: #cbd5e1; font-size: 14px;
-          line-height: 1.7;
-        }
-        .welcome-bubble strong { color: #e2e8f0; }
-        .welcome-bubble ul { padding-left: 4px; list-style: none; margin: 8px 0; }
-        .welcome-bubble li { margin-bottom: 4px; }
-
-        .msg {
-          display: flex; gap: 10px; margin-bottom: 16px;
-          max-width: 85%; animation: msgIn 0.3s ease;
-        }
-        @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-        .msg.user { margin-left: auto; flex-direction: row-reverse; }
-        .msg-avatar {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: rgba(99,102,241,0.2);
-          border: 1px solid rgba(99,102,241,0.3);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 15px; flex-shrink: 0;
-        }
-        .user-avatar-msg { background: rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.3); }
-        .msg-bubble {
-          padding: 12px 16px; border-radius: 16px;
-          font-size: 14px; line-height: 1.6; word-break: break-word;
-        }
-        .msg.ai .msg-bubble {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: #cbd5e1; border-top-left-radius: 4px;
-        }
-        .msg.user .msg-bubble {
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
-          color: white; border-top-right-radius: 4px;
-          box-shadow: 0 4px 12px rgba(79,70,229,0.4);
-        }
-        .msg-link { color: #818cf8; text-decoration: none; word-break: break-all; }
-        .msg-link:hover { text-decoration: underline; }
-        .typing-bubble {
-          display: flex; gap: 4px; align-items: center; padding: 14px 18px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 16px; border-top-left-radius: 4px;
-        }
-        .dot {
-          width: 7px; height: 7px; border-radius: 50%;
-          background: #6366f1; display: block;
-          animation: dotBounce 1.2s infinite ease-in-out;
-        }
-        .dot:nth-child(1) { animation-delay: 0s; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes dotBounce {
-          0%, 60%, 100% { transform: scale(0.7); opacity: 0.5; }
-          30% { transform: scale(1.1); opacity: 1; }
-        }
-
-        .quick-replies {
-          display: flex; flex-wrap: wrap; gap: 8px;
-          padding: 12px 16px; border-top: 1px solid rgba(99,102,241,0.1);
-          justify-content: center;
-        }
-        .quick-reply-btn {
-          display: flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border-radius: 20px;
-          border: 1px solid rgba(99,102,241,0.25);
-          background: rgba(99,102,241,0.08);
-          color: #94a3b8; font-size: 12px; font-weight: 500;
-          cursor: pointer; transition: all 0.2s; white-space: nowrap;
-        }
-        .quick-reply-btn:hover:not(:disabled) {
-          background: rgba(99,102,241,0.2);
-          border-color: rgba(99,102,241,0.5); color: #c4b5fd;
-          transform: translateY(-1px);
-        }
-        .quick-reply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        /* Bouton flèche pour scroller en bas */
-        .scroll-to-bottom-btn {
-          position: fixed;
-          bottom: 120px;
-          right: 24px;
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
-          border: none;
-          color: white;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 12px rgba(79,70,229,0.5);
-          transition: all 0.3s ease;
-          z-index: 1000;
-          animation: fadeInUp 0.3s ease;
-        }
-        .scroll-to-bottom-btn:hover {
-          transform: scale(1.1);
-          box-shadow: 0 6px 20px rgba(79,70,229,0.7);
-        }
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .chat-messages { height: 340px; }
-          .hero-stats { gap: 16px; }
-          .scroll-to-bottom-btn {
-            bottom: 100px;
-            right: 16px;
-            width: 40px;
-            height: 40px;
-          }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

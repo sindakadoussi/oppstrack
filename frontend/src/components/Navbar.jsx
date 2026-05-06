@@ -1,381 +1,730 @@
-import React, { useState, useEffect } from 'react';
+// components/Navbar.jsx
+// Navbar transparente sur le hero (navbar + section 1 = une seule image)
+// Devient solide quand on dépasse la section 1 (scroll > 100vh)
+// exports : default Navbar, ThemeProvider, useTheme
+//
+// POLICES : 2 polices uniquement
+//   fSerif  → "Playfair Display"  (titres, brand, noms)
+//   fSans   → "DM Sans"           (UI, labels, corps, badges, mono-like)
 
-const API_BASE = 'http://localhost:3000/api';
-const WEBHOOK_URL = 'http://localhost:5678/webhook/payload-webhook';
+"use client";
 
-const navItems = [
-  { id: 'accueil',          icon: '💬', label: 'IA Chat'         },
-  { id: 'bourses',          icon: '🎓', label: 'Bourses'         },
-  { id: 'recommandations',  icon: '🎯', label: 'Recommandations' },
-  { id: 'roadmap',          icon: '🗺️', label: 'Roadmap'        },
-  { id: 'entretien',        icon: '🎙️', label: 'Entretien'      },
-  { id: 'cv',               icon: '📄', label: 'CV & LM'        },
-  { id: 'dashboard',        icon: '📊', label: 'Dashboard'       },
-  { id: 'profil',           icon: '👤', label: 'Profil'         },
-];
+import React, {
+  useState, useEffect, useRef,
+  createContext, useContext, useCallback,
+} from "react";
+import axiosInstance from "@/config/axiosInstance";
+import { API_ROUTES } from "@/config/routes";
+import { useT } from "../i18n";
 
+/* ==================== THEME ==================== */
+const ThemeContext = createContext({ theme: "light", toggleTheme: () => {} });
+
+export const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("app-theme");
+      if (saved) return saved;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return "light";
+  });
+  useEffect(() => {
+    localStorage.setItem("app-theme", theme);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+  const toggleTheme = () => setTheme((p) => (p === "light" ? "dark" : "light"));
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+export const useTheme = () => useContext(ThemeContext);
+
+/* ==================== HOOKS ==================== */
 function useDeadlineAlerts(user) {
   const [alerts, setAlerts] = useState([]);
-  const [emailSent, setEmailSent] = useState(false);
-
   useEffect(() => {
     if (!user?.id) { setAlerts([]); return; }
-
-    const checkDeadlines = async () => {
+    let cancelled = false;
+    const check = async () => {
       try {
-        const resUser = await fetch(`${API_BASE}/users/${user.id}?depth=0`);
-        const dataUser = await resUser.json();
-        const boursesSuivies = dataUser.bourses_choisies || [];
-        const nomsChoisis = boursesSuivies.map(b => b.nom?.toLowerCase().trim());
-
-        const resBourses = await fetch(`${API_BASE}/bourses?limit=100&depth=0`);
-        const dataBourses = await resBourses.json();
-        const toutesLesBourses = dataBourses.docs || [];
-
+        const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id));
         const now = new Date();
-        const parseDeadline = (val) => {
-          if (!val) return null;
-          if (typeof val === 'number') return new Date(val);
-          const s = String(val).trim();
-          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-            const [d, m, y] = s.split('/');
-            return new Date(`${y}-${m}-${d}`);
-          }
-          const d = new Date(s);
-          return isNaN(d) ? null : d;
-        };
-
-        const urgent = toutesLesBourses
-          .filter(b => nomsChoisis.includes(b.nom?.toLowerCase().trim()))
-          .map(b => {
-            const dl = parseDeadline(b.dateLimite);
-            if (!dl || isNaN(dl)) return null;
+        const urgent = (res.data.docs || [])
+          .map((b) => {
+            const raw = b.dateLimite || b.deadline || null;
+            if (!raw) return null;
+            const dl = new Date(raw);
+            if (isNaN(dl)) return null;
             const days = Math.round((dl - now) / 86400000);
-            return { nom: b.nom, pays: b.pays, deadline: dl, days };
+            if (days < 0 || days > 30) return null;
+            return { nom: b.nom, pays: b.pays || "", deadline: dl, days };
           })
-          .filter(b => b && b.days >= 0 && b.days <= 30);
-
-        setAlerts(urgent);
-
-        const critical = urgent.filter(a => a.days <= 7);
-        if (critical.length > 0 && !emailSent && user.email) {
-          setEmailSent(true);
-          fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text:    `Alerte deadline : ${critical.map(a => `${a.nom} (${a.days}j)`).join(', ')}`,
-              context: 'deadline_alert',
-              id:      user.id,
-              email:   user.email,
-              deadlines: critical,
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
+          .filter(Boolean)
+          .sort((a, b) => a.days - b.days);
+        if (!cancelled) setAlerts(urgent);
+      } catch (err) { console.error(err); }
     };
-
-    checkDeadlines();
-    const interval = setInterval(checkDeadlines, 3600000);
-    return () => clearInterval(interval);
+    check();
+    const iv = setInterval(check, 3600000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [user?.id]);
-
   return alerts;
 }
 
-function NotifPanel({ alerts, onClose, setView }) {
-  if (alerts.length === 0) return (
-    <div style={N.panel}>
-      <div style={N.panelHead}>
-        <span style={N.panelTitle}>Notifications</span>
-        <button style={N.closeBtn} onClick={onClose}>✕</button>
-      </div>
-      <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b' }}>
-        <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
-        <div style={{ fontSize: 13 }}>Aucune deadline urgente</div>
-      </div>
-    </div>
-  );
+function useStarredBourses(user) {
+  const [starred, setStarred] = useState([]);
+  const reload = useCallback(async () => {
+    if (!user?.id) { setStarred([]); return; }
+    try {
+      const res = await axiosInstance.get(API_ROUTES.favoris.byUser(user.id));
+      setStarred(res.data.docs?.[0]?.bourses || []);
+    } catch (err) { console.error(err); }
+  }, [user?.id]);
+  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    const h = () => reload();
+    window.addEventListener("favoris-updated", h);
+    return () => window.removeEventListener("favoris-updated", h);
+  }, [reload]);
+  return { starred, reload };
+}
 
+/* ==================== TOKENS ==================== */
+// Deux polices professionnelles uniquement :
+//   fSerif → Playfair Display  (titres, brand)
+//   fSans  → DM Sans           (tout le reste : UI, corps, labels, chiffres)
+const tokens = (theme) => ({
+  accent:    theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentInk: theme === "dark" ? "#8ec1e6" : "#004f8a",
+  ink:       theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:      theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:      theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:      theme === "dark" ? "#6d6b64" : "#9a9794",
+  paper:     theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:    theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule:      theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:  theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface:   theme === "dark" ? "#1a1912" : "#ffffff",
+  danger:    "#b4321f",
+  warn:      "#b06a12",
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+});
+
+/* ==================== ICONS ==================== */
+const Icon = {
+  Star: (p) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" {...p}>
+      <path d="M12 3.5l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.6 6.6 20.4l1-6.1L3.2 10l6.1-.9z"/>
+    </svg>
+  ),
+  StarFill: (p) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" {...p}>
+      <path d="M12 3.5l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.6 6.6 20.4l1-6.1L3.2 10l6.1-.9z"/>
+    </svg>
+  ),
+  Bell: (p) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2H4.5L6 16z"/><path d="M10 20a2 2 0 0 0 4 0"/>
+    </svg>
+  ),
+  Moon: (p) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...p}>
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
+    </svg>
+  ),
+  Sun: (p) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>
+    </svg>
+  ),
+  Globe: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...p}>
+      <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>
+    </svg>
+  ),
+  Close: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <path d="M6 6l12 12M18 6L6 18"/>
+    </svg>
+  ),
+  Arrow: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <path d="M5 12h14M13 6l6 6-6 6"/>
+    </svg>
+  ),
+  Chev: (p) => (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}>
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  ),
+  Logout: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4M6 12h12"/>
+    </svg>
+  ),
+  Menu: (p) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...p}>
+      <path d="M4 7h16M4 12h16M4 17h16"/>
+    </svg>
+  ),
+};
+
+/* ==================== NAV ITEMS ==================== */
+const getNavItems = (t) => [
+  { id: "Home",            label: t("navbar","Home")      || "Home" },
+  { id: "accueil",         label: t("navbar","chat")       || "Chat" },
+  { id: "bourses",         label: t("navbar","bourses")    || "Bourses" },
+  { id: "recommandations", label: "Recommandations" },
+  { id: "roadmap",         label: t("navbar","roadmap")    || "Roadmap" },
+  { id: "entretien",       label: t("navbar","entretien")  || "Entretien" },
+  { id: "cv",              label: "CV & LM" },
+  { id: "dashboard",       label: t("navbar","dashboard")  || "Dashboard" },
+  { id: "profil",          label: t("navbar","profil")     || "Profil" },
+];
+
+/* ==================== DROPDOWN PANELS ==================== */
+function StarPanel({ starred, onClose, setView, lang, c }) {
   return (
-    <div style={N.panel}>
-      <div style={N.panelHead}>
-        <span style={N.panelTitle}>Deadlines urgentes</span>
-        <button style={N.closeBtn} onClick={onClose}>✕</button>
-      </div>
-      <div style={{ padding: '8px 0' }}>
-        {alerts.map((a, i) => {
-          const color = a.days <= 7 ? '#f87171' : a.days <= 14 ? '#fbbf24' : '#a78bfa';
-          const bg    = a.days <= 7 ? 'rgba(239,68,68,0.08)' : a.days <= 14 ? 'rgba(245,158,11,0.08)' : 'rgba(139,92,246,0.08)';
-          return (
-            <div key={i} style={{ ...N.alertItem, background: bg, borderLeft: `3px solid ${color}` }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>{a.nom}</div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                  {a.pays} · {a.deadline.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' })}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color }}>{a.days}j</div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>restants</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <button
-          style={{ width: '100%', padding: '9px', borderRadius: 9, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8', fontSize: 13, cursor: 'pointer' }}
-          onClick={() => { setView('roadmap'); onClose(); }}
-        >
-          Voir la roadmap →
+    <div style={{
+      position:"absolute", top:"calc(100% + 6px)", right:0, width:380,
+      background:c.surface, border:`1px solid ${c.rule}`,
+      boxShadow:"0 20px 50px rgba(0,0,0,.18)", zIndex:400,
+    }}>
+      <div style={{ padding:"14px 18px", borderBottom:`1px solid ${c.rule}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div>
+          <div style={{ fontFamily:c.fSans, fontSize:10, color:c.ink3, fontWeight:600, letterSpacing:".16em", textTransform:"uppercase" }}>
+            {lang==="fr"?"Favoris":"Favorites"}
+          </div>
+          <div style={{ fontFamily:c.fSerif, fontSize:17, fontWeight:700, marginTop:2, color:c.ink }}>
+            {starred.length} {lang==="fr"?"opportunités suivies":"tracked opportunities"}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:c.ink3 }}>
+          <Icon.Close/>
         </button>
       </div>
+      {starred.length === 0 ? (
+        <div style={{ padding:"28px 20px", textAlign:"center", color:c.ink3, fontSize:13, fontFamily:c.fSans }}>
+          {lang==="fr"?"Aucun favori pour l'instant":"No favorites yet"}
+        </div>
+      ) : (
+        <div style={{ maxHeight:340, overflowY:"auto" }}>
+          {starred.map((b,i) => (
+            <div key={i} onClick={() => { setView("bourses"); onClose(); }}
+              style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", borderBottom: i<starred.length-1?`1px solid ${c.ruleSoft}`:"none", cursor:"pointer" }}
+              onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <span style={{ color:c.accent, marginTop:2 }}><Icon.StarFill/></span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink, lineHeight:1.3 }}>{b.nom}</div>
+                <div style={{ fontSize:10, color:c.ink3, marginTop:4, letterSpacing:".12em", textTransform:"uppercase", fontWeight:500, fontFamily:c.fSans }}>{b.pays}</div>
+              </div>
+              {b.lienOfficiel && (
+                <a href={b.lienOfficiel} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
+                  style={{ fontSize:10, color:c.accent, textDecoration:"none", letterSpacing:".16em", textTransform:"uppercase", fontWeight:600, padding:"4px 8px", border:`1px solid ${c.rule}`, fontFamily:c.fSans }}>
+                  {lang==="fr"?"Voir":"View"}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-const N = {
-  panel: {
-    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-    width: 300, background: '#0d0d22',
-    border: '1px solid rgba(99,102,241,0.25)',
-    borderRadius: 14, zIndex: 200,
-    boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-    overflow: 'hidden',
-  },
-  panelHead: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-  panelTitle: { fontSize: 13, fontWeight: 700, color: '#e2e8f0' },
-  closeBtn: { background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 15 },
-  alertItem: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    padding: '12px 16px', margin: '4px 8px', borderRadius: 10,
-  },
-};
-
-export default function Navbar({ view, setView, user, onLogout, serverStatus }) {
-  const [menuOpen,  setMenuOpen]  = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  const alerts = useDeadlineAlerts(user);
-  const badge  = alerts.length;
-
-  useEffect(() => {
-    if (!notifOpen) return;
-    const handler = (e) => {
-      if (!e.target.closest('.notif-wrapper')) setNotifOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [notifOpen]);
+function NotifPanel({ alerts, onClose, setView, onSelectBourse, lang, c }) {
+  const tone = (d) =>
+    d<=1 ? { col:c.danger, label:lang==="fr"?"critique":"critical" }
+    : d<=7 ? { col:c.warn, label:lang==="fr"?"urgent":"urgent" }
+    : { col:c.accent, label:lang==="fr"?"à venir":"upcoming" };
+  const dayTxt = (a) =>
+    a.days===0 ? (lang==="fr"?"Aujourd'hui":"Today")
+    : a.days===1 ? (lang==="fr"?"Demain":"Tomorrow")
+    : `${a.days} ${lang==="fr"?"jours":"days"}`;
 
   return (
-    <nav className="navbar">
-      {/* Brand */}
-      <div className="nav-brand" onClick={() => setView('accueil')} style={{ cursor: 'pointer' }}>
-        <span className="brand-icon">🌍</span>
-        <span className="brand-name">OppsTrack</span>
-        {user && <span className="brand-badge">Pro</span>}
+    <div style={{
+      position:"absolute", top:"calc(100% + 6px)", right:0, width:400,
+      background:c.surface, border:`1px solid ${c.rule}`,
+      boxShadow:"0 20px 50px rgba(0,0,0,.18)", zIndex:400,
+    }}>
+      <div style={{ padding:"14px 18px", borderBottom:`1px solid ${c.rule}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div>
+          <div style={{ fontFamily:c.fSans, fontSize:10, color:c.ink3, fontWeight:600, letterSpacing:".16em", textTransform:"uppercase" }}>
+            {lang==="fr"?"Échéances":"Deadlines"}
+          </div>
+          <div style={{ fontFamily:c.fSerif, fontSize:17, fontWeight:700, marginTop:2, color:c.ink }}>
+            {alerts.length} {lang==="fr"?"dans les 30 jours":"within 30 days"}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:c.ink3 }}>
+          <Icon.Close/>
+        </button>
       </div>
+      {alerts.length===0 ? (
+        <div style={{ padding:"32px 20px", textAlign:"center", color:c.ink3, fontSize:13, fontFamily:c.fSans }}>
+          {lang==="fr"?"Aucune deadline dans les 30 prochains jours":"No deadline in the next 30 days"}
+        </div>
+      ) : (
+        <div style={{ maxHeight:400, overflowY:"auto" }}>
+          {alerts.map((a,i) => {
+            const tn = tone(a.days);
+            return (
+              <div key={i}
+                onClick={() => { onSelectBourse(a.nom); setView("bourses"); onClose(); }}
+                style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"16px 18px", borderBottom:i<alerts.length-1?`1px solid ${c.ruleSoft}`:"none", cursor:"pointer" }}
+                onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{ width:3, alignSelf:"stretch", background:tn.col }}/>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                    <span style={{ fontFamily:c.fSans, fontSize:9.5, fontWeight:700, color:tn.col, letterSpacing:".16em", textTransform:"uppercase" }}>{tn.label}</span>
+                    <span style={{ width:3, height:3, background:c.ink4, borderRadius:"50%" }}/>
+                    <span style={{ fontSize:9.5, color:c.ink3, letterSpacing:".14em", fontWeight:500, textTransform:"uppercase", fontFamily:c.fSans }}>{a.pays}</span>
+                  </div>
+                  <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink, lineHeight:1.3 }}>{a.nom}</div>
+                  <div style={{ fontSize:11, color:c.ink3, marginTop:4, fontFamily:c.fSans }}>
+                    {a.deadline.toLocaleDateString(lang==="fr"?"fr-FR":"en-GB",{day:"2-digit",month:"short",year:"numeric"})}
+                  </div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0, minWidth:78 }}>
+                  <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:700, color:tn.col, lineHeight:1 }}>{dayTxt(a)}</div>
+                  <div style={{ fontSize:9, color:c.ink4, marginTop:4, letterSpacing:".14em", textTransform:"uppercase", fontFamily:c.fSans }}>
+                    {lang==="fr"?"restants":"remaining"}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-      {/* Desktop nav */}
-      <div className="nav-items desktop-nav">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            className={`nav-item ${view === item.id ? 'active' : ''} ${item.id === 'recommandations' ? 'nav-item-reco' : ''}`}
-            onClick={() => setView(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </button>
-        ))}
-      </div>
+/* ==================== NAVBAR ==================== */
+export default function Navbar({
+  view, setView, user, onLogout,
+  serverStatus, starCount, onOpenBourse, onToggleChat,
+}) {
+  const { t, lang, setLang } = useT();
+  const { theme, toggleTheme } = useTheme();
+  const c = tokens(theme);
 
-      {/* Right zone */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
+  /* ─── SCROLL : transparent dans le hero (< 100vh), solide après ─── */
+ /* ─── SCROLL : transparent uniquement sur Home ─── */
+const [pastHero, setPastHero] = useState(false);
 
-        {/* Cloche notifications */}
-        {user && (
-          <div className="notif-wrapper" style={{ position: 'relative' }}>
-            <button
-              onClick={() => setNotifOpen(o => !o)}
-              style={{
-                position: 'relative', background: 'none', border: 'none',
-                cursor: 'pointer', padding: '6px', borderRadius: 8,
-                color: badge > 0 ? '#fbbf24' : '#64748b',
-                fontSize: 18, lineHeight: 1,
-                transition: 'color 0.2s',
-              }}
-              title={badge > 0 ? `${badge} deadline(s) urgente(s)` : 'Notifications'}
-            >
-              🔔
-              {badge > 0 && (
-                <span style={{
-                  position: 'absolute', top: 2, right: 2,
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: '#ef4444', color: '#fff',
-                  fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid #0a0a14',
-                  animation: badge > 0 ? 'pulse 2s infinite' : 'none',
-                }}>
-                  {badge > 9 ? '9+' : badge}
+useEffect(() => {
+  if (view !== "Home") {
+    setPastHero(true);
+    return;
+  }
+  const check = () => {
+    setPastHero(window.scrollY > window.innerHeight - 120);
+  };
+  check();
+  window.addEventListener("scroll", check, { passive: true });
+  return () => window.removeEventListener("scroll", check);
+}, [view]);
+
+const solid = view !== "Home" ? true : pastHero;
+  const fg      = solid ? c.ink    : "#ffffff";
+  const fgMuted = solid ? c.ink3   : "rgba(255,255,255,.6)";
+  const ruleLine = solid ? c.rule  : "rgba(255,255,255,.1)";
+  const accent  = solid ? c.accent : "#4c9fd9";
+
+  /* ─── Panels state ─── */
+  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [starOpen,  setStarOpen]  = useState(false);
+  const [userOpen,  setUserOpen]  = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  // Dans Navbar, après les useState et avant le return
+const [lastScrollY, setLastScrollY] = useState(0);
+const [showNavbar, setShowNavbar] = useState(true);
+
+useEffect(() => {
+  const handleScroll = () => {
+    const currentScrollY = window.scrollY;
+    if (currentScrollY > lastScrollY && currentScrollY > 100) {
+      // Scroll vers le bas → cacher la navbar
+      setShowNavbar(false);
+    } else if (currentScrollY < lastScrollY) {
+      // Scroll vers le haut → montrer la navbar
+      setShowNavbar(true);
+    }
+    setLastScrollY(currentScrollY);
+  };
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  return () => window.removeEventListener('scroll', handleScroll);
+}, [lastScrollY]);
+
+  const alerts = useDeadlineAlerts(user);
+  const { starred, reload } = useStarredBourses(user);
+  const navItems   = getNavItems(t);
+  const notifBadge = alerts.length;
+  const badge      = starCount ?? starred.length;
+
+  const wrapRef = useRef(null);
+  const closeAll = () => { setStarOpen(false); setNotifOpen(false); setUserOpen(false); };
+
+  /* Avatar */
+  useEffect(() => {
+    (async () => {
+      if (!user?.avatar) { setAvatarUrl(null); return; }
+      try {
+        const id = typeof user.avatar === "string" ? user.avatar : user.avatar?.id;
+        if (!id) { setAvatarUrl(null); return; }
+        const res = await axiosInstance.get(`/api/media/${id}`);
+        setAvatarUrl(res.data?.url || null);
+      } catch { setAvatarUrl(null); }
+    })();
+  }, [user?.avatar]);
+
+  /* Outside click */
+  useEffect(() => {
+    if (!notifOpen && !starOpen && !userOpen) return;
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) closeAll(); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [notifOpen, starOpen, userOpen]);
+
+  useEffect(() => { reload(); }, [view, reload]);
+
+  const userDisplay = user?.name || user?.email?.split("@")[0] || "";
+  const userInitial = ((user?.name || user?.email || "U")[0] || "U").toUpperCase();
+
+  const utilBase = {
+    background: "transparent", border: "none", cursor: "pointer",
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "0 11px", height: 34, fontSize: 11, fontWeight: 500,
+    letterSpacing: ".08em", textTransform: "uppercase",
+    fontFamily: c.fSans, color: fgMuted,
+    borderLeft: `1px solid ${ruleLine}`,
+    transition: "color .35s, border-color .35s",
+  };
+
+  const chip = (bg) => ({
+    marginLeft: 3, fontFamily: c.fSans, fontSize: 10,
+    padding: "1px 6px", background: bg, color: "#fff",
+    borderRadius: 2, fontWeight: 700,
+  });
+
+  return (
+    <>
+      {/* ── Google Fonts : Playfair Display + DM Sans ── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+        .ot-nav {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+          transition: background .45s ease, box-shadow .45s ease;
+          will-change: background;
+        }
+        .ot-nav.solid {
+          background: ${c.paper} !important;
+          box-shadow: 0 1px 0 ${c.rule};
+        }
+        .ot-nav.ghost {
+          background: transparent !important;
+          box-shadow: none;
+        }
+
+        .ot-strip {
+          transition: background .45s ease, border-color .45s ease;
+          border-bottom: 1px solid;
+        }
+        .ot-strip.solid { background:${c.paper2} !important; border-color:${c.rule} !important; }
+        .ot-strip.ghost { background:rgba(0,0,0,.28) !important; border-color:rgba(255,255,255,.1) !important; }
+
+        .ot-main-tier {
+          border-bottom: 1px solid;
+          transition: border-color .45s ease, background .45s ease;
+        }
+        .ot-main-tier.solid { border-color:${c.rule}; background: ${c.paper}; }
+        .ot-main-tier.ghost { border-color:rgba(255,255,255,.1); background: transparent; }
+
+        .ot-item {
+          position: relative; background: transparent; border: none; cursor: pointer;
+          padding: 0 17px; height: 100%;
+          font-family: ${c.fSans}; font-size: 14px; font-weight: 400; letter-spacing: .01em;
+          display: inline-flex; align-items: center;
+          white-space: nowrap;
+          transition: color .3s ease;
+        }
+        .ot-item .ul {
+          position: absolute; left: 17px; right: 17px; bottom: 0;
+          height: 2px; background: #4c9fd9;
+          transform: scaleX(0); transform-origin: left;
+          transition: transform .22s ease;
+        }
+        .ot-item:hover .ul, .ot-item.on .ul { transform: scaleX(1); }
+        .ot-item.on { font-weight: 600; }
+
+        .ot-util:hover { color: ${fg} !important; }
+
+        .ot-cta {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 9px 20px; border: none; cursor: pointer;
+          font-family: ${c.fSans}; font-size: 11px; font-weight: 700;
+          letter-spacing: .18em; text-transform: uppercase;
+          background: ${c.accent}; color: #fff;
+          transition: background .2s, transform .15s, opacity .4s;
+        }
+        .ot-cta:hover { background: ${c.accentInk}; transform: translateY(-1px); }
+
+        @media(max-width:1080px){
+          .ot-desktop-nav { display:none!important; }
+          .ot-util-label  { display:none!important; }
+          .ot-hamburger   { display:inline-flex!important; }
+        }
+      `}</style>
+
+      <header 
+  ref={wrapRef} 
+  className={`ot-nav ${solid ? "solid" : "ghost"} ${!showNavbar ? "hidden" : ""}`}
+  style={{
+    transform: showNavbar ? 'translateY(0)' : 'translateY(-100%)',
+    transition: 'transform 0.3s ease-in-out',
+  }}
+>
+
+        {/* ══════════ STRIP ══════════ */}
+        <div className={`ot-strip ${solid ? "solid" : "ghost"}`}>
+          <div style={{
+            maxWidth:1440, margin:"0 auto", padding:"0 40px",
+            display:"flex", alignItems:"center", height:34,
+          }}>
+       
+            
+
+            {/* right utils */}
+            <div style={{ marginLeft:"auto", display:"flex", alignItems:"center" }}>
+
+              {/* Lang */}
+              <button className="ot-util" style={utilBase} onClick={()=>setLang(lang==="fr"?"en":"fr")}>
+                <Icon.Globe style={{opacity:.85}}/>
+                <span className="ot-util-label">{lang.toUpperCase()} / {lang==="fr"?"EN":"FR"}</span>
+              </button>
+
+              {/* Theme */}
+              <button className="ot-util" style={utilBase} onClick={toggleTheme}>
+                {theme==="light" ? <Icon.Moon/> : <Icon.Sun/>}
+                <span className="ot-util-label">
+                  {theme==="light" ? (lang==="fr"?"Sombre":"Dark") : (lang==="fr"?"Clair":"Light")}
+                </span>
+              </button>
+
+              {/* Favoris */}
+              {user && (
+                <div style={{ position:"relative" }}>
+                  <button className="ot-util" style={utilBase}
+                    onClick={()=>{ closeAll(); setStarOpen(o=>!o); }}>
+                    <Icon.Star/>
+                    <span className="ot-util-label">{lang==="fr"?"Favoris":"Favorites"}</span>
+                    {badge>0 && <span style={chip(solid?c.ink:"rgba(255,255,255,.35)")}>{badge>99?"99+":badge}</span>}
+                  </button>
+                  {starOpen && <StarPanel starred={starred} onClose={()=>setStarOpen(false)} setView={setView} lang={lang} c={c}/>}
+                </div>
+              )}
+
+              {/* Notifications */}
+              {user && (
+                <div style={{ position:"relative" }}>
+                  <button className="ot-util" style={utilBase}
+                    onClick={()=>{ closeAll(); setNotifOpen(o=>!o); }}>
+                    <Icon.Bell/>
+                    <span className="ot-util-label">{lang==="fr"?"Alertes":"Alerts"}</span>
+                    {notifBadge>0 && <span style={chip(c.danger)}>{notifBadge>99?"99+":notifBadge}</span>}
+                  </button>
+                  {notifOpen && (
+                    <NotifPanel alerts={alerts} onClose={()=>setNotifOpen(false)} setView={setView}
+                      onSelectBourse={nom=>{ if(onOpenBourse)onOpenBourse(nom); else setView("bourses"); }}
+                      lang={lang} c={c}/>
+                  )}
+                </div>
+              )}
+
+              {/* User / Guest */}
+              {user ? (
+                <div style={{ position:"relative" }}>
+                  <button className="ot-util" style={{ ...utilBase, paddingRight:14 }}
+                    onClick={()=>{ closeAll(); setUserOpen(o=>!o); }}>
+                    <span style={{
+                      width:22, height:22, borderRadius:"50%", background:accent, color:"#fff",
+                      display:"inline-flex", alignItems:"center", justifyContent:"center",
+                      overflow:"hidden", fontFamily:c.fSans, fontWeight:700, fontSize:10,
+                    }}>
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt={userDisplay} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                        : userInitial}
+                    </span>
+                    <span className="ot-util-label" style={{ textTransform:"none", letterSpacing:0, fontWeight:500, color:fgMuted }}>
+                      {userDisplay.split(" ")[0]}
+                    </span>
+                    <Icon.Chev style={{ color:fgMuted }}/>
+                  </button>
+
+                  {userOpen && (
+                    <div style={{
+                      position:"absolute", top:"calc(100% + 6px)", right:0, width:260,
+                      background:c.surface, border:`1px solid ${c.rule}`,
+                      boxShadow:"0 20px 50px rgba(0,0,0,.18)", zIndex:400,
+                    }}>
+                      <div style={{ padding:"16px 18px", borderBottom:`1px solid ${c.rule}`, display:"flex", gap:12, alignItems:"center" }}>
+                        <div style={{ width:42, height:42, borderRadius:"50%", background:accent, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:c.fSans, fontWeight:700, fontSize:16, overflow:"hidden" }}>
+                          {avatarUrl ? <img src={avatarUrl} alt={userDisplay} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : userInitial}
+                        </div>
+                        <div style={{ minWidth:0, flex:1 }}>
+                          <div style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:700, color:c.ink }}>{userDisplay}</div>
+                          <div style={{ fontSize:11, color:c.ink3, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:c.fSans }}>{user.email}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding:"6px 0" }}>
+                        {(lang==="fr"
+                          ? ["Mon profil","Mes candidatures","Préférences","Confidentialité"]
+                          : ["My profile","My applications","Preferences","Privacy"]
+                        ).map((x,i) => (
+                          <a key={i} href="#"
+                            onClick={e=>{ e.preventDefault(); setView("profil"); setUserOpen(false); }}
+                            onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
+                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", fontSize:13, color:c.ink2, textDecoration:"none", fontFamily:c.fSans }}>
+                            <span>{x}</span><Icon.Arrow style={{color:c.ink4}}/>
+                          </a>
+                        ))}
+                      </div>
+                      <div style={{ borderTop:`1px solid ${c.ruleSoft}` }}>
+                        <button onClick={()=>{ setUserOpen(false); onLogout?.(); }}
+                          onMouseEnter={e=>e.currentTarget.style.background=c.paper2}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 18px", border:"none", background:"transparent", fontSize:13, color:c.danger, cursor:"pointer", fontFamily:c.fSans }}>
+                          <span>{lang==="fr"?"Déconnexion":"Sign out"}</span><Icon.Logout/>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span style={{ ...utilBase, cursor:"default" }}>
+                  <span style={{ width:6, height:6, borderRadius:"50%", background:accent }}/>
+                  <span className="ot-util-label" style={{ color:fgMuted }}>{t("navbar","guest")||"Visiteur"}</span>
                 </span>
               )}
-            </button>
-            {notifOpen && (
-              <NotifPanel
-                alerts={alerts}
-                onClose={() => setNotifOpen(false)}
-                setView={setView}
+            </div>
+          </div>
+        </div>
+
+        {/* ══════════ MAIN TIER ══════════ */}
+        <div className={`ot-main-tier ${solid?"solid":"ghost"}`}
+          style={{ maxWidth:1440, margin:"0 auto", padding:"0 40px", display:"flex", alignItems:"stretch", height:76, background:"transparent", width:"100%" }}>
+
+          {/* Brand */}
+          <a href="#" onClick={e=>{ e.preventDefault(); setView("Home"); }}
+            style={{
+              display:"flex", alignItems:"center", gap:14, textDecoration:"none",
+              paddingRight:32,
+              borderRight:`1px solid ${ruleLine}`,
+              transition:"border-color .5s",
+            }}>
+            <div style={{ width:44, height:44, display:"grid", placeItems:"center", flexShrink:0 }}>
+              <img src="/LOGO (2).png" alt="OppsTrack"
+                style={{
+                  maxWidth:"100%", maxHeight:"100%", objectFit:"contain",
+                  filter: solid ? "none" : "brightness(0) invert(1)",
+                  transition:"filter .5s",
+                }}
+                onError={e=>{ e.target.style.display="none"; }}
               />
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", lineHeight:1.15 }}>
+              <span style={{
+                fontFamily:c.fSerif, fontSize:24, fontWeight:700, letterSpacing:"-.01em",
+                color:fg, transition:"color .5s",
+              }}>OppsTrack</span>
+              <span style={{
+                fontSize:9.5, fontWeight:600, letterSpacing:".18em",
+                textTransform:"uppercase", marginTop:3,
+                color:fgMuted, transition:"color .5s",
+                fontFamily:c.fSans,
+              }}>
+                {t(lang==="fr"?"Opportunités · Bourses · Mobilité":"Opportunities · Scholarships · Mobility")}
+              </span>
+            </div>
+          </a>
+
+          {/* Desktop nav */}
+          <nav className="ot-desktop-nav" style={{ display:"flex", alignItems:"stretch", marginLeft:28, flex:1 }}>
+            {navItems.map(item => (
+              <button key={item.id}
+                className={`ot-item${view===item.id?" on":""}`}
+                style={{ color: view===item.id ? (solid?c.ink:"#fff") : fgMuted }}
+                onClick={()=>{ setView(item.id); closeAll(); }}>
+                <span>{item.label}</span>
+                <span className="ul"/>
+              </button>
+            ))}
+          </nav>
+
+          {/* Right: CTA + hamburger */}
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginLeft:"auto" }}>
+            
+
+            <button className="ot-hamburger"
+              onClick={()=>setMenuOpen(!menuOpen)}
+              style={{
+                display:"none", alignItems:"center", justifyContent:"center",
+                background:"transparent", border:`1px solid ${ruleLine}`,
+                color:fg, cursor:"pointer", width:36, height:36, padding:0,
+                transition:"border-color .5s, color .5s",
+              }}
+              aria-label="menu">
+              {menuOpen ? <Icon.Close/> : <Icon.Menu/>}
+            </button>
+          </div>
+        </div>
+
+        {/* ══════════ MOBILE MENU ══════════ */}
+        {menuOpen && (
+          <div style={{
+            background:c.paper, borderBottom:`1px solid ${c.rule}`,
+            padding:"16px 24px 24px",
+            display:"flex", flexDirection:"column", gap:2,
+            boxShadow:"0 16px 40px rgba(20,15,5,.12)",
+          }}>
+            {navItems.map(item => (
+              <button key={item.id}
+                onClick={()=>{ setView(item.id); setMenuOpen(false); }}
+                style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  padding:"14px 4px", border:"none", borderBottom:`1px solid ${c.ruleSoft}`,
+                  background:"transparent",
+                  color:view===item.id?c.accent:c.ink,
+                  fontFamily:c.fSans, fontSize:16,
+                  fontWeight:view===item.id?700:400,
+                  cursor:"pointer", textAlign:"left",
+                }}>
+                <span>{item.label}</span><Icon.Arrow style={{color:c.ink4}}/>
+              </button>
+            ))}
+            {user && (
+              <button onClick={()=>{ onLogout?.(); setMenuOpen(false); }}
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 4px", border:"none", background:"transparent", color:c.danger, fontSize:14, cursor:"pointer", marginTop:8, letterSpacing:".08em", textTransform:"uppercase", fontWeight:600, fontFamily:c.fSans }}>
+                <Icon.Logout/>{t("navbar","logout")||"Déconnexion"}
+              </button>
             )}
           </div>
         )}
-
-        {/* User pill */}
-        <div className="nav-user">
-          {user ? (
-            <div className="user-pill">
-              <div className="user-avatar">{(user.name || user.email || 'U')[0].toUpperCase()}</div>
-              <span className="user-name">{user.name || user.email?.split('@')[0]}</span>
-              <button className="logout-btn" onClick={onLogout} title="Déconnexion">↩</button>
-            </div>
-          ) : (
-            <div className="guest-pill">
-              <span className="guest-dot"></span>
-              <span>Invité</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile hamburger */}
-      <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-        {menuOpen ? '✕' : '☰'}
-      </button>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="mobile-menu">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              className={`mobile-nav-item ${view === item.id ? 'active' : ''}`}
-              onClick={() => { setView(item.id); setMenuOpen(false); }}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-          {user && (
-            <button className="mobile-nav-item logout" onClick={() => { onLogout(); setMenuOpen(false); }}>
-              <span>↩</span><span>Déconnexion</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      <style>{`
-        .navbar {
-          position: sticky; top: 0; z-index: 100;
-          display: flex; align-items: center; gap: 8px;
-          padding: 0 24px; height: 60px;
-          background: rgba(10,10,20,0.95);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(99,102,241,0.2);
-          box-shadow: 0 4px 30px rgba(0,0,0,0.3);
-        }
-        .nav-brand { display:flex; align-items:center; gap:8px; margin-right:16px; flex-shrink:0; }
-        .brand-icon { font-size:22px; }
-        .brand-name {
-          font-size:1.1rem; font-weight:800; letter-spacing:-0.5px;
-          background:linear-gradient(135deg,#818cf8,#c084fc);
-          -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-        }
-        .brand-badge {
-          background:linear-gradient(135deg,#6366f1,#8b5cf6);
-          color:white; font-size:9px; font-weight:700;
-          padding:2px 6px; border-radius:8px; letter-spacing:1px; text-transform:uppercase;
-        }
-        .desktop-nav { display:flex; gap:2px; flex:1; }
-        .nav-item {
-          display:flex; align-items:center; gap:6px;
-          padding:6px 12px; border-radius:8px; border:none;
-          background:transparent; color:#94a3b8;
-          font-size:13px; font-weight:500; cursor:pointer;
-          transition:all 0.2s; white-space:nowrap;
-        }
-        .nav-item:hover { background:rgba(99,102,241,0.15); color:#e2e8f0; }
-        .nav-item.active { background:rgba(99,102,241,0.25); color:#818cf8; }
-        .nav-item-reco {
-          background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1));
-          border: 1px solid rgba(99,102,241,0.2);
-          color: #a78bfa !important;
-        }
-        .nav-item-reco:hover {
-          background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25)) !important;
-          border-color: rgba(99,102,241,0.4);
-        }
-        .nav-item-reco.active {
-          background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(139,92,246,0.35)) !important;
-          border-color: rgba(139,92,246,0.5);
-          color: #c084fc !important;
-        }
-        .nav-icon { font-size:15px; }
-        .nav-user { flex-shrink:0; }
-        .user-pill {
-          display:flex; align-items:center; gap:8px;
-          padding:4px 12px 4px 4px;
-          background:rgba(99,102,241,0.15);
-          border:1px solid rgba(99,102,241,0.3);
-          border-radius:24px;
-        }
-        .user-avatar {
-          width:28px; height:28px; border-radius:50%;
-          background:linear-gradient(135deg,#6366f1,#8b5cf6);
-          display:flex; align-items:center; justify-content:center;
-          font-size:12px; font-weight:700; color:white;
-        }
-        .user-name { font-size:13px; color:#c4b5fd; font-weight:500; }
-        .logout-btn { background:none; border:none; color:#64748b; cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; transition:color 0.2s; }
-        .logout-btn:hover { color:#ef4444; }
-        .guest-pill {
-          display:flex; align-items:center; gap:6px;
-          padding:4px 12px; background:rgba(255,255,255,0.05);
-          border:1px solid rgba(255,255,255,0.1); border-radius:24px;
-          font-size:13px; color:#64748b;
-        }
-        .guest-dot { width:6px; height:6px; border-radius:50%; background:#64748b; }
-        .hamburger { display:none; background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; }
-        .mobile-menu {
-          display:none; position:fixed; top:60px; left:0; right:0;
-          background:rgba(10,10,20,0.98); padding:16px;
-          border-bottom:1px solid rgba(99,102,241,0.2);
-          flex-direction:column; gap:4px; z-index:99;
-        }
-        .mobile-nav-item {
-          display:flex; align-items:center; gap:12px;
-          padding:12px 16px; border-radius:10px; border:none;
-          background:transparent; color:#94a3b8;
-          font-size:15px; cursor:pointer; text-align:left; transition:all 0.2s;
-        }
-        .mobile-nav-item:hover, .mobile-nav-item.active { background:rgba(99,102,241,0.2); color:#818cf8; }
-        .mobile-nav-item.logout { color:#ef4444; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.15)} }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width:768px) {
-          .desktop-nav { display:none; }
-          .hamburger { display:block; }
-          .mobile-menu { display:flex; }
-          .nav-user { display:none; }
-        }
-      `}</style>
-    </nav>
+      </header>
+    </>
   );
 }

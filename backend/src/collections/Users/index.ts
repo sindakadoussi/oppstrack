@@ -13,169 +13,181 @@ export const Users: CollectionConfig = {
     delete: () => true,
   },
   fields: [
-    { name: 'name',    type: 'text' },
-    { name: 'pays',    type: 'text' },
-    { name: 'niveau',  type: 'text' },
-    { name: 'domaine', type: 'text' },
+    { name: 'name',    label: 'Nom complet',    type: 'text' },
+    { name: 'pays',    label: 'Pays',           type: 'text' },
+    { name: 'niveau',  label: 'Niveau',         type: 'text' },
+    { name: 'domaine', label: 'Domaine',        type: 'text' },
 
     // ── Informations personnelles ──────────────────────────────────────
-    { name: 'phone',               type: 'text' },
-    { name: 'nationality',         type: 'text' },
-    { name: 'countryOfResidence',  type: 'text' },
+    { name: 'phone',               label: 'Téléphone',          type: 'text' },
+    { name: 'nationality',         label: 'Nationalité',        type: 'text' },
+    { name: 'countryOfResidence',  label: 'Pays de résidence',  type: 'text' },
 
     // ── Liens professionnels ───────────────────────────────────────────
-    { name: 'linkedin',  type: 'text' },
-    { name: 'github',    type: 'text' },
-    { name: 'portfolio', type: 'text' },
+    { name: 'linkedin',  label: 'LinkedIn',          type: 'text' },
+    { name: 'github',    label: 'GitHub',             type: 'text' },
+    { name: 'portfolio', label: 'Portfolio / Site web', type: 'text' },
 
     // ── Formation ─────────────────────────────────────────────────────
-    { name: 'currentLevel',      type: 'text' },
-    { name: 'fieldOfStudy',      type: 'text' },
-    { name: 'institution',       type: 'text' },
-    { name: 'gpa',               type: 'text' },
-    { name: 'graduationYear',    type: 'text' },
-    { name: 'targetDegree',      type: 'text' },
-    { name: 'motivationSummary', type: 'textarea' },
+    { name: 'currentLevel',      label: 'Niveau actuel',       type: 'text' },
+    { name: 'fieldOfStudy',      label: "Domaine d'études",    type: 'text' },
+    { name: 'institution',       label: 'Établissement',       type: 'text' },
+    { name: 'gpa',               label: 'Moyenne (sur 20)',    type: 'text' },
+    { name: 'graduationYear',    label: 'Année de diplôme',    type: 'text' },
+    { name: 'targetDegree',      label: 'Niveau visé',         type: 'text' },
+    { name: 'motivationSummary', label: 'Résumé de motivation', type: 'textarea' },
 
     // ── Historique académique ──────────────────────────────────────────
     {
       name: 'academicHistory',
+      label: 'Historique académique',
       type: 'array',
       fields: [
-        { name: 'degree',      type: 'text' },
-        { name: 'institution', type: 'text' },
-        { name: 'field',       type: 'text' },
-        { name: 'year',        type: 'text' },
-        { name: 'grade',       type: 'text' },
+        { name: 'degree',      label: 'Diplôme',       type: 'text' },
+        { name: 'institution', label: 'Établissement', type: 'text' },
+        { name: 'field',       label: 'Domaine',       type: 'text' },
+        { name: 'year',        label: 'Année',         type: 'text' },
+        { name: 'grade',       label: 'Mention / Note', type: 'text' },
       ],
     },
 
-    // ── Expériences professionnelles (enrichi) ─────────────────────────
+    // ── Expériences professionnelles ───────────────────────────────────
     {
       name: 'workExperience',
+      label: 'Expériences professionnelles',
       type: 'array',
       fields: [
-        { name: 'type',         type: 'text' },
-        { name: 'position',     type: 'text' },
-        { name: 'company',      type: 'text' },
-        { name: 'city',         type: 'text' },
-        { name: 'startDate',    type: 'text' },
-        { name: 'endDate',      type: 'text' },
-        { name: 'description',  type: 'textarea' },
-        { name: 'technologies', type: 'text' },
+        { name: 'type',         label: 'Type (Stage / Emploi / Freelance)', type: 'text' },
+        { name: 'position',     label: 'Poste',                             type: 'text' },
+        { name: 'company',      label: 'Entreprise',                        type: 'text' },
+        { name: 'city',         label: 'Ville',                             type: 'text' },
+        { name: 'startDate',    label: 'Date de début',                     type: 'text' },
+        { name: 'endDate',      label: 'Date de fin',                       type: 'text' },
+        { name: 'description',  label: 'Description des missions',          type: 'textarea' },
+        { name: 'technologies', label: 'Technologies utilisées',            type: 'text' },
       ],
     },
 
-    // ── Projets académiques (NOUVEAU) ──────────────────────────────────
+    // ── Projets académiques ────────────────────────────────────────────
     {
       name: 'academicProjects',
+      label: 'Projets académiques',
       type: 'array',
       fields: [
-        { name: 'title',        type: 'text' },
-        { name: 'type',         type: 'text' },
-        { name: 'supervisor',   type: 'text' },
-        { name: 'year',         type: 'text' },
-        { name: 'startDate',    type: 'text' },
-        { name: 'endDate',      type: 'text' },
-        { name: 'description',  type: 'textarea' },
-        { name: 'technologies', type: 'text' },
-        { name: 'link',         type: 'text' },
-        { name: 'teamSize',     type: 'text' },
-        { name: 'impact',       type: 'text' },
+        { name: 'title',        label: 'Titre du projet',           type: 'text' },
+        { name: 'type',         label: 'Type de projet',            type: 'text' },
+        { name: 'supervisor',   label: 'Encadrant / Professeur',    type: 'text' },
+        { name: 'year',         label: 'Année',                     type: 'text' },
+        { name: 'startDate',    label: 'Date de début',             type: 'text' },
+        { name: 'endDate',      label: 'Date de fin',               type: 'text' },
+        { name: 'description',  label: 'Description du projet',     type: 'textarea' },
+        { name: 'technologies', label: 'Langages & outils utilisés', type: 'text' },
+        { name: 'link',         label: 'Lien GitHub / Démo',        type: 'text' },
+        { name: 'teamSize',     label: "Taille de l'équipe",        type: 'text' },
+        { name: 'impact',       label: 'Impact / Résultats',        type: 'text' },
       ],
     },
 
-    // ── Certifications (NOUVEAU) ───────────────────────────────────────
+    // ── Certifications ─────────────────────────────────────────────────
     {
       name: 'certifications',
+      label: 'Certifications & formations courtes',
       type: 'array',
       fields: [
-        { name: 'name',       type: 'text' },
-        { name: 'issuer',     type: 'text' },
-        { name: 'date',       type: 'text' },
-        { name: 'credential', type: 'text' },
+        { name: 'name',       label: 'Certification',          type: 'text' },
+        { name: 'issuer',     label: 'Organisme émetteur',     type: 'text' },
+        { name: 'date',       label: "Date d'obtention",       type: 'text' },
+        { name: 'credential', label: 'ID / Lien vérification', type: 'text' },
       ],
     },
 
-    // ── Bénévolat & associations (NOUVEAU) ────────────────────────────
+    // ── Bénévolat & associations ───────────────────────────────────────
     {
       name: 'volunteerWork',
+      label: 'Bénévolat & associations',
       type: 'array',
       fields: [
-        { name: 'role',         type: 'text' },
-        { name: 'organization', type: 'text' },
-        { name: 'startDate',    type: 'text' },
-        { name: 'endDate',      type: 'text' },
-        { name: 'description',  type: 'textarea' },
+        { name: 'role',         label: 'Rôle',          type: 'text' },
+        { name: 'organization', label: 'Organisation',  type: 'text' },
+        { name: 'startDate',    label: 'Début',         type: 'text' },
+        { name: 'endDate',      label: 'Fin',           type: 'text' },
+        { name: 'description',  label: 'Description',   type: 'textarea' },
       ],
     },
 
-    // ── Publications scientifiques (NOUVEAU) ──────────────────────────
+    // ── Publications scientifiques ─────────────────────────────────────
     {
       name: 'publications',
+      label: 'Publications scientifiques',
       type: 'array',
       fields: [
-        { name: 'title',   type: 'text' },
-        { name: 'venue',   type: 'text' },
-        { name: 'year',    type: 'text' },
-        { name: 'authors', type: 'text' },
+        { name: 'title',   label: 'Titre complet',        type: 'text' },
+        { name: 'venue',   label: 'Revue / Conférence',   type: 'text' },
+        { name: 'year',    label: 'Année',                type: 'text' },
+        { name: 'authors', label: 'Co-auteurs',           type: 'text' },
       ],
     },
 
-    // ── Distinctions & prix (NOUVEAU) ─────────────────────────────────
+    // ── Distinctions & prix ────────────────────────────────────────────
     {
       name: 'awards',
+      label: 'Distinctions & prix',
       type: 'array',
       fields: [
-        { name: 'title',        type: 'text' },
-        { name: 'organization', type: 'text' },
-        { name: 'year',         type: 'text' },
-        { name: 'description',  type: 'text' },
+        { name: 'title',        label: 'Titre du prix / distinction', type: 'text' },
+        { name: 'organization', label: 'Organisation',                type: 'text' },
+        { name: 'year',         label: 'Année',                       type: 'text' },
+        { name: 'description',  label: 'Description',                 type: 'text' },
       ],
     },
 
     // ── Langues ───────────────────────────────────────────────────────
     {
       name: 'languages',
+      label: 'Langues',
       type: 'array',
       fields: [
-        { name: 'language',    type: 'text' },
-        { name: 'level',       type: 'text' },
-        { name: 'certificate', type: 'text' },
+        { name: 'language',    label: 'Langue',       type: 'text' },
+        { name: 'level',       label: 'Niveau CECRL', type: 'text' },
+        { name: 'certificate', label: 'Certificat',   type: 'text' },
       ],
     },
 
-    // ── Compétences (enrichi) ─────────────────────────────────────────
+    // ── Compétences ────────────────────────────────────────────────────
     {
       name: 'skills',
+      label: 'Compétences techniques',
       type: 'array',
       fields: [
-        { name: 'skill',    type: 'text' },
-        { name: 'level',    type: 'text' },
-        { name: 'category', type: 'text' },
+        { name: 'skill',    label: 'Compétence / Outil', type: 'text' },
+        { name: 'level',    label: 'Niveau',             type: 'text' },
+        { name: 'category', label: 'Catégorie',          type: 'text' },
       ],
     },
 
     // ── Objectifs ─────────────────────────────────────────────────────
     {
       name: 'targetCountries',
+      label: 'Pays cibles',
       type: 'array',
-      fields: [{ name: 'country', type: 'text' }],
+      fields: [{ name: 'country', label: 'Pays', type: 'text' }],
     },
     {
       name: 'targetFields',
+      label: 'Domaines visés',
       type: 'array',
-      fields: [{ name: 'field', type: 'text' }],
+      fields: [{ name: 'field', label: 'Domaine', type: 'text' }],
     },
 
     // ── Progression bourses ───────────────────────────────────────────
     {
       name: 'progression',
+      label: 'Progression bourses',
       type: 'array',
       fields: [
-        { name: 'bourseNom', type: 'text' },
-        { name: 'etape',     type: 'number' },
-        { name: 'updatedAt', type: 'date' },
+        { name: 'bourseNom', label: 'Nom de la bourse', type: 'text' },
+        { name: 'etape',     label: 'Étape',            type: 'number' },
+        { name: 'updatedAt', label: 'Mis à jour le',    type: 'date' },
       ],
     },
 
@@ -186,16 +198,31 @@ export const Users: CollectionConfig = {
     // ── Bourses choisies ──────────────────────────────────────────────
     {
       name: 'bourses_choisies',
+      label: 'Bourses choisies',
       type: 'array',
       fields: [
-        { name: 'nom',      type: 'text', required: true },
-        { name: 'pays',     type: 'text' },
-        { name: 'url',      type: 'text' },
-        { name: 'deadline', type: 'text' },
-        { name: 'langue',   type: 'text' },
-        { name: 'ajouteLe', type: 'date' },
+        { name: 'nom',      label: 'Nom de la bourse', type: 'text', required: true },
+        { name: 'pays',     label: 'Pays',             type: 'text' },
+        { name: 'url',      label: 'URL officielle',   type: 'text' },
+        { name: 'deadline', label: 'Date limite',      type: 'text' },
+        { name: 'langue',   label: 'Langue',           type: 'text' },
+        { name: 'ajouteLe', label: 'Ajouté le',        type: 'date' },
       ],
     },
+
+    {
+      name: 'avatar',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      label: {
+        fr: 'Photo de profil',
+        en: 'Profile picture'
+      },
+      admin: {
+        position: 'sidebar',
+      },
+    }
   ],
 
   endpoints: [
@@ -294,21 +321,15 @@ export const Users: CollectionConfig = {
         if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 })
 
         const fields = [
-          // Base
           'name', 'pays', 'niveau', 'domaine',
-          // Perso
           'phone', 'nationality', 'countryOfResidence',
-          // Liens
           'linkedin', 'github', 'portfolio',
-          // Formation
           'currentLevel', 'fieldOfStudy', 'institution',
           'gpa', 'graduationYear', 'targetDegree', 'motivationSummary',
-          // Arrays existants
           'academicHistory', 'workExperience', 'languages', 'skills',
           'targetCountries', 'targetFields',
-          // Nouveaux arrays
           'academicProjects', 'certifications', 'volunteerWork',
-          'publications', 'awards',
+          'publications', 'awards', 'avatar',
         ]
 
         const dataToUpdate: Record<string, any> = {}
@@ -316,7 +337,6 @@ export const Users: CollectionConfig = {
           if (body[field] !== undefined) dataToUpdate[field] = body[field]
         }
 
-        // Sync champs courts
         if (body.currentLevel  && !body.niveau)  dataToUpdate.niveau  = body.currentLevel
         if (body.fieldOfStudy  && !body.domaine) dataToUpdate.domaine = body.fieldOfStudy
         if (body.targetCountries?.length > 0 && !body.pays) {
@@ -432,6 +452,13 @@ export const Users: CollectionConfig = {
 
 // ── Helper sérialisation user ──────────────────────────────────────────────────
 function serializeUser(u: any) {
+  // Extraire l'ID de l'avatar s'il s'agit d'un objet
+  let avatarId = null;
+  if (u.avatar) {
+    if (typeof u.avatar === 'string') avatarId = u.avatar;
+    else if (typeof u.avatar === 'object' && u.avatar.id) avatarId = u.avatar.id;
+  }
+
   return {
     id:                u.id,
     email:             u.email,
@@ -465,7 +492,8 @@ function serializeUser(u: any) {
     targetFields:      u.targetFields      || [],
     bourses_choisies:  u.bourses_choisies  || [],
     progression:       u.progression       || [],
-  }
+    avatar:            avatarId, // ← ID en chaîne ou null
+  };
 }
 
 export default Users

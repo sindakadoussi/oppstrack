@@ -1,0 +1,936 @@
+/* ============================================================
+   PROFIL.CSS — OppsTrack Profile Page v2
+   Fix: sidebar sticky (not fixed), no double circle avatar
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ── CSS VARIABLES ── */
+:root {
+  --blue: #255cae;
+  --blue-dark: #1a3f7a;
+  --blue-light: #eff6ff;
+  --blue-mid: #bfdbfe;
+  --gold: #f5a623;
+  --gold-light: #fff8e8;
+  --white: #ffffff;
+  --bg: #f4f6fb;
+  --border: #e8edf5;
+  --border-strong: #d1dae8;
+  --text-primary: #0d1829;
+  --text-secondary: #4b5a6e;
+  --text-muted: #8fa0b5;
+  --green: #10b981;
+  --green-light: #ecfdf5;
+  --red: #ef4444;
+  --red-light: #fef2f2;
+  --orange: #f59e0b;
+  --orange-light: #fffbeb;
+  --purple: #7c3aed;
+  --sidebar-w: 240px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 4px rgba(13,24,41,0.06);
+  --shadow-md: 0 4px 16px rgba(13,24,41,0.08);
+  --shadow-lg: 0 8px 32px rgba(13,24,41,0.12);
+  --transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── RESET ── */
+.pp-root *, .pp-root *::before, .pp-root *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ══════════════════════════════════════════════
+   ROOT — flex row, couvre toute la hauteur
+   disponible ENTRE navbar et footer
+══════════════════════════════════════════════ */
+.pp-root {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;      /* les enfants (sidebar + main) prennent toute la hauteur */
+  flex: 1;                   /* occupe tout l'espace vertical restant dans le parent */
+  min-height: 0;             /* évite les débordements flex */
+  background: var(--bg);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
+  
+}
+
+/* ══════════════════════════════════════════════
+   SIDEBAR — sticky, PAS fixed
+   Reste visible pendant le scroll du contenu
+══════════════════════════════════════════════ */
+.pp-sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  /* plus de position: sticky, plus de height: 100vh */
+  height: auto;              /* la hauteur est contrôlée par le parent flex */
+  overflow-y: auto;         /* garde le scroll interne si nécessaire */
+  overflow-x: hidden;
+  z-index: 10;
+}
+
+/* Sidebar brand */
+.pp-sidebar-brand {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pp-brand-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.pp-brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.pp-brand-badge {
+  font-size: 9px;
+  background: var(--blue-light);
+  color: var(--blue);
+  padding: 2px 6px;
+  border-radius: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Avatar dans sidebar ── */
+.pp-sidebar-avatar {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* FIX DOUBLE CERCLE: le conteneur de l'avatar est simplement
+   un div rond avec border doré. L'image remplit tout. */
+.pp-sidebar-avatar-circle {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  overflow: hidden;               /* ← masque tout ce qui dépasse */
+  flex-shrink: 0;
+  background: var(--blue-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+/* L'img est juste un enfant qui remplit le cercle */
+.pp-sidebar-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;               /* PAS de border-radius sur l'img elle-même */
+}
+
+/* Badge % dans le coin */
+.pp-avatar-score {
+  position: absolute;
+  bottom: 0px;
+  right: -2px;
+  background: var(--gold);
+  color: var(--blue-dark);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 10px;
+  border: 2px solid white;
+  line-height: 1.4;
+}
+
+.pp-sidebar-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.pp-sidebar-email {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pp-sidebar-completion {
+  width: 100%;
+  padding: 0 2px;
+}
+
+.pp-completion-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.pp-completion-bar-bg {
+  height: 5px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.pp-completion-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--blue), var(--gold));
+  border-radius: 99px;
+  transition: width 0.8s ease;
+}
+
+/* ── Navigation ── */
+.pp-sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.pp-nav-section-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 12px 10px 6px;
+}
+
+.pp-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.pp-nav-item:hover {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.pp-nav-item.active {
+  background: var(--blue-light);
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.pp-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--blue);
+  border-radius: 0 3px 3px 0;
+}
+
+.pp-nav-icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.pp-nav-tip {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.pp-nav-tip:hover {
+  opacity: 1;
+  background: rgba(37,92,174,0.08);
+}
+
+/* ── Sidebar footer ── */
+.pp-sidebar-footer {
+  padding: 12px 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.pp-sidebar-save-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--blue);
+  color: white;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pp-sidebar-save-btn:hover {
+  background: var(--blue-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37,92,174,0.3);
+}
+
+.pp-sidebar-save-btn.saved {
+  background: var(--green);
+}
+
+.pp-sidebar-logout-btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--red-light);
+  color: var(--red);
+  border: 1px solid #fecaca;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.pp-sidebar-logout-btn:hover {
+  background: #fecaca;
+}
+
+/* ══════════════════════════════════════════════
+   MAIN CONTENT
+══════════════════════════════════════════════ */
+.pp-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Topbar */
+.pp-topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.pp-topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pp-topbar-breadcrumb span:last-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pp-topbar-breadcrumb-sep {
+  color: var(--border-strong);
+}
+
+.pp-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Content area */
+.pp-content {
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ══════════════════════════════════════════════
+   HEADER CARD
+══════════════════════════════════════════════ */
+
+
+/* FIX DOUBLE CERCLE dans header aussi */
+.pp-header-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  overflow: hidden;               /* ← clé: masque l'emoji + img dépasse */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-light);
+  font-size: 32px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.pp-header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;               /* PAS de border-radius sur l'img */
+}
+
+.pp-header-avatar-edit {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 2px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.pp-header-info {
+  flex: 1;
+}
+
+.pp-header-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  letter-spacing: -0.3px;
+}
+
+.pp-header-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.pp-header-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pp-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid var(--blue-mid);
+}
+
+.pp-header-stats {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pp-header-stat {
+  text-align: center;
+}
+
+.pp-header-stat-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--blue);
+  line-height: 1;
+}
+
+.pp-header-stat-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.pp-header-edit-btn {
+  padding: 7px 16px;
+  border-radius: 20px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.pp-header-edit-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-light);
+}
+
+/* ══════════════════════════════════════════════
+   LAYOUT: form + widgets
+══════════════════════════════════════════════ */
+.pp-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+.pp-form-panel {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  animation: pp-fadeup 0.4s ease 0.05s both;
+}
+
+.pp-form-section {
+  padding: 20px 22px;
+}
+
+.pp-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 9px;
+  border-bottom: 2px solid var(--gold);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ── Form grid ── */
+.pp-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pp-grid-full {
+  grid-column: 1 / -1;
+}
+
+.pp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pp-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.pp-input,
+.pp-select,
+.pp-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: #fafbfd;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pp-input:focus,
+.pp-select:focus,
+.pp-textarea:focus {
+  border-color: var(--blue);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(37,92,174,0.08);
+}
+
+.pp-input:read-only {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg);
+}
+
+.pp-textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.5;
+}
+
+.pp-select { cursor: pointer; }
+
+/* ── Item cards ── */
+.pp-item-card {
+  background: #fafbfd;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.pp-item-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.pp-item-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.pp-rm-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--red-light);
+  border: 1px solid #fecaca;
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.pp-rm-btn:hover { background: #fecaca; }
+
+.pp-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1.5px dashed var(--blue-mid);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  justify-content: center;
+  transition: var(--transition);
+  margin-top: 4px;
+}
+
+.pp-add-btn:hover {
+  background: var(--blue-light);
+  border-color: var(--blue);
+}
+
+.pp-tip-box {
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--blue-light);
+  border: 1px solid var(--blue-mid);
+  font-size: 12px;
+  color: var(--blue);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.pp-empty-state {
+  text-align: center;
+  padding: 24px 20px;
+  color: var(--text-muted);
+}
+
+.pp-empty-state-icon { font-size: 34px; margin-bottom: 8px; }
+.pp-empty-state-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.pp-empty-state-text { font-size: 12px; }
+
+.pp-char-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.pp-char-warn {
+  color: var(--orange);
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════
+   WIDGETS SIDEBAR (colonne droite)
+══════════════════════════════════════════════ */
+.pp-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 56px;
+  animation: pp-fadeup 0.4s ease 0.1s both;
+}
+
+.pp-widget {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pp-widget-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Score ring */
+.pp-score-widget {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pp-score-ring-info { flex: 1; }
+.pp-score-grade { font-size: 20px; font-weight: 800; color: var(--blue); line-height: 1; margin-bottom: 2px; }
+.pp-score-grade-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+/* Profile bars */
+.pp-profile-bars { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.pp-profile-bar-item { display: flex; align-items: center; gap: 7px; }
+.pp-profile-bar-icon { font-size: 12px; width: 18px; text-align: center; flex-shrink: 0; }
+.pp-profile-bar-label { font-size: 10px; color: var(--text-secondary); flex: 1; font-weight: 500; }
+.pp-profile-bar-pct { font-size: 10px; font-weight: 700; min-width: 28px; text-align: right; }
+.pp-profile-bar-track { width: 100%; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.pp-profile-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+
+/* Suggestions */
+.pp-suggestions { display: flex; flex-direction: column; gap: 6px; }
+.pp-suggestion-item { font-size: 11px; color: var(--text-secondary); line-height: 1.5; padding-left: 10px; border-left: 2px solid var(--gold); }
+
+/* Matching */
+.pp-match-list { display: flex; flex-direction: column; gap: 5px; }
+.pp-match-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 9px; border-radius: var(--radius-sm); background: var(--bg); border: 1px solid var(--border); }
+.pp-match-name { font-size: 11px; color: var(--text-secondary); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-match-score { font-size: 11px; font-weight: 800; color: var(--gold); background: var(--gold-light); padding: 2px 7px; border-radius: 10px; flex-shrink: 0; margin-left: 6px; }
+
+/* ══════════════════════════════════════════════
+   ASSISTANT POPUP
+══════════════════════════════════════════════ */
+.pp-assistant-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 280px;
+  background: var(--blue-dark);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: white;
+  z-index: 2000;
+  animation: pp-slideup 0.25s ease;
+  overflow: hidden;
+}
+
+.pp-assistant-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pp-assistant-body {
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.85);
+}
+
+/* ══════════════════════════════════════════════
+   AUTOCOMPLETE DROPDOWN
+══════════════════════════════════════════════ */
+.pp-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.pp-dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pp-dropdown-item:hover {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+/* ══════════════════════════════════════════════
+   LOCKED STATE
+══════════════════════════════════════════════ */
+.pp-locked {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.pp-locked-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 40px;
+  box-shadow: var(--shadow-md);
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+
+.pp-locked-icon { font-size: 52px; margin-bottom: 16px; }
+.pp-locked-title { font-size: 18px; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
+.pp-locked-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px; }
+.pp-locked-btn { padding: 12px 32px; border-radius: var(--radius-sm); background: var(--blue); color: white; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* ══════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════ */
+@keyframes pp-fadeup {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pp-slideup {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .pp-layout { grid-template-columns: 1fr; }
+  .pp-widgets { position: static; }
+}
+
+@media (max-width: 768px) {
+  .pp-sidebar { display: none; }
+  .pp-content { padding: 14px; }
+  .pp-grid-2 { grid-template-columns: 1fr; }
+  .pp-header-stats { display: none; }
+}

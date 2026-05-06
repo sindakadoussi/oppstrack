@@ -1,0 +1,19 @@
+import axios from 'axios';
+
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Ajoute le token automatiquement à chaque requête
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `JWT ${token}`;
+  }
+  return config;
+});
+
+export default axiosInstance;
