@@ -5,7 +5,7 @@ import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
-import MatchDrawerIA from '../components/MatchDrawerIA';
+import Matchdraweria from '../components/Matchdraweria';
 
 /* =============== TOKENS =============== */
 const tokens = (theme) => ({
