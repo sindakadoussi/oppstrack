@@ -1,4 +1,4 @@
-// app/page.jsx
+// app/Guestpage.jsx
 // POLICES : 2 polices uniquement
 //   fSerif → "Playfair Display"  (titres, headings, noms)
 //   fSans  → "DM Sans"           (corps, UI, labels, chiffres, mono-like)

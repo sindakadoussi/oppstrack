@@ -18,7 +18,7 @@ import Footer from './components/Footer';
 import ContactPage from "./pages/ContactPage";
 import { AppProviders, useT } from './i18n';
 import StudentFeedback from './components/StudentFeedback';
-import GuestPage from './pages/GuestPage';
+import GuestPage from './GuestPage';
 import HomePage from './pages/HomePage';
 
 
