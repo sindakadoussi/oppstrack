@@ -3,7 +3,6 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-
 RUN npm ci --only=production=false
 
 COPY . .
@@ -16,11 +15,15 @@ ENV VITE_WEBHOOK_URL=$VITE_WEBHOOK_URL
 
 RUN npm run build
 
-FROM nginx:alpine
+FROM node:20-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY package.json ./
+RUN npm ci --only=production && npm install -g serve
+
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3001
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "dist", "-l", "3001"]
