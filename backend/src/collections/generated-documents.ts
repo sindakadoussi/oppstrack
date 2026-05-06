@@ -1,12 +1,16 @@
-// Payload CMS collection config
-export const GeneratedDocuments = {
+import { CollectionConfig, PayloadRequest } from 'payload';
+
+export const GeneratedDocuments: CollectionConfig = {
   slug: 'generated-documents',
   auth: false,
   admin: { useAsTitle: 'title' },
   access: {
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    delete: ({ req }) => req.user?.role === 'admin'
+    read: ({ req }: { req: PayloadRequest }) => !!req.user,
+    create: ({ req }: { req: PayloadRequest }) => !!req.user,
+    delete: ({ req }: { req: PayloadRequest }) => {
+      const user = req.user as any; // ← Cast temporaire
+      return user?.role === 'admin';}
+    
   },
   fields: [
     {
