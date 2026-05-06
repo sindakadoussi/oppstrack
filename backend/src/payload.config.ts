@@ -22,7 +22,7 @@ const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
 
 export default buildConfig({
-   cors: ['http://localhost:5173', 'http://localhost:5678'],
+   cors: ['http://tkio2xxdskcinugnq08341re.51.254.130.227.sslip.io','http://localhost:5173', 'http://localhost:5678'],
   csrf: ['http://localhost:5173', 'http://localhost:5678'],
 
   admin: {
