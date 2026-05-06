@@ -1,0 +1,56 @@
+const WEBHOOK = import.meta.env.VITE_WEBHOOK_URL ?? 'http://localhost:5678';
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
+export const API_ROUTES = {
+  auth: {
+    login:      '/api/users/login',
+    register:   '/api/users',
+    me:         '/api/users/me',
+    magicLogin: '/api/users/magic-login',
+  },
+  bourses: {
+    list:  '/api/bourses',
+    byId:  (id) => `/api/bourses/${id}`,
+  },
+  roadmap: {
+    list:   '/api/roadmap',
+    byUser: (userId) => `/api/roadmap?where[userId][equals]=${userId}&limit=200&depth=0`,
+    create: '/api/roadmap',
+    byId:   (id) => `/api/roadmap/${id}`,
+    update: (id) => `/api/roadmap/${id}`,
+    delete: (id) => `/api/roadmap/${id}`,
+  },
+  messages: {
+    list:   '/api/messages',
+    create: '/api/messages',
+  },
+  entretiens: {
+    list: '/api/entretiens',
+  },
+  users: {
+    byId: (id) => `/api/users/${id}`,
+  },
+  favoris: {
+    byUser: (userId) => `/api/favoris?where[user][equals]=${userId}&limit=1&depth=0`,
+    create: '/api/favoris',
+  },
+  feedbacks: {
+    create: '/api/feedbacks',
+    list: '/api/feedbacks',
+  },
+  scoreMatch: {
+    byUser: (userId) => `/api/score-match?where[user][equals]=${userId}&sort=-score&limit=10&depth=1`,
+    create: '/api/score-match',
+    byId: (id) => `/api/score-match/${id}`,
+    update: (id) => `/api/score-match/${id}`,
+  },
+};
+
+export const WEBHOOK_ROUTES = {
+  cv:              `${WEBHOOK}/webhook/webhook`,
+  entretien:       `${WEBHOOK}/webhook/webhook`,
+  chat:            `${WEBHOOK}/webhook/webhook`,
+  generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
+};
+
+export { API_BASE, WEBHOOK };
