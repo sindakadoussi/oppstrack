@@ -3,7 +3,7 @@ import axiosInstance from '@/config/axiosInstance';
 import axios from 'axios';
 import { WEBHOOK_ROUTES } from '@/config/routes';
 import { API_ROUTES } from '@/config/routes';
-import './EntretienPage.css';
+import './Entretienpage.css';
 import { useT, useDark } from '../i18n';
 import { useTheme } from '../components/Navbar';
 
