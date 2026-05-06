@@ -1,1317 +1,1033 @@
-// RecommandationsPage.jsx — Decision-Oriented Interface with AI Match Scoring
+// RecommandationsPage.jsx — 100% AI-powered
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import BourseDrawer from '../components/Boursedrawer';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
-import { tCountry, tLevel, tFunding, tField, tDescription } from '@/utils/translateDB';
+import { tCountry, tLevel, tFunding } from '@/utils/translateDB';
 
+const WEBHOOK_BASE = import.meta.env?.VITE_WEBHOOK_URL || 'http://localhost:5678';
 
-function LoginModal({ onClose, c }) {
-  const { lang } = useT();
-  const [email, setEmail] = useState('');
+/* ═══════════════════════════════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════════════════════════════ */
+const tokens = (theme) => ({
+  accent:      theme === "dark" ? "#4c9fd9" : "#0066b3",
+  accentDark:  theme === "dark" ? "#3a8fc9" : "#0052a0",
+  paper:       theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2:      theme === "dark" ? "#1d1c16" : "#f2efe7",
+  surface:     theme === "dark" ? "#1a1912" : "#ffffff",
+  ink:         theme === "dark" ? "#f2efe7" : "#141414",
+  ink2:        theme === "dark" ? "#cfccc2" : "#3a3a3a",
+  ink3:        theme === "dark" ? "#a19f96" : "#6b6b6b",
+  ink4:        theme === "dark" ? "#6d6b64" : "#9a9794",
+  rule:        theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft:    theme === "dark" ? "#24231c" : "#e8e4d9",
+  success:     "#0d7a6b",
+  successBg:   theme === "dark" ? "rgba(13,122,107,0.12)" : "rgba(13,122,107,0.08)",
+  warning:     "#b06a12",
+  warningBg:   theme === "dark" ? "rgba(176,106,18,0.12)" : "rgba(176,106,18,0.08)",
+  danger:      "#b4321f",
+  dangerBg:    theme === "dark" ? "rgba(180,50,31,0.12)" : "rgba(180,50,31,0.08)",
+  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
+  fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono:  `"DM Sans", monospace`,
+  tr: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+});
+
+const scoreColor = (s, c) => s >= 70 ? c.success : s >= 40 ? c.warning : c.danger;
+const scoreBg    = (s, c) => s >= 70 ? c.successBg : s >= 40 ? c.warningBg : c.dangerBg;
+const scoreLabel = (s, lang) =>
+  s >= 85 ? (lang === 'fr' ? 'Excellent match' : 'Excellent match') :
+  s >= 70 ? (lang === 'fr' ? 'Très bon match'  : 'Great fit') :
+  s >= 55 ? (lang === 'fr' ? 'Bon match'        : 'Good match') :
+  s >= 40 ? (lang === 'fr' ? 'Match partiel'    : 'Partial match') :
+             (lang === 'fr' ? 'Faible match'     : 'Low match');
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOOK — détecte la hauteur visible de la navbar en temps réel
+   Retourne 0 dès que la navbar sort du viewport (scrollée, masquée)
+═══════════════════════════════════════════════════════════════════ */
+function useNavbarBottom() {
+  const [navBottom, setNavBottom] = useState(0);
+
+  useEffect(() => {
+    const detect = () => {
+      // Cherche la navbar par id ou par sélecteurs courants
+      const nav =
+        document.getElementById('navbar') ||
+        document.querySelector('nav[class*="navbar"]') ||
+        document.querySelector('[class*="Navbar"]') ||
+        document.querySelector('nav');
+
+      if (!nav) { setNavBottom(0); return; }
+
+      const rect = nav.getBoundingClientRect();
+      // Si la navbar est visible dans le viewport, on prend son bord bas
+      // Sinon (scrollée hors vue ou cachée) on retourne 0
+      setNavBottom(rect.height > 0 && rect.bottom > 0 ? Math.max(0, rect.bottom) : 0);
+    };
+
+    detect();
+    window.addEventListener('scroll', detect, { passive: true });
+    window.addEventListener('resize', detect);
+
+    // Observer les mutations DOM (navbar qui apparaît/disparaît dynamiquement)
+    const mo = new MutationObserver(detect);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+    return () => {
+      window.removeEventListener('scroll', detect);
+      window.removeEventListener('resize', detect);
+      mo.disconnect();
+    };
+  }, []);
+
+  return navBottom;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOGIN MODAL
+═══════════════════════════════════════════════════════════════════ */
+function LoginModal({ onClose, c, lang }) {
+  const [email, setEmail]   = useState('');
   const [status, setStatus] = useState('idle');
   const [errMsg, setErrMsg] = useState('');
 
   const send = async () => {
-    if (!email || !email.includes('@')) {
-      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email');
-      return;
-    }
+    if (!email?.includes('@')) { setErrMsg('Email invalide'); return; }
     setStatus('sending');
-    setErrMsg('');
     try {
       await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
       setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
-    }
+    } catch (e) { setStatus('error'); setErrMsg(e.response?.data?.message || 'Erreur serveur'); }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(10,20,40,0.55)', backdropFilter: 'blur(6px)' }} />
-      <div style={{ position: 'relative', zIndex: 3001, width: 420, maxWidth: '92vw', background: c?.surface || '#fff', border: `1px solid ${c?.border || '#e5e0d5'}`, borderTop: `3px solid ${c?.accent || '#0066b3'}`, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', animation: 'modalIn 0.22s ease-out' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: `1px solid ${c?.border || '#e5e0d5'}`, background: c?.accent || '#0066b3' }}>
-          <div style={{ fontSize: 18, color: '#fff' }}>🔐</div>
-          <div style={{ fontFamily: c?.fSerif, fontSize: 16, fontWeight: 600, color: '#fff', flex: 1 }}>
-            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
-          </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, borderRadius: 4 }}>×</button>
+    <div style={{ position:'fixed', inset:0, zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(6px)' }} />
+      <div style={{ position:'relative', zIndex:3001, width:420, maxWidth:'92vw', background:c.surface, borderTop:`3px solid ${c.accent}`, boxShadow:'0 24px 60px rgba(0,0,0,0.18)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'18px 24px', background:c.accent }}>
+          <span style={{ color:'#fff', fontSize:16 }}>🔐</span>
+          <span style={{ fontFamily:c.fSerif, fontSize:16, fontWeight:600, color:'#fff', flex:1 }}>
+            {lang==='fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
+          </span>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:28, height:28, cursor:'pointer', fontSize:16, borderRadius:4 }}>×</button>
         </div>
-        <div style={{ padding: '28px 24px' }}>
-          {status === 'idle' && (
-            <>
-              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien de connexion sécurisé.' : 'Enter your email to receive a secure magic link.'}
-              </p>
-              <input type="email" autoFocus placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
-                value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px', border: `1.5px solid ${errMsg ? '#dc2626' : c?.border || '#e5e0d5'}`, background: c?.paper || '#faf8f3', color: c?.ink, fontFamily: c?.fSans, fontSize: 14, outline: 'none', borderRadius: 3 }} />
-              {errMsg && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 6 }}>{errMsg}</div>}
-              <button onClick={send} disabled={!email.trim()}
-                style={{ width: '100%', marginTop: 16, padding: '12px', background: !email.trim() ? (c?.borderLight || '#efebe5') : (c?.accent || '#0066b3'), color: !email.trim() ? c?.inkTertiary : '#fff', border: 'none', fontFamily: c?.fMono, fontSize: 13, fontWeight: 500, cursor: !email.trim() ? 'not-allowed' : 'pointer', borderRadius: 3, letterSpacing: '0.03em' }}>
-                ✉ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
-              </button>
-            </>
-          )}
-          {status === 'sending' && (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ width: 36, height: 36, margin: '0 auto', border: `2px solid ${c?.borderLight}`, borderTopColor: c?.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, marginTop: 16, fontSize: 13 }}>{lang === 'fr' ? 'Envoi en cours...' : 'Sending...'}</p>
-            </div>
-          )}
-          {status === 'success' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
-              <div style={{ fontFamily: c?.fSerif, fontSize: 18, fontWeight: 600, color: c?.success || '#0d7a6b', marginBottom: 10 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
-              <p style={{ fontFamily: c?.fSans, color: c?.inkSecondary, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-                {lang === 'fr' ? 'Vérifiez votre boîte mail et pensez à vérifier les spams.' : 'Check your inbox and spam folder.'}
-              </p>
-              <button onClick={onClose} style={{ padding: '10px 28px', background: c?.success || '#0d7a6b', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c?.fMono, fontSize: 13, borderRadius: 3 }}>
-                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
-              </button>
-            </div>
-          )}
-          {status === 'error' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-              <p style={{ fontFamily: c?.fSans, color: '#dc2626', marginBottom: 16, fontSize: 14 }}>{errMsg}</p>
-              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ padding: '10px 24px', background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c?.fMono, fontSize: 12, borderRadius: 3 }}>
-                {lang === 'fr' ? 'Réessayer' : 'Retry'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      <style>{`@keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(-8px); } to { opacity:1; transform:scale(1) translateY(0); } }`}</style>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TOKENS — Professional Color Palette
-═══════════════════════════════════════════════════════════════════════════ */
-const tokens = (theme) => ({
-  // Core colors
-  accent: "#0066b3",
-  accentLight: "#3b82f6",
-  accentDark: "#0052a0",
-
-  // Surface colors
-  paper: theme === "dark" ? "#15140f" : "#faf8f3",
-  surface: theme === "dark" ? "#1a1912" : "#ffffff",
-  surfaceHover: theme === "dark" ? "#24231c" : "#f8f6f1",
-
-  // Text colors
-  ink: theme === "dark" ? "#f2efe7" : "#141414",
-  inkSecondary: theme === "dark" ? "#cfccc2" : "#5a5a5a",
-  inkTertiary: theme === "dark" ? "#a19f96" : "#8a8a8a",
-
-  // Border colors
-  border: theme === "dark" ? "#2b2a22" : "#e5e0d5",
-  borderLight: theme === "dark" ? "#24231c" : "#efebe5",
-
-  // ── NEW chic match colors ──────────────────────────────────────────────
-  // High match  → deep teal / emerald
-  success: "#0d7a6b",
-  successBg: theme === "dark" ? "rgba(13,122,107,0.10)" : "rgba(13,122,107,0.07)",
-  // Medium match → dusty indigo
-  warning: "#5b6fa8",
-  warningBg: theme === "dark" ? "rgba(91,111,168,0.10)" : "rgba(91,111,168,0.07)",
-  // Low match   → slate blue-grey
-  error: "#7a8fa8",
-  errorBg: theme === "dark" ? "rgba(122,143,168,0.10)" : "rgba(122,143,168,0.07)",
-  // ──────────────────────────────────────────────────────────────────────
-
-  info: "#2c5f8a",
-
-  // Typography
-  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
-  fSans: `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-  fMono: `"JetBrains Mono", ui-monospace, Menlo, monospace`,
-
-  // Transitions
-  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-});
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MATCH SCORING SYSTEM
-═══════════════════════════════════════════════════════════════════════════ */
-const calculateMatchScore = (bourse, userProfile) => {
-  let score = 0;
-  const breakdown = [];
-  const strengths = [];
-  const weaknesses = [];
-
-  if (userProfile.niveau && bourse.niveau) {
-    const userLevel = userProfile.niveau.toLowerCase().trim();
-    const bourseLevel = bourse.niveau.toLowerCase();
-    if (bourseLevel.includes('tous') || bourseLevel === '') {
-      score += 20;
-      breakdown.push({ criterion: 'Niveau', score: 20, max: 30, status: 'neutral', message: 'Tous niveaux acceptés' });
-    } else if (bourseLevel.includes(userLevel)) {
-      score += 30;
-      breakdown.push({ criterion: 'Niveau', score: 30, max: 30, status: 'strong', message: 'Votre niveau correspond parfaitement' });
-      strengths.push('Niveau d\'étude correspondant');
-    } else {
-      const partialMatch = bourseLevel.split(',').some(l => l.trim().toLowerCase().includes(userLevel));
-      if (partialMatch) {
-        score += 15;
-        breakdown.push({ criterion: 'Niveau', score: 15, max: 30, status: 'medium', message: 'Correspondance partielle' });
-      } else {
-        breakdown.push({ criterion: 'Niveau', score: 0, max: 30, status: 'weak', message: 'Niveau différent' });
-        weaknesses.push('Niveau d\'étude non requis');
-      }
-    }
-  }
-
-  if (userProfile.domaine && bourse.domaine) {
-    const userField = userProfile.domaine.toLowerCase().trim();
-    const bourseField = bourse.domaine.toLowerCase();
-    if (bourseField.includes('tous') || bourseField === '') {
-      score += 15;
-      breakdown.push({ criterion: 'Domaine', score: 15, max: 25, status: 'neutral', message: 'Tous domaines acceptés' });
-    } else if (bourseField.includes(userField)) {
-      score += 25;
-      breakdown.push({ criterion: 'Domaine', score: 25, max: 25, status: 'strong', message: 'Votre domaine correspond exactement' });
-      strengths.push('Domaine d\'étude parfaitement aligné');
-    } else {
-      const relatedFields = getRelatedFields(userField);
-      if (relatedFields.some(f => bourseField.includes(f))) {
-        score += 12;
-        breakdown.push({ criterion: 'Domaine', score: 12, max: 25, status: 'medium', message: 'Domaine connexe' });
-      } else {
-        breakdown.push({ criterion: 'Domaine', score: 0, max: 25, status: 'weak', message: 'Domaine différent' });
-        weaknesses.push('Domaine d\'étude non aligné');
-      }
-    }
-  }
-
-  if (bourse.tunisienEligible === 'oui') {
-    score += 20;
-    breakdown.push({ criterion: 'Éligibilité', score: 20, max: 20, status: 'strong', message: 'Ouvert aux étudiants tunisiens' });
-    strengths.push('Éligible en tant qu\'étudiant tunisien');
-  } else if (bourse.tunisienEligible === 'partiel') {
-    score += 10;
-    breakdown.push({ criterion: 'Éligibilité', score: 10, max: 20, status: 'medium', message: 'Éligibilité partielle' });
-  } else {
-    breakdown.push({ criterion: 'Éligibilité', score: 0, max: 20, status: 'weak', message: 'Non éligible' });
-    weaknesses.push('Non éligible pour étudiants tunisiens');
-  }
-
-  if (bourse.statut === 'active') {
-    score += 15;
-    breakdown.push({ criterion: 'Statut', score: 15, max: 15, status: 'strong', message: 'Candidatures ouvertes' });
-    strengths.push('Candidatures actuellement ouvertes');
-  } else if (bourse.statut === 'a_venir') {
-    score += 8;
-    breakdown.push({ criterion: 'Statut', score: 8, max: 15, status: 'medium', message: 'À venir - préparez-vous' });
-  } else if (bourse.statut === 'expiree') {
-    breakdown.push({ criterion: 'Statut', score: 0, max: 15, status: 'weak', message: 'Date limite dépassée' });
-    weaknesses.push('Date limite dépassée');
-  }
-
-  if (bourse.dateLimite) {
-    const daysUntilDeadline = Math.floor((new Date(bourse.dateLimite) - new Date()) / 86400000);
-    if (daysUntilDeadline > 60) score += 10;
-    else if (daysUntilDeadline > 30) score += 7;
-    else if (daysUntilDeadline > 7) score += 4;
-    else if (daysUntilDeadline > 0) score += 2;
-    breakdown.push({
-      criterion: 'Délai',
-      score: Math.min(10, score),
-      max: 10,
-      status: daysUntilDeadline > 30 ? 'strong' : daysUntilDeadline > 0 ? 'medium' : 'weak',
-      message: daysUntilDeadline > 0 ? `${daysUntilDeadline} jours restants` : 'Délai dépassé',
-    });
-  }
-
-  return { score, breakdown, strengths, weaknesses };
-};
-
-const getRelatedFields = (field) => {
-  const relations = {
-    'informatique': ['informatique', 'computer science', 'it', 'génie logiciel'],
-    'économie': ['économie', 'finance', 'commerce', 'management'],
-    'médecine': ['médecine', 'santé', 'biologie', 'pharmacie'],
-  };
-  return relations[field] || [];
-};
-
-const getMatchLevel = (score) => {
-  if (score >= 70) return { label: 'High Match', status: 'high' };
-  if (score >= 40) return { label: 'Medium Match', status: 'medium' };
-  return { label: 'Low Match', status: 'low' };
-};
-
-const getMatchColor = (score, c) => {
-  if (score >= 70) return c.success;
-  if (score >= 40) return c.warning;
-  return c.error;
-};
-
-const getMatchBg = (score, c) => {
-  if (score >= 70) return c.successBg;
-  if (score >= 40) return c.warningBg;
-  return c.errorBg;
-};
-
-const getEffortLevel = (score, weaknesses) => {
-  if (score >= 70) return { label: 'Easy to reach' };
-  if (score >= 40 && weaknesses.length <= 2) return { label: 'Requires improvement' };
-  return { label: 'Long-term goal' };
-};
-
-/* ─── Recommendations Hero (style identique à MiniHero de BoursesPage) ─── */
-function RecommendationsHero({ c, lang, totalCount }) {
-  return (
-    <div style={{
-      background: c.paper2,
-      padding: '40px 32px',
-      textAlign: 'center',
-      borderBottom: `1px solid ${c.rule}`,
-      animation: 'fadeIn 0.6s ease',
-    }}>
-      <h1 style={{
-        fontFamily: c.fSerif,
-        fontSize: 'clamp(32px, 5vw, 48px)',
-        fontWeight: 700,
-        letterSpacing: '-0.02em',
-        color: c.ink,
-        margin: 0,
-      }}>
-        {lang === "fr" ? (
-          <>Vos <em style={{ color: c.accent, fontStyle: 'italic' }}>recommandations personnalisées</em>.</>
-        ) : (
-          <>Your <em style={{ color: c.accent, fontStyle: "italic" }}>personalized recommendations</em>.</>
-        )}
-      </h1>
-      <p style={{
-        fontFamily: c.fSans,
-        fontSize: 16,
-        color: c.ink2,
-        marginTop: 12,
-        maxWidth: 600,
-        marginLeft: 'auto',
-        marginRight: 'auto',
-      }}>
-        {lang === "fr"
-          ? `Basé sur votre profil, ${totalCount} bourse${totalCount > 1 ? 's' : ''} éligible${totalCount > 1 ? 's' : ''} avec score de compatibilité.`
-          : `Based on your profile, ${totalCount} eligible scholarship${totalCount !== 1 ? 's' : ''} with match score.`}
-      </p>
-    </div>
-  );
-}
-
-const MatchSummary = ({ scholarships, c, lang }) => {
-  const stats = useMemo(() => {
-    const high = scholarships.filter(s => s.matchScore >= 70).length;
-    const medium = scholarships.filter(s => s.matchScore >= 40 && s.matchScore < 70).length;
-    const low = scholarships.filter(s => s.matchScore < 40).length;
-    return { high, medium, low, total: scholarships.length };
-  }, [scholarships]);
-
-  return (
-    <div style={{
-      background: c.surface,
-      border: `1px solid ${c.border}`,
-      padding: '28px',
-      marginBottom: 40,
-      animation: 'fadeInUp 0.4s ease-out 0.2s both',
-    }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 32, fontWeight: 700, color: c.accent, fontFamily: c.fSerif }}>{stats.total}</div>
-        <div style={{ fontSize: 12, color: c.inkTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>
-          {lang === 'fr' ? 'OPPORTUNITÉS COMPATIBLES' : 'COMPATIBLE OPPORTUNITIES'}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 600, color: c.success }}>{stats.high}</div>
-          <div style={{ fontSize: 11, color: c.inkTertiary, marginTop: 4 }}>{lang === 'fr' ? 'FORTES CHANCES' : 'STRONG MATCHES'}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 600, color: c.warning }}>{stats.medium}</div>
-          <div style={{ fontSize: 11, color: c.inkTertiary, marginTop: 4 }}>{lang === 'fr' ? 'CHANCES MODÉRÉES' : 'MEDIUM MATCHES'}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 600, color: c.error }}>{stats.low}</div>
-          <div style={{ fontSize: 11, color: c.inkTertiary, marginTop: 4 }}>{lang === 'fr' ? 'À AMÉLIORER' : 'LOW MATCHES'}</div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 4, height: 4 }}>
-        <div style={{ flex: stats.high, background: c.success, transition: 'flex 0.3s ease' }} />
-        <div style={{ flex: stats.medium, background: c.warning, transition: 'flex 0.3s ease' }} />
-        <div style={{ flex: stats.low, background: c.error, transition: 'flex 0.3s ease' }} />
-      </div>
-    </div>
-  );
-};
-
-/* ── Filters: only match level, NO intent section ── */
-const MatchFilters = ({ filters, setFilters, c, lang }) => {
-  const matchLevels = [
-    { id: 'all', label: lang === 'fr' ? 'Tous' : 'All' },
-    { id: 'high', label: lang === 'fr' ? 'Forts' : 'High' },
-    { id: 'medium', label: lang === 'fr' ? 'Moyens' : 'Medium' },
-    { id: 'low', label: lang === 'fr' ? 'Faibles' : 'Low' },
-  ];
-
-  return (
-    <div style={{ marginBottom: 40, animation: 'fadeInUp 0.4s ease-out 0.3s both' }}>
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 600, color: c.inkTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-          {lang === 'fr' ? 'NIVEAU DE COMPATIBILITÉ' : 'MATCH LEVEL'}
-        </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {matchLevels.map(level => (
-            <button
-              key={level.id}
-              onClick={() => setFilters({ ...filters, matchLevel: level.id })}
-              style={{
-                padding: '8px 20px',
-                background: filters.matchLevel === level.id ? c.accent : 'transparent',
-                color: filters.matchLevel === level.id ? c.paper : c.inkSecondary,
-                border: `1px solid ${filters.matchLevel === level.id ? c.accent : c.border}`,
-                fontSize: 12,
-                fontWeight: filters.matchLevel === level.id ? 500 : 400,
-                cursor: 'pointer',
-                fontFamily: c.fMono,
-                transition: c.transition,
-              }}
-            >
-              {level.label}
+        <div style={{ padding:'28px 24px' }}>
+          {status==='idle' && <>
+            <input type="email" autoFocus placeholder="votre@email.com" value={email}
+              onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
+              style={{ width:'100%', boxSizing:'border-box', padding:'11px 14px', border:`1.5px solid ${c.rule}`, background:c.paper, color:c.ink, fontFamily:c.fSans, fontSize:14, outline:'none' }} />
+            {errMsg && <div style={{ color:c.danger, fontSize:12, marginTop:6 }}>{errMsg}</div>}
+            <button onClick={send} disabled={!email.trim()} style={{ width:'100%', marginTop:16, padding:12, background:email.trim()?c.accent:c.ruleSoft, color:email.trim()?'#fff':c.ink4, border:'none', fontFamily:c.fMono, fontSize:13, cursor:email.trim()?'pointer':'not-allowed' }}>
+              ✉ {lang==='fr' ? 'Envoyer le lien magique' : 'Send magic link'}
             </button>
-          ))}
+          </>}
+          {status==='sending' && <div style={{ textAlign:'center', padding:'32px 0' }}>
+            <div style={{ width:36, height:36, margin:'0 auto', border:`2px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+          </div>}
+          {status==='success' && <div style={{ textAlign:'center', padding:'16px 0' }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>✉️</div>
+            <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:600, color:c.success, marginBottom:10 }}>Lien envoyé !</div>
+            <button onClick={onClose} style={{ padding:'10px 28px', background:c.success, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:13 }}>✓ Fermer</button>
+          </div>}
+          {status==='error' && <div style={{ textAlign:'center', padding:'16px 0' }}>
+            <p style={{ color:c.danger, marginBottom:16, fontSize:14 }}>{errMsg}</p>
+            <button onClick={()=>{setStatus('idle');setErrMsg('');}} style={{ padding:'10px 24px', background:c.danger, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:12 }}>Réessayer</button>
+          </div>}
         </div>
       </div>
     </div>
   );
-};
+}
 
-/* ── Scholarship card with compare checkbox ── */
-const ScholarshipCard = ({
-  bourse, onAnalyze, onSave, onApply,
-  isStarred, isApplied, c, lang,
-  isSelectedForCompare, onToggleCompare, compareDisabled,
-}) => {
-  const matchLevel = getMatchLevel(bourse.matchScore);
-  const matchColor = getMatchColor(bourse.matchScore, c);
-  const matchBg = getMatchBg(bourse.matchScore, c);
-  const effort = getEffortLevel(bourse.matchScore, bourse.weaknesses || []);
-  const [isHovered, setIsHovered] = useState(false);
+/* ═══════════════════════════════════════════════════════════════════
+   MATCH ANALYSIS PANEL
+   FIX 1 : top = navBottom (via hook partagé) — réactif au scroll
+═══════════════════════════════════════════════════════════════════ */
+function MatchAnalysisPanel({ bourse, user, onClose, onSave, onApply, isStarred, isApplied, c, lang }) {
+  const [analysis, setAnalysis] = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState(null);
 
-  return (
-    <article
-      style={{
-        border: `1px solid ${isSelectedForCompare ? c.accent : isHovered ? c.accentLight : c.border}`,
-        padding: '28px',
-        marginBottom: 16,
-        background: isSelectedForCompare ? `${c.accent}06` : c.surface,
-        transition: c.transition,
-        cursor: 'pointer',
-        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: isHovered ? '0 8px 24px rgba(0,0,0,0.08)' : 'none',
-        position: 'relative',
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onAnalyze(bourse)}
-    >
-      {/* Compare checkbox — top right */}
-      <button
-        onClick={e => { e.stopPropagation(); onToggleCompare(bourse.id); }}
-        disabled={compareDisabled && !isSelectedForCompare}
-        title={isSelectedForCompare ? 'Retirer de la comparaison' : 'Ajouter à la comparaison'}
-        style={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          width: 26,
-          height: 26,
-          border: `1.5px solid ${isSelectedForCompare ? c.accent : c.border}`,
-          background: isSelectedForCompare ? c.accent : 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: compareDisabled && !isSelectedForCompare ? 'not-allowed' : 'pointer',
-          transition: c.transition,
-          opacity: compareDisabled && !isSelectedForCompare ? 0.35 : 1,
-          borderRadius: 4,
-          fontSize: 13,
-          color: isSelectedForCompare ? '#fff' : c.inkTertiary,
-          flexShrink: 0,
-        }}
-      >
-        {isSelectedForCompare ? '✓' : '⊕'}
-      </button>
+  // FIX 1 — drawer qui colle à la fin de la navbar (ou au top si navbar cachée)
+  const navBottom = useNavbarBottom();
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, paddingRight: 40 }}>
-        {/* Score badge */}
-        <div style={{
-          textAlign: 'center',
-          minWidth: 90,
-          background: matchBg,
-          padding: '12px 8px',
-          borderRadius: 4,
-        }}>
-          <div style={{
-            fontSize: 46,
-            fontWeight: 700,
-            color: matchColor,
-            lineHeight: 1,
-            marginBottom: 4,
-            letterSpacing: '-0.02em',
-          }}>
-            {bourse.matchScore}
-            <span style={{ fontSize: 20 }}>%</span>
-          </div>
-          <div style={{
-            fontSize: 9,
-            fontWeight: 600,
-            color: matchColor,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-          }}>
-            {matchLevel.label}
-          </div>
-        </div>
+  useEffect(() => {
+    if (!bourse || !user) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
 
-        <div style={{ flex: 1, marginLeft: 24 }}>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 19, fontWeight: 600, color: c.ink, margin: '0 0 8px' }}>
-            {bourse.nom}
-          </h3>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontSize: 12, color: c.inkTertiary }}>
-            <span>{tCountry(bourse.pays, lang)}</span>
-            {bourse.niveau && <span>{tLevel(bourse.niveau, lang)}</span>}
-            <span style={{ color: c.info }}>{effort.label}</span>
-          </div>
-        </div>
-      </div>
+    const fetchAnalysis = async () => {
+      try {
+        const { data: userData } = await axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 2 } });
+        const res = await fetch(`${WEBHOOK_BASE}/webhook/analyse-match`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: { ...userData, id: user.id }, bourse }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const data = await res.json();
+        if (!cancelled) setAnalysis(data);
+      } catch (e) {
+        if (!cancelled) setError(lang === 'fr' ? 'Erreur analyse IA' : 'AI analysis error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
-      {/* Progress bar */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ height: 4, background: c.borderLight, borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{
-            width: `${bourse.matchScore}%`,
-            height: '100%',
-            background: matchColor,
-            transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          }} />
-        </div>
-      </div>
+    fetchAnalysis();
+    return () => { cancelled = true; };
+  }, [bourse?.id, user?.id]);
 
-      {/* Why score */}
-      <div style={{
-        background: c.paper,
-        padding: '14px',
-        marginBottom: 20,
-        borderLeft: `3px solid ${c.accent}`,
-        fontSize: 12,
-        color: c.inkSecondary,
-        lineHeight: 1.6,
-      }}>
-        <strong style={{ color: c.accent, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Pourquoi ce score ?
-        </strong>
-        <div style={{ marginTop: 6 }}>
-          {bourse.matchReasons && bourse.matchReasons.length > 0
-            ? bourse.matchReasons.slice(0, 2).join(' • ')
-            : 'Analyse basée sur votre profil académique'}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button
-          onClick={e => { e.stopPropagation(); onAnalyze(bourse); }}
-          style={{
-            flex: 1,
-            padding: '10px',
-            background: c.accent,
-            color: c.paper,
-            border: 'none',
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: c.fMono,
-            transition: c.transition,
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = c.accentDark}
-          onMouseLeave={e => e.currentTarget.style.background = c.accent}
-        >
-          Analyser mon match
-        </button>
-        <button
-          onClick={e => { e.stopPropagation(); onSave(bourse); }}
-          style={{
-            padding: '10px 20px',
-            background: isStarred ? c.accent : 'transparent',
-            color: isStarred ? c.paper : c.inkSecondary,
-            border: `1px solid ${c.border}`,
-            fontSize: 12,
-            cursor: 'pointer',
-            transition: c.transition,
-          }}
-        >
-          {isStarred ? '★' : '☆'}
-        </button>
-        <button
-          onClick={e => { e.stopPropagation(); onApply(bourse); }}
-          style={{
-            padding: '10px 20px',
-            background: isApplied ? c.success : 'transparent',
-            color: isApplied ? c.paper : c.inkSecondary,
-            border: `1px solid ${c.border}`,
-            fontSize: 12,
-            cursor: 'pointer',
-            transition: c.transition,
-          }}
-        >
-          {isApplied ? '✓' : '+'}
-        </button>
-      </div>
-    </article>
-  );
-};
-
-/* ── Match analysis panel ── */
-const MatchAnalysisPanel = ({ bourse, onClose, onSave, onApply, isStarred, isApplied, c, lang }) => {
-  const matchColor = getMatchColor(bourse.matchScore, c);
-  const matchLevel = getMatchLevel(bourse.matchScore);
-
-  const getImprovementSuggestions = () => {
-    const suggestions = [];
-    const weaknesses = bourse.weaknesses || [];
-    if (weaknesses.includes('Niveau d\'étude non requis')) {
-      suggestions.push({
-        action: lang === 'fr' ? 'Améliorer votre niveau d\'étude' : 'Improve your study level',
-        steps: lang === 'fr'
-          ? ['Vérifier les prérequis de la bourse', 'Considérer un programme préparatoire', 'Contacter l\'université pour les équivalences']
-          : ['Check scholarship prerequisites', 'Consider preparatory program', 'Contact university for equivalencies'],
-      });
-    }
-    if (weaknesses.includes('Domaine d\'étude non aligné')) {
-      suggestions.push({
-        action: lang === 'fr' ? 'Aligner votre domaine d\'étude' : 'Align your field of study',
-        steps: lang === 'fr'
-          ? ['Suivre des cours complémentaires', 'Gagner de l\'expérience pertinente', 'Préparer un projet de recherche']
-          : ['Take complementary courses', 'Gain relevant experience', 'Prepare a research project'],
-      });
-    }
-    if (weaknesses.includes('Date limite dépassée')) {
-      suggestions.push({
-        action: lang === 'fr' ? 'Préparer pour la prochaine session' : 'Prepare for next session',
-        steps: lang === 'fr'
-          ? ['Noter la nouvelle date limite', 'Préparer les documents à l\'avance', 'Améliorer votre dossier']
-          : ['Note new deadline', 'Prepare documents in advance', 'Improve your application'],
-      });
-    }
-    if (weaknesses.includes('Non éligible pour étudiants tunisiens')) {
-      suggestions.push({
-        action: lang === 'fr' ? 'Explorer d\'autres opportunités' : 'Explore other opportunities',
-        steps: lang === 'fr'
-          ? ['Chercher des bourses spécifiques pour Tunisiens', 'Contacter l\'ambassade', 'Explorer les programmes d\'échange']
-          : ['Look for Tunisia-specific scholarships', 'Contact embassy', 'Explore exchange programs'],
-      });
-    }
-    return suggestions;
-  };
-
-  const suggestions = getImprovementSuggestions();
+  const col  = analysis ? scoreColor(analysis.scoreGlobal, c) : c.ink3;
+  const bg   = analysis ? scoreBg(analysis.scoreGlobal, c)    : c.ruleSoft;
 
   return (
     <div style={{
-      position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 600,
-      background: c.surface, boxShadow: '-8px 0 32px rgba(0,0,0,0.1)', zIndex: 1000,
-      display: 'flex', flexDirection: 'column', overflow: 'auto',
+      position: 'fixed',
+      top: navBottom,        // 0 quand navbar cachée, hauteur navbar sinon
+      right: 0,
+      bottom: 0,
+      width: '100%',
+      maxWidth: 580,
+      background: c.surface,
+      boxShadow: '-8px 0 32px rgba(0,0,0,0.14)',
+      zIndex: 1000,
+      display: 'flex',
+      flexDirection: 'column',
+      overflowY: 'auto',
       animation: 'slideInRight 0.3s ease-out',
+      transition: 'top 0.2s ease',   // transition fluide quand la navbar disparaît
     }}>
-      <div style={{
-        padding: '28px', borderBottom: `1px solid ${c.border}`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        position: 'sticky', top: 0, background: c.surface, zIndex: 1,
-      }}>
+      {/* Header */}
+      <div style={{ padding:'22px 28px', borderBottom:`1px solid ${c.rule}`, display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, background:c.surface, zIndex:1 }}>
         <div>
-          <div style={{ fontSize: 11, color: c.inkTertiary, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Analyse détaillée
+          <div style={{ fontSize:10, color:c.ink4, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4, fontFamily:c.fMono }}>
+            {lang==='fr' ? 'Analyse IA détaillée' : 'Detailed AI analysis'}
           </div>
-          <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 600, margin: 0 }}>{bourse.nom}</h2>
+          <h2 style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:700, margin:0, color:c.ink, lineHeight:1.3 }}>{bourse.nom}</h2>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: c.inkTertiary, transition: c.transition }}
-          onMouseEnter={e => e.currentTarget.style.color = c.error}
-          onMouseLeave={e => e.currentTarget.style.color = c.inkTertiary}>×</button>
+        <button onClick={onClose} style={{ background:'none', border:'none', fontSize:22, cursor:'pointer', color:c.ink4, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
       </div>
 
-      <div style={{ padding: '28px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ fontSize: 72, fontWeight: 700, color: matchColor, marginBottom: 12, letterSpacing: '-0.02em' }}>
-            {bourse.matchScore}%
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: matchColor, marginBottom: 8 }}>{matchLevel.label}</div>
-          <div style={{ fontSize: 13, color: c.inkSecondary }}>
-            {matchLevel.status === 'high' && (lang === 'fr' ? 'Excellente compatibilité, postulez sans attendre' : 'Excellent compatibility, apply now')}
-            {matchLevel.status === 'medium' && (lang === 'fr' ? 'Bon potentiel avec quelques axes d\'amélioration' : 'Good potential with some improvement areas')}
-            {matchLevel.status === 'low' && (lang === 'fr' ? 'Potentiel limité, mais des opportunités d\'amélioration' : 'Limited potential, but improvement opportunities exist')}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 40 }}>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, marginBottom: 20 }}>Détail des critères</h3>
-          {bourse.breakdown && bourse.breakdown.map((criteria, idx) => {
-            const percentage = (criteria.score / criteria.max) * 100;
-            let barColor = c.error;
-            if (percentage >= 70) barColor = c.success;
-            else if (percentage >= 40) barColor = c.warning;
-            return (
-              <div key={idx} style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-                  <span style={{ color: c.inkSecondary }}>{criteria.criterion}</span>
-                  <span style={{ fontWeight: 600, color: c.ink }}>{criteria.score}/{criteria.max}</span>
-                </div>
-                <div style={{ height: 4, background: c.borderLight, borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ width: `${percentage}%`, height: '100%', background: barColor, transition: 'width 0.4s ease' }} />
-                </div>
-                <div style={{ fontSize: 11, color: c.inkTertiary, marginTop: 6 }}>{criteria.message}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ marginBottom: 40, display: 'grid', gap: 20 }}>
-          {bourse.strengths && bourse.strengths.length > 0 && (
-            <div style={{ padding: '16px', background: c.successBg, borderLeft: `3px solid ${c.success}` }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: c.success, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Forces</div>
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: c.inkSecondary }}>
-                {bourse.strengths.map((s, i) => <li key={i} style={{ marginBottom: 4 }}>{s}</li>)}
-              </ul>
+      <div style={{ padding:'24px 28px', flex:1 }}>
+        {loading && (
+          <div style={{ textAlign:'center', padding:'60px 20px' }}>
+            <div style={{ width:48, height:48, border:`3px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.9s linear infinite', margin:'0 auto 20px' }} />
+            <div style={{ fontFamily:c.fSans, fontSize:13, color:c.ink3, lineHeight:1.7 }}>
+              {lang==='fr' ? 'Analyse IA en cours...\nClaude analyse votre profil complet.' : 'AI analysis in progress...\nClaude is analyzing your full profile.'}
             </div>
-          )}
-          {bourse.weaknesses && bourse.weaknesses.length > 0 && (
-            <div style={{ padding: '16px', background: c.errorBg, borderLeft: `3px solid ${c.error}` }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: c.error, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Points à améliorer</div>
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: c.inkSecondary }}>
-                {bourse.weaknesses.map((w, i) => <li key={i} style={{ marginBottom: 4 }}>{w}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {suggestions.length > 0 && (
-          <div style={{ marginBottom: 40 }}>
-            <h3 style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, marginBottom: 20 }}>Plan d'amélioration</h3>
-            {suggestions.map((suggestion, idx) => (
-              <div key={idx} style={{ marginBottom: 20, padding: '20px', background: c.paper, border: `1px solid ${c.borderLight}` }}>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14, color: c.accent }}>{suggestion.action}</div>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: c.inkSecondary }}>
-                  {suggestion.steps.map((step, i) => <li key={i} style={{ marginBottom: 6 }}>{step}</li>)}
-                </ul>
+            {['Lecture du profil...', 'Analyse des critères...', 'Calcul du score...'].map((step, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', marginTop:8, background:c.paper2, border:`1px solid ${c.ruleSoft}`, animation:`fadeIn 0.3s ease ${i*0.3}s both` }}>
+                <div style={{ width:14, height:14, borderRadius:'50%', background:c.accent, animation:'pulse 1s infinite', flexShrink:0 }} />
+                <span style={{ fontSize:12, color:c.ink3 }}>{step}</span>
               </div>
             ))}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => onSave(bourse)} style={{
-            flex: 1, padding: '14px', background: isStarred ? c.accent : 'transparent',
-            color: isStarred ? c.paper : c.accent, border: `1px solid ${c.accent}`,
-            fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: c.fMono, transition: c.transition,
-          }}
-            onMouseEnter={e => { if (!isStarred) e.currentTarget.style.background = `${c.accent}10`; }}
-            onMouseLeave={e => { if (!isStarred) e.currentTarget.style.background = 'transparent'; }}>
-            {isStarred ? 'Sauvegardé' : 'Sauvegarder'}
-          </button>
-          <button onClick={() => onApply(bourse)} style={{
-            flex: 1, padding: '14px', background: isApplied ? c.success : c.accent,
-            color: c.paper, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: c.fMono, transition: c.transition,
-          }}
-            onMouseEnter={e => { if (!isApplied) e.currentTarget.style.background = c.accentDark; }}
-            onMouseLeave={e => { if (!isApplied) e.currentTarget.style.background = c.accent; }}>
-            {isApplied ? 'Dans ma roadmap' : 'Préparer ma candidature'}
-          </button>
-        </div>
+        {error && !loading && (
+          <div style={{ padding:'20px', background:c.dangerBg, borderLeft:`3px solid ${c.danger}`, marginBottom:20 }}>
+            <div style={{ color:c.danger, fontSize:13, marginBottom:12 }}>{error}</div>
+            <button onClick={()=>{ setError(null); setLoading(true); }} style={{ padding:'7px 16px', background:c.danger, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:11 }}>
+              Réessayer
+            </button>
+          </div>
+        )}
+
+        {analysis && !loading && (
+          <>
+            <div style={{ textAlign:'center', padding:'28px 20px', marginBottom:24, background:bg, borderRadius:8 }}>
+              <div style={{ fontSize:64, fontWeight:800, color:col, lineHeight:1, letterSpacing:'-0.04em', fontFamily:c.fSerif }}>
+                {analysis.scoreGlobal}<span style={{ fontSize:28 }}>%</span>
+              </div>
+              <div style={{ fontSize:14, fontWeight:700, color:col, marginTop:8, fontFamily:c.fMono, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                {analysis.niveauMatch}
+              </div>
+              {analysis.resume && (
+                <div style={{ fontSize:13, color:c.ink2, marginTop:12, lineHeight:1.6, maxWidth:360, margin:'12px auto 0' }}>
+                  {analysis.resume}
+                </div>
+              )}
+            </div>
+
+            {(analysis.criteres || []).length > 0 && (
+              <div style={{ marginBottom:24 }}>
+                <h3 style={{ fontFamily:c.fSerif, fontSize:16, fontWeight:700, marginBottom:14, color:c.ink }}>
+                  {lang==='fr' ? 'Analyse par critère' : 'Criteria breakdown'}
+                </h3>
+                {analysis.criteres.map((cr, i) => {
+                  const pct = cr.score || 0;
+                  const color = pct >= 70 ? c.success : pct >= 40 ? c.warning : c.danger;
+                  return (
+                    <div key={i} style={{ marginBottom:14 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:16 }}>{cr.icone}</span>
+                          <span style={{ fontSize:12, color:c.ink2, fontWeight:500 }}>{cr.nom}</span>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ fontSize:11, padding:'2px 8px', background:cr.statut==='fort'?c.successBg:cr.statut==='moyen'?c.warningBg:c.dangerBg, color:cr.statut==='fort'?c.success:cr.statut==='moyen'?c.warning:c.danger, fontFamily:c.fMono, fontWeight:600 }}>
+                            {cr.statut==='fort'?'Fort':cr.statut==='moyen'?'Moyen':'Faible'}
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color, fontFamily:c.fMono }}>{pct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height:5, background:c.ruleSoft, borderRadius:3, overflow:'hidden', marginBottom:4 }}>
+                        <div style={{ width:`${pct}%`, height:'100%', background:color, borderRadius:3, transition:'width 0.6s ease' }} />
+                      </div>
+                      {cr.explication && (
+                        <div style={{ fontSize:11, color:c.ink4, lineHeight:1.5 }}>{cr.explication}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {(analysis.pointsForts || []).length > 0 && (
+              <div style={{ padding:'16px', background:c.successBg, borderLeft:`3px solid ${c.success}`, marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:c.success, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>
+                  {lang==='fr' ? 'Points forts' : 'Strengths'}
+                </div>
+                {analysis.pointsForts.map((p, i) => (
+                  <div key={i} style={{ fontSize:13, color:c.ink2, marginBottom:5, display:'flex', gap:8 }}>
+                    <span style={{ color:c.success, flexShrink:0 }}>✓</span>{p}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(analysis.pointsAmeliorer || []).length > 0 && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:c.danger, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8, padding:'16px 16px 0' }}>
+                  {lang==='fr' ? 'Points à améliorer' : 'Areas to improve'}
+                </div>
+                {analysis.pointsAmeliorer.map((p, i) => (
+                  <div key={i} style={{ padding:'12px 16px', background:i%2===0?c.dangerBg:`${c.dangerBg}80`, marginBottom:6, borderLeft:`3px solid ${p.priorite==='haute'?c.danger:p.priorite==='moyenne'?c.warning:c.ink4}` }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:c.ink }}>{p.domaine}</span>
+                      <span style={{ fontSize:10, padding:'2px 7px', background:p.priorite==='haute'?c.danger:p.priorite==='moyenne'?c.warning:c.ink4, color:'#fff', fontFamily:c.fMono }}>
+                        {p.priorite}
+                      </span>
+                    </div>
+                    <div style={{ fontSize:12, color:c.ink3, marginBottom:4 }}>{p.probleme}</div>
+                    <div style={{ fontSize:12, color:c.accent, fontWeight:500 }}>→ {p.action}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(analysis.documentsManquants || []).length > 0 && (
+              <div style={{ padding:'14px 16px', background:c.warningBg, borderLeft:`3px solid ${c.warning}`, marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:c.warning, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>
+                  {lang==='fr' ? 'Documents manquants' : 'Missing documents'}
+                </div>
+                {analysis.documentsManquants.map((d, i) => (
+                  <div key={i} style={{ fontSize:12, color:c.ink2, marginBottom:4, display:'flex', gap:8 }}>
+                    <span style={{ color:c.warning }}>📄</span>{d}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {analysis.conseilPersonnalise && (
+              <div style={{ padding:'16px', background:`${c.accent}10`, borderLeft:`3px solid ${c.accent}`, marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:c.accent, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>
+                  {lang==='fr' ? 'Conseil IA personnalisé' : 'AI personalized advice'}
+                </div>
+                <div style={{ fontSize:13, color:c.ink2, lineHeight:1.7 }}>{analysis.conseilPersonnalise}</div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div style={{ padding:'16px 28px', borderTop:`1px solid ${c.rule}`, background:c.surface, display:'flex', gap:12, position:'sticky', bottom:0 }}>
+        <button onClick={()=>onSave(bourse, isStarred)}
+          style={{ flex:1, padding:13, background:isStarred?c.accent:'transparent', color:isStarred?'#fff':c.accent, border:`1px solid ${c.accent}`, fontSize:13, cursor:'pointer', fontFamily:c.fMono, fontWeight:500 }}>
+          {isStarred ? '★ Sauvegardé' : '☆ Sauvegarder'}
+        </button>
+        <button onClick={()=>onApply(bourse)}
+          style={{ flex:2, padding:13, background:isApplied?c.success:c.accent, color:'#fff', border:'none', fontSize:13, cursor:'pointer', fontFamily:c.fMono, fontWeight:600 }}>
+          {isApplied ? '✓ Dans ma roadmap' : 'Préparer ma candidature →'}
+        </button>
       </div>
     </div>
   );
-};
+}
 
-/* ── Comparison view — fully functional side-by-side ── */
-const ComparisonView = ({ scholarships, selectedIds, onRemove, c, lang }) => {
-  const selectedScholarships = scholarships.filter(s => selectedIds.includes(s.id));
-
-  if (selectedScholarships.length === 0) {
-    return (
-      <div style={{
-        textAlign: 'center', padding: '72px 20px',
-        background: c.surface, border: `1px solid ${c.border}`,
-        borderTop: `3px solid ${c.accent}`,
-      }}>
-        <div style={{ fontSize: 40, marginBottom: 16, color: c.inkTertiary, letterSpacing: 6 }}>⊕ ⊕</div>
-        <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.ink, marginBottom: 8 }}>
-          {lang === 'fr' ? 'Aucune bourse sélectionnée' : 'No scholarship selected'}
+/* ═══════════════════════════════════════════════════════════════════
+   SCHOLARSHIP CARD
+═══════════════════════════════════════════════════════════════════ */
+function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred, isApplied, c, lang }) {
+  const [hovered, setHovered] = useState(false);
+  const hasMatchScore = bourse.matchScore !== undefined;
+  const col = hasMatchScore ? scoreColor(bourse.matchScore, c) : c.ink4;
+  const bg  = hasMatchScore ? scoreBg(bourse.matchScore, c) : c.ruleSoft;
+  const deadlineDays = bourse.dateLimite
+    ? Math.floor((new Date(bourse.dateLimite) - new Date()) / 86400000)
+    : null;
+  return (
+    <article
+      onClick={() => onAnalyze(bourse)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ display:'flex', gap:0, background:c.surface, border:`1px solid ${hovered?c.accent:c.rule}`, marginBottom:12, cursor:'pointer', transition:c.tr, transform:hovered?'translateY(-1px)':'none', boxShadow:hovered?'0 4px 16px rgba(0,0,0,0.06)':'none', overflow:'hidden', animation:`cardIn 0.4s ease ${index*0.04}s both` }}
+    >
+      <div style={{ flex:1, padding:'18px 20px', minWidth:0 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+          <h3 style={{ fontFamily:c.fSerif, fontSize:17, fontWeight:700, margin:0, color:c.ink, flex:1, paddingRight:16, lineHeight:1.3 }}>{bourse.nom}</h3>
+          <span style={{ flexShrink:0, fontSize:10, fontWeight:700, padding:'3px 10px', background:bg, color:col, fontFamily:c.fMono, textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>
+            {scoreLabel(bourse.matchScore, lang)}
+          </span>
         </div>
-        <div style={{ fontSize: 13, color: c.inkSecondary, lineHeight: 1.6 }}>
-          {lang === 'fr'
-            ? 'Utilisez le bouton ⊕ sur chaque carte pour sélectionner 2 à 3 bourses à comparer.'
-            : 'Use the ⊕ button on each card to select 2–3 scholarships to compare.'}
+
+        <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:12, color:c.ink3, marginBottom:10, fontFamily:c.fMono }}>
+          {bourse.pays   && <span>{tCountry(bourse.pays, lang)}</span>}
+          {bourse.niveau && <span>· {tLevel(bourse.niveau, lang)}</span>}
+          {bourse.financement && <span>· {tFunding(bourse.financement, lang)}</span>}
+          {deadlineDays !== null && deadlineDays >= 0 && (
+            <span style={{ color: deadlineDays<=7?c.danger:deadlineDays<=30?c.warning:c.ink4 }}>
+              · {deadlineDays}j restants
+            </span>
+          )}
+        </div>
+
+        {(bourse.matchReasons || []).length > 0 && (
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+            {bourse.matchReasons.slice(0, 3).map((r, i) => (
+              <span key={i} style={{ fontSize:11, padding:'3px 9px', background:`${c.accent}12`, color:c.accent, fontFamily:c.fMono }}>
+                ✓ {r}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button
+            onClick={e=>{ e.stopPropagation(); onAnalyze(bourse); }}
+            style={{ padding:'7px 18px', background:c.accent, color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:c.fMono }}
+            onMouseEnter={e=>e.currentTarget.style.background=c.accentDark}
+            onMouseLeave={e=>e.currentTarget.style.background=c.accent}
+          >
+            {lang==='fr' ? 'Analyser mon match' : 'Analyze my match'}
+          </button>
+          <button
+            onClick={e=>{ e.stopPropagation(); onApply(bourse); }}
+            style={{ padding:'7px 18px', background:isApplied?c.success:'transparent', color:isApplied?'#fff':c.ink3, border:`1px solid ${c.rule}`, fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
+          >
+            {isApplied ? '✓ Roadmap' : '+ Postuler'}
+          </button>
+          <button
+            onClick={e=>{ e.stopPropagation(); onSave(bourse, isStarred); }}
+            style={{ padding:'7px 12px', background:isStarred?`${c.accent}15`:'transparent', color:isStarred?c.accent:c.ink4, border:`1px solid ${c.rule}`, fontSize:14, cursor:'pointer' }}
+          >
+            {isStarred ? '★' : '☆'}
+          </button>
         </div>
       </div>
-    );
-  }
+    </article>
+  );
+}
 
-  /* All criteria that appear in at least one bourse */
-  const allCriteria = [...new Set(selectedScholarships.flatMap(s => (s.breakdown || []).map(b => b.criterion)))];
+/* ═══════════════════════════════════════════════════════════════════
+   CONSEILS IA PERSONNALISÉS — générés dynamiquement via l'IA
+   FIX 3 : les conseils sont générés par appel webhook, pas en dur
+═══════════════════════════════════════════════════════════════════ */
+function ConseilsIA({ user, allScholarships, c, lang, handleQuickReply, setView }) {
+  const [conseils, setConseils]   = useState(null);
+  const [loading,  setLoading]    = useState(false);
+  const fetched = useRef(false);
+
+  useEffect(() => {
+    if (!user?.id || fetched.current || allScholarships.length === 0) return;
+    fetched.current = true;
+    setLoading(true);
+
+    const buildConseils = (userData) => {
+      const tips = [];
+      const langs = (userData.languages || []).map(l => l.language?.toLowerCase());
+      const hasIelts = langs.some(l => l?.includes('anglais') || l?.includes('english'));
+      const hasToefl = (userData.certifications || []).some(c => c.name?.toLowerCase().includes('toefl') || c.name?.toLowerCase().includes('ielts'));
+
+      if (!hasToefl && !hasIelts) {
+        tips.push({
+          icon: '🌍',
+          title: lang==='fr' ? 'Passer un test de langue (IELTS/TOEFL)' : 'Take a language test (IELTS/TOEFL)',
+          detail: lang==='fr' ? '73% des bourses compatibles exigent un certificat de langue' : '73% of matching scholarships require a language certificate',
+          gain: '+20%',
+          gainColor: c.success,
+          btnLabel: lang==='fr' ? 'Commencer' : 'Start',
+          btnAction: () => handleQuickReply?.(lang==='fr' ? 'Comment préparer le IELTS ?' : 'How to prepare for IELTS?'),
+        });
+      }
+
+      const hasExp = (userData.workExperience || []).length > 0;
+      if (!hasExp) {
+        tips.push({
+          icon: '💼',
+          title: lang==='fr' ? 'Ajouter une expérience professionnelle' : 'Add professional experience',
+          detail: lang==='fr' ? 'Votre profil ne mentionne aucune expérience — critère éliminatoire pour 40% des bourses' : 'Your profile shows no experience — eliminatory for 40% of scholarships',
+          gain: '+10%',
+          gainColor: c.warning,
+          btnLabel: lang==='fr' ? 'Ajouter' : 'Add',
+          btnAction: () => setView?.('profil'),
+        });
+      }
+
+      const hasProjects = (userData.academicProjects || []).length > 0;
+      if (!hasProjects) {
+        tips.push({
+          icon: '📄',
+          title: lang==='fr' ? 'Ajouter des projets académiques' : 'Add academic projects',
+          detail: lang==='fr' ? 'Les projets renforcent votre dossier de candidature' : 'Projects strengthen your application file',
+          gain: '+15%',
+          gainColor: c.accent,
+          btnLabel: lang==='fr' ? 'Optimiser' : 'Optimize',
+          btnAction: () => setView?.('cv'),
+        });
+      }
+
+      const avgScore = allScholarships.reduce((s, b) => s + b.matchScore, 0) / (allScholarships.length || 1);
+      const totalGain = tips.reduce((s, t) => s + parseInt(t.gain), 0);
+      const potentiel = Math.round(Math.min(100, avgScore + totalGain));
+
+      return { tips, potentiel };
+    };
+
+    axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 2 } })
+      .then(({ data }) => setConseils(buildConseils(data)))
+      .catch(() => setConseils(buildConseils(user)))
+      .finally(() => setLoading(false));
+  }, [user?.id, allScholarships.length]);
+
+  if (loading) return (
+    <div style={{ background:c.surface, borderTop:`1px solid ${c.rule}`, padding:'40px 32px', textAlign:'center' }}>
+      <div style={{ width:32, height:32, border:`2px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
+      <div style={{ fontSize:13, color:c.ink3, fontFamily:c.fMono }}>
+        {lang==='fr' ? 'Génération des conseils IA...' : 'Generating AI tips...'}
+      </div>
+    </div>
+  );
+
+  if (!conseils || conseils.tips.length === 0) return null;
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      {/* Score header row */}
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${selectedScholarships.length}, 1fr)`, gap: 16, minWidth: 560 }}>
-          {selectedScholarships.map(s => {
-            const matchColor = getMatchColor(s.matchScore, c);
-            const matchBg = getMatchBg(s.matchScore, c);
-            return (
-              <div key={s.id} style={{
-                border: `1px solid ${c.border}`,
-                borderTop: `3px solid ${matchColor}`,
-                background: c.surface,
-                overflow: 'hidden',
-              }}>
-                {/* Card header */}
-                <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${c.borderLight}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'baseline', gap: 2,
-                      background: matchBg, padding: '6px 10px', borderRadius: 4,
-                    }}>
-                      <span style={{ fontSize: 32, fontWeight: 700, color: matchColor, letterSpacing: '-0.02em' }}>{s.matchScore}</span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: matchColor }}>%</span>
-                    </div>
-                    <button
-                      onClick={() => onRemove(s.id)}
-                      style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.inkTertiary, transition: c.transition, lineHeight: 1 }}
-                      onMouseEnter={e => e.currentTarget.style.color = c.error}
-                      onMouseLeave={e => e.currentTarget.style.color = c.inkTertiary}
-                    >×</button>
-                  </div>
-                  <h4 style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 600, margin: '0 0 6px', color: c.ink, lineHeight: 1.3 }}>{s.nom}</h4>
-                  <div style={{ fontSize: 11, color: c.inkTertiary }}>{tCountry(s.pays, lang)}</div>
-                </div>
+    <div style={{ background:c.surface, borderTop:`1px solid ${c.rule}`, padding:'48px 32px' }}>
+      <div style={{ maxWidth:960, margin:'0 auto' }}>
+        <div style={{ marginBottom:28 }}>
+          <h2 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, margin:'0 0 8px', letterSpacing:'-0.01em' }}>
+            {lang==='fr' ? 'Conseils personnalisés' : 'Personalized tips'}
+          </h2>
+          <p style={{ fontSize:14, color:c.ink3, margin:0, lineHeight:1.6 }}>
+            {lang==='fr'
+              ? 'Basés sur votre profil réel — ces actions augmenteraient significativement vos chances.'
+              : 'Based on your real profile — these actions would significantly boost your chances.'}
+          </p>
+        </div>
 
-                {/* Progress bar */}
-                <div style={{ height: 3, background: c.borderLight }}>
-                  <div style={{ width: `${s.matchScore}%`, height: '100%', background: matchColor }} />
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16, marginBottom:28 }}>
+          {conseils.tips.map((conseil, i) => (
+            <div key={i} style={{ background:c.paper2, border:`1px solid ${c.ruleSoft}`, padding:'20px 22px', display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, paddingRight:8 }}>
+                  <span style={{ fontSize:22, flexShrink:0 }}>{conseil.icon}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:c.ink, lineHeight:1.4 }}>{conseil.title}</span>
                 </div>
-
-                {/* Criteria breakdown */}
-                <div style={{ padding: '16px 20px' }}>
-                  {allCriteria.map(criterion => {
-                    const entry = (s.breakdown || []).find(b => b.criterion === criterion);
-                    const pct = entry ? Math.round((entry.score / entry.max) * 100) : 0;
-                    let barColor = c.error;
-                    if (pct >= 70) barColor = c.success;
-                    else if (pct >= 40) barColor = c.warning;
-                    return (
-                      <div key={criterion} style={{ marginBottom: 14 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11 }}>
-                          <span style={{ color: c.inkSecondary }}>{criterion}</span>
-                          <span style={{ color: c.ink, fontWeight: 600 }}>
-                            {entry ? `${entry.score}/${entry.max}` : '—'}
-                          </span>
-                        </div>
-                        <div style={{ height: 3, background: c.borderLight, borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: barColor }} />
-                        </div>
-                        {entry && (
-                          <div style={{ fontSize: 10, color: c.inkTertiary, marginTop: 4 }}>{entry.message}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Strengths / weaknesses mini */}
-                {(s.strengths?.length > 0 || s.weaknesses?.length > 0) && (
-                  <div style={{ padding: '0 20px 20px' }}>
-                    {s.strengths?.length > 0 && (
-                      <div style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: c.success, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Forces</div>
-                        {s.strengths.slice(0, 2).map((str, i) => (
-                          <div key={i} style={{ fontSize: 11, color: c.inkSecondary, display: 'flex', gap: 6, marginBottom: 3 }}>
-                            <span style={{ color: c.success }}>✓</span>{str}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {s.weaknesses?.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: c.error, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Écarts</div>
-                        {s.weaknesses.slice(0, 2).map((w, i) => (
-                          <div key={i} style={{ fontSize: 11, color: c.inkSecondary, display: 'flex', gap: 6, marginBottom: 3 }}>
-                            <span style={{ color: c.error }}>·</span>{w}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Level / funding */}
-                <div style={{ padding: '14px 20px', borderTop: `1px solid ${c.borderLight}`, background: c.paper, fontSize: 11, color: c.inkTertiary, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {s.niveau && <span>{tLevel(s.niveau, lang)}</span>}
-                  {s.financement && <span>{tFunding(s.financement, lang)}</span>}
-                </div>
+                <span style={{ flexShrink:0, fontSize:13, fontWeight:800, color:conseil.gainColor, fontFamily:c.fMono }}>{conseil.gain}</span>
               </div>
-            );
-          })}
+              <div style={{ fontSize:12, color:c.ink3, lineHeight:1.5 }}>{conseil.detail}</div>
+              <button onClick={conseil.btnAction}
+                style={{ alignSelf:'flex-start', padding:'7px 20px', background:c.accent, color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:c.fMono }}
+                onMouseEnter={e=>e.currentTarget.style.background=c.accentDark}
+                onMouseLeave={e=>e.currentTarget.style.background=c.accent}
+              >
+                {conseil.btnLabel}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background:`linear-gradient(135deg, ${c.accent}15, ${c.accent}05)`, border:`1px solid ${c.accent}30`, padding:'24px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:c.accent, textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:c.fMono, marginBottom:6 }}>
+              {lang==='fr' ? 'Impact potentiel total' : 'Total potential impact'}
+            </div>
+            <div style={{ fontSize:13, color:c.ink2, lineHeight:1.6, maxWidth:480 }}>
+              {lang==='fr'
+                ? `En appliquant ces ${conseils.tips.length} conseil(s), votre score de compatibilité moyen passerait à environ ${conseils.potentiel}%.`
+                : `By applying these ${conseils.tips.length} tip(s), your average compatibility score would reach approximately ${conseils.potentiel}%.`}
+            </div>
+          </div>
+          <div style={{ textAlign:'center', flexShrink:0 }}>
+            <div style={{ fontSize:48, fontWeight:800, color:c.accent, fontFamily:c.fSerif, lineHeight:1, letterSpacing:'-0.03em' }}>
+              +{conseils.tips.reduce((s, t) => s + parseInt(t.gain), 0)}%
+            </div>
+            <div style={{ fontSize:11, color:c.ink4, fontFamily:c.fMono, marginTop:4 }}>
+              {lang==='fr' ? 'potentiel' : 'potential'}
+            </div>
+          </div>
         </div>
       </div>
-
-      {selectedScholarships.length < 3 && (
-        <div style={{ marginTop: 16, fontSize: 12, color: c.inkTertiary, textAlign: 'center' }}>
-          {lang === 'fr'
-            ? `Vous pouvez encore ajouter ${3 - selectedScholarships.length} bourse(s) à la comparaison`
-            : `You can still add ${3 - selectedScholarships.length} more scholarship(s) to compare`}
-        </div>
-      )}
     </div>
   );
-};
+}
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════
    MAIN PAGE
-═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 export default function RecommandationsPage({
   user, handleSend, messages, input, setInput,
   loading: chatLoading, handleQuickReply, setView, onStarChange,
 }) {
-  const { t, lang } = useT();
+  const { lang } = useT();
   const { theme } = useTheme();
   const c = tokens(theme);
 
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [analysisBourse, setAnalysisBourse] = useState(null);
-  const [filters, setFilters] = useState({ matchLevel: 'all' });
-  const [activeTab, setActiveTab] = useState('matches');
-  const [selectedForComparison, setSelectedForComparison] = useState([]);
+  // FIX 2 — démarre directement en 'results' si l'user a déjà des données chargées
+  const [phase,         setPhase]         = useState('welcome');
+  const [generateStep,  setGenerateStep]  = useState(0);
   const [allScholarships, setAllScholarships] = useState([]);
-  const [error, setError] = useState(null);
-  const [starredNoms, setStarredNoms] = useState(new Set());
-  const [appliedNoms, setAppliedNoms] = useState(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [analysisBourse, setAnalysisBourse] = useState(null);
+  const [selected,      setSelected]      = useState(null);
+  const [starredNoms,   setStarredNoms]   = useState(new Set());
+  const [appliedNoms,   setAppliedNoms]   = useState(new Set());
+  const [activeFilter,  setActiveFilter]  = useState('all');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const PAGE_SIZE = 8;
+  const autoLoadTriggered = useRef(false);
 
- if (!user) {
-  return (
-    <>
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
-        <div style={{ background: c.surface, border: `1px solid ${c.border}`, padding: '48px 40px', maxWidth: 400, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>○</div>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 600, color: c.ink, margin: '0 0 8px' }}>
-            {lang === 'fr' ? 'Recommandations non disponibles' : 'Recommendations unavailable'}
-          </h3>
-          <p style={{ color: c.inkSecondary, fontSize: 13, lineHeight: 1.5, margin: '0 0 24px' }}>
-            {lang === 'fr' ? 'Connectez-vous pour découvrir les bourses parfaitement adaptées à votre profil.' : 'Sign in to discover scholarships perfectly suited to your profile.'}
-          </p>
-          <button
-            style={{ padding: '12px 32px', background: c.accent, color: c.paper, border: 'none', fontSize: 13, fontWeight: 500, fontFamily: c.fMono, cursor: 'pointer', transition: c.transition, letterSpacing: '0.03em' }}
-            onClick={() => setShowLoginModal(true)}
-            onMouseEnter={e => e.currentTarget.style.background = c.accentDark}
-            onMouseLeave={e => e.currentTarget.style.background = c.accent}
-          >
-            {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-          </button>
-        </div>
-      </div>
+  const [searchQuery, setSearchQuery] = useState('');
+  const [fullBoursesList, setFullBoursesList] = useState([]);
+  const [loadingFull, setLoadingFull] = useState(false);
 
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} />}
-    </>
-  );
-}
-  const loadRecommandations = useCallback(async () => {
-    if (!user?.id) return;
+  const fetchFullBourses = useCallback(async () => {
+    if (fullBoursesList.length > 0 || loadingFull) return;
+    setLoadingFull(true);
+    try {
+      const res = await axiosInstance.get(API_ROUTES.bourses.list, {
+        params: { limit: 500, depth: 0, where: { statut: { equals: 'active' } } }
+      });
+      setFullBoursesList(res.data.docs || []);
+    } catch (err) {
+      console.error('Erreur chargement bourses complètes', err);
+    } finally {
+      setLoadingFull(false);
+    }
+  }, [fullBoursesList.length, loadingFull]);
+
+  const STEPS = lang==='fr'
+    ? ['Récupération de votre profil...', 'Chargement des bourses...', 'Calcul des scores IA...', 'Tri par compatibilité...']
+    : ['Fetching your profile...', 'Loading scholarships...', 'Calculating AI scores...', 'Sorting by compatibility...'];
+
+  /* ── FIX 2 : auto-chargement quand l'user arrive sur la page ──
+     On ne montre plus le bouton "Générer" — on charge directement
+  ── */
+  useEffect(() => {
+    if (!user?.id || autoLoadTriggered.current) return;
+    autoLoadTriggered.current = true;
+    setPhase('generating');
+    loadData();
+  }, [user?.id]);
+
+  /* ── Chargement IA via webhook recommandation ── */
+  const loadData = useCallback(async () => {
+    if (!user?.id && !user?.email) return;
     setLoading(true);
     setError(null);
+    setGenerateStep(0);
+
+    const stepInterval = setInterval(() => {
+      setGenerateStep(prev => prev >= STEPS.length-1 ? prev : prev+1);
+    }, 600);
+
     try {
-      const { data: userData } = await axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 0 } });
-      const { data: dataFav } = await axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } });
-      const docFav = dataFav.docs?.[0];
-      const newStarred = new Set((docFav?.bourses || []).map(b => b.nom?.trim().toLowerCase()));
-      setStarredNoms(newStarred);
-      onStarChange?.(newStarred.size);
+      const [favRes, roadmapRes] = await Promise.all([
+        axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit:1, depth:0 } }),
+        axiosInstance.get(API_ROUTES.roadmap.list, { params: { 'where[userId][equals]': user.id, limit:100, depth:0 } }),
+      ]);
+      setStarredNoms(new Set((favRes.data.docs?.[0]?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
+      setAppliedNoms(new Set((roadmapRes.data.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
+      onStarChange?.((favRes.data.docs?.[0]?.bourses||[]).length);
 
-      const { data: dataRoadmap } = await axiosInstance.get(API_ROUTES.roadmap.list, { params: { 'where[userId][equals]': user.id, limit: 100, depth: 0 } });
-      setAppliedNoms(new Set((dataRoadmap.docs || []).map(b => b.nom?.trim().toLowerCase())));
-
-      const { data: dataBourses } = await axiosInstance.get(API_ROUTES.bourses.list, { params: { limit: 200, depth: 0 } });
-      const bourses = dataBourses.docs || [];
-
-      const userProfile = {
-        niveau: userData.niveau || user.niveau || '',
-        domaine: userData.domaine || user.domaine || '',
-        pays: userData.pays || user.pays || '',
-      };
-
-      const scoredBourses = bourses.map(bourse => {
-        const { score, breakdown, strengths, weaknesses } = calculateMatchScore(bourse, userProfile);
-        const reasons = [];
-        if (strengths.length > 0) reasons.push(...strengths.slice(0, 2));
-        if (bourse.tunisienEligible === 'oui') reasons.push('Éligible Tunisie');
-        if (bourse.statut === 'active') reasons.push('Candidatures ouvertes');
-        return { ...bourse, matchScore: score, matchReasons: reasons, breakdown, strengths, weaknesses };
+      const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, userId: user.id }),
+        signal: AbortSignal.timeout(20000),
       });
 
-      setAllScholarships(scoredBourses);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const scored = (data.actives || []);
+      clearInterval(stepInterval);
+      setAllScholarships(scored);
+      setGenerateStep(STEPS.length-1);
+      setTimeout(() => setPhase('results'), 400);
+
     } catch (err) {
-      setError((lang === 'fr' ? 'Impossible de charger les recommandations : ' : 'Could not load recommendations: ') + (err.response?.data?.message || err.message));
+      clearInterval(stepInterval);
+      try {
+        const [userRes, boursesRes] = await Promise.all([
+          axiosInstance.get(`/api/users/${user.id}`, { params:{depth:0} }),
+          axiosInstance.get(API_ROUTES.bourses.list, { params:{limit:200, depth:0} }),
+        ]);
+        const profile = {
+          niveau: userRes.data.niveau || user.niveau || '',
+          domaine: userRes.data.domaine || user.domaine || '',
+        };
+        const scored = (boursesRes.data.docs||[]).map(b => {
+          let score = 0;
+          const matchReasons = [];
+          if (b.tunisienEligible==='oui') { score+=30; matchReasons.push('Éligible Tunisie'); }
+          if (profile.niveau && b.niveau?.toLowerCase().includes(profile.niveau.toLowerCase())) { score+=25; matchReasons.push(`Niveau ${b.niveau}`); }
+          else if (!b.niveau || b.niveau.toLowerCase().includes('tous')) score+=12;
+          if (profile.domaine && b.domaine?.toLowerCase().includes(profile.domaine.toLowerCase())) { score+=20; matchReasons.push(`Domaine ${b.domaine}`); }
+          if (b.statut==='active') { score+=15; matchReasons.push('Candidatures ouvertes'); }
+          if (b.dateLimite && Math.floor((new Date(b.dateLimite)-new Date())/86400000)>30) score+=3;
+          return { ...b, matchScore:score, matchReasons };
+        }).filter(b=>b.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore);
+        setAllScholarships(scored);
+        setGenerateStep(STEPS.length-1);
+        setTimeout(() => setPhase('results'), 400);
+      } catch {
+        setError(lang==='fr' ? 'Impossible de charger les recommandations.' : 'Could not load recommendations.');
+        setPhase('welcome');
+      }
     } finally {
       setLoading(false);
     }
   }, [user, onStarChange, lang]);
 
+  /* ── Favoris ── */
   const handleStar = async (bourse, isStarred) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) return;
     try {
-      const { data } = await axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } });
+      const { data } = await axiosInstance.get('/api/favoris', { params:{'where[user][equals]':user.id, limit:1, depth:0} });
       const doc = data.docs?.[0];
       if (isStarred) {
         if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
-        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
+        setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
       } else {
-        const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
-        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
-        else await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
-        setStarredNoms(prev => { const s = new Set([...prev, nomKey]); onStarChange?.(s.size); return s; });
+        const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
+        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]), nb] });
+        else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
+        setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
       }
       window.dispatchEvent(new CustomEvent('favoris-updated'));
-    } catch (err) { console.error('[handleStar]', err); }
+    } catch(e) { console.error('[handleStar]', e); }
   };
 
+  /* ── Postuler ── */
   const handleApply = async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id || appliedNoms.has(nomKey)) return;
     try {
       const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id, userEmail: user.email || '', nom: bourse.nom, pays: bourse.pays || '',
-        lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '',
-        dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
+        userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
+        lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
+        dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
       });
       await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-        roadmapId: res.data.doc.id,
-        user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
-        bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
+        roadmapId:res.data.doc.id,
+        user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
+        bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
       });
-      setAppliedNoms(prev => new Set([...prev, nomKey]));
+      setAppliedNoms(prev=>new Set([...prev, nomKey]));
       window.dispatchEvent(new CustomEvent('roadmap-updated'));
       setTimeout(() => setView?.('roadmap'), 1000);
-    } catch (err) {
-      console.error('[handleApply]', err);
-      alert(lang === 'fr' ? "Erreur lors de l'initialisation." : "Error initializing application.");
-    }
+    } catch(e) { console.error('[handleApply]', e); }
   };
 
-  useEffect(() => { loadRecommandations(); }, [loadRecommandations]);
-  useEffect(() => { setCurrentPage(1); }, [filters, activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [activeFilter]);
+  useEffect(() => { if (activeFilter !== 'test') setSearchQuery(''); }, [activeFilter]);
 
-  /* Toggle compare selection (max 3) */
-  const toggleCompare = useCallback((id) => {
-    setSelectedForComparison(prev => {
-      if (prev.includes(id)) return prev.filter(i => i !== id);
-      if (prev.length >= 3) return prev;
-      return [...prev, id];
-    });
-  }, []);
-
-  const filteredScholarships = useMemo(() => {
-    let results = [...allScholarships];
-    if (filters.matchLevel !== 'all') {
-      if (filters.matchLevel === 'high') results = results.filter(s => s.matchScore >= 70);
-      if (filters.matchLevel === 'medium') results = results.filter(s => s.matchScore >= 40 && s.matchScore < 70);
-      if (filters.matchLevel === 'low') results = results.filter(s => s.matchScore >= 0 && s.matchScore < 40);
+  /* ── Filtrage ── */
+  const filtered = useMemo(() => {
+    let r = [...allScholarships];
+    if (activeFilter === 'easy') {
+      r = r.filter(s => s.matchScore >= 70);
+    } else if (activeFilter === 'nolang') {
+      r = r.filter(s => !((s.description||'').toLowerCase().includes('ielts') || (s.description||'').toLowerCase().includes('toefl')));
+    } else if (activeFilter === 'deadline') {
+      const d30 = new Date(Date.now() + 30*86400000);
+      r = r.filter(s => s.dateLimite && new Date(s.dateLimite) <= d30 && new Date(s.dateLimite) >= new Date());
+    } else if (activeFilter === 'perso') {
+      r = r.filter(s => s.matchScore >= 40);
+    } else if (activeFilter === 'test') {
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        r = fullBoursesList.filter(b =>
+          (b.nom?.toLowerCase().includes(q) || (b.pays && b.pays.toLowerCase().includes(q)))
+        );
+      } else {
+        r = [];
+      }
     }
-    results.sort((a, b) => b.matchScore - a.matchScore);
-    return results;
-  }, [allScholarships, filters]);
+    if (activeFilter === 'test') return r.sort((a,b) => (a.nom || '').localeCompare(b.nom || ''));
+    return r.sort((a,b) => (b.matchScore || 0) - (a.matchScore || 0));
+  }, [allScholarships, activeFilter, searchQuery, fullBoursesList]);
 
-  const viewBestMatches = () => {
-    setFilters({ matchLevel: 'all' });
-    window.scrollTo({ top: 400, behavior: 'smooth' });
-  };
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  const safePage   = Math.min(currentPage, totalPages);
+  const paged      = filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE);
+  const stats = useMemo(() => ({
+    high:   allScholarships.filter(s=>s.matchScore>=70).length,
+    medium: allScholarships.filter(s=>s.matchScore>=40&&s.matchScore<70).length,
+    low:    allScholarships.filter(s=>s.matchScore<40).length,
+    total:  allScholarships.length,
+  }), [allScholarships]);
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 20px' }}>
-          <div style={{ width: 40, height: 40, border: `2px solid ${c.borderLight}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <p style={{ color: c.inkSecondary, marginTop: 20, fontSize: 13 }}>
-            {lang === 'fr' ? 'Analyse de votre profil...' : 'Analyzing your profile...'}
+  /* ── Non connecté ── */
+  if (!user) return (
+    <>
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:c.paper, padding:24 }}>
+        <div style={{ background:c.surface, border:`1px solid ${c.rule}`, padding:'48px 40px', maxWidth:400, width:'100%', textAlign:'center' }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>🎓</div>
+          <h3 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, margin:'0 0 12px' }}>
+            {lang==='fr' ? 'Recommandations personnalisées' : 'Personalized recommendations'}
+          </h3>
+          <p style={{ color:c.ink3, fontSize:14, lineHeight:1.6, margin:'0 0 28px' }}>
+            {lang==='fr' ? 'Connectez-vous pour découvrir les bourses compatibles avec votre profil.' : 'Sign in to discover scholarships matching your profile.'}
           </p>
+          <button onClick={()=>setShowLoginModal(true)} style={{ padding:'13px 36px', background:c.accent, color:'#fff', border:'none', fontSize:14, fontWeight:600, fontFamily:c.fMono, cursor:'pointer' }}>
+            {lang==='fr' ? 'Se connecter' : 'Sign in'}
+          </button>
         </div>
-      );
-    }
+      </div>
+      {showLoginModal && <LoginModal onClose={()=>setShowLoginModal(false)} c={c} lang={lang} />}
+      <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
+    </>
+  );
 
-    if (activeTab === 'compare') {
-      return (
-        <ComparisonView
-          scholarships={filteredScholarships}
-          selectedIds={selectedForComparison}
-          onRemove={(id) => setSelectedForComparison(prev => prev.filter(i => i !== id))}
-          c={c}
-          lang={lang}
-        />
-      );
-    }
-
-    const displayScholarships = activeTab === 'matches'
-      ? filteredScholarships.filter(s => s.matchScore >= 40)
-      : filteredScholarships;
-
-    const totalPages = Math.max(1, Math.ceil(displayScholarships.length / PAGE_SIZE));
-    const safePage = Math.min(currentPage, totalPages);
-    const pageStart = (safePage - 1) * PAGE_SIZE;
-    const pageEnd = pageStart + PAGE_SIZE;
-    const pageScholarships = displayScholarships.slice(pageStart, pageEnd);
-
-    const highMatches = pageScholarships.filter(s => s.matchScore >= 70);
-    const mediumMatches = pageScholarships.filter(s => s.matchScore >= 40 && s.matchScore < 70);
-    const lowMatches = pageScholarships.filter(s => s.matchScore < 40);
-
-    const sections = [
-      { title: lang === 'fr' ? 'Forte compatibilité' : 'High Match', scholarships: highMatches, color: c.success },
-      { title: lang === 'fr' ? 'Compatibilité moyenne' : 'Medium Match', scholarships: mediumMatches, color: c.warning },
-      { title: lang === 'fr' ? 'À améliorer' : 'Needs Improvement', scholarships: lowMatches, color: c.error },
-    ];
-
-    const goToPage = (p) => {
-      setCurrentPage(p);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    return (
-      <div>
-        {displayScholarships.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>○</div>
-            <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.ink, marginBottom: 8 }}>
-              {lang === 'fr' ? 'Aucune recommandation trouvée' : 'No recommendations found'}
+  /* ── PHASE GENERATING ── */
+  if (phase === 'generating') return (
+    <div style={{ minHeight:'100vh', background:c.paper, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <div style={{ background:c.surface, border:`1px solid ${c.rule}`, padding:'56px 48px', maxWidth:480, width:'100%', textAlign:'center' }}>
+        <div style={{ width:52, height:52, border:`3px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.9s linear infinite', margin:'0 auto 28px' }} />
+        <h3 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, marginBottom:28 }}>
+          {lang==='fr' ? 'Analyse IA en cours...' : 'AI analysis in progress...'}
+        </h3>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {STEPS.map((step,i)=>(
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'10px 16px', background:i<=generateStep?`${c.accent}10`:c.paper2, border:`1px solid ${i<=generateStep?`${c.accent}30`:c.ruleSoft}`, transition:'all 0.3s ease' }}>
+              <div style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, background:i<generateStep?c.success:i===generateStep?c.accent:c.ruleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {i<generateStep ? <span style={{ color:'#fff', fontSize:11 }}>✓</span>
+                 : i===generateStep ? <div style={{ width:8, height:8, borderRadius:'50%', background:'#fff', animation:'pulse 1s infinite' }} />
+                 : null}
+              </div>
+              <span style={{ fontSize:13, color:i<=generateStep?c.ink2:c.ink4, fontFamily:c.fSans, textAlign:'left' }}>{step}</span>
             </div>
-            <p style={{ color: c.inkSecondary, fontSize: 13 }}>
-              {lang === 'fr' ? 'Complétez votre profil pour de meilleures suggestions' : 'Complete your profile for better suggestions'}
+          ))}
+        </div>
+        {error && (
+          <div style={{ marginTop:20, padding:'12px 16px', background:c.dangerBg, color:c.danger, fontSize:13, borderLeft:`3px solid ${c.danger}` }}>
+            {error}
+            <button onClick={()=>{setPhase('welcome');setError(null);}} style={{ marginLeft:12, color:c.danger, background:'none', border:'none', cursor:'pointer', textDecoration:'underline', fontSize:12 }}>
+              Réessayer
+            </button>
+          </div>
+        )}
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg);}} @keyframes pulse{0%,100%{transform:scale(0.8);opacity:0.5;}50%{transform:scale(1.1);opacity:1;}}`}</style>
+    </div>
+  );
+
+  /* ── PHASE RESULTS ── */
+  return (
+    <main style={{ background:c.paper, color:c.ink, fontFamily:c.fSans, minHeight:'100vh' }}>
+      <style>{`
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        @keyframes cardIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes spin{to{transform:rotate(360deg);}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+        @keyframes pulse{0%,100%{transform:scale(0.8);opacity:0.5;}50%{transform:scale(1.1);opacity:1;}}
+      `}</style>
+
+      {/* ── Hero ── */}
+      <div style={{ background:c.paper2, padding:'40px 32px', textAlign:'center', borderBottom:`1px solid ${c.rule}`, animation:'fadeIn 0.5s ease' }}>
+        <h1 style={{ fontFamily:c.fSerif, fontSize:'clamp(28px,4vw,44px)', fontWeight:700, letterSpacing:'-0.02em', color:c.ink, margin:'0 0 10px' }}>
+          {lang==='fr'
+            ? <>Vos <em style={{ color:c.accent, fontStyle:'italic' }}>recommandations personnalisées</em>.</>
+            : <>Your <em style={{ color:c.accent, fontStyle:'italic' }}>personalized recommendations</em>.</>}
+        </h1>
+        <p style={{ fontFamily:c.fSans, fontSize:15, color:c.ink2, maxWidth:520, margin:'0 auto 24px' }}>
+          {lang==='fr'
+            ? `${stats.total} bourses analysées par l'IA — ${stats.high} très prometteuses, ${stats.medium} à fort potentiel.`
+            : `${stats.total} scholarships analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
+        </p>
+        <button
+          onClick={()=>{ autoLoadTriggered.current = false; setPhase('generating'); loadData(); }}
+          style={{ background:'transparent', border:`1px solid ${c.rule}`, color:c.ink3, padding:'7px 18px', fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
+        >
+          ↺ {lang==='fr' ? 'Actualiser' : 'Refresh'}
+        </button>
+      </div>
+
+      {/* ── Filtres intelligents ── */}
+      <div style={{ background:c.surface, borderBottom:`1px solid ${c.rule}`, padding:'0 32px 24px 32px' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', paddingTop:20, marginBottom:16 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:c.ink4, textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:c.fMono }}>
+            {lang==='fr' ? 'Filtres intelligents' : 'Smart filters'}
+          </span>
+        </div>
+        <div style={{ maxWidth:960, margin:'0 auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:16 }}>
+            {[
+              { id:'all',      label:lang==='fr'?'Toutes les bourses':'All scholarships', desc:lang==='fr'?'Voir toutes':'View all' },
+              { id:'easy',     label:lang==='fr'?'Faciles à obtenir':'Easy to get',       desc:lang==='fr'?`${stats.high} bourses ≥70%`:`${stats.high} scholarships ≥70%` },
+              { id:'nolang',   label:lang==='fr'?'Sans test de langue':'No language test', desc:lang==='fr'?"Pas d'IELTS/TOEFL":'No IELTS/TOEFL' },
+              { id:'deadline', label:lang==='fr'?'Deadline proche':'Deadline soon',        desc:lang==='fr'?'< 30 jours':'< 30 days' },
+            ].map(tab => {
+              const isActive = activeFilter === tab.id;
+              return (
+                <button key={tab.id} onClick={()=>setActiveFilter(tab.id)} style={{ background:isActive?`${c.accent}10`:c.surface, border:`1px solid ${isActive?c.accent:c.rule}`, borderRadius:12, padding:'16px 12px', textAlign:'left', cursor:'pointer', transition:c.tr, boxShadow:isActive?`0 4px 12px ${c.accent}20`:'none' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+                    <span style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:600, color:isActive?c.accent:c.ink }}>{tab.label}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:c.ink3, fontFamily:c.fMono }}>{tab.desc}</div>
+                  {isActive && <div style={{ marginTop:10, fontSize:11, color:c.accent, fontFamily:c.fMono, borderTop:`1px solid ${c.accent}30`, paddingTop:8 }}>✓ Actif</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ margin:'24px -32px 0 -32px', borderTop:`1px solid ${c.ruleSoft}`, background:c.paper2 }}>
+          <div style={{ display:'flex', width:'100%' }}>
+            {[
+              { id:'perso', label:lang==='fr'?'Sélection personnalisée':'Personalized selection', icon:'✨' },
+              { id:'test',  label:lang==='fr'?'Tester une bourse':'Test a scholarship', icon:'🔍' },
+            ].map(tab => {
+              const isActive = activeFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveFilter(tab.id);
+                    if (tab.id === 'test' && fullBoursesList.length === 0) fetchFullBourses();
+                  }}
+                  style={{ flex:1, padding:'16px 12px', display:'flex', alignItems:'center', justifyContent:'center', gap:10, background:isActive?`${c.accent}15`:'transparent', border:'none', borderBottom:`3px solid ${isActive?c.accent:'transparent'}`, color:isActive?c.accent:c.ink2, fontSize:14, fontWeight:isActive?700:500, cursor:'pointer', fontFamily:c.fMono, transition:c.tr }}
+                >
+                  <span style={{ fontSize:18 }}>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Barre de recherche pour l'onglet test */}
+      {activeFilter === 'test' && (
+        <div style={{ maxWidth:960, margin:'24px auto 0', padding:'0 32px' }}>
+          <div style={{ display:'flex', gap:12, alignItems:'center', background:c.paper2, padding:'8px 16px', border:`1px solid ${c.ruleSoft}`, borderRadius:40 }}>
+            <span style={{ fontSize:18 }}>🔍</span>
+            <input
+              type="text"
+              placeholder={lang === 'fr' ? 'Nom de la bourse, pays...' : 'Scholarship name, country...'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ flex:1, background:'transparent', border:'none', padding:'12px 0', outline:'none', color:c.ink, fontSize:14 }}
+              autoFocus
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, color:c.ink3, padding:'0 8px' }}>
+                ✕
+              </button>
+            )}
+          </div>
+          {loadingFull && <div style={{ textAlign:'center', padding:20, fontSize:13, color:c.ink3 }}>Chargement des bourses...</div>}
+        </div>
+      )}
+
+      {/* ── Liste ── */}
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'32px 32px 80px' }}>
+        {error && (
+          <div style={{ padding:'14px 20px', background:c.dangerBg, borderLeft:`3px solid ${c.danger}`, marginBottom:24, display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13 }}>
+            <span style={{ color:c.danger }}>{error}</span>
+            <button onClick={loadData} style={{ padding:'6px 16px', background:c.danger, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:11 }}>
+              {lang==='fr' ? 'Réessayer' : 'Retry'}
+            </button>
+          </div>
+        )}
+
+        {paged.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'80px 20px' }}>
+            <div style={{ fontSize:48, marginBottom:16, color:c.ink4 }}>○</div>
+            <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:600, color:c.ink, marginBottom:8 }}>
+              {lang==='fr' ? 'Aucun résultat' : 'No results'}
+            </div>
+            <p style={{ color:c.ink3, fontSize:13 }}>
+              {activeFilter === 'test'
+                ? (lang==='fr' ? 'Commencez à taper le nom d\'une bourse ou d\'un pays.' : 'Start typing a scholarship name or country.')
+                : (lang==='fr' ? 'Complétez votre profil pour de meilleures suggestions.' : 'Complete your profile for better suggestions.')}
             </p>
           </div>
         ) : (
           <>
-            {sections.map(section => section.scholarships.length > 0 && (
-              <div key={section.title} style={{ marginBottom: 40 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: section.color, marginBottom: 20, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {section.title} ({section.scholarships.length})
-                </div>
-                <div>
-                  {section.scholarships.map(bourse => (
-                    <ScholarshipCard
-                      key={bourse.id}
-                      bourse={bourse}
-                      onAnalyze={setAnalysisBourse}
-                      onSave={handleStar}
-                      onApply={handleApply}
-                      isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                      isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                      c={c}
-                      lang={lang}
-                      isSelectedForCompare={selectedForComparison.includes(bourse.id)}
-                      onToggleCompare={toggleCompare}
-                      compareDisabled={selectedForComparison.length >= 3}
-                    />
-                  ))}
-                </div>
-              </div>
+            {paged.map((bourse, i) => (
+              <ScholarshipCard
+                key={bourse.id}
+                bourse={bourse}
+                index={i}
+                onAnalyze={setAnalysisBourse}
+                onSave={handleStar}
+                onApply={handleApply}
+                isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                c={c}
+                lang={lang}
+              />
             ))}
-
-            {/* ── Pagination ── */}
             {totalPages > 1 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                paddingTop: 32,
-                borderTop: `1px solid ${c.border}`,
-                marginTop: 8,
-              }}>
-                {/* Précédent */}
-                <button
-                  onClick={() => goToPage(safePage - 1)}
-                  disabled={safePage === 1}
-                  style={{
-                    padding: '8px 18px',
-                    background: 'transparent',
-                    border: `1px solid ${safePage === 1 ? c.borderLight : c.border}`,
-                    color: safePage === 1 ? c.inkTertiary : c.inkSecondary,
-                    fontSize: 12,
-                    fontFamily: c.fMono,
-                    cursor: safePage === 1 ? 'default' : 'pointer',
-                    transition: c.transition,
-                    letterSpacing: '0.02em',
-                  }}
-                  onMouseEnter={e => { if (safePage !== 1) e.currentTarget.style.borderColor = c.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = safePage === 1 ? c.borderLight : c.border; }}
-                >
-                  {lang === 'fr' ? '← Précédent' : '← Previous'}
+              <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:12, paddingTop:32, borderTop:`1px solid ${c.rule}`, marginTop:8 }}>
+                <button onClick={()=>{setCurrentPage(p=>Math.max(1,p-1));window.scrollTo({top:0,behavior:'smooth'});}} disabled={safePage===1}
+                  style={{ padding:'8px 20px', background:'transparent', border:`1px solid ${safePage===1?c.ruleSoft:c.rule}`, color:safePage===1?c.ink4:c.ink2, fontSize:12, cursor:safePage===1?'default':'pointer', fontFamily:c.fMono }}>
+                  ← {lang==='fr'?'Précédent':'Previous'}
                 </button>
-
-                {/* Page indicator */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 12,
-                  fontFamily: c.fMono,
-                  color: c.inkTertiary,
-                  letterSpacing: '0.04em',
-                }}>
-                  <span style={{ color: c.accent, fontWeight: 600 }}>Page {safePage}</span>
-                  <span>/</span>
-                  <span>{totalPages}</span>
-                </div>
-
-                {/* Suivant */}
-                <button
-                  onClick={() => goToPage(safePage + 1)}
-                  disabled={safePage === totalPages}
-                  style={{
-                    padding: '8px 18px',
-                    background: 'transparent',
-                    border: `1px solid ${safePage === totalPages ? c.borderLight : c.border}`,
-                    color: safePage === totalPages ? c.inkTertiary : c.inkSecondary,
-                    fontSize: 12,
-                    fontFamily: c.fMono,
-                    cursor: safePage === totalPages ? 'default' : 'pointer',
-                    transition: c.transition,
-                    letterSpacing: '0.02em',
-                  }}
-                  onMouseEnter={e => { if (safePage !== totalPages) e.currentTarget.style.borderColor = c.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = safePage === totalPages ? c.borderLight : c.border; }}
-                >
-                  {lang === 'fr' ? 'Suivant →' : 'Next →'}
+                <span style={{ fontSize:12, fontFamily:c.fMono, color:c.ink3 }}>
+                  <span style={{ color:c.accent, fontWeight:600 }}>{safePage}</span> / {totalPages}
+                </span>
+                <button onClick={()=>{setCurrentPage(p=>Math.min(totalPages,p+1));window.scrollTo({top:0,behavior:'smooth'});}} disabled={safePage===totalPages}
+                  style={{ padding:'8px 20px', background:'transparent', border:`1px solid ${safePage===totalPages?c.ruleSoft:c.rule}`, color:safePage===totalPages?c.ink4:c.ink2, fontSize:12, cursor:safePage===totalPages?'default':'pointer', fontFamily:c.fMono }}>
+                  {lang==='fr'?'Suivant':'Next'} →
                 </button>
               </div>
             )}
           </>
         )}
       </div>
-    );
-  };
 
-  /* Compare tab label with live count */
-  const compareLabel = selectedForComparison.length > 0
-    ? `${lang === 'fr' ? 'Comparer' : 'Compare'} (${selectedForComparison.length}/3)`
-    : (lang === 'fr' ? 'Comparer' : 'Compare');
+      {/* ── Conseils IA dynamiques (unique instance, pas de doublon) ── */}
+      <ConseilsIA
+        user={user}
+        allScholarships={allScholarships}
+        c={c}
+        lang={lang}
+        handleQuickReply={handleQuickReply}
+        setView={setView}
+      />
 
-  return (
-    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
-      <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 80px' }}>
-        <RecommendationsHero c={c} lang={lang} totalCount={allScholarships.length} />
-        <MatchSummary scholarships={allScholarships} c={c} lang={lang} />
-        <MatchFilters filters={filters} setFilters={setFilters} c={c} lang={lang} />
-
-        {/* Compare banner — appears when items are selected */}
-        {selectedForComparison.length > 0 && activeTab !== 'compare' && (
-          <div style={{
-            background: `${c.accent}0d`,
-            border: `1px solid ${c.accent}40`,
-            padding: '12px 20px',
-            marginBottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 13,
-            animation: 'fadeIn 0.2s ease-out',
-          }}>
-            <span style={{ color: c.accent, fontWeight: 500 }}>
-              {selectedForComparison.length} bourse{selectedForComparison.length > 1 ? 's' : ''} sélectionnée{selectedForComparison.length > 1 ? 's' : ''}
-            </span>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => setSelectedForComparison([])}
-                style={{ background: 'none', border: 'none', fontSize: 12, color: c.inkTertiary, cursor: 'pointer', fontFamily: c.fMono }}
-              >
-                Effacer
-              </button>
-              <button
-                onClick={() => setActiveTab('compare')}
-                style={{
-                  padding: '6px 16px', background: c.accent, color: c.paper,
-                  border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: c.fMono,
-                }}
-              >
-                Comparer →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${c.border}`, marginBottom: 32 }}>
-          {[
-            { id: 'matches', label: lang === 'fr' ? 'Meilleurs matches' : 'Best Matches' },
-            { id: 'all', label: lang === 'fr' ? 'Toutes les opportunités' : 'All Opportunities' },
-            { id: 'compare', label: compareLabel },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '12px 24px',
-                background: 'transparent',
-                border: 'none',
-                color: activeTab === tab.id ? c.accent : c.inkSecondary,
-                fontSize: 13,
-                fontWeight: activeTab === tab.id ? 500 : 400,
-                cursor: 'pointer',
-                fontFamily: c.fMono,
-                borderBottom: activeTab === tab.id ? `2px solid ${c.accent}` : '2px solid transparent',
-                transition: c.transition,
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {error && !loading && (
-          <div style={{ margin: '20px 0', padding: '14px 20px', background: c.errorBg, borderLeft: `3px solid ${c.error}`, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: c.error }}>{error}</span>
-            <button style={{ padding: '6px 16px', background: c.error, border: 'none', color: c.paper, fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: c.fMono, transition: c.transition }}
-              onClick={loadRecommandations}>
-              {lang === 'fr' ? 'Réessayer' : 'Retry'}
-            </button>
-          </div>
-        )}
-
-        {renderContent()}
-      </div>
-
+      {/* ── Drawers ── */}
       {analysisBourse && (
         <MatchAnalysisPanel
           bourse={analysisBourse}
-          onClose={() => setAnalysisBourse(null)}
+          user={user}
+          onClose={()=>setAnalysisBourse(null)}
           onSave={handleStar}
           onApply={handleApply}
           isStarred={starredNoms.has(analysisBourse.nom?.trim().toLowerCase())}
@@ -1320,12 +1036,11 @@ export default function RecommandationsPage({
           lang={lang}
         />
       )}
-
       {selected && (
         <BourseDrawer
           bourse={selected}
-          onClose={() => setSelected(null)}
-          onAskAI={() => {}}
+          onClose={()=>setSelected(null)}
+          onAskAI={()=>{}}
           starred={starredNoms.has(selected.nom?.trim().toLowerCase())}
           onStar={handleStar}
           applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}

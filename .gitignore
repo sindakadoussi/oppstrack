@@ -1,13 +1,8 @@
-node_modules/
-.pnpm-store/
-node_modules/
+# Dans .gitignore
 .env
-dist/n o d e _ m o d u l e s / 
- 
- . e n v 
- 
- b a c k e n d / . p n p m - s t o r e / 
- 
- . p n p m - s t o r e / 
- 
- 
+.env.local
+.env.production
+node_modules/
+dist/
+build/
+.payload/
