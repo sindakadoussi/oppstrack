@@ -5,7 +5,7 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import axios from 'axios';
 import { downloadCVPDF, downloadLMPDF, buildPreviewHTML } from './pdfGenerator';
-import WorkspaceImport from './WorkspaceImport';
+import Workspaceimport from './Workspaceimport';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  N8N WEBHOOK
