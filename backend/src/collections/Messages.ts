@@ -31,9 +31,13 @@ const Messages: CollectionConfig = {
             } else {
               console.log("⚠️ Erreur n8n, Status:", response.status);
             }
-          } catch (error) {
-            console.error("❌ Erreur de connexion n8n :", error.message);
-          }
+          }catch (error) {
+  if (error instanceof Error) {
+    console.error("❌ Erreur de connexion n8n :", error.message);
+    console.error("Stack :", error.stack);
+  } else {
+    console.error("❌ Erreur inconnue :", JSON.stringify(error));
+  }}
         }
       },
     ],

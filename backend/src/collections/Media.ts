@@ -3,10 +3,9 @@ import { CollectionConfig } from 'payload'
 const Media: CollectionConfig = {
   slug: 'media',
   upload: {
-    staticURL: '/media',
-    staticDir: 'media',
-    mimeTypes: ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'],
-  },
+  staticDir: 'media',
+  mimeTypes: ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'],
+},
   access: {
     read: () => true,
     create: () => true,

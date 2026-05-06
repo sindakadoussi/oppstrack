@@ -1,32 +1,79 @@
+# docker-compose.yml — Test local avant déploiement Coolify
 version: '3.8'
 
 services:
-  # La base de données
+  # Base de données MongoDB
   mongodb:
-    image: mongo:latest
+    image: mongo:7
+    container_name: oppstrack-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: oppstrack
+    volumes:
+      - mongodb_data:/data/db
     ports:
       - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # L'outil d'automatisation pour tes agents IA
+  # Backend PayloadCMS
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oppstrack-backend
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/oppstrack?authSource=admin
+      PAYLOAD_PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+
+  # Frontend React/Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_WEBHOOK_URL: ${VITE_WEBHOOK_URL:-http://localhost:5678}
+        VITE_PAYLOAD_URL: ${VITE_PAYLOAD_URL:-http://localhost:3000}
+    container_name: oppstrack-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"
+
+  # n8n — Automatisation IA
   n8n:
     image: n8nio/n8n:latest
-    ports:
-      - "5678:5678"
+    container_name: oppstrack-n8n
+    restart: unless-stopped
     environment:
-      -  N8N_HOST=localhost 
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=Europe/Paris
-      # ✅ Autoriser CORS pour le frontend
-      - N8N_EDITOR_BASE_URL=http://localhost:5678
-      - N8N_CORS_ENABLED=true
-      - N8N_CORS_ALLOW_ORIGIN=*
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://${N8N_HOST}
+      GENERIC_TIMEZONE: Africa/Tunis
     volumes:
       - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
 
 volumes:
-  mongo_data:
+  mongodb_data:
   n8n_data:
