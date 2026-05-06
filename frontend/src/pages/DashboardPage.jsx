@@ -579,17 +579,44 @@ export default function DashboardPage({
   /* ── NOT LOGGED IN ── */
   if (!user) return (
     <>
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:c.paper }}>
-        <div style={{ background:c.surface, border:`1px solid ${c.rule}`, borderRadius:16, padding:'24px', boxShadow:'0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', alignItems:'center', padding:'56px 48px', maxWidth:380, width:'100%', textAlign:'center' }}>
-          <div style={{ fontSize:52, marginBottom:20 }}>📊</div>
-          <div style={{ fontSize:20, fontWeight:700, color:c.ink, marginBottom:8 }}>{lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}</div>
-          <p style={{ color:c.ink2, fontSize:13, lineHeight:1.6, marginBottom:28 }}>{lang === 'fr' ? 'Connectez-vous pour accéder à votre espace personnel.' : 'Sign in to access your personal space.'}</p>
-          <button style={{ padding:'8px 16px', background:c.accent, color:c.surface, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', padding:'12px 32px', fontSize:13 }} onClick={() => setShowLoginModal(true)}>{lang === 'fr' ? 'Se connecter' : 'Sign in'}</button>
-        </div>
+  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper }}>
+    <div style={{
+      background: c.surface,
+      border: `1px solid ${c.rule}`,
+      borderRadius: 0,
+      padding: '56px 48px',
+      maxWidth: 380,
+      width: '100%',
+      textAlign: 'center',
+      boxShadow: 'none',
+    }}>
+      <div style={{ fontSize: 52, marginBottom: 20 }}>📊</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: c.ink, marginBottom: 8 }}>
+        {lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
       </div>
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang}/>}
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </>
+      <p style={{ color: c.ink2, fontSize: 13, lineHeight: 1.6, marginBottom: 28 }}>
+        {lang === 'fr' ? 'Connectez-vous pour accéder à votre espace personnel.' : 'Sign in to access your personal space.'}
+      </p>
+      <button
+        style={{
+          padding: '12px 32px',
+          background: c.accent,
+          color: c.surface,
+          border: 'none',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          borderRadius: 0,
+        }}
+        onClick={() => setShowLoginModal(true)}
+      >
+        {lang === 'fr' ? 'Se connecter' : 'Sign in'}
+      </button>
+    </div>
+  </div>
+  {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
+  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+</>
   );
 
   const cardStyle = { background:c.surface, border:`1px solid ${c.rule}`, borderRadius:16, padding:'24px', boxShadow:'0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04)' };

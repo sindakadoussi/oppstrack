@@ -367,72 +367,191 @@ function MatchAnalysisPanel({ bourse, user, onClose, onSave, onApply, isStarred,
    SCHOLARSHIP CARD
 ═══════════════════════════════════════════════════════════════════ */
 function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred, isApplied, c, lang }) {
-  const [hovered, setHovered] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
+  const animationDelay = `${index * 0.05}s`;
+  
   const hasMatchScore = bourse.matchScore !== undefined;
   const col = hasMatchScore ? scoreColor(bourse.matchScore, c) : c.ink4;
-  const bg  = hasMatchScore ? scoreBg(bourse.matchScore, c) : c.ruleSoft;
-  const deadlineDays = bourse.dateLimite
-    ? Math.floor((new Date(bourse.dateLimite) - new Date()) / 86400000)
-    : null;
+
+  // ----- Détermination du statut -----
+  const getStatus = () => {
+    if (bourse.statut === 'expiree') {
+      return { label: lang === 'fr' ? 'Expirée' : 'Expired', color: c.danger, intensity: 'solid' };
+    }
+    if (!bourse.dateLimite) {
+      return { label: lang === 'fr' ? 'Ouvert' : 'Open', color: c.accent, intensity: 'light' };
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(bourse.dateLimite);
+    deadline.setHours(0, 0, 0, 0);
+    if (deadline < today) {
+      return { label: lang === 'fr' ? 'Expirée' : 'Expired', color: c.danger, intensity: 'solid' };
+    }
+    if (deadline.toDateString() === today.toDateString()) {
+      return { label: lang === 'fr' ? 'Dernier jour' : 'Last day', color: c.warning, intensity: 'solid' };
+    }
+    if (deadline <= new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+      return { label: lang === 'fr' ? 'Bientôt' : 'Soon', color: c.warning, intensity: 'light' };
+    }
+    return { label: lang === 'fr' ? 'Ouvert' : 'Open', color: c.accent, intensity: 'light' };
+  };
+  const status = getStatus();
+
   return (
     <article
       onClick={() => onAnalyze(bourse)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{ display:'flex', gap:0, background:c.surface, border:`1px solid ${hovered?c.accent:c.rule}`, marginBottom:12, cursor:'pointer', transition:c.tr, transform:hovered?'translateY(-1px)':'none', boxShadow:hovered?'0 4px 16px rgba(0,0,0,0.06)':'none', overflow:'hidden', animation:`cardIn 0.4s ease ${index*0.04}s both` }}
+      style={{
+        display: 'flex',
+        gap: 24,
+        alignItems: 'flex-start',
+        padding: '24px 20px',
+        marginBottom: 16,
+        borderBottom: `1px solid ${c.ruleSoft}`,
+        cursor: 'pointer',
+        transition: 'all 0.25s cubic-bezier(0.2, 0, 0, 1)',
+        background: c.surface,
+        position: 'relative',
+        opacity: 0,
+        transform: 'translateY(20px)',
+        animation: `cardAppear 0.5s ease ${animationDelay} forwards`,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+        e.currentTarget.style.borderLeft = `3px solid ${c.accent}`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderLeft = '0px solid transparent';
+      }}
     >
-      <div style={{ flex:1, padding:'18px 20px', minWidth:0 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
-          <h3 style={{ fontFamily:c.fSerif, fontSize:17, fontWeight:700, margin:0, color:c.ink, flex:1, paddingRight:16, lineHeight:1.3 }}>{bourse.nom}</h3>
-          <span style={{ flexShrink:0, fontSize:10, fontWeight:700, padding:'3px 10px', background:bg, color:col, fontFamily:c.fMono, textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>
-            {scoreLabel(bourse.matchScore, lang)}
-          </span>
+      {/* Contenu - sans image */}
+      <div style={{ flex: 1 }}>
+        {/* Ligne titre + deadline + statut */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
+          <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em' }}>
+            {bourse.nom}
+          </h3>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            {bourse.dateLimite && (
+              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+                <strong>Deadline</strong> {formatDate(bourse.dateLimite)}
+              </span>
+            )}
+            <span style={{
+              fontFamily: c.fMono,
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 20,
+              background: status.intensity === 'solid' ? status.color : `${status.color}20`,
+              color: status.intensity === 'solid' ? '#fff' : status.color,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              {status.label}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:12, color:c.ink3, marginBottom:10, fontFamily:c.fMono }}>
-          {bourse.pays   && <span>{tCountry(bourse.pays, lang)}</span>}
-          {bourse.niveau && <span>· {tLevel(bourse.niveau, lang)}</span>}
-          {bourse.financement && <span>· {tFunding(bourse.financement, lang)}</span>}
-          {deadlineDays !== null && deadlineDays >= 0 && (
-            <span style={{ color: deadlineDays<=7?c.danger:deadlineDays<=30?c.warning:c.ink4 }}>
-              · {deadlineDays}j restants
-            </span>
+        {/* Grille des métadonnées (pays, niveau) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
+          {bourse.pays && (
+            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📍</span> <strong>Pays</strong> {tCountry(bourse.pays, lang)}
+            </div>
+          )}
+          {bourse.niveau && (
+            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {tLevel(bourse.niveau, lang)}
+            </div>
           )}
         </div>
 
-        {(bourse.matchReasons || []).length > 0 && (
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-            {bourse.matchReasons.slice(0, 3).map((r, i) => (
-              <span key={i} style={{ fontSize:11, padding:'3px 9px', background:`${c.accent}12`, color:c.accent, fontFamily:c.fMono }}>
-                ✓ {r}
-              </span>
-            ))}
+        {/* Domaine - ligne complète séparée */}
+        {bourse.domaine && (
+          <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
           </div>
         )}
 
-        <div style={{ display:'flex', gap:8 }}>
-          <button
-            onClick={e=>{ e.stopPropagation(); onAnalyze(bourse); }}
-            style={{ padding:'7px 18px', background:c.accent, color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:c.fMono }}
-            onMouseEnter={e=>e.currentTarget.style.background=c.accentDark}
-            onMouseLeave={e=>e.currentTarget.style.background=c.accent}
+        {/* Financement */}
+        {bourse.financement && (
+          <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {tFunding(bourse.financement, lang)}
+          </div>
+        )}
+
+        {/* Description courte */}
+        {bourse.description && (
+          <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {bourse.description.length > 150 ? `${bourse.description.substring(0, 150)}...` : bourse.description}
+          </p>
+        )}
+
+        {/* Boutons d'action */}
+        <div style={{
+          display: 'flex', gap: 12, flexWrap: 'wrap',
+          opacity: 0,
+          transition: 'opacity 0.2s ease 0.1s',
+        }} className="card-actions">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }} 
+            style={{ 
+              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+              border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
+              background: isStarred ? c.accent : 'transparent', 
+              color: isStarred ? c.paper : c.ink3 
+            }}
           >
-            {lang==='fr' ? 'Analyser mon match' : 'Analyze my match'}
+            {isStarred ? '★' : '☆'} Favori
           </button>
           <button
-            onClick={e=>{ e.stopPropagation(); onApply(bourse); }}
-            style={{ padding:'7px 18px', background:isApplied?c.success:'transparent', color:isApplied?'#fff':c.ink3, border:`1px solid ${c.rule}`, fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (isApplied || applyLoading) return;
+              setApplyLoading(true);
+              await onApply(bourse);
+              setApplyLoading(false);
+            }}
+            style={{
+              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+              background: isApplied ? '#2e6b3e' : c.accent,
+              color: '#fff',
+              opacity: applyLoading ? 0.6 : 1
+            }}
+            disabled={isApplied || applyLoading}
           >
-            {isApplied ? '✓ Roadmap' : '+ Postuler'}
+            {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
           </button>
-          <button
-            onClick={e=>{ e.stopPropagation(); onSave(bourse, isStarred); }}
-            style={{ padding:'7px 12px', background:isStarred?`${c.accent}15`:'transparent', color:isStarred?c.accent:c.ink4, border:`1px solid ${c.rule}`, fontSize:14, cursor:'pointer' }}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onAnalyze(bourse); }} 
+            style={{ 
+              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+              background: c.accent, color: '#fff' 
+            }}
           >
-            {isStarred ? '★' : '☆'}
+            Match IA
           </button>
         </div>
       </div>
+
+      <style>{`
+        article:hover .card-actions {
+          opacity: 1 !important;
+        }
+        @keyframes cardAppear {
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </article>
   );
 }
@@ -441,113 +560,115 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
    CONSEILS IA PERSONNALISÉS — générés dynamiquement via l'IA
    FIX 3 : les conseils sont générés par appel webhook, pas en dur
 ═══════════════════════════════════════════════════════════════════ */
-function ConseilsIA({ user, allScholarships, c, lang, handleQuickReply, setView }) {
-  const [conseils, setConseils]   = useState(null);
-  const [loading,  setLoading]    = useState(false);
+function ConseilsIA({ user, c, lang, handleQuickReply, setView }) {
+  const [conseils, setConseils] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const fetched = useRef(false);
 
   useEffect(() => {
-    if (!user?.id || fetched.current || allScholarships.length === 0) return;
+    if (!user?.id || fetched.current) return;
     fetched.current = true;
     setLoading(true);
+    setError(null);
 
-    const buildConseils = (userData) => {
-      const tips = [];
-      const langs = (userData.languages || []).map(l => l.language?.toLowerCase());
-      const hasIelts = langs.some(l => l?.includes('anglais') || l?.includes('english'));
-      const hasToefl = (userData.certifications || []).some(c => c.name?.toLowerCase().includes('toefl') || c.name?.toLowerCase().includes('ielts'));
-
-      if (!hasToefl && !hasIelts) {
-        tips.push({
-          icon: '🌍',
-          title: lang==='fr' ? 'Passer un test de langue (IELTS/TOEFL)' : 'Take a language test (IELTS/TOEFL)',
-          detail: lang==='fr' ? '73% des bourses compatibles exigent un certificat de langue' : '73% of matching scholarships require a language certificate',
-          gain: '+20%',
-          gainColor: c.success,
-          btnLabel: lang==='fr' ? 'Commencer' : 'Start',
-          btnAction: () => handleQuickReply?.(lang==='fr' ? 'Comment préparer le IELTS ?' : 'How to prepare for IELTS?'),
+    const fetchConseils = async () => {
+      try {
+        const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: user.id, 
+            userEmail: user.email 
+          }),
+          signal: AbortSignal.timeout(15000),
         });
+
+        if (!res.ok) throw new Error('Erreur serveur');
+        
+        const data = await res.json();
+        setConseils(data);
+      } catch (err) {
+        console.error('[ConseilsIA]', err);
+        setError(lang === 'fr' ? 'Impossible de charger les conseils' : 'Could not load advice');
+      } finally {
+        setLoading(false);
       }
-
-      const hasExp = (userData.workExperience || []).length > 0;
-      if (!hasExp) {
-        tips.push({
-          icon: '💼',
-          title: lang==='fr' ? 'Ajouter une expérience professionnelle' : 'Add professional experience',
-          detail: lang==='fr' ? 'Votre profil ne mentionne aucune expérience — critère éliminatoire pour 40% des bourses' : 'Your profile shows no experience — eliminatory for 40% of scholarships',
-          gain: '+10%',
-          gainColor: c.warning,
-          btnLabel: lang==='fr' ? 'Ajouter' : 'Add',
-          btnAction: () => setView?.('profil'),
-        });
-      }
-
-      const hasProjects = (userData.academicProjects || []).length > 0;
-      if (!hasProjects) {
-        tips.push({
-          icon: '📄',
-          title: lang==='fr' ? 'Ajouter des projets académiques' : 'Add academic projects',
-          detail: lang==='fr' ? 'Les projets renforcent votre dossier de candidature' : 'Projects strengthen your application file',
-          gain: '+15%',
-          gainColor: c.accent,
-          btnLabel: lang==='fr' ? 'Optimiser' : 'Optimize',
-          btnAction: () => setView?.('cv'),
-        });
-      }
-
-      const avgScore = allScholarships.reduce((s, b) => s + b.matchScore, 0) / (allScholarships.length || 1);
-      const totalGain = tips.reduce((s, t) => s + parseInt(t.gain), 0);
-      const potentiel = Math.round(Math.min(100, avgScore + totalGain));
-
-      return { tips, potentiel };
     };
 
-    axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 2 } })
-      .then(({ data }) => setConseils(buildConseils(data)))
-      .catch(() => setConseils(buildConseils(user)))
-      .finally(() => setLoading(false));
-  }, [user?.id, allScholarships.length]);
+    fetchConseils();
+  }, [user?.id, user?.email]);
 
   if (loading) return (
-    <div style={{ background:c.surface, borderTop:`1px solid ${c.rule}`, padding:'40px 32px', textAlign:'center' }}>
-      <div style={{ width:32, height:32, border:`2px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
-      <div style={{ fontSize:13, color:c.ink3, fontFamily:c.fMono }}>
-        {lang==='fr' ? 'Génération des conseils IA...' : 'Generating AI tips...'}
+    <div style={{ background: c.surface, padding: '60px 32px', textAlign: 'center' }}>
+      <div style={{ width: 40, height: 40, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+      <div style={{ fontSize: 13, color: c.ink3, fontFamily: c.fMono }}>
+        {lang === 'fr' ? 'Génération des conseils IA...' : 'Generating AI advice...'}
       </div>
     </div>
   );
 
-  if (!conseils || conseils.tips.length === 0) return null;
+  if (error) return (
+    <div style={{ background: c.surface, padding: '40px 32px', textAlign: 'center' }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+      <p style={{ color: c.danger, fontSize: 14 }}>{error}</p>
+      <button 
+        onClick={() => { fetched.current = false; setError(null); setLoading(true); }} 
+        style={{ marginTop: 16, padding: '8px 20px', background: c.danger, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 12 }}
+      >
+        {lang === 'fr' ? 'Réessayer' : 'Retry'}
+      </button>
+    </div>
+  );
+
+  if (!conseils || !conseils.conseils || conseils.conseils.length === 0) return null;
 
   return (
-    <div style={{ background:c.surface, borderTop:`1px solid ${c.rule}`, padding:'48px 32px' }}>
-      <div style={{ maxWidth:960, margin:'0 auto' }}>
-        <div style={{ marginBottom:28 }}>
-          <h2 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, margin:'0 0 8px', letterSpacing:'-0.01em' }}>
-            {lang==='fr' ? 'Conseils personnalisés' : 'Personalized tips'}
+    <div style={{ background: c.surface, padding: '48px 32px' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: '0 0 8px', letterSpacing: '-0.01em' }}>
+            {lang === 'fr' ? 'Conseils personnalisés' : 'Personalized advice'}
           </h2>
-          <p style={{ fontSize:14, color:c.ink3, margin:0, lineHeight:1.6 }}>
-            {lang==='fr'
+          <p style={{ fontSize: 14, color: c.ink3, margin: 0, lineHeight: 1.6 }}>
+            {lang === 'fr'
               ? 'Basés sur votre profil réel — ces actions augmenteraient significativement vos chances.'
               : 'Based on your real profile — these actions would significantly boost your chances.'}
           </p>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16, marginBottom:28 }}>
-          {conseils.tips.map((conseil, i) => (
-            <div key={i} style={{ background:c.paper2, border:`1px solid ${c.ruleSoft}`, padding:'20px 22px', display:'flex', flexDirection:'column', gap:12 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <div style={{ display:'flex', alignItems:'flex-start', gap:10, flex:1, paddingRight:8 }}>
-                  <span style={{ fontSize:22, flexShrink:0 }}>{conseil.icon}</span>
-                  <span style={{ fontSize:13, fontWeight:600, color:c.ink, lineHeight:1.4 }}>{conseil.title}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
+          {conseils.conseils.map((conseil, i) => (
+            <div key={i} style={{ background: c.paper2, border: `1px solid ${c.ruleSoft}`, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, paddingRight: 8 }}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{conseil.icon}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.ink, lineHeight: 1.4 }}>{conseil.title}</span>
                 </div>
-                <span style={{ flexShrink:0, fontSize:13, fontWeight:800, color:conseil.gainColor, fontFamily:c.fMono }}>{conseil.gain}</span>
+                <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 800, color: conseil.gainColor || c.accent, fontFamily: c.fMono }}>{conseil.gain}</span>
               </div>
-              <div style={{ fontSize:12, color:c.ink3, lineHeight:1.5 }}>{conseil.detail}</div>
-              <button onClick={conseil.btnAction}
-                style={{ alignSelf:'flex-start', padding:'7px 20px', background:c.accent, color:'#fff', border:'none', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:c.fMono }}
-                onMouseEnter={e=>e.currentTarget.style.background=c.accentDark}
-                onMouseLeave={e=>e.currentTarget.style.background=c.accent}
+              <div style={{ fontSize: 12, color: c.ink3, lineHeight: 1.5 }}>{conseil.detail}</div>
+              <button 
+                onClick={() => {
+                  if (conseil.action === 'chat' && handleQuickReply) {
+                    handleQuickReply(conseil.actionData);
+                  } else if (conseil.action === 'navigate' && setView) {
+                    setView(conseil.actionData);
+                  }
+                }}
+                style={{ 
+                  alignSelf: 'flex-start', 
+                  padding: '7px 20px', 
+                  background: c.accent, 
+                  color: '#fff', 
+                  border: 'none', 
+                  fontSize: 12, 
+                  fontWeight: 600, 
+                  cursor: 'pointer', 
+                  fontFamily: c.fMono 
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = c.accentDark}
+                onMouseLeave={e => e.currentTarget.style.background = c.accent}
               >
                 {conseil.btnLabel}
               </button>
@@ -555,26 +676,28 @@ function ConseilsIA({ user, allScholarships, c, lang, handleQuickReply, setView 
           ))}
         </div>
 
-        <div style={{ background:`linear-gradient(135deg, ${c.accent}15, ${c.accent}05)`, border:`1px solid ${c.accent}30`, padding:'24px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:700, color:c.accent, textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:c.fMono, marginBottom:6 }}>
-              {lang==='fr' ? 'Impact potentiel total' : 'Total potential impact'}
+        {conseils.potentiel && (
+          <div style={{ background: `linear-gradient(135deg, ${c.accent}15, ${c.accent}05)`, border: `1px solid ${c.accent}30`, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: c.fMono, marginBottom: 6 }}>
+                {lang === 'fr' ? 'Potentiel de réussite' : 'Success potential'}
+              </div>
+              <div style={{ fontSize: 13, color: c.ink2, lineHeight: 1.6, maxWidth: 480 }}>
+                {lang === 'fr'
+                  ? `En appliquant ces ${conseils.conseils.length} conseil(s), votre taux de réussite atteindrait environ ${conseils.potentiel}%.`
+                  : `By applying these ${conseils.conseils.length} tip(s), your success rate would reach approximately ${conseils.potentiel}%.`}
+              </div>
             </div>
-            <div style={{ fontSize:13, color:c.ink2, lineHeight:1.6, maxWidth:480 }}>
-              {lang==='fr'
-                ? `En appliquant ces ${conseils.tips.length} conseil(s), votre score de compatibilité moyen passerait à environ ${conseils.potentiel}%.`
-                : `By applying these ${conseils.tips.length} tip(s), your average compatibility score would reach approximately ${conseils.potentiel}%.`}
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: 48, fontWeight: 800, color: c.accent, fontFamily: c.fSerif, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                {conseils.potentiel}%
+              </div>
+              <div style={{ fontSize: 11, color: c.ink4, fontFamily: c.fMono, marginTop: 4 }}>
+                {lang === 'fr' ? 'potentiel' : 'potential'}
+              </div>
             </div>
           </div>
-          <div style={{ textAlign:'center', flexShrink:0 }}>
-            <div style={{ fontSize:48, fontWeight:800, color:c.accent, fontFamily:c.fSerif, lineHeight:1, letterSpacing:'-0.03em' }}>
-              +{conseils.tips.reduce((s, t) => s + parseInt(t.gain), 0)}%
-            </div>
-            <div style={{ fontSize:11, color:c.ink4, fontFamily:c.fMono, marginTop:4 }}>
-              {lang==='fr' ? 'potentiel' : 'potential'}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -601,7 +724,7 @@ export default function RecommandationsPage({
   const [selected,      setSelected]      = useState(null);
   const [starredNoms,   setStarredNoms]   = useState(new Set());
   const [appliedNoms,   setAppliedNoms]   = useState(new Set());
-  const [activeFilter,  setActiveFilter]  = useState('all');
+  const [activeFilter, setActiveFilter] = useState('perso');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [currentPage,   setCurrentPage]   = useState(1);
   const PAGE_SIZE = 8;
@@ -861,80 +984,76 @@ export default function RecommandationsPage({
       <div style={{ background:c.paper2, padding:'40px 32px', textAlign:'center', borderBottom:`1px solid ${c.rule}`, animation:'fadeIn 0.5s ease' }}>
         <h1 style={{ fontFamily:c.fSerif, fontSize:'clamp(28px,4vw,44px)', fontWeight:700, letterSpacing:'-0.02em', color:c.ink, margin:'0 0 10px' }}>
           {lang==='fr'
-            ? <>Vos <em style={{ color:c.accent, fontStyle:'italic' }}>recommandations personnalisées</em>.</>
+            ? <>L’<em style={{ color:c.accent, fontStyle:'italic' }}>IA </em>a trouvé vos <em style={{ color:c.accent, fontStyle:'italic' }}>meilleures opportunités</em>.</>
             : <>Your <em style={{ color:c.accent, fontStyle:'italic' }}>personalized recommendations</em>.</>}
         </h1>
         <p style={{ fontFamily:c.fSans, fontSize:15, color:c.ink2, maxWidth:520, margin:'0 auto 24px' }}>
           {lang==='fr'
-            ? `${stats.total} bourses analysées par l'IA — ${stats.high} très prometteuses, ${stats.medium} à fort potentiel.`
+            ? `${stats.total} opportunités à fort potentiel vous attendent dès maintenant.`
             : `${stats.total} scholarships analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
         </p>
         <button
-          onClick={()=>{ autoLoadTriggered.current = false; setPhase('generating'); loadData(); }}
-          style={{ background:'transparent', border:`1px solid ${c.rule}`, color:c.ink3, padding:'7px 18px', fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
+  onClick={() => { 
+    autoLoadTriggered.current = false; 
+    setPhase('generating');  // ✅ Repasse en phase "generating" pour afficher l'alerte
+    setGenerateStep(0);       // ✅ Reset les étapes
+    setError(null);           // ✅ Efface les erreurs
+    loadData(); 
+  }}
+  style={{ background:'transparent', border:`1px solid ${c.rule}`, color:c.ink3, padding:'7px 18px', fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
+>
+  ↺ {lang==='fr' ? 'Actualiser' : 'Refresh'}
+</button>
+      </div>
+
+{/* ── Filtres intelligents (design onglets centrés) ── */}
+<div style={{ background: '#ffffff', borderBottom: `1px solid #e5e5e5`, padding: '0 32px' }}>
+  <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: activeFilter === 'test' ? 0 : 24 }}>
+    {[
+      { id: 'perso', label: lang === 'fr' ? 'Recommandations' : 'Recommendations' },
+      { id: 'test', label: lang === 'fr' ? 'Vérifier' : 'Verify'},
+      { id: 'conseils', label: lang === 'fr' ? 'Conseils' : 'Advice' },
+    ].map(tab => {
+      const isActive = activeFilter === tab.id;
+      return (
+        <button
+          key={tab.id}
+          onClick={() => {
+            setActiveFilter(tab.id);
+            if (tab.id === 'test' && fullBoursesList.length === 0) fetchFullBourses();
+          }}
+          style={{
+            flex: 1,
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            background: isActive ? '#0066b3' : '#ffffff',
+            color: isActive ? '#ffffff' : '#666666',
+            border: isActive ? 'none' : '1px solid #e0e0e0',
+            borderRadius: 0,
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 500,
+            cursor: 'pointer',
+            fontFamily: c.fSans,
+            transition: 'all 0.2s ease',
+          }}
         >
-          ↺ {lang==='fr' ? 'Actualiser' : 'Refresh'}
+          <span style={{ fontSize: 16 }}>{tab.icon}</span>
+          <span>{tab.label}</span>
         </button>
-      </div>
+      );
+    })}
+  </div>
+</div>
 
-      {/* ── Filtres intelligents ── */}
-      <div style={{ background:c.surface, borderBottom:`1px solid ${c.rule}`, padding:'0 32px 24px 32px' }}>
-        <div style={{ maxWidth:960, margin:'0 auto', paddingTop:20, marginBottom:16 }}>
-          <span style={{ fontSize:11, fontWeight:700, color:c.ink4, textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:c.fMono }}>
-            {lang==='fr' ? 'Filtres intelligents' : 'Smart filters'}
-          </span>
-        </div>
-        <div style={{ maxWidth:960, margin:'0 auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:16 }}>
-            {[
-              { id:'all',      label:lang==='fr'?'Toutes les bourses':'All scholarships', desc:lang==='fr'?'Voir toutes':'View all' },
-              { id:'easy',     label:lang==='fr'?'Faciles à obtenir':'Easy to get',       desc:lang==='fr'?`${stats.high} bourses ≥70%`:`${stats.high} scholarships ≥70%` },
-              { id:'nolang',   label:lang==='fr'?'Sans test de langue':'No language test', desc:lang==='fr'?"Pas d'IELTS/TOEFL":'No IELTS/TOEFL' },
-              { id:'deadline', label:lang==='fr'?'Deadline proche':'Deadline soon',        desc:lang==='fr'?'< 30 jours':'< 30 days' },
-            ].map(tab => {
-              const isActive = activeFilter === tab.id;
-              return (
-                <button key={tab.id} onClick={()=>setActiveFilter(tab.id)} style={{ background:isActive?`${c.accent}10`:c.surface, border:`1px solid ${isActive?c.accent:c.rule}`, borderRadius:12, padding:'16px 12px', textAlign:'left', cursor:'pointer', transition:c.tr, boxShadow:isActive?`0 4px 12px ${c.accent}20`:'none' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-                    <span style={{ fontFamily:c.fSerif, fontSize:14, fontWeight:600, color:isActive?c.accent:c.ink }}>{tab.label}</span>
-                  </div>
-                  <div style={{ fontSize:12, color:c.ink3, fontFamily:c.fMono }}>{tab.desc}</div>
-                  {isActive && <div style={{ marginTop:10, fontSize:11, color:c.accent, fontFamily:c.fMono, borderTop:`1px solid ${c.accent}30`, paddingTop:8 }}>✓ Actif</div>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ margin:'24px -32px 0 -32px', borderTop:`1px solid ${c.ruleSoft}`, background:c.paper2 }}>
-          <div style={{ display:'flex', width:'100%' }}>
-            {[
-              { id:'perso', label:lang==='fr'?'Sélection personnalisée':'Personalized selection', icon:'✨' },
-              { id:'test',  label:lang==='fr'?'Tester une bourse':'Test a scholarship', icon:'🔍' },
-            ].map(tab => {
-              const isActive = activeFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveFilter(tab.id);
-                    if (tab.id === 'test' && fullBoursesList.length === 0) fetchFullBourses();
-                  }}
-                  style={{ flex:1, padding:'16px 12px', display:'flex', alignItems:'center', justifyContent:'center', gap:10, background:isActive?`${c.accent}15`:'transparent', border:'none', borderBottom:`3px solid ${isActive?c.accent:'transparent'}`, color:isActive?c.accent:c.ink2, fontSize:14, fontWeight:isActive?700:500, cursor:'pointer', fontFamily:c.fMono, transition:c.tr }}
-                >
-                  <span style={{ fontSize:18 }}>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       {/* Barre de recherche pour l'onglet test */}
       {activeFilter === 'test' && (
-        <div style={{ maxWidth:960, margin:'24px auto 0', padding:'0 32px' }}>
-          <div style={{ display:'flex', gap:12, alignItems:'center', background:c.paper2, padding:'8px 16px', border:`1px solid ${c.ruleSoft}`, borderRadius:40 }}>
+         <div style={{ background:'#ffffff', padding:'24px 32px 0' }}>
+  <div style={{ maxWidth:960, margin:'0 auto' }}>
+          <div style={{ display:'flex', gap:12, alignItems:'center', background:'#ffffff', padding:'8px 16px', border:`1px solid #e0e0e0`, borderRadius:40 }}>
             <span style={{ fontSize:18 }}>🔍</span>
             <input
               type="text"
@@ -952,10 +1071,20 @@ export default function RecommandationsPage({
           </div>
           {loadingFull && <div style={{ textAlign:'center', padding:20, fontSize:13, color:c.ink3 }}>Chargement des bourses...</div>}
         </div>
+        </div>
       )}
 
       {/* ── Liste ── */}
-      <div style={{ maxWidth:960, margin:'0 auto', padding:'32px 32px 80px' }}>
+      {activeFilter === 'conseils' ? (
+  <ConseilsIA
+    user={user}
+    c={c}
+    lang={lang}
+    handleQuickReply={handleQuickReply}
+    setView={setView}
+  />
+) : (
+  <div style={{ maxWidth:960, margin:'0 auto', padding:'32px 32px 80px' }}>
         {error && (
           <div style={{ padding:'14px 20px', background:c.dangerBg, borderLeft:`3px solid ${c.danger}`, marginBottom:24, display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13 }}>
             <span style={{ color:c.danger }}>{error}</span>
@@ -1011,16 +1140,9 @@ export default function RecommandationsPage({
           </>
         )}
       </div>
+      )}
 
-      {/* ── Conseils IA dynamiques (unique instance, pas de doublon) ── */}
-      <ConseilsIA
-        user={user}
-        allScholarships={allScholarships}
-        c={c}
-        lang={lang}
-        handleQuickReply={handleQuickReply}
-        setView={setView}
-      />
+     
 
       {/* ── Drawers ── */}
       {analysisBourse && (

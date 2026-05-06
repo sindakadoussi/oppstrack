@@ -85,6 +85,7 @@ function LoginModal({ onClose }) {
 
   const t = {
     title: lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack',
+      eligibility: lang === 'fr' ? "Critères d'éligibilité" : 'Eligibility criteria',  // ✅ DÉJÀ PRÉSENT
     desc: lang === 'fr' ? 'Entrez votre email pour recevoir un <strong>lien de connexion magique</strong>.' : 'Enter your email to receive a <strong>magic login link</strong>.',
     placeholder: lang === 'fr' ? 'votre@email.com' : 'your@email.com',
     sendBtn: lang === 'fr' ? '✉️ Envoyer le lien magique' : '✉️ Send magic link',
@@ -357,6 +358,58 @@ useEffect(() => {
               </div>
             </div>
           )}
+
+           {bourse.eligibilite && (
+    <div style={{ marginBottom: 20 }}>
+      <div style={labelStyle(c)}>{t.eligibility}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        
+        {bourse.eligibilite.nationalitesEligibles && (
+          <div style={{ padding: '10px 14px', background: c.paper2, border: `1px solid ${c.ruleSoft}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: c.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Nationalités éligibles' : 'Eligible nationalities'}
+            </div>
+            <div style={{ fontSize: 13, color: c.ink2, lineHeight: 1.5 }}>
+              {bourse.eligibilite.nationalitesEligibles}
+            </div>
+          </div>
+        )}
+
+        {bourse.eligibilite.niveauRequis && (
+          <div style={{ padding: '10px 14px', background: c.paper2, border: `1px solid ${c.ruleSoft}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: c.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Niveau requis' : 'Required level'}
+            </div>
+            <div style={{ fontSize: 13, color: c.ink2 }}>
+              {bourse.eligibilite.niveauRequis}
+            </div>
+          </div>
+        )}
+
+        {bourse.eligibilite.ageMax && (
+          <div style={{ padding: '10px 14px', background: c.paper2, border: `1px solid ${c.ruleSoft}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: c.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Âge maximum' : 'Maximum age'}
+            </div>
+            <div style={{ fontSize: 13, color: c.ink2 }}>
+              {bourse.eligibilite.ageMax} {lang === 'fr' ? 'ans' : 'years old'}
+            </div>
+          </div>
+        )}
+
+        {bourse.eligibilite.conditionsSpeciales && (
+          <div style={{ padding: '10px 14px', background: c.paper2, border: `1px solid ${c.ruleSoft}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: c.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Conditions spéciales' : 'Special conditions'}
+            </div>
+            <div style={{ fontSize: 13, color: c.ink2, lineHeight: 1.5 }}>
+              {bourse.eligibilite.conditionsSpeciales}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
 
           {bourse.documentsRequis?.length > 0 && (
             <div style={{ marginBottom: 20 }}>

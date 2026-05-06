@@ -244,8 +244,8 @@ function useTranslatedEtapes(etapes, lang) {
 // TopBar – hero style identique à MiniHero (BoursesPage)
 function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
   return (
-    <div style={{ background: c.paper2 }}>
-      {/* Hero section – strictement identique au MiniHero de BoursesPage */}
+    <div>
+      {/* Hero section – background c.paper2 */}
       <div
         style={{
           background: c.paper2,
@@ -300,71 +300,71 @@ function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
         </p>
       </div>
 
-      {/* Onglets */}
-<div
-  style={{
-    display: 'flex',
-    gap: 0,                     // pas d'espace entre les boutons
-    padding: '0 24px',
-    borderTop: `1px solid ${c.rule}`,
-  }}
->
-  {[
-    { id: 'kanban', labelFr: 'Suivi', labelEn: 'Tracking', icon: 'apps' },
-    { id: 'progression', labelFr: 'Progression', labelEn: 'Progress', icon: 'chart' },
-  ].map((tab) => {
-    const isActive = !focusMode && activeTab === tab.id;
-    return (
-      <button
-        key={tab.id}
-        onClick={() => onTabChange(tab.id)}
+      {/* Section des boutons - utilise les couleurs du thème */}
+      <div
         style={{
-          flex: 1,                         // ← prend toute la largeur disponible
-          padding: '10px 16px',
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: 'pointer',
-          border: 'none',
-          background: 'transparent',
-          color: isActive ? c.accent : c.ink3,
-          borderBottom: `2px solid ${isActive ? c.accent : 'transparent'}`,
-          fontFamily: c.fMono,
-          transition: 'all 0.15s',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',       // ← centre le texte/icône
-          gap: 6,
+          background: c.surface,
+          borderBottom: `1px solid ${c.rule}`,
+          padding: '0 32px',
         }}
       >
-        <RI name={tab.icon} size={14} />
-        {lang === 'fr' ? tab.labelFr : tab.labelEn}
-      </button>
-    );
-  })}
-  {focusMode && (
-    <button
-      style={{
-        flex: 1,                         // pareil pour le bouton Mode Focus
-        padding: '10px 16px',
-        fontSize: 12,
-        fontWeight: 600,
-        cursor: 'pointer',
-        border: 'none',
-        background: 'transparent',
-        color: c.accent,
-        borderBottom: `2px solid ${c.accent}`,
-        fontFamily: c.fMono,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-      }}
-    >
-      <RI name="focus" size={14} />
-      {lang === 'fr' ? 'Mode Focus' : 'Focus Mode'}
-    </button>
-  )}
-</div>
+        <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: 24 }}>
+          {[
+            { id: 'kanban', labelFr: 'Suivi', labelEn: 'Tracking' },
+            { id: 'progression', labelFr: 'Progression', labelEn: 'Progress' },
+          ].map((tab) => {
+            const isActive = !focusMode && activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  background: isActive ? c.accent : 'transparent',
+                  color: isActive ? '#ffffff' : c.ink3,
+                  border: isActive ? 'none' : `1px solid ${c.rule}`,
+                  borderRadius: 0,
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: 'pointer',
+                  fontFamily: c.fMono,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {lang === 'fr' ? tab.labelFr : tab.labelEn}
+              </button>
+            );
+          })}
+          {focusMode && (
+            <button
+              style={{
+                flex: 1,
+                padding: '12px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: c.accent,
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: c.fMono,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {lang === 'fr' ? 'Mode Focus' : 'Focus Mode'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -512,7 +512,36 @@ function TodayBanner({ bourses, onFocusBourse, c, lang }) {
 }
 
 function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, onReload, c, lang }) {
-  const activeBourses = bourses.filter(b => b.col !== 'rejetees' && b.col !== 'acceptees');
+  // ✅ FONCTION DE TRI PAR DEADLINE
+  const sortByDeadline = (a, b) => {
+    const dateA = a.deadline ? new Date(a.deadline) : null;
+    const dateB = b.deadline ? new Date(b.deadline) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Bourses sans deadline vont à la fin
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+
+    // Vérifier si expirées
+    const isExpiredA = dateA < today;
+    const isExpiredB = dateB < today;
+
+    // Les expirées vont à la fin, triées par date (plus récemment expirée en premier)
+    if (isExpiredA && isExpiredB) return dateB - dateA;
+    if (isExpiredA) return 1;
+    if (isExpiredB) return -1;
+
+    // Les actives sont triées par deadline croissante (plus proche en premier)
+    return dateA - dateB;
+  };
+
+  // ✅ FILTRAGE + TRI
+  const activeBourses = bourses
+    .filter(b => b.col !== 'rejetees' && b.col !== 'acceptees')
+    .sort(sortByDeadline);
+  
   const rejected = bourses.filter(b => b.col === 'rejetees');
   const accepted = bourses.filter(b => b.col === 'acceptees');
 
@@ -547,29 +576,7 @@ function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, o
             ))
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-            {[
-              { id: 'rejetees', items: rejected, labelFr: 'Rejetées', labelEn: 'Rejected', bg: '#fef2f2', color: c.danger, badgeBg: '#fecaca', icon: 'close' },
-              { id: 'acceptees', items: accepted, labelFr: 'Acceptées', labelEn: 'Accepted', bg: '#f0fdf4', color: '#166534', badgeBg: '#bbf7d0', icon: 'check' },
-            ].map(col => (
-              <div key={col.id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: col.bg, color: col.color, fontSize: 12, fontWeight: 600, marginBottom: 12 }}>
-                  <RI name={col.icon} size={14} />
-                  <span style={{ flex: 1 }}>{lang === 'fr' ? col.labelFr : col.labelEn}</span>
-                  <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: col.badgeBg, color: col.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, padding: '0 6px' }}>{col.items.length}</span>
-                </div>
-                {col.items.length === 0 ? (
-                  <div style={{ border: `1.5px dashed ${col.badgeBg}`, padding: 12, textAlign: 'center', fontSize: 12, color: c.ink3, marginBottom: 12 }}>
-                    {lang === 'fr' ? 'Aucune bourse' : 'No scholarships'}
-                  </div>
-                ) : (
-                  col.items.map(b => (
-                    <BourseCard key={b._id} bourse={b} onClick={() => onFocusBourse(b._id)} onDelete={() => onDelete(b)} onRegenerate={() => onRegenerate(b)} c={c} lang={lang} />
-                  ))
-                )}
-              </div>
-            ))}
-          </div>
+          
 
           <button onClick={onReload} style={{ marginTop: 24, padding: '6px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink3, fontSize: 11, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <RI name="refresh" size={12} /> {lang === 'fr' ? 'Actualiser' : 'Refresh'}
@@ -887,10 +894,10 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
   const submitted = (bourses || []).filter(b => b.col === 'soumises' || b.col === 'acceptees').length;
   const badgesCount = BADGES_UNLOCKED.length;
   const statCards = [
-    { icon: 'trophy',      label: lang==='fr'?'Progression globale':'Global progress',     value: `${avgProgress}%`, tag: lang==='fr'?'Total':'Total',         tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0', iconBg: '#fef3e2' },
-    { icon: 'calendar',    label: lang==='fr'?'Jours consécutifs':'Streak days',           value: streak,            tag: 'Streak',                            tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5', iconBg: '#fee2e2' },
-    { icon: 'checkCircle', label: lang==='fr'?'Candidatures soumises':'Submitted',         value: submitted,         tag: lang==='fr'?'Complétées':'Done',      tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4', iconBg: '#dcfce7' },
-    { icon: 'medal',       label: lang==='fr'?`sur 9 débloqués`:'of 9 unlocked',          value: badgesCount,       tag: lang==='fr'?'Badges':'Badges',       tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5', iconBg: '#fef9c3' },
+    {      label: lang==='fr'?'Progression globale':'Global progress',     value: `${avgProgress}%`, tag: lang==='fr'?'Total':'Total',         tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0',  },
+    {  label: lang==='fr'?'Jours consécutifs':'Streak days',           value: streak,            tag: 'Streak',                            tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5',  },
+    { label: lang==='fr'?'Candidatures soumises':'Submitted',         value: submitted,         tag: lang==='fr'?'Complétées':'Done',      tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4'},
+    {    label: lang==='fr'?`sur 9 débloqués`:'of 9 unlocked',          value: badgesCount,       tag: lang==='fr'?'Badges':'Badges',       tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5' },
   ];
   const currentLevelIdx = avgProgress < 20 ? 0 : avgProgress < 40 ? 1 : avgProgress < 60 ? 2 : avgProgress < 80 ? 3 : 4;
   const nextLevelTarget = [20, 40, 60, 80, 100][currentLevelIdx] || 100;
@@ -940,34 +947,29 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
       </div>
 
       {/* Badges débloqués */}
-      <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <RI name="medal" size={16} /> {lang==='fr'?`Badges débloqués (${badgesCount})`:`Unlocked badges (${badgesCount})`}
+     {/* Badges débloqués */}
+<div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+  <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+    {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
+  </div>
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+    {BADGES_UNLOCKED.map((b, i) => (
+      <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: c.ink, marginBottom: 2 }}>{b.label}</div>
+          <div style={{ fontSize: 11, color: c.ink3 }}>{b.desc}</div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {BADGES_UNLOCKED.map((b, i) => (
-            <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fff', border: `1px solid ${b.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <RI name={b.icon} size={18} color={b.color} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: c.ink }}>{b.label}</div>
-                  <div style={{ fontSize: 11, color: c.ink3 }}>{b.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <RI name="check" size={10} /> {lang==='fr'?'Débloqué ✓':'Unlocked ✓'}
-              </span>
-            </div>
-          ))}
-        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
+        </span>
       </div>
-
+    ))}
+  </div>
+</div>
       {/* Badges à débloquer */}
       <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16 }}>
-          <RI name="medal" size={16} /> {lang==='fr'?'Prochains badges à débloquer':'Next badges to unlock'}
+        {lang==='fr'?'Prochains badges à débloquer':'Next badges to unlock'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {BADGES_LOCKED.map((b, i) => {
@@ -1002,9 +1004,9 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
 }
 
 const BADGES_UNLOCKED = [
-  { icon: 'star',     label: 'Première candidature', desc: 'Soumettre ta première candidature',   color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  { icon: 'target',   label: 'Perfectionniste',       desc: 'Atteindre 100% sur une candidature', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  { icon: 'calendar', label: 'Semaine productive',    desc: '7 jours consécutifs actifs',          color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  {     label: 'Première candidature', desc: 'Soumettre ta première candidature',   color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  {   label: 'Perfectionniste',       desc: 'Atteindre 100% sur une candidature', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  {  label: 'Semaine productive',    desc: '7 jours consécutifs actifs',          color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
 ];
 const BADGES_LOCKED = [
   { icon: 'user',   label: 'Triple menace',  desc: 'Soumettre 3 candidatures',             current: 2,  target: 3,  color: '#6b7280' },

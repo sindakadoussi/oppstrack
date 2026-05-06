@@ -39,15 +39,7 @@ const Bourses: CollectionConfig = {
       },
     },
 
-    // ✅ NOUVEAU : champ lienPostuler
-    {
-      name: 'lienPostuler',
-      type: 'text',
-      label: 'Lien pour postuler',
-      admin: {
-        description: 'URL directe vers la page de candidature officielle',
-      },
-    },
+
 
     {
       name: 'langue',
