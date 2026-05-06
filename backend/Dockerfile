@@ -49,7 +49,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Set up public folder and permissions
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/public* ./public/
 RUN mkdir .next && chown nextjs:nodejs .next
 
 # Copy build output
