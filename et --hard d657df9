@@ -1,0 +1,36 @@
+[33md657df9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32msinda[m[33m, [m[1;31morigin/sinda[m[33m)[m  update chatpage
+[33m9a6f130[m update roadmap
+[33m5a2bbd4[m update invite
+[33ma8cbd10[m[33m ([m[1;31morigin/imen[m[33m)[m boursepage
+[33m9814ba9[m logo
+[33mf61a30b[m ajout boursedrawer
+[33m5d06435[m update chat
+[33m5803c43[m update dashboard
+[33m61c7fed[m update dashboard
+[33mbfc4c45[m update dashboard
+[33m2cb9732[m update dashboard
+[33mb8dfedb[m update dashboard
+[33m5d8ade5[m up dashboard
+[33m63138a5[m feat: style institutionnel + axios centralisé + alertes email n8n
+[33m95a24e8[m update tous
+[33m2d67a08[m update front
+[33me092037[m dashboard
+[33m50c1d2f[m  upooo
+[33m2710f86[m update front
+[33md8330e3[m nahyt fazt l port wala yethat mara wahda
+[33mc0d4715[m  cvPage
+[33m68047ba[m bbbbbbb
+[33m3913884[m files
+[33maa23df3[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m fix: remove pnpm-store and add gitignore
+[33m752fad5[m cvPage
+[33m432d3f4[m update cv et lm
+[33mf9bd3f9[m entretienPage
+[33m7cef294[m Supprime .pnpm-store et ajoute au .gitignore
+[33m246a9aa[m Supprime node_modules et ajoute .gitignore
+[33mf7a9406[m Ajout .gitignore et suppression node_modules
+[33m59bdd5b[m Description de ce que tu as fait
+[33m49201f3[m modification
+[33m9c26246[m Description claire de tes modifications
+[33mfad9f11[m fix backend remove submodule
+[33me58a0b8[m add backend
+[33me3518b3[m first commit

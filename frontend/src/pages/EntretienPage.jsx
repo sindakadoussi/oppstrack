@@ -1,66 +1,59 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import axiosInstance from '@/config/axiosInstance';
+import axios from 'axios';
+import { WEBHOOK_ROUTES } from '@/config/routes';
+import { API_ROUTES } from '@/config/routes';
+import './Entretienpage.css';
+import { useT, useDark } from '../i18n';
+import { useTheme } from '../components/Navbar';
 
-const WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
-const API_BASE    = 'http://localhost:3000/api';
-const TOTAL_Q     = 8;
-
+const TOTAL_Q = 8;
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-// ── TTS ───────────────────────────────────────────────────────────────────────
-function tts(text) {
+function tts(text, lang = 'fr') {
   return new Promise(resolve => {
     if (!window.speechSynthesis) { resolve(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR'; u.rate = 0.9;
+    u.lang = lang === 'en' ? 'en-US' : 'fr-FR';
+    u.rate = 0.9;
     const voices = window.speechSynthesis.getVoices();
-    const fr = voices.find(v => v.lang.startsWith('fr'));
-    if (fr) u.voice = fr;
+    const voice = voices.find(v => v.lang.startsWith(lang === 'en' ? 'en' : 'fr'));
+    if (voice) u.voice = voice;
     u.onend = resolve; u.onerror = resolve;
     window.speechSynthesis.speak(u);
   });
 }
 
-// ── Sauvegarder entretien dans Payload ───────────────────────────────────────
 async function saveEntretien(userId, scoreText, conversationId, bourseNom) {
   if (!userId) return;
   try {
-    await fetch(`${API_BASE}/entretiens`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user: userId, score: scoreText,
-        conversationId: conversationId || `entretien-${Date.now()}`,
-        context: bourseNom || '',
-      }),
+    await axiosInstance.post('/api/entretiens', {
+      user: userId, score: scoreText,
+      conversationId: conversationId || `entretien-${Date.now()}`,
+      context: bourseNom || '',
     });
-    console.log('✅ Entretien sauvegardé');
   } catch(e) { console.error('❌ Save entretien:', e.message); }
 }
 
-// ── Analyse vocale réelle (Web Audio API) ─────────────────────────────────────
 class VoiceAnalyzer {
   constructor(stream) {
-    this.ctx      = new AudioContext();
-    this.src      = this.ctx.createMediaStreamSource(stream);
+    this.ctx = new AudioContext();
+    this.src = this.ctx.createMediaStreamSource(stream);
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 2048;
     this.src.connect(this.analyser);
-    this.buf    = new Float32Array(this.analyser.fftSize);
-    this.running       = false;
-    this.speakingMs    = 0;
-    this.totalMs       = 0;
-    this.silenceStart  = null;
-    this.pauseCount    = 0;
-    this.hesitationMs  = 0;
-    this.volumeHistory = [];
-    this.lastTs        = Date.now();
+    this.buf = new Float32Array(this.analyser.fftSize);
+    this.running = false;
+    this.speakingMs = 0; this.totalMs = 0;
+    this.silenceStart = null; this.pauseCount = 0;
+    this.hesitationMs = 0; this.volumeHistory = [];
+    this.lastTs = Date.now();
   }
   start() { this.running = true; this._tick(); }
   _tick() {
     if (!this.running) return;
-    const now = Date.now();
-    const dt  = now - this.lastTs; this.lastTs = now;
+    const now = Date.now(); const dt = now - this.lastTs; this.lastTs = now;
     this.totalMs += dt;
     this.analyser.getFloatTimeDomainData(this.buf);
     let sum = 0;
@@ -70,12 +63,9 @@ class VoiceAnalyzer {
     if (vol < 3) {
       if (!this.silenceStart) this.silenceStart = now;
       const dur = now - this.silenceStart;
-      if (dur > 500 && dur < 3000) this.hesitationMs += dt;
-      if (dur >= 3000 && dur < 3100) this.pauseCount++;
-    } else {
-      this.silenceStart = null;
-      this.speakingMs  += dt;
-    }
+      if (dur > 500 && dur < 3001) this.hesitationMs += dt;
+      if (dur >= 3001 && dur < 3101) this.pauseCount++;
+    } else { this.silenceStart = null; this.speakingMs += dt; }
     requestAnimationFrame(() => this._tick());
   }
   getStats() {
@@ -83,1207 +73,1369 @@ class VoiceAnalyzer {
     const vol = avg(this.volumeHistory);
     const recent = this.volumeHistory.slice(-30);
     const variance = recent.length > 5
-      ? Math.sqrt(recent.reduce((a,b,_,arr) => { const m=avg(arr); return a+(b-m)**2; },0)/recent.length)
-      : 0;
+      ? Math.sqrt(recent.reduce((a,b,_,arr) => { const m=avg(arr); return a+(b-m)**2; },0)/recent.length) : 0;
     return {
-      volume:      Math.round(vol),
-      stability:   Math.round(Math.min(100, 100 - variance*2)),
-      speakRatio:  this.totalMs > 0 ? Math.round((this.speakingMs/this.totalMs)*100) : 0,
-      pauseCount:  this.pauseCount,
+      volume: Math.round(vol),
+      stability: Math.round(Math.min(100, 100 - variance*2)),
+      speakRatio: this.totalMs > 0 ? Math.round((this.speakingMs/this.totalMs)*100) : 0,
+      pauseCount: this.pauseCount,
       hesitations: Math.round(this.hesitationMs/1000),
     };
   }
-  stop()    { this.running = false; }
+  stop() { this.running = false; }
   destroy() { this.running = false; try { this.ctx.close(); } catch {} }
 }
 
-// ── HistoriquePanel ───────────────────────────────────────────────────────────
-// ── HistoriquePanel amélioré ───────────────────────────────────────────────────────────
-function HistoriquePanel({ userId, onClose }) {
-  const [records,  setRecords]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [selected, setSelected] = useState(null);
-
-  useEffect(() => {
-    if (!userId) { setLoading(false); return; }
-    fetch(`${API_BASE}/entretiens?where[user][equals]=${userId}&sort=-createdAt&limit=20`)
-      .then(r => r.json())
-      .then(d => { setRecords(d.docs||[]); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [userId]);
-
-  // Parser avancé pour extraire les données structurées du scoreText
-  const parseEntretien = (text) => {
-    if (!text) return { score: null, verdict: '', details: [], conseils: [] };
-    
-    // Score global
-    const scoreMatch = text.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
-    const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-    
-    // Verdict
-    const verdictMatch = text.match(/VERDICT\s*[:\-]\s*(.+?)(?=\n|$)/i);
-    const verdict = verdictMatch ? verdictMatch[1].trim() : '';
-    
-    // Extraire les sections structurées
-    const extractSection = (title) => {
-      const regex = new RegExp(`${title}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|VERDICT|SCORE|$))`, 'i');
-      const match = text.match(regex);
-      if (match) {
-        return match[1].trim().split(/\n/).filter(l => l.trim()).map(l => l.replace(/^[-•*]\s*/, '').trim());
-      }
-      return [];
-    };
-    
-    // Points forts
-    const pointsForts = extractSection('POINTS FORTS');
-    // Points à améliorer
-    const pointsAmeliorer = extractSection('POINTS À AMÉLIORER');
-    // Conseils personnalisés
-    const conseils = extractSection('CONSEILS PERSONNALISÉS');
-    
-    // Extraire les métriques par question si présentes
-    const questionMetrics = [];
-    const qRegex = /Question\s*(\d+)[:\s]*([^\n]+).*?mots[:\s]*(\d+).*?m\/min[:\s]*(\d+)/gi;
-    let match;
-    while ((match = qRegex.exec(text)) !== null) {
-      questionMetrics.push({
-        num: parseInt(match[1]),
-        answer: match[2].trim(),
-        words: parseInt(match[3]) || 0,
-        wpm: parseInt(match[4]) || 0
-      });
+/* ── LoginModal ── */
+/* ─── Traduction via MyMemory API (gratuite) ─── */
+async function translateText(text, sourceLang, targetLang) {
+  if (!text || text.length < 5 || sourceLang === targetLang) return text;
+  try {
+    const chunks = text.match(/[\s\S]{1,400}/g) || [text];
+    const results = [];
+    for (const chunk of chunks) {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}`
+      );
+      const data = await res.json();
+      results.push(data.responseStatus === 200 ? (data.responseData?.translatedText || chunk) : chunk);
+      await new Promise(r => setTimeout(r, 80));
     }
-    
-    return {
-      score,
-      verdict,
-      pointsForts: pointsForts.length ? pointsForts : [],
-      pointsAmeliorer: pointsAmeliorer.length ? pointsAmeliorer : [],
-      conseils: conseils.length ? conseils : [],
-      questionMetrics,
-      rawText: text
-    };
-  };
+    return results.join(' ');
+  } catch { return text; }
+}
+function detectLang(text) {
+  if (!text) return 'fr';
+  return /le candidat|entretien|bourse|motivation|recherche|conseils|points forts|améliorer|réponses/i.test(text) ? 'fr' : 'en';
+}
 
-  const getScoreColor = (score) => {
-    if (score === null) return { bg: 'rgba(100,116,139,.15)', color: '#94a3b8', border: 'rgba(100,116,139,.3)', grade: 'Non évalué' };
-    if (score >= 85) return { bg: 'rgba(16,185,129,.2)', color: '#34d399', border: 'rgba(16,185,129,.4)', grade: 'Excellent', icon: '🏆' };
-    if (score >= 70) return { bg: 'rgba(16,185,129,.15)', color: '#34d399', border: 'rgba(16,185,129,.35)', grade: 'Très bien', icon: '🌟' };
-    if (score >= 55) return { bg: 'rgba(245,158,11,.15)', color: '#fbbf24', border: 'rgba(245,158,11,.35)', grade: 'Bien', icon: '👍' };
-    if (score >= 40) return { bg: 'rgba(245,158,11,.12)', color: '#fbbf24', border: 'rgba(245,158,11,.3)', grade: 'À améliorer', icon: '📈' };
-    return { bg: 'rgba(239,68,68,.15)', color: '#f87171', border: 'rgba(239,68,68,.35)', grade: 'À renforcer', icon: '⚠️' };
-  };
 
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return `Aujourd'hui, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-    if (diffDays === 1) return `Hier, ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-    if (diffDays < 7) return `Il y a ${diffDays} jours`;
-    
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-  };
+function LoginModal({ onClose }) {
+  const { lang } = useT();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
 
-  if (!userId) return (
-    <div style={H.overlay}>
-      <div style={H.drawer}>
-        <div style={H.dHead}>
-          <div><div style={H.dTitle}>📋 Historique des entretiens</div><div style={H.dSub}>Connectez-vous pour accéder à vos rapports</div></div>
-          <button style={H.closeBtn} onClick={onClose}>✕</button>
-        </div>
-        <div style={H.center}>
-          <div style={{fontSize:64, marginBottom:16}}>🔐</div>
-          <p style={{color:'#94a3b8', textAlign:'center', maxWidth:280}}>Connectez-vous pour voir vos entretiens passés et suivre votre progression</p>
-        </div>
-      </div>
-      <div style={H.backdrop} onClick={onClose}/>
-    </div>
-  );
+  const send = async () => {
+    if (!email || !email.includes('@')) { setErrMsg(lang==='fr'?'Email invalide':'Invalid email'); return; }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang==='fr'?'Impossible de contacter le serveur':'Cannot contact server'));
+    }
+  };
 
   return (
-    <div style={H.overlay}>
-      <div style={H.drawer}>
-        <div style={H.dHead}>
-          <div>
-            <div style={H.dTitle}>📋 Historique des entretiens</div>
-            <div style={H.dSub}>
-              {records.length} entretien{records.length > 1 ? 's' : ''} · 
-              Dernier: {records[0] ? formatDate(records[0].createdAt) : '—'}
-            </div>
-          </div>
-          <button style={H.closeBtn} onClick={onClose}>✕</button>
+    <div className="ep-modal-overlay">
+      <div className="ep-modal-container">
+        <div className="ep-modal-header">
+          <span style={{ fontSize:22 }}>🔐</span>
+          <span>{lang==='fr'?'Connexion à OppsTrack':'Sign in to OppsTrack'}</span>
+          <button className="ep-modal-close" onClick={onClose}>✕</button>
         </div>
-        
-        {loading && (
-          <div style={H.center}>
-            <div style={H.spinner} />
-            <p style={{color:'#64748b', marginTop:12}}>Chargement de votre historique...</p>
-          </div>
-        )}
-        
-        {!loading && records.length === 0 && (
-          <div style={H.center}>
-            <div style={{fontSize:72, marginBottom:16}}>📭</div>
-            <p style={{color:'#94a3b8', fontSize:16, marginBottom:8}}>Aucun entretien enregistré</p>
-            <p style={{color:'#64748b', fontSize:13, textAlign:'center', maxWidth:280}}>Commencez un entretien pour voir vos résultats ici</p>
-          </div>
-        )}
-        
-        {!loading && records.length > 0 && !selected && (
-          <div style={H.list}>
-            {records.map(r => {
-              const parsed = parseEntretien(r.score);
-              const scoreColor = getScoreColor(parsed.score);
-              return (
-                <button key={r.id} style={H.card} className="hcard" onClick={() => setSelected(r)}>
-                  <div style={{...H.scoreBadge, background: scoreColor.bg, color: scoreColor.color, border: `1px solid ${scoreColor.border}`}}>
-                    {parsed.score !== null ? `${parsed.score}/100` : '—'}
-                  </div>
-                  <div style={H.cardMid}>
-                    <div style={H.cardDate}>{formatDate(r.createdAt)}</div>
-                    <div style={H.cardTitle}>
-                      {r.context || 'Entretien bourse'}
-                    </div>
-                    <div style={H.cardVerdict}>
-                      <span style={{color: scoreColor.color}}>{scoreColor.icon} {scoreColor.grade}</span>
-                      {parsed.verdict && <span style={{marginLeft: 8, color: '#64748b'}}>· {parsed.verdict.slice(0, 40)}</span>}
-                    </div>
-                  </div>
-                  <div style={H.cardArrow}>→</div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        
-        {selected && (
-          <EntretienDetail 
-            entretien={selected} 
-            onBack={() => setSelected(null)} 
-            parseEntretien={parseEntretien}
-            getScoreColor={getScoreColor}
-            formatDate={formatDate}
-          />
-        )}
+        <div className="ep-modal-body">
+          {status==='idle' && (
+            <>
+              <p>{lang==='fr'?<>Entrez votre email pour recevoir un <strong style={{ color:'#255cae' }}>lien de connexion magique</strong>.</>:<>Enter your email to receive a <strong style={{ color:'#255cae' }}>magic login link</strong>.</>}</p>
+              <input type="email" placeholder={lang==='fr'?'votre@email.com':'your@email.com'}
+                value={email} autoFocus onChange={e=>setEmail(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&send()} className="ep-modal-input"/>
+              {errMsg && <div className="ep-modal-error">{errMsg}</div>}
+              <button className="ep-modal-btn" onClick={send}>✉️ {lang==='fr'?'Envoyer le lien magique':'Send magic link'}</button>
+            </>
+          )}
+          {status==='sending' && (
+            <div className="ep-modal-center">
+              <div className="ep-spinner"/>
+              <p style={{ color:'#64748b', marginTop:14 }}>{lang==='fr'?'Envoi en cours...':'Sending...'}</p>
+            </div>
+          )}
+          {status==='success' && (
+            <div className="ep-modal-center">
+              <div style={{ fontSize:52, marginBottom:12 }}>✉️</div>
+              <div style={{ fontSize:16, fontWeight:700, color:'#166534', marginBottom:8 }}>{lang==='fr'?'Lien envoyé !':'Link sent!'}</div>
+              <p style={{ color:'#64748b', fontSize:13, lineHeight:1.6 }}>
+                {lang==='fr'?<>Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.</>:<>Check your inbox (and spam).<br/>Click the link to sign in.</>}
+              </p>
+              <button className="ep-modal-btn success" style={{ marginTop:20 }} onClick={onClose}>✓ {lang==='fr'?'Fermer':'Close'}</button>
+            </div>
+          )}
+          {status==='error' && (
+            <div className="ep-modal-center">
+              <div style={{ fontSize:40, marginBottom:12 }}>⚠️</div>
+              <p style={{ color:'#dc2626', marginBottom:12 }}>{errMsg}</p>
+              <button className="ep-modal-btn error" onClick={()=>{setStatus('idle');setErrMsg('');}}>
+                {lang==='fr'?'Réessayer':'Retry'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      <div style={H.backdrop} onClick={onClose}/>
-      <style>{`
-        .hcard {
-          transition: all 0.2s ease;
-        }
-        .hcard:hover {
-          background: rgba(139, 92, 246, 0.08) !important;
-          border-color: rgba(139, 92, 246, 0.35) !important;
-          transform: translateX(4px);
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
+      <div className="ep-modal-backdrop" onClick={onClose}/>
     </div>
   );
 }
 
-// ── Composant de détail d'entretien amélioré ───────────────────────────────────────────
-function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate }) {
+/* ── EntretienDetail ── */
+function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate, dk = false }) {
+  const { lang } = useT();
   const [activeTab, setActiveTab] = useState('summary');
   const parsed = parseEntretien(entretien.score);
   const scoreColor = getScoreColor(parsed.score);
-  
+
+  const [content, setContent] = useState({ 
+    verdict: parsed.verdict, 
+    pointsForts: parsed.pointsForts, 
+    pointsAmeliorer: parsed.pointsAmeliorer, 
+    conseils: parsed.conseils, 
+    rawText: parsed.rawText 
+  });
+  const [translating, setTranslating] = useState(false);
+
+  useEffect(() => {
+    const srcLang = detectLang(parsed.rawText);
+    const tgtLang = lang === 'fr' ? 'fr' : 'en';
+    if (srcLang === tgtLang) {
+      setContent({ 
+        verdict: parsed.verdict, 
+        pointsForts: parsed.pointsForts, 
+        pointsAmeliorer: parsed.pointsAmeliorer, 
+        conseils: parsed.conseils, 
+        rawText: parsed.rawText 
+      });
+      return;
+    }
+    setTranslating(true);
+    Promise.all([
+      parsed.verdict ? translateText(parsed.verdict, srcLang, tgtLang) : Promise.resolve(''),
+      Promise.all(parsed.pointsForts.map(p => translateText(p, srcLang, tgtLang))),
+      Promise.all(parsed.pointsAmeliorer.map(p => translateText(p, srcLang, tgtLang))),
+      Promise.all(parsed.conseils.map(c => translateText(c, srcLang, tgtLang))),
+      parsed.rawText ? translateText(parsed.rawText, srcLang, tgtLang) : Promise.resolve(''),
+    ]).then(([verdict, forts, amelio, conseils, raw]) => {
+      setContent({ 
+        verdict: verdict || parsed.verdict, 
+        pointsForts: forts.length ? forts : parsed.pointsForts, 
+        pointsAmeliorer: amelio.length ? amelio : parsed.pointsAmeliorer, 
+        conseils: conseils.length ? conseils : parsed.conseils, 
+        rawText: raw || parsed.rawText 
+      });
+      setTranslating(false);
+    }).catch(() => {
+      setContent({ 
+        verdict: parsed.verdict, 
+        pointsForts: parsed.pointsForts, 
+        pointsAmeliorer: parsed.pointsAmeliorer, 
+        conseils: parsed.conseils, 
+        rawText: parsed.rawText 
+      });
+      setTranslating(false);
+    });
+  }, [lang, parsed.rawText]);
+
+  const TABS = [
+    { id: 'summary',   labelFr: '📊 Résumé',  labelEn: '📊 Summary'  },
+    { id: 'strengths', labelFr: '✅ Analyse',  labelEn: '✅ Analysis'  },
+    { id: 'advice',    labelFr: '💡 Conseils', labelEn: '💡 Tips'      },
+    { id: 'details',   labelFr: '📝 Détails',  labelEn: '📝 Details'   },
+  ];
+
   return (
-    <div style={D.container}>
-      <button style={D.backBtn} onClick={onBack}>
-        <span style={{fontSize:18}}>←</span> Retour à la liste
+    <div className="ep-detail-container" style={{ background: dk ? '#1a1912' : '#ffffff' }}>
+      <button 
+        className="ep-detail-back" 
+        onClick={onBack}
+        style={{ 
+          color: dk ? '#a19f96' : '#666', 
+          background: 'transparent', 
+          border: 'none', 
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 16,
+          fontSize: 13
+        }}
+      >
+        <span style={{ fontSize: 18 }}>←</span> {lang === 'fr' ? 'Retour à la liste' : 'Back to list'}
       </button>
-      
-      {/* En-tête avec score */}
-      <div style={D.header}>
-        <div style={D.headerTop}>
-          <div style={D.bourseTag}>
-            <span style={{fontSize:20}}>🎓</span>
-            <span>{entretien.context || 'Entretien de bourse'}</span>
+
+      <div className="ep-detail-header" style={{ 
+        background: dk ? '#1d1c16' : '#faf8f3', 
+        borderColor: dk ? '#2b2a22' : '#e5e5e5',
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 20,
+        border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8, 
+            padding: '6px 14px', 
+            background: dk ? '#15140f' : '#f8fafc', 
+            borderRadius: 20, 
+            fontSize: 13, 
+            fontWeight: 600, 
+            color: dk ? '#a19f96' : '#475569' 
+          }}>
+            <span style={{ fontSize: 20 }}>🎓</span>
+            <span>{entretien.context || (lang === 'fr' ? 'Entretien de bourse' : 'Scholarship interview')}</span>
           </div>
-          <div style={D.dateTag}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: dk ? '#a19f96' : '#475569' }}>
             <span>📅</span>
             <span>{formatDate(entretien.createdAt)}</span>
           </div>
         </div>
-        
-        <div style={D.scoreSection}>
-          <div style={{...D.scoreCircle, background: scoreColor.bg, border: `2px solid ${scoreColor.color}`}}>
-            <span style={D.scoreValue}>{parsed.score !== null ? parsed.score : '?'}</span>
-            <span style={D.scoreMax}>/100</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div className="ep-detail-score-circle" style={{ 
+            background: scoreColor.bg, 
+            border: `2px solid ${scoreColor.color}`,
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <span className="ep-detail-score-val" style={{ fontSize: 28, fontWeight: 700, color: scoreColor.color }}>
+              {parsed.score !== null ? parsed.score : '?'}
+            </span>
+            <span className="ep-detail-score-max" style={{ fontSize: 11, color: dk ? '#a19f96' : '#64748b' }}>/100</span>
           </div>
-          <div style={D.scoreInfo}>
-            <div style={{...D.scoreGrade, color: scoreColor.color}}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4, color: scoreColor.color }}>
               {scoreColor.icon} {scoreColor.grade}
             </div>
             {parsed.verdict && (
-              <div style={D.scoreVerdict}>{parsed.verdict}</div>
+              <div style={{ fontSize: 14, color: dk ? '#a19f96' : '#475569' }}>
+                {parsed.verdict}
+              </div>
             )}
           </div>
         </div>
       </div>
-      
-      {/* Onglets */}
-      <div style={D.tabs}>
-        {['summary', 'strengths', 'advice', 'details'].map(tab => (
+
+      {translating && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 8, 
+          padding: '6px 12px', 
+          margin: '4px 0', 
+          borderRadius: 6, 
+          background: '#fffbeb', 
+          border: '1px solid #fde68a', 
+          fontSize: 11, 
+          color: '#92400e' 
+        }}>
+          <div style={{ 
+            width: 12, 
+            height: 12, 
+            borderRadius: '50%', 
+            border: '2px solid #fde68a', 
+            borderTopColor: '#d97706', 
+            animation: 'spin 0.8s linear infinite', 
+            flexShrink: 0 
+          }} />
+          {lang === 'fr' ? 'Traduction du rapport...' : 'Translating report...'}
+        </div>
+      )}
+
+      <div className="ep-detail-tabs" style={{ 
+        borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+        display: 'flex',
+        gap: 0,
+        marginBottom: 20
+      }}>
+        {TABS.map(t => (
           <button 
-            key={tab}
-            style={{...D.tab, ...(activeTab === tab ? D.tabActive : {})}}
-            onClick={() => setActiveTab(tab)}
+            key={t.id} 
+            className={`ep-detail-tab ${activeTab === t.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.id)}
+            style={{ 
+              color: activeTab === t.id ? (dk ? '#4c9fd9' : '#0066b3') : (dk ? '#a19f96' : '#6b6b6b'),
+              borderBottom: activeTab === t.id ? `2px solid ${dk ? '#4c9fd9' : '#0066b3'}` : 'none',
+              background: 'transparent',
+              border: 'none',
+              padding: '10px 16px',
+              fontSize: 13,
+              fontWeight: activeTab === t.id ? 600 : 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
           >
-            {tab === 'summary' && '📊 Résumé'}
-            {tab === 'strengths' && '✅ Analyse'}
-            {tab === 'advice' && '💡 Conseils'}
-            {tab === 'details' && '📝 Détails'}
+            {lang === 'fr' ? t.labelFr : t.labelEn}
           </button>
         ))}
       </div>
-      
-      {/* Contenu des onglets */}
-      <div style={D.content}>
+
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 300 }}>
         {activeTab === 'summary' && (
-          <div style={D.summaryContent}>
-            {/* Points clés */}
-            <div style={D.statsGrid}>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>⏱️</div>
-                <div style={D.statLabel}>Durée totale</div>
-                <div style={D.statValue}>
-                  {parsed.questionMetrics.length > 0 
-                    ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00`
-                    : '—'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              {[
+                { icon: '⏱️', labelFr: 'Durée totale', labelEn: 'Total duration', val: parsed.questionMetrics?.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—' },
+                { icon: '📝', labelFr: 'Questions', labelEn: 'Questions', val: parsed.questionMetrics?.length || '8' },
+                { icon: '🎯', labelFr: 'Score', labelEn: 'Score', val: parsed.score !== null ? `${parsed.score}/100` : '—' },
+              ].map(s => (
+                <div key={s.labelFr} style={{ 
+                  background: dk ? '#1d1c16' : '#fff', 
+                  borderRadius: 14, 
+                  padding: 14, 
+                  textAlign: 'center', 
+                  border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontSize: 11, color: dk ? '#a19f96' : '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                    {lang === 'fr' ? s.labelFr : s.labelEn}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: dk ? '#f2efe7' : '#0f172a' }}>{s.val}</div>
                 </div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>📝</div>
-                <div style={D.statLabel}>Questions</div>
-                <div style={D.statValue}>{parsed.questionMetrics.length || '8'}</div>
-              </div>
-              <div style={D.statItem}>
-                <div style={D.statIcon}>🎯</div>
-                <div style={D.statLabel}>Score</div>
-                <div style={D.statValue}>{parsed.score !== null ? `${parsed.score}/100` : '—'}</div>
-              </div>
+              ))}
             </div>
-            
-            {/* Points forts en résumé */}
-            {parsed.pointsForts.length > 0 && (
-              <div style={D.section}>
-                <div style={D.sectionTitle}>✅ Points forts identifiés</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {/* Axes d'amélioration */}
-            {parsed.pointsAmeliorer.length > 0 && (
-              <div style={D.section}>
-                <div style={D.sectionTitle}>📈 Axes d'amélioration</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.slice(0, 3).map((p, i) => (
-                    <li key={i} style={D.listItem}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {activeTab === 'strengths' && (
-          <div style={D.strengthsContent}>
-            {parsed.pointsForts.length > 0 && (
-              <div style={D.section}>
-                <div style={{...D.sectionTitle, color: '#34d399'}}>✅ POINTS FORTS</div>
-                <ul style={D.list}>
-                  {parsed.pointsForts.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#34d399', marginRight: 8}}>✓</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {parsed.pointsAmeliorer.length > 0 && (
-              <div style={{...D.section, marginTop: 24}}>
-                <div style={{...D.sectionTitle, color: '#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div>
-                <ul style={D.list}>
-                  {parsed.pointsAmeliorer.map((p, i) => (
-                    <li key={i} style={D.listItem}>
-                      <span style={{color: '#fbbf24', marginRight: 8}}>!</span>
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {parsed.questionMetrics.length > 0 && (
-              <div style={{...D.section, marginTop: 24}}>
-                <div style={D.sectionTitle}>📊 Performance par question</div>
-                <div style={D.questionsList}>
-                  {parsed.questionMetrics.map((q, i) => (
-                    <div key={i} style={D.questionItem}>
-                      <div style={D.questionNum}>Q{q.num || i+1}</div>
-                      <div style={D.questionStats}>
-                        <span style={D.wordCount}>{q.words || '—'} mots</span>
-                        <span style={D.wpm}>{q.wpm || '—'} mots/min</span>
-                      </div>
-                    </div>
-                  ))}
+            {content.pointsForts?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>
+                  ✅ {lang === 'fr' ? 'Points forts identifiés' : 'Identified strengths'}
                 </div>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {content.pointsForts.slice(0, 3).map((p, i) => (
+                    <li key={i} style={{ fontSize: 13, color: dk ? '#cfccc2' : '#334155', lineHeight: 1.6, marginBottom: 10 }}>
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {content.pointsAmeliorer?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', marginBottom: 12 }}>
+                  📈 {lang === 'fr' ? "Axes d'amélioration" : 'Areas for improvement'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {content.pointsAmeliorer.slice(0, 3).map((p, i) => (
+                    <li key={i} style={{ fontSize: 13, color: dk ? '#cfccc2' : '#334155', lineHeight: 1.6, marginBottom: 10 }}>
+                      {p}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
         )}
-        
+
+        {activeTab === 'strengths' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {content.pointsForts?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#34d399', marginBottom: 12 }}>
+                  ✅ {lang === 'fr' ? 'POINTS FORTS' : 'STRENGTHS'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.pointsForts.map((p, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start' 
+                    }}>
+                      <span style={{ color: '#34d399', marginRight: 8 }}>✓</span>{p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {content.pointsAmeliorer?.length > 0 && (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', marginBottom: 12 }}>
+                  ⚠️ {lang === 'fr' ? 'POINTS À AMÉLIORER' : 'AREAS TO IMPROVE'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.pointsAmeliorer.map((p, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start' 
+                    }}>
+                      <span style={{ color: '#fbbf24', marginRight: 8 }}>!</span>{p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'advice' && (
-          <div style={D.adviceContent}>
-            {parsed.conseils.length > 0 ? (
-              <div style={D.section}>
-                <div style={{...D.sectionTitle, color: '#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div>
-                <ul style={D.list}>
-                  {parsed.conseils.map((c, i) => (
-                    <li key={i} style={{...D.listItem, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.05)'}}>
-                      <span style={{fontSize: 18, marginRight: 12}}>🎯</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {content.conseils?.length > 0 ? (
+              <div style={{ 
+                background: dk ? '#1d1c16' : '#fff', 
+                borderRadius: 14, 
+                padding: 16, 
+                border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+              }}>
+                <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
+                  💡 {lang === 'fr' ? 'CONSEILS PERSONNALISÉS' : 'PERSONALIZED TIPS'}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                  {content.conseils.map((c, i) => (
+                    <li key={i} style={{ 
+                      fontSize: 13, 
+                      color: dk ? '#cfccc2' : '#334155', 
+                      lineHeight: 1.6, 
+                      marginBottom: 10, 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      padding: '12px 0', 
+                      borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+                    }}>
+                      <span style={{ fontSize: 18, marginRight: 12 }}>🎯</span>
                       <span>{c}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <div style={D.emptyAdvice}>
-                <span style={{fontSize: 48}}>📝</span>
-                <p>Des conseils personnalisés apparaîtront ici après votre entretien</p>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: dk ? '#a19f96' : '#475569' }}>
+                <span style={{ fontSize: 48 }}>📝</span>
+                <p>{lang === 'fr' ? 'Des conseils personnalisés apparaîtront ici après votre entretien' : 'Personalized tips will appear here after your interview'}</p>
               </div>
             )}
-            
-            {/* Citation de motivation */}
-            <div style={D.motivationCard}>
-              <div style={D.motivationQuote}>
-                "La préparation est la clé du succès. Chaque entretien est une opportunité d'apprendre et de progresser."
+            <div style={{ 
+              background: dk ? '#15140f' : '#f8fafc', 
+              borderRadius: 16, 
+              padding: 20, 
+              border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+            }}>
+              <div style={{ fontSize: 14, fontStyle: 'italic', color: dk ? '#cfccc2' : '#0f172a', lineHeight: 1.5, marginBottom: 12 }}>
+                {lang === 'fr'
+                  ? '"La préparation est la clé du succès. Chaque entretien est une opportunité d\'apprendre et de progresser."'
+                  : '"Preparation is the key to success. Every interview is an opportunity to learn and grow."'}
               </div>
-              <div style={D.motivationAuthor}>— Jury IA</div>
+              <div style={{ fontSize: 11, color: dk ? '#a19f96' : '#475569', textAlign: 'right' }}>
+                — {lang === 'fr' ? 'Jury IA' : 'AI Panel'}
+              </div>
             </div>
           </div>
         )}
-        
+
         {activeTab === 'details' && (
-          <div style={D.detailsContent}>
-            <div style={D.section}>
-              <div style={D.sectionTitle}>📄 Rapport complet</div>
-              <div style={D.rawContent}>
-                {parsed.rawText.split('\n').map((line, i) => {
-                  if (line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS/i)) {
-                    return <div key={i} style={D.rawHeader}>{line}</div>;
-                  }
-                  if (line.trim() && line.match(/^[-•*]/)) {
-                    return <div key={i} style={D.rawBullet}>{line}</div>;
-                  }
-                  if (line.trim()) {
-                    return <div key={i} style={D.rawLine}>{line}</div>;
-                  }
-                  return <div key={i} style={{height: 8}} />;
-                })}
-              </div>
+          <div style={{ 
+            background: dk ? '#1d1c16' : '#fff', 
+            borderRadius: 14, 
+            padding: 16, 
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` 
+          }}>
+            <div className="ep-detail-section-title" style={{ fontSize: 13, fontWeight: 700, color: dk ? '#4c9fd9' : '#0066b3', marginBottom: 12 }}>
+              📄 {lang === 'fr' ? 'Rapport complet' : 'Full report'}
+            </div>
+            <div style={{ 
+              fontSize: 13, 
+              lineHeight: 1.7, 
+              color: dk ? '#cfccc2' : '#334155', 
+              whiteSpace: 'pre-wrap', 
+              maxHeight: 400, 
+              overflowY: 'auto' 
+            }}>
+              {(content.rawText || parsed.rawText || '').split('\n').map((line, i) =>
+                line.match(/SCORE|VERDICT|POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|STRENGTHS|AREAS|TIPS/i) ? (
+                  <div key={i} style={{ fontWeight: 700, color: dk ? '#4c9fd9' : '#0066b3', marginTop: 12, marginBottom: 6, fontSize: 12, letterSpacing: 1 }}>
+                    {line}
+                  </div>
+                ) : line.trim() && line.match(/^[-•*]/) ? (
+                  <div key={i} style={{ paddingLeft: 20, marginBottom: 6, color: dk ? '#a19f96' : '#475569' }}>
+                    {line}
+                  </div>
+                ) : line.trim() ? (
+                  <div key={i} style={{ marginBottom: 4, color: dk ? '#a19f96' : '#475569' }}>
+                    {line}
+                  </div>
+                ) : (
+                  <div key={i} style={{ height: 8 }} />
+                )
+              )}
             </div>
           </div>
         )}
       </div>
-      
-      {/* Actions */}
-      <div style={D.actions}>
-        <button style={D.actionBtn} onClick={() => window.print()}>
-          🖨️ Imprimer
+
+      <div style={{ 
+        display: 'flex', 
+        gap: 12, 
+        paddingTop: 16, 
+        borderTop: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`, 
+        marginTop: 8 
+      }}>
+        <button 
+          className="ep-detail-action-btn" 
+          onClick={() => window.print()}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+            color: dk ? '#a19f96' : '#475569',
+            fontSize: 12,
+            cursor: 'pointer',
+            borderRadius: 6
+          }}
+        >
+          🖨️ {lang === 'fr' ? 'Imprimer' : 'Print'}
         </button>
-        <button style={D.actionBtn} onClick={() => {
-          navigator.clipboard.writeText(parsed.rawText);
-          alert('Rapport copié dans le presse-papier');
-        }}>
-          📋 Copier
+        <button 
+          className="ep-detail-action-btn" 
+          onClick={() => { navigator.clipboard.writeText(parsed.rawText); alert(lang === 'fr' ? 'Rapport copié' : 'Report copied'); }}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`,
+            color: dk ? '#a19f96' : '#475569',
+            fontSize: 12,
+            cursor: 'pointer',
+            borderRadius: 6
+          }}
+        >
+          📋 {lang === 'fr' ? 'Copier' : 'Copy'}
         </button>
       </div>
     </div>
   );
 }
 
-// Styles pour le détail
-const D = {
-  container: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '20px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-    animation: 'slideIn 0.3s ease'
-  },
-  backBtn: {
-    alignSelf: 'flex-start',
-    background: 'rgba(255,255,255,.05)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    padding: '8px 16px',
-    borderRadius: 10,
-    cursor: 'pointer',
-    fontSize: 13,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    transition: 'all 0.2s'
-  },
-  header: {
-    background: 'rgba(139, 92, 246, .06)',
-    borderRadius: 20,
-    padding: '20px',
-    border: '1px solid rgba(139, 92, 246, .15)'
-  },
-  headerTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    flexWrap: 'wrap',
-    gap: 12
-  },
-  bourseTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 14px',
-    background: 'rgba(139, 92, 246, .12)',
-    borderRadius: 20,
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#c4b5fd'
-  },
-  dateTag: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 12,
-    color: '#64748b'
-  },
-  scoreSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 20,
-    flexWrap: 'wrap'
-  },
-  scoreCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: '50%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2
-  },
-  scoreValue: {
-    fontSize: 36,
-    fontWeight: 800,
-    lineHeight: 1
-  },
-  scoreMax: {
-    fontSize: 12,
-    opacity: 0.7
-  },
-  scoreInfo: {
-    flex: 1
-  },
-  scoreGrade: {
-    fontSize: 20,
-    fontWeight: 700,
-    marginBottom: 4
-  },
-  scoreVerdict: {
-    fontSize: 14,
-    color: '#94a3b8'
-  },
-  tabs: {
-    display: 'flex',
-    gap: 8,
-    borderBottom: '1px solid rgba(255,255,255,.08)',
-    paddingBottom: 12
-  },
-  tab: {
-    padding: '8px 20px',
-    background: 'transparent',
-    border: 'none',
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    borderRadius: 20,
-    transition: 'all 0.2s'
-  },
-  tabActive: {
-    background: 'rgba(139, 92, 246, .15)',
-    color: '#c4b5fd'
-  },
-  content: {
-    flex: 1,
-    overflowY: 'auto',
-    minHeight: 300
-  },
-  summaryContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 12
-  },
-  statItem: {
-    background: 'rgba(255,255,255,.03)',
-    borderRadius: 14,
-    padding: '14px',
-    textAlign: 'center',
-    border: '1px solid rgba(255,255,255,.06)'
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 6
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#f1f5f9'
-  },
-  section: {
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 14,
-    padding: '16px',
-    border: '1px solid rgba(255,255,255,.05)'
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 1,
-    color: '#a78bfa',
-    marginBottom: 12,
-    textTransform: 'uppercase'
-  },
-  list: {
-    margin: 0,
-    paddingLeft: 0,
-    listStyle: 'none'
-  },
-  listItem: {
-    fontSize: 13,
-    color: '#cbd5e1',
-    lineHeight: 1.6,
-    marginBottom: 10,
-    display: 'flex',
-    alignItems: 'flex-start'
-  },
-  questionsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8
-  },
-  questionItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 12px',
-    background: 'rgba(255,255,255,.02)',
-    borderRadius: 10
-  },
-  questionNum: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#a78bfa'
-  },
-  questionStats: {
-    display: 'flex',
-    gap: 16,
-    fontSize: 11,
-    color: '#64748b'
-  },
-  wordCount: {
-    padding: '2px 8px',
-    background: 'rgba(16,185,129,.1)',
-    borderRadius: 12,
-    color: '#34d399'
-  },
-  wpm: {
-    padding: '2px 8px',
-    background: 'rgba(139,92,246,.1)',
-    borderRadius: 12,
-    color: '#a78bfa'
-  },
-  adviceContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 24
-  },
-  emptyAdvice: {
-    textAlign: 'center',
-    padding: '40px 20px',
-    color: '#64748b'
-  },
-  motivationCard: {
-    background: 'linear-gradient(135deg, rgba(139,92,246,.1), rgba(232,121,249,.05))',
-    borderRadius: 16,
-    padding: '20px',
-    marginTop: 8,
-    border: '1px solid rgba(139,92,246,.2)'
-  },
-  motivationQuote: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#e2e8f0',
-    lineHeight: 1.5,
-    marginBottom: 12
-  },
-  motivationAuthor: {
-    fontSize: 11,
-    color: '#64748b',
-    textAlign: 'right'
-  },
-  detailsContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16
-  },
-  rawContent: {
-    fontSize: 13,
-    lineHeight: 1.7,
-    color: '#94a3b8',
-    whiteSpace: 'pre-wrap',
-    maxHeight: 400,
-    overflowY: 'auto',
-    padding: '4px 0'
-  },
-  rawHeader: {
-    fontWeight: 700,
-    color: '#c4b5fd',
-    marginTop: 12,
-    marginBottom: 6,
-    fontSize: 12,
-    letterSpacing: 1
-  },
-  rawBullet: {
-    paddingLeft: 20,
-    marginBottom: 6,
-    color: '#94a3b8'
-  },
-  rawLine: {
-    marginBottom: 4,
-    color: '#94a3b8'
-  },
-  actions: {
-    display: 'flex',
-    gap: 12,
-    paddingTop: 16,
-    borderTop: '1px solid rgba(255,255,255,.06)',
-    marginTop: 8
-  },
-  actionBtn: {
-    flex: 1,
-    padding: '10px',
-    borderRadius: 10,
-    background: 'rgba(255,255,255,.04)',
-    border: '1px solid rgba(255,255,255,.08)',
-    color: '#94a3b8',
-    fontSize: 13,
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  }
-};
+/* ── HistoriquePanel ── */
+function HistoriquePanel({ userId, onClose }) {
+  const { lang } = useT();
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
 
-// Mise à jour des styles H existants
-const H = {
-  overlay: {position:'fixed',inset:0,zIndex:1000,display:'flex'},
-  backdrop:{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)'},
-  drawer:  {position:'relative',zIndex:1,width:440,maxWidth:'95vw',background:'#0d0d22',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',overflow:'hidden'},
-  dHead:   {display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'24px 22px 18px',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0},
-  dTitle:  {fontSize:17,fontWeight:700,color:'#f1f5f9',marginBottom:4},
-  dSub:    {fontSize:12,color:'#64748b'},
-  closeBtn:{background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',width:32,height:32,borderRadius:8,cursor:'pointer',fontSize:16},
-  center:  {flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#64748b',fontSize:14,gap:8},
-  list:    {flex:1,overflowY:'auto',padding:'14px 16px',display:'flex',flexDirection:'column',gap:10},
-  card:    {display:'flex',alignItems:'center',gap:14,padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer',textAlign:'left'},
-  scoreBadge:{padding:'6px 12px',borderRadius:99,fontWeight:700,fontSize:15,flexShrink:0},
-  cardMid: {flex:1,display:'flex',flexDirection:'column',gap:4},
-  cardDate:{fontSize:12,color:'#64748b'},
-  detail:  {flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:12},
-  backBtn: {alignSelf:'flex-start',background:'rgba(255,255,255,.05)',border:'none',color:'#94a3b8',padding:'7px 14px',borderRadius:8,cursor:'pointer',fontSize:13},
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#f1f5f9'
-  },
-  cardVerdict: {
-    fontSize: 11,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4
-  },
-  cardArrow: {
-    color: '#475569',
-    fontSize: 16
-  },
-  spinner: {
-    width: 40,
-    height: 40,
-    border: '3px solid rgba(139, 92, 246, .2)',
-    borderTopColor: '#8b5cf6',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  }
-};
+  useEffect(()=>{
+    if (!userId){setLoading(false);return;}
+    axiosInstance.get('/api/entretiens',{params:{'where[user][equals]':userId,sort:'-createdAt',limit:20}})
+      .then(res=>{setRecords(res.data.docs||[]);setLoading(false);})
+      .catch(()=>setLoading(false));
+  },[userId]);
 
-// ── BoursePicker ──────────────────────────────────────────────────────────────
-function BoursePicker({ bourses, userId, onSelect }) {
-  const [showHist, setShowHist] = useState(false);
+  const parseEntretien=(text)=>{
+    if(!text) return{score:null,verdict:'',pointsForts:[],pointsAmeliorer:[],conseils:[],questionMetrics:[],rawText:''};
+    const scoreMatch=text.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
+    const score=scoreMatch?parseInt(scoreMatch[1]):null;
+    const verdictMatch=text.match(/VERDICT\s*[:\-]\s*(.+?)(?=\n|$)/i);
+    const verdict=verdictMatch?verdictMatch[1].trim():'';
+    const extractSection=title=>{
+      const regex=new RegExp(`${title}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:POINTS FORTS|POINTS À AMÉLIORER|CONSEILS|VERDICT|SCORE|$))`,'i');
+      const match=text.match(regex);
+      if(match) return match[1].trim().split(/\n/).filter(l=>l.trim()).map(l=>l.replace(/^[-•*]\s*/,'').trim());
+      return[];
+    };
+    return{score,verdict,pointsForts:extractSection('POINTS FORTS'),pointsAmeliorer:extractSection('POINTS À AMÉLIORER'),conseils:extractSection('CONSEILS PERSONNALISÉS'),questionMetrics:[],rawText:text};
+  };
+
+  const getScoreColor=score=>{
+    if(score===null) return{bg:'rgba(100,116,139,.15)',color:'#94a3b8',border:'rgba(100,116,139,.3)',grade:lang==='fr'?'Non évalué':'Not rated',icon:'📊'};
+    if(score>=85) return{bg:'rgba(16,185,129,.2)',color:'#34d399',border:'rgba(16,185,129,.4)',grade:lang==='fr'?'Excellent':'Excellent',icon:'🏆'};
+    if(score>=70) return{bg:'rgba(16,185,129,.15)',color:'#34d399',border:'rgba(16,185,129,.35)',grade:lang==='fr'?'Très bien':'Very good',icon:'🌟'};
+    if(score>=55) return{bg:'rgba(245,158,11,.15)',color:'#fbbf24',border:'rgba(245,158,11,.35)',grade:lang==='fr'?'Bien':'Good',icon:'👍'};
+    if(score>=40) return{bg:'rgba(245,158,11,.12)',color:'#fbbf24',border:'rgba(245,158,11,.3)',grade:lang==='fr'?'À améliorer':'To improve',icon:'📈'};
+    return{bg:'rgba(239,68,68,.15)',color:'#f87171',border:'rgba(239,68,68,.35)',grade:lang==='fr'?'À renforcer':'To strengthen',icon:'⚠️'};
+  };
+
+  const formatDate=dateStr=>{
+    const d=new Date(dateStr);const now=new Date();
+    const diffDays=Math.floor((now-d)/(1000*60*60*24));
+    if(diffDays===0) return lang==='fr'?`Aujourd'hui, ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`:`Today, ${d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+    if(diffDays===1) return lang==='fr'?`Hier, ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`:`Yesterday, ${d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+    if(diffDays<7) return lang==='fr'?`Il y a ${diffDays} jours`:`${diffDays} days ago`;
+    return lang==='fr'?d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):d.toLocaleDateString('en-US',{day:'2-digit',month:'long',year:'numeric'});
+  };
+
   return (
-    <div style={P.root}>
-      <div style={P.glow}/>
-      <div style={P.inner}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
-          <div style={P.badge}>ENTRETIEN VIRTUEL IA</div>
-          <button style={P.histBtn} onClick={()=>setShowHist(true)}>📋 Mes entretiens</button>
-        </div>
-        <h1 style={P.h1}>Préparez votre<br/><em style={P.em}>entretien de bourse</em></h1>
-        <p style={P.sub}>Le jury IA vous posera <strong style={{color:'#e879f9'}}>{TOTAL_Q} questions</strong> adaptées à la bourse, avec analyse vocale en temps réel.</p>
-        <div style={P.grid}>
-          {bourses.length===0&&<div style={P.empty}><span style={{fontSize:36}}>📭</span><p>Aucune bourse disponible.</p></div>}
-          {bourses.map(b=>(
-            <div key={b.id} style={P.card} className="bcard-h">
-              <div style={P.cardTop}><span style={{fontSize:24}}>🎓</span><span style={P.finance}>{b.financement}</span></div>
-              <div style={P.cardName}>{b.nom}</div>
-              <div style={P.cardMeta}>{b.pays} · {b.niveau}</div>
-              <button style={P.btnDemarrer} onClick={()=>onSelect(b)}>🚀 Démarrer l'entretien</button>
+    <div className="ep-hist-overlay">
+      <div className="ep-hist-drawer" style={{ background: dk ? '#1a1912' : '#ffffff' }}>
+        <div className="ep-hist-head" style={{ borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` }}>
+          <div>
+            <div className="ep-hist-title" style={{ color: dk ? '#f2efe7' : '#141414' }}>
+              📋 {lang === 'fr' ? 'Historique des entretiens' : 'Interview history'}
             </div>
-          ))}
+            <div className="ep-hist-sub" style={{ color: dk ? '#a19f96' : '#6b6b6b' }}>
+              {!userId ? (lang === 'fr' ? 'Connectez-vous pour accéder à vos rapports' : 'Sign in to access your reports')
+                : `${records.length} ${lang === 'fr' ? `entretien${records.length > 1 ? 's' : ''} · Dernier:` : `interview${records.length > 1 ? 's' : ''} · Last:`} ${records[0] ? formatDate(records[0].createdAt) : '—'}`}
+            </div>
+          </div>
+          <button className="ep-hist-close" onClick={onClose} style={{ color: dk ? '#a19f96' : '#666' }}>✕</button>
         </div>
+
+        {!userId && (
+          <div className="ep-hist-center">
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🔐</div>
+            <p style={{ color: dk ? '#a19f96' : '#6b6b6b', textAlign: 'center', maxWidth: 280 }}>
+              {lang === 'fr' ? 'Connectez-vous pour voir vos entretiens passés' : 'Sign in to see your past interviews'}
+            </p>
+          </div>
+        )}
+
+        {userId && loading && (
+          <div className="ep-hist-center">
+            <div className="ep-hist-spinner" />
+            <p style={{ color: dk ? '#a19f96' : '#64748b', marginTop: 12 }}>
+              {lang === 'fr' ? 'Chargement...' : 'Loading...'}
+            </p>
+          </div>
+        )}
+
+        {userId && !loading && records.length === 0 && (
+          <div className="ep-hist-center">
+            <div style={{ fontSize: 72, marginBottom: 16 }}>📭</div>
+            <p style={{ color: dk ? '#a19f96' : '#64748b', fontSize: 16 }}>
+              {lang === 'fr' ? 'Aucun entretien enregistré' : 'No interview recorded'}
+            </p>
+          </div>
+        )}
+
+        {userId && !loading && records.length > 0 && !selected && (
+          <div className="ep-hist-list">
+            {records.map(r => {
+              const parsed = parseEntretien(r.score);
+              const sc = getScoreColor(parsed.score);
+              return (
+                <button 
+                  key={r.id} 
+                  className="ep-hist-card" 
+                  onClick={() => setSelected(r)}
+                  style={{ 
+                    background: dk ? '#1d1c16' : '#faf8f3', 
+                    borderColor: dk ? '#2b2a22' : '#e5e5e5',
+                    borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}`
+                  }}
+                >
+                  <div className="ep-hist-score-badge" style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.border}` }}>
+                    {parsed.score !== null ? `${parsed.score}/100` : '—'}
+                  </div>
+                  <div className="ep-hist-card-mid">
+                    <div className="ep-hist-card-date" style={{ color: dk ? '#a19f96' : '#6b6b6b' }}>
+                      {formatDate(r.createdAt)}
+                    </div>
+                    <div className="ep-hist-card-title" style={{ color: dk ? '#f2efe7' : '#141414', fontWeight: 600 }}>
+                      {r.context || (lang === 'fr' ? 'Entretien bourse' : 'Scholarship interview')}
+                    </div>
+                    <div className="ep-hist-card-verdict" style={{ color: dk ? '#cfccc2' : '#3a3a3a' }}>
+                      <span style={{ color: sc.color }}>{sc.icon} {sc.grade}</span>
+                      {parsed.verdict && (
+                        <span style={{ marginLeft: 8, color: dk ? '#a19f96' : '#64748b' }}>
+                          · {parsed.verdict.slice(0, 40)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ep-hist-arrow" style={{ color: dk ? '#a19f96' : '#9a9794' }}>→</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {selected && (
+          <EntretienDetail 
+            entretien={selected} 
+            onBack={() => setSelected(null)} 
+            parseEntretien={parseEntretien} 
+            getScoreColor={getScoreColor} 
+            formatDate={formatDate} 
+            dk={dk} 
+          />
+        )}
       </div>
-      {showHist&&<HistoriquePanel userId={userId} onClose={()=>setShowHist(false)}/>}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap');.bcard-h{transition:all .2s}.bcard-h:hover{transform:translateY(-4px)!important;border-color:rgba(232,121,249,.45)!important;box-shadow:0 14px 36px rgba(139,92,246,.2)!important}@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}`}</style>
+      <div className="ep-hist-backdrop" onClick={onClose} />
     </div>
   );
 }
-const P = {
-  root:       {minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 16px',fontFamily:"'Outfit',sans-serif",position:'relative',background:'radial-gradient(ellipse 90% 55% at 50% -5%,rgba(139,92,246,.16),transparent)'},
-  glow:       {position:'fixed',inset:0,pointerEvents:'none',background:'radial-gradient(circle at 75% 25%,rgba(232,121,249,.06),transparent 55%)'},
-  inner:      {width:'100%',maxWidth:760,position:'relative',zIndex:1},
-  badge:      {display:'inline-flex',padding:'4px 16px',borderRadius:99,border:'1px solid rgba(139,92,246,.4)',color:'#a78bfa',fontSize:11,fontWeight:700,letterSpacing:2},
-  histBtn:    {padding:'8px 16px',borderRadius:10,background:'rgba(99,102,241,.12)',border:'1px solid rgba(99,102,241,.35)',color:'#818cf8',fontSize:13,fontWeight:600,cursor:'pointer'},
-  h1:         {fontFamily:"'Cormorant Garamond',serif",fontSize:'clamp(2rem,5vw,2.8rem)',fontWeight:600,color:'#f1f5f9',lineHeight:1.15,marginBottom:14,marginTop:14},
-  em:         {color:'#e879f9',fontStyle:'italic'},
-  sub:        {color:'#64748b',fontSize:15,marginBottom:36,maxWidth:500,lineHeight:1.6},
-  grid:       {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16},
-  empty:      {textAlign:'center',color:'#475569',padding:'48px 0',gridColumn:'1/-1',display:'flex',flexDirection:'column',alignItems:'center',gap:8},
-  card:       {display:'flex',flexDirection:'column',gap:10,padding:'22px',borderRadius:16,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',textAlign:'left',color:'#f1f5f9',animation:'fadeUp .4s ease both'},
-  cardTop:    {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  finance:    {fontSize:12,color:'#10b981',fontWeight:600,padding:'3px 10px',borderRadius:99,background:'rgba(16,185,129,.1)',border:'1px solid rgba(16,185,129,.2)'},
-  cardName:   {fontSize:15,fontWeight:700},
-  cardMeta:   {fontSize:13,color:'#64748b',marginBottom:4},
-  btnDemarrer:{marginTop:6,padding:'11px 16px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#6d28d9,#a21caf)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',width:'100%',boxShadow:'0 4px 18px rgba(139,92,246,.35)'},
-};
 
-// ── EntretienSession ──────────────────────────────────────────────────────────
+
+/* ── BoursePicker ── */
+function BoursePicker({ bourses, userId, onSelect, appliedBourses = [] }) {
+  const { lang } = useT();
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
+  const [showHist, setShowHist] = useState(false);
+  const [query, setQuery] = useState('');
+  const q=(query||'').trim().toLowerCase();
+  // Filtrer uniquement les bourses postulées
+const appliedNoms = new Set(appliedBourses.map(b => b.nom?.trim().toLowerCase()));
+const boursesPostulees = bourses.filter(b => appliedNoms.has(b.nom?.trim().toLowerCase()));
+const [entretienScores, setEntretienScores] = useState({});
+  useEffect(() => {
+    if (!userId) return;
+    axiosInstance.get('/api/entretiens', {
+      params: { 'where[user][equals]': userId, sort: '-createdAt', limit: 100 }
+    })
+      .then(res => {
+        const scores = {};
+        (res.data.docs || []).forEach(e => {
+          const bourseNom = e.context?.trim().toLowerCase();
+          if (bourseNom && !scores[bourseNom]) {
+            // Parser le score
+            const scoreMatch = (e.score || '').match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i);
+            if (scoreMatch) {
+              scores[bourseNom] = parseInt(scoreMatch[1]);
+            }
+          }
+        });
+        setEntretienScores(scores);
+      })
+      .catch(err => console.error('Erreur chargement scores entretiens:', err));
+  }, [userId]);
+const filtered = q.length === 0 
+  ? boursesPostulees 
+  : boursesPostulees.filter(b => 
+      (b.nom || '').toLowerCase().includes(q) || 
+      (b.pays || '').toLowerCase().includes(q) || 
+      (b.niveau || '').toLowerCase().includes(q) || 
+      String(b.financement || '').toLowerCase().includes(q)
+    );
+return (
+  <div style={{ background: dk ? '#15140f' : '#faf8f3', minHeight: '100vh', fontFamily: 'inherit' }}>
+
+    {/* ── HERO ── */}
+    <div style={{
+      background: dk ? '#1d1c16' : '#f2efe7',
+      padding: '40px 32px',
+      textAlign: 'center',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+    }}>
+    
+     <h1
+  style={{
+    fontFamily: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+    fontSize: 'clamp(32px, 5vw, 48px)',
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    color: dk ? '#f2efe7' : '#141414',
+    margin: '0 0 16px',
+  }}
+>
+  {lang === 'fr' ? (
+    <>
+      Un entraînement{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        intelligent
+      </em>{" "}
+      pour réussir{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        vos entretiens
+      </em>.
+    </>
+  ) : (
+    <>
+      Prepare your{" "}
+      <em style={{ color: dk ? '#4c9fd9' : '#0066b3', fontStyle: 'italic' }}>
+        scholarship interview
+      </em>.
+    </>
+  )}
+</h1>
+      <p style={{
+        fontSize: 16, color: dk ? '#cfccc2' : '#3a3a3a',
+        maxWidth: 580, margin: '0 auto',
+        lineHeight: 1.7,
+      }}>
+        {lang === 'fr'
+          ? <>Questions personnalisées, analyse vocale et feedback détaillé.</>
+          : <>Personalized questions, voice analysis and detailed feedback.</>}
+      </p>
+    </div>
+
+    {/* ── SEARCH + HISTORIQUE — section blanche ── */}
+    <div style={{
+      background: dk ? '#1a1912' : '#ffffff',
+      borderBottom: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      padding: '20px 32px',
+    }}>
+      <div style={{
+        display: 'flex', gap: 12, alignItems: 'center',
+        flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 680, margin: '0 auto',
+      }}>
+        <input
+          placeholder={lang === 'fr' ? 'Rechercher une bourse, pays, niveau...' : 'Search scholarship, country, level...'}
+          value={query} onChange={e => setQuery(e.target.value)}
+          style={{
+            flex: 1, minWidth: 260,
+            padding: '12px 18px',
+            borderRadius: 8,
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            background: dk ? '#15140f' : '#f2efe7',
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+        <button
+          onClick={() => setShowHist(true)}
+          style={{
+            padding: '11px 20px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+            color: dk ? '#f2efe7' : '#141414',
+            fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+          📋 {lang === 'fr' ? 'Mes entretiens' : 'My interviews'}
+        </button>
+      </div>
+    </div>
+
+    {/* ── GRILLE CARTES ── */}
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px' }}>
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 0', color: dk ? '#a19f96' : '#6b6b6b' }}>
+          <span style={{ fontSize: 36 }}>🔎</span>
+          <p style={{ marginTop: 12 }}>{lang === 'fr' ? 'Aucune bourse trouvée.' : 'No scholarship found.'}</p>
+        </div>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 20,
+        }}>
+          {filtered.map(b => {
+  const bourseKey = b.nom?.trim().toLowerCase();
+  const lastScore = entretienScores[bourseKey];
+  const deadlineDate = b.dateLimite ? new Date(b.dateLimite) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isExpired = deadlineDate && deadlineDate < today;
+  const daysLeft = deadlineDate ? Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24)) : null;
+
+  return (
+    <div key={b.id} style={{
+      display: 'flex', flexDirection: 'column', gap: 14,
+      padding: 24,
+      borderRadius: 12,
+      background: dk ? '#1d1c16' : '#f2efe7',
+      border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      opacity: isExpired ? 0.6 : 1,
+    }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
+    >
+      
+
+      {/* Nom de la bourse */}
+      <div style={{
+        fontSize: 16, fontWeight: 700,
+        color: dk ? '#f2efe7' : '#141414',
+        lineHeight: 1.3,
+        fontFamily: `"Libre Caslon Text", Georgia, serif`,
+      }}>
+        {b.nom}
+      </div>
+
+      {/* Infos : Pays + Niveau */}
+      <div style={{ 
+        display: 'flex', 
+        gap: 12, 
+        fontSize: 12, 
+        color: dk ? '#a19f96' : '#6b6b6b', 
+        fontFamily: 'monospace',
+        flexWrap: 'wrap'
+      }}>
+        <span>📍 {b.pays}</span>
+        <span>·</span>
+        <span>🎓 {b.niveau}</span>
+      </div>
+
+      {/* Deadline */}
+      {deadlineDate && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: isExpired 
+            ? (dk ? 'rgba(180,50,31,0.15)' : 'rgba(180,50,31,0.08)') 
+            : daysLeft <= 30 
+              ? (dk ? 'rgba(176,106,18,0.15)' : 'rgba(176,106,18,0.08)')
+              : (dk ? 'rgba(76,159,217,0.15)' : 'rgba(0,102,179,0.08)'),
+          border: `1px solid ${
+            isExpired 
+              ? (dk ? 'rgba(180,50,31,0.3)' : 'rgba(180,50,31,0.2)') 
+              : daysLeft <= 30 
+                ? (dk ? 'rgba(176,106,18,0.3)' : 'rgba(176,106,18,0.2)')
+                : (dk ? 'rgba(76,159,217,0.3)' : 'rgba(0,102,179,0.2)')
+          }`,
+        }}>
+          <span style={{ fontSize: 16 }}>
+            {isExpired ? '🔴' : daysLeft <= 30 ? '⚠️' : ''}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: 10, 
+              fontWeight: 700, 
+              textTransform: 'uppercase', 
+              color: dk ? '#a19f96' : '#6b6b6b',
+              letterSpacing: 1,
+              marginBottom: 2
+            }}>
+              {lang === 'fr' ? 'Deadline' : 'Deadline'}
+            </div>
+            <div style={{ 
+              fontSize: 13, 
+              fontWeight: 700,
+              color: isExpired 
+                ? '#b4321f' 
+                : daysLeft <= 30 
+                  ? '#b06a12'
+                  : (dk ? '#4c9fd9' : '#0066b3')
+            }}>
+              {deadlineDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+              {!isExpired && daysLeft !== null && (
+                <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.8 }}>
+                  ({daysLeft} {lang === 'fr' ? 'j' : 'd'})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Score précédent si disponible */}
+      {lastScore !== undefined && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: dk ? 'rgba(76,159,217,0.1)' : 'rgba(0,102,179,0.06)',
+          border: `1px solid ${dk ? 'rgba(76,159,217,0.25)' : 'rgba(0,102,179,0.15)'}`,
+        }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: 10, 
+              fontWeight: 700, 
+              textTransform: 'uppercase',
+              color: dk ? '#a19f96' : '#6b6b6b',
+              letterSpacing: 1,
+              marginBottom: 2
+            }}>
+              {lang === 'fr' ? 'Dernier score' : 'Last score'}
+            </div>
+            <div style={{ 
+              fontSize: 18, 
+              fontWeight: 800,
+              color: dk ? '#4c9fd9' : '#0066b3',
+              fontFamily: 'monospace'
+            }}>
+              {lastScore}/100
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Infos supplémentaires */}
+      
+
+      {/* Bouton d'action */}
+      <button
+        onClick={() => onSelect(b)}
+        disabled={isExpired}
+        style={{
+          marginTop: 8, 
+          padding: '12px 20px', 
+          borderRadius: 8, 
+          border: 'none',
+          background: isExpired 
+            ? (dk ? '#2b2a22' : '#d9d5cb')
+            : `linear-gradient(135deg, ${dk ? '#4c9fd9' : '#0066b3'}, ${dk ? '#2563eb' : '#004f8a'})`,
+          color: isExpired ? (dk ? '#6d6b64' : '#9a9794') : '#fff',
+          fontSize: 13, 
+          fontWeight: 700,
+          cursor: isExpired ? 'not-allowed' : 'pointer',
+          width: '100%',
+          boxShadow: isExpired ? 'none' : '0 4px 12px rgba(0,102,179,0.2)',
+          opacity: isExpired ? 0.5 : 1,
+        }}>
+        {isExpired 
+          ? (lang === 'fr' ? '🔒 Deadline expirée' : '🔒 Deadline expired')
+          : `🚀 ${lang === 'fr' ? "Démarrer l'entretien" : 'Start interview'}`
+        }
+      </button>
+    </div>
+  );
+})}
+        </div>
+      )}
+    </div>
+
+    {showHist && <HistoriquePanel userId={userId} onClose={() => setShowHist(false)} />}
+  </div>
+);
+}
+
+/* ── EntretienSession ── */
+const INTRO_ITEMS_FR = [
+  ['📊','Contenu & richesse vocabulaire'],
+  ['⏱','Vitesse de parole (mots/min)'],
+  ['⏸','Pauses et hésitations'],
+  ['🎙','Volume et stabilité vocale'],
+  ['🧠','Questions et score générés par IA n8n'],
+];
+const INTRO_ITEMS_EN = [
+  ['📊','Content & vocabulary richness'],
+  ['⏱','Speech speed (words/min)'],
+  ['⏸','Pauses and hesitations'],
+  ['🎙','Volume and voice stability'],
+  ['🧠','Questions and score generated by AI n8n'],
+];
+const INSTR_ITEMS_FR = [
+  ['🎤','Parlez clairement — le micro transcrit en direct'],
+  ['👁️','Gardez le contact visuel'],
+  ['⏱️','Max 2 min par réponse'],
+  ['🔊','Activez le son pour entendre les questions'],
+];
+const INSTR_ITEMS_EN = [
+  ['🎤','Speak clearly — the mic transcribes in real time'],
+  ['👁️','Maintain eye contact'],
+  ['⏱️','Max 2 min per answer'],
+  ['🔊','Enable sound to hear the questions'],
+];
+
+
 function EntretienSession({ bourse, user, conversationId, onFinish }) {
-  const [phase,          setPhase]         = useState('intro');
-  const [qIndex,         setQIndex]        = useState(0);
-  const [currentQ,       setCurrentQ]      = useState('');
-  const [liveText,       setLiveText]      = useState('');
-  const [elapsed,        setElapsed]       = useState(0);
-  const [aiLoading,      setAiLoading]     = useState(false);
-  const [allAnswers,     setAllAnswers]    = useState([]);
-  const [finalScore,     setFinalScore]    = useState(null);
-  const [camError,       setCamError]      = useState(false);
-  const [liveVolume,     setLiveVolume]    = useState(0);
-  const [liveStability,  setLiveStability] = useState(100);
-  const [liveSpeakRatio, setLiveSpeakRatio]= useState(0);
-  const [livePauses,     setLivePauses]    = useState(0);
-  const [liveHesit,      setLiveHesit]     = useState(0);
-  const [liveWordCount,  setLiveWordCount] = useState(0);
-  const [showHist,       setShowHist]      = useState(false);
+  const { lang } = useT();
+  const { theme } = useTheme();
+  const dk = theme === 'dark';
+  const [phase, setPhase] = useState('intro');
+  const [qIndex, setQIndex]         = useState(0);
+  const [currentQ, setCurrentQ]     = useState('');
+  const [liveText, setLiveText]     = useState('');
+  const [elapsed, setElapsed]       = useState(0);
+  const [aiLoading, setAiLoading]   = useState(false);
+  const [allAnswers, setAllAnswers]  = useState([]);
+  const [finalScore, setFinalScore] = useState(null);
+  const [camError, setCamError]     = useState(false);
+  const [liveVolume, setLiveVolume]           = useState(0);
+  const [liveStability, setLiveStability]     = useState(100);
+  const [liveSpeakRatio, setLiveSpeakRatio]   = useState(0);
+  const [livePauses, setLivePauses]           = useState(0);
+  const [liveHesit, setLiveHesit]             = useState(0);
+  const [liveWordCount, setLiveWordCount]     = useState(0);
+  const [showHist, setShowHist]     = useState(false);
 
-  const videoRef     = useRef(null);
-  const streamRef    = useRef(null);
-  const recRef       = useRef(null);
-  const timerRef     = useRef(null);
-  const metricsRef   = useRef(null);
-  const srRef        = useRef(null);
-  const analyzerRef  = useRef(null);
-  const aiLockRef    = useRef(false);
-  const savedRef     = useRef(false);
+  const videoRef=useRef(null);const streamRef=useRef(null);
+  const recRef=useRef(null);const timerRef=useRef(null);
+  const metricsRef=useRef(null);const srRef=useRef(null);
+  const analyzerRef=useRef(null);const aiLockRef=useRef(false);
+  const savedRef=useRef(false);
+  const liveTextRef=useRef('');const elapsedRef=useRef(0);
+  const answersRef=useRef([]);const qIndexRef=useRef(0);
+  const capturedRef=useRef('');const phaseRef=useRef('intro');
+  const historyRef=useRef([]);
 
-  const liveTextRef    = useRef('');
-  const elapsedRef     = useRef(0);
-  const answersRef     = useRef([]);
-  const qIndexRef      = useRef(0);
-  const capturedRef    = useRef(''); // réponse capturée au stop
-  const phaseRef       = useRef('intro');
-  const historyRef     = useRef([]); // historique Q/R pour n8n
+  useEffect(()=>{liveTextRef.current=liveText;},[liveText]);
+  useEffect(()=>{elapsedRef.current=elapsed;},[elapsed]);
+  useEffect(()=>{qIndexRef.current=qIndex;},[qIndex]);
+  useEffect(()=>{phaseRef.current=phase;},[phase]);
+  useEffect(()=>{initCamera();return cleanup;},[]);
 
-  useEffect(() => { liveTextRef.current = liveText; }, [liveText]);
-  useEffect(() => { elapsedRef.current  = elapsed;   }, [elapsed]);
-  useEffect(() => { qIndexRef.current   = qIndex;    }, [qIndex]);
-  useEffect(() => { phaseRef.current    = phase;     }, [phase]);
-
-  useEffect(() => { initCamera(); return cleanup; }, []);
-
-  const initCamera = async () => {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-      streamRef.current = s;
-      if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play(); }
-    } catch(e) { console.warn('Camera:', e.message); setCamError(true); }
+  const initCamera=async()=>{
+    try{const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true});streamRef.current=s;if(videoRef.current){videoRef.current.srcObject=s;videoRef.current.play();}}
+    catch(e){setCamError(true);}
   };
 
-  const cleanup = () => {
-    clearInterval(timerRef.current);
-    clearInterval(metricsRef.current);
-    if (recRef.current?.state==='recording') { try { recRef.current.stop(); } catch {} }
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} }); streamRef.current = null; }
-    try { if (srRef.current) { srRef.current.onend=null; srRef.current.stop(); } } catch {}
-    if (analyzerRef.current) { analyzerRef.current.destroy(); analyzerRef.current = null; }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  const cleanup=()=>{
+    clearInterval(timerRef.current);clearInterval(metricsRef.current);
+    if(recRef.current?.state==='recording'){try{recRef.current.stop();}catch{}}
+    if(streamRef.current){streamRef.current.getTracks().forEach(t=>{try{t.stop();}catch{}});streamRef.current=null;}
+    try{if(srRef.current){srRef.current.onend=null;srRef.current.stop();}}catch{}
+    if(analyzerRef.current){analyzerRef.current.destroy();analyzerRef.current=null;}
+    if(window.speechSynthesis)window.speechSynthesis.cancel();
   };
 
-  // ── callAI → n8n fait TOUT ───────────────────────────────────────────────
-  const callAI = useCallback(async (payload, ctx) => {
-    if (aiLockRef.current) return { output: null };
-    aiLockRef.current = true;
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 45000);
-    try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // ── Données pour n8n ──────────────────────────────────────────────
-          text:              typeof payload === 'string' ? payload : payload.lastAnswer || '',
-          context:           ctx,  // start_entretien | entretien | fin_entretien
-          conversationId,
-          id:                user?.id    || null,
-          email:             user?.email || null,
-          // ── Contexte bourse ───────────────────────────────────────────────
-          bourse:            { id:bourse.id, nom:bourse.nom, pays:bourse.pays, niveau:bourse.niveau, financement:bourse.financement },
-          bourse_context:    `${bourse.nom} | ${bourse.pays} | ${bourse.niveau} | ${bourse.financement||'100%'}`,
-          // ── Historique complet Q/R pour n8n ───────────────────────────────
-          entretien_history: historyRef.current,
-          question_index:    typeof payload === 'object' ? (payload.questionIndex ?? 0) : 0,
-          total_questions:   TOTAL_Q,
-          // ── Stats vocales réelles pour fin_entretien ──────────────────────
-          voiceStats: typeof payload === 'object' && payload.voiceStats ? payload.voiceStats : null,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      const txt = await res.text();
-      aiLockRef.current = false;
-      try { return JSON.parse(txt); } catch { return { output: txt }; }
-    } catch(err) {
-      clearTimeout(timeout);
-      aiLockRef.current = false;
-      console.error('callAI error:', err.message);
-      return { output: null };
-    }
-  }, [bourse, user, conversationId]);
+  const callAI=useCallback(async(payload,ctx)=>{
+    if(aiLockRef.current) return{output:null};
+    aiLockRef.current=true;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),45000);
+    try{
+      const res=await axios.post(WEBHOOK_ROUTES.entretien,{
+        text:typeof payload==='string'?payload:payload.lastAnswer||'',
+        context:ctx,conversationId,
+        id:user?.id||null,email:user?.email||null,
+        bourse:{id:bourse.id,nom:bourse.nom,pays:bourse.pays,niveau:bourse.niveau,financement:bourse.financement},
+        bourse_context:`${bourse.nom}|${bourse.pays}|${bourse.niveau}|${bourse.financement||'100%'}`,
+        entretien_history:historyRef.current,
+        question_index:typeof payload==='object'?(payload.questionIndex??0):0,
+        total_questions:TOTAL_Q,
+        voiceStats:typeof payload==='object'&&payload.voiceStats?payload.voiceStats:null,
+        lang, // ← passer la langue au webhook
+      },{signal:controller.signal});
+      clearTimeout(timeout);aiLockRef.current=false;
+      return res.data;
+    }catch(err){clearTimeout(timeout);aiLockRef.current=false;return{output:null};}
+  },[bourse,user,conversationId,lang]);
 
-  const cleanQ = out => {
-    if (!out || typeof out !== 'string' || out.trim().length < 10) return null;
+  const cleanQ=out=>{
+    if(!out||typeof out!=='string'||out.trim().length<10) return null;
     return out.trim().replace(/^(question\s*\d+\s*[:\-–]?\s*|Q\d+\s*[:\-–]?\s*)/i,'').trim();
   };
 
-  // ── Démarrer entretien — n8n génère la 1ère question ────────────────────
-  const startInterview = async () => {
-    setPhase('ai_speaking'); setAiLoading(true);
-    savedRef.current = false; aiLockRef.current = false;
-    historyRef.current = [];
+  const FALLBACKS_FR=[
+    `Pourquoi ${bourse.nom} plutôt qu'une autre bourse ?`,
+    `Décrivez un projet concret que vous réaliserez grâce à cette bourse.`,
+    `Quelles compétences apportez-vous à cette opportunité ?`,
+    `Comment votre formation vous prépare-t-elle pour ${bourse.pays} ?`,
+    `Quels sont vos objectifs à 5 ans après cette bourse ?`,
+    `Comment comptez-vous maintenir le lien avec votre pays d'origine ?`,
+    `Quelle difficulté anticipez-vous et comment la surmonterez-vous ?`,
+  ];
+  const FALLBACKS_EN=[
+    `Why ${bourse.nom} over other scholarships?`,
+    `Describe a concrete project you will undertake with this scholarship.`,
+    `What skills do you bring to this opportunity?`,
+    `How does your education prepare you for studying in ${bourse.pays}?`,
+    `What are your 5-year goals after this scholarship?`,
+    `How do you plan to maintain ties with your home country?`,
+    `What challenge do you anticipate and how will you overcome it?`,
+  ];
+  const FALLBACKS = lang==='en' ? FALLBACKS_EN : FALLBACKS_FR;
 
-    // n8n reçoit context=start_entretien → EntretienAgent pose Q1
-    const data = await callAI({ lastAnswer: '', questionIndex: 0 }, 'start_entretien');
-    const q    = cleanQ(data?.output) || `Présentez-vous et expliquez votre motivation pour la bourse ${bourse.nom}.`;
-
-    historyRef.current = [{ role: 'assistant', content: q }];
-    setCurrentQ(q);
-    setQIndex(0); qIndexRef.current = 0;
-    setAiLoading(false);
-    await tts(q);
-    setPhase('waiting');
+  const startInterview=async()=>{
+    setPhase('ai_speaking');setAiLoading(true);
+    savedRef.current=false;aiLockRef.current=false;historyRef.current=[];
+    const data=await callAI({lastAnswer:'',questionIndex:0},'start_entretien');
+    const q=cleanQ(data?.output)||(lang==='en'
+      ?`Introduce yourself and explain your motivation for the ${bourse.nom} scholarship.`
+      :`Présentez-vous et expliquez votre motivation pour la bourse ${bourse.nom}.`);
+    historyRef.current=[{role:'assistant',content:q}];
+    setCurrentQ(q);setQIndex(0);qIndexRef.current=0;
+    setAiLoading(false);await tts(q,lang);setPhase('waiting');
   };
 
-  // ── Enregistrement avec vraie analyse vocale ─────────────────────────────
-  const startRecording = () => {
-    if (!streamRef.current || recRef.current?.state==='recording') return;
-    setLiveText(''); liveTextRef.current = '';
-    capturedRef.current = '';
-    setElapsed(0); elapsedRef.current = 0;
-    setLiveWordCount(0);
-    setPhase('recording');
-
-    // VoiceAnalyzer
-    if (analyzerRef.current) analyzerRef.current.destroy();
-    analyzerRef.current = new VoiceAnalyzer(streamRef.current);
+  const startRecording=()=>{
+    if(!streamRef.current||recRef.current?.state==='recording') return;
+    setLiveText('');liveTextRef.current='';capturedRef.current='';
+    setElapsed(0);elapsedRef.current=0;setLiveWordCount(0);setPhase('recording');
+    if(analyzerRef.current) analyzerRef.current.destroy();
+    analyzerRef.current=new VoiceAnalyzer(streamRef.current);
     analyzerRef.current.start();
-
-    // MediaRecorder
-    const mr = new MediaRecorder(streamRef.current);
-    mr.ondataavailable = e => {};
-    mr.start(200); recRef.current = mr;
-
-    // Timer
-    timerRef.current = setInterval(() => {
-      setElapsed(prev => {
-        const n = prev + 1; elapsedRef.current = n;
-        if (n >= 120) stopRecording();
-        return n;
-      });
-    }, 1000);
-
-    // Métriques vocales en temps réel
-    metricsRef.current = setInterval(() => {
-      if (!analyzerRef.current) return;
-      const s = analyzerRef.current.getStats();
-      setLiveVolume(s.volume);
-      setLiveStability(s.stability);
-      setLiveSpeakRatio(s.speakRatio);
-      setLivePauses(s.pauseCount);
+    const mr=new MediaRecorder(streamRef.current);
+    mr.ondataavailable=()=>{};mr.start(200);recRef.current=mr;
+    timerRef.current=setInterval(()=>{setElapsed(prev=>{const n=prev+1;elapsedRef.current=n;if(n>=120)stopRecording();return n;});},500);
+    metricsRef.current=setInterval(()=>{
+      if(!analyzerRef.current) return;
+      const s=analyzerRef.current.getStats();
+      setLiveVolume(s.volume);setLiveStability(s.stability);
+      setLiveSpeakRatio(s.speakRatio);setLivePauses(s.pauseCount);
       setLiveHesit(s.hesitations);
       setLiveWordCount(liveTextRef.current.split(/\s+/).filter(w=>w.length>1).length);
-    }, 800);
-
-    // SpeechRecognition
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SR) {
-      const sr = new SR(); sr.lang='fr-FR'; sr.continuous=true; sr.interimResults=true;
-      sr.onresult = e => {
-        let t = '';
-        for (let i=0;i<e.results.length;i++) t += e.results[i][0].transcript+' ';
-        setLiveText(t.trim()); liveTextRef.current = t.trim();
-      };
-      sr.onerror = () => { try { sr.stop(); } catch {} };
-      sr.onend   = () => { if (phaseRef.current==='recording') { try { sr.start(); } catch {} } };
-      try { sr.start(); } catch {}
-      srRef.current = sr;
+    },800);
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){
+      const sr=new SR();
+      sr.lang=lang==='en'?'en-US':'fr-FR';
+      sr.continuous=true;sr.interimResults=true;
+      sr.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript+' ';setLiveText(t.trim());liveTextRef.current=t.trim();};
+      sr.onerror=()=>{try{sr.stop();}catch{}};
+      sr.onend=()=>{if(phaseRef.current==='recording'){try{sr.start();}catch{}}};
+      try{sr.start();}catch{}srRef.current=sr;
     }
   };
 
-  const stopRecording = useCallback(() => {
-    clearInterval(timerRef.current);
-    clearInterval(metricsRef.current);
-    capturedRef.current = liveTextRef.current; // ✅ capturer avant reset
-    if (recRef.current?.state==='recording') { try { recRef.current.stop(); } catch {} }
-    try { if (srRef.current) { srRef.current.onend=null; srRef.current.stop(); } } catch {}
-    if (analyzerRef.current) analyzerRef.current.stop();
+  const stopRecording=useCallback(()=>{
+    clearInterval(timerRef.current);clearInterval(metricsRef.current);
+    capturedRef.current=liveTextRef.current;
+    if(recRef.current?.state==='recording'){try{recRef.current.stop();}catch{}}
+    try{if(srRef.current){srRef.current.onend=null;srRef.current.stop();}}catch{}
+    if(analyzerRef.current) analyzerRef.current.stop();
     setPhase('analyzing');
-  }, []);
+  },[]);
 
-  // ── Analyser réponse + demander prochaine question à n8n ────────────────
-  useEffect(() => {
-    if (phase !== 'analyzing') return;
-    const go = async () => {
-      const curIdx  = qIndexRef.current;
-      const isLast  = curIdx >= TOTAL_Q - 1;
-      const answer  = capturedRef.current.trim() || '(aucune réponse détectée)';
-      const dur     = elapsedRef.current;
-      const voice   = analyzerRef.current ? analyzerRef.current.getStats() : null;
-      if (analyzerRef.current) { analyzerRef.current.destroy(); analyzerRef.current = null; }
-
-      const wordCount = answer.split(/\s+/).filter(w=>w.length>1).length;
-      const wpm       = dur > 3 ? Math.round((wordCount/dur)*60) : 0;
-
-      // Ajouter réponse à l'historique pour n8n
-      historyRef.current.push({ role: 'user', content: answer, duration: dur, wordCount, wpm, voice });
-
-      const entry = { q:currentQ, a:answer, duration:dur, wordCount, wpm, voice };
-      answersRef.current = [...answersRef.current, entry];
+  useEffect(()=>{
+    if(phase!=='analyzing') return;
+    const go=async()=>{
+      const curIdx=qIndexRef.current;const isLast=curIdx>=TOTAL_Q-1;
+      const answer=capturedRef.current.trim()||(lang==='en'?'(no answer detected)':'(aucune réponse détectée)');
+      const dur=elapsedRef.current;
+      const voice=analyzerRef.current?analyzerRef.current.getStats():null;
+      if(analyzerRef.current){analyzerRef.current.destroy();analyzerRef.current=null;}
+      const wordCount=answer.split(/\s+/).filter(w=>w.length>1).length;
+      const speakingSec=voice?(voice.speakRatio*dur/100):dur;
+      const wpm=speakingSec>3?Math.round((wordCount/speakingSec)*60):0;
+      historyRef.current.push({role:'user',content:answer,duration:dur,wordCount,wpm,voice});
+      const entry={q:currentQ,a:answer,duration:dur,wordCount,wpm,voice};
+      answersRef.current=[...answersRef.current,entry];
       setAllAnswers([...answersRef.current]);
 
-      if (isLast) {
-        // ── FIN : n8n fait l'analyse complète ───────────────────────────
-        const voiceStats = {
-          totalAnswered:    answersRef.current.filter(a=>a.a&&a.a!=='(aucune réponse détectée)'&&a.a.length>5).length,
-          avgWpm:           Math.round(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).reduce((s,a)=>s+a.wpm,0) / Math.max(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).length,1)),
-          avgWords:         Math.round(answersRef.current.reduce((s,a)=>s+(a.wordCount||0),0)/Math.max(answersRef.current.length,1)),
-          totalPauses:      answersRef.current.reduce((s,a)=>s+(a.voice?.pauseCount||0),0),
-          totalHesitations: answersRef.current.reduce((s,a)=>s+(a.voice?.hesitations||0),0),
-          avgStability:     Math.round(answersRef.current.reduce((s,a)=>s+(a.voice?.stability||0),0)/Math.max(answersRef.current.length,1)),
-          scoresParQuestion: answersRef.current.map((a,i)=>({q:i+1,words:a.wordCount||0,wpm:a.wpm||0,answer:(a.a||'').slice(0,200)})),
+      if(isLast){
+        const voiceStats={
+          totalAnswered:answersRef.current.filter(a=>a.a&&a.a.length>5).length,
+          avgWpm:Math.round(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).reduce((s,a)=>s+a.wpm,0)/Math.max(answersRef.current.filter(a=>a.wpm>0&&a.wpm<300).length,1)),
+          avgWords:Math.round(answersRef.current.reduce((s,a)=>s+(a.wordCount||0),0)/Math.max(answersRef.current.length,1)),
+          totalPauses:answersRef.current.reduce((s,a)=>s+(a.voice?.pauseCount||0),0),
+          totalHesitations:answersRef.current.reduce((s,a)=>s+(a.voice?.hesitations||0),0),
+          avgStability:Math.round(answersRef.current.reduce((s,a)=>s+(a.voice?.stability||0),0)/Math.max(answersRef.current.length,1)),
+          scoresParQuestion:answersRef.current.map((a,i)=>({q:i+1,words:a.wordCount||0,wpm:a.wpm||0,answer:(a.a||'').slice(0,500)})),
         };
-
-        // n8n reçoit context=fin_entretien + TOUT l'historique + stats vocales réelles
-        const data = await callAI({ lastAnswer: answer, questionIndex: curIdx, voiceStats }, 'fin_entretien');
-        const scoreText = data?.output || data?.message || data?.text || 'Erreur — vérifiez la connexion n8n';
-
-        setFinalScore(scoreText);
-        setPhase('result');
-        if (!savedRef.current) {
-          savedRef.current = true;
-          await saveEntretien(user?.id, scoreText, conversationId, bourse.nom);
-        }
-        await tts('Entretien terminé. Voici votre évaluation complète.');
-
+        const data=await callAI({lastAnswer:answer,questionIndex:curIdx,voiceStats},'fin_entretien');
+        const scoreText=data?.output||data?.message||data?.text||(lang==='en'?'Error — check n8n connection':'Erreur — vérifiez la connexion n8n');
+        setFinalScore(scoreText);setPhase('result');
+        if(!savedRef.current){savedRef.current=true;await saveEntretien(user?.id,scoreText,conversationId,bourse.nom);}
+        await tts(lang==='en'?'Interview completed. Here is your full evaluation.':'Entretien terminé. Voici votre évaluation complète.',lang);
       } else {
-        // ── SUITE : n8n génère la prochaine question ─────────────────────
-        const nextIdx = curIdx + 1;
-        const data    = await callAI({ lastAnswer: answer, questionIndex: nextIdx }, 'entretien');
-        const nextQ   = cleanQ(data?.output || data?.message || data?.text);
-
-        if (!nextQ) {
-          // Si n8n ne répond pas, utiliser fallback simple
-          const fallbacks = [
-            `Pourquoi ${bourse.nom} plutôt qu'une autre bourse ?`,
-            `Décrivez un projet concret que vous réaliserez grâce à cette bourse.`,
-            `Quelles compétences apportez-vous à cette opportunité ?`,
-            `Comment votre formation vous prépare-t-elle pour ${bourse.pays} ?`,
-            `Quels sont vos objectifs à 5 ans après cette bourse ?`,
-            `Comment comptez-vous maintenir le lien avec votre pays d'origine ?`,
-            `Quelle difficulté anticipez-vous et comment la surmonterez-vous ?`,
-          ];
-          const used = new Set(historyRef.current.filter(h=>h.role==='assistant').map(h=>h.content.toLowerCase().slice(0,30)));
-          const fb   = fallbacks.find(q=>!used.has(q.toLowerCase().slice(0,30))) || fallbacks[nextIdx % fallbacks.length];
-          historyRef.current.push({ role: 'assistant', content: fb });
-          setQIndex(nextIdx); qIndexRef.current = nextIdx;
-          setCurrentQ(fb);
-          setLiveText(''); liveTextRef.current = '';
-          setElapsed(0);   elapsedRef.current  = 0;
-          setPhase('ai_speaking');
-          await tts(fb);
-          setPhase('waiting');
-          return;
+        const nextIdx=curIdx+1;
+        const data=await callAI({lastAnswer:answer,questionIndex:nextIdx},'entretien');
+        const nextQ=cleanQ(data?.output||data?.message||data?.text);
+        if(!nextQ){
+          const used=new Set(historyRef.current.filter(h=>h.role==='assistant').map(h=>h.content.toLowerCase().slice(0,30)));
+          const fb=FALLBACKS.find(q=>!used.has(q.toLowerCase().slice(0,30)))||FALLBACKS[nextIdx%FALLBACKS.length];
+          historyRef.current.push({role:'assistant',content:fb});
+          setQIndex(nextIdx);qIndexRef.current=nextIdx;setCurrentQ(fb);
+          setLiveText('');liveTextRef.current='';setElapsed(0);elapsedRef.current=0;
+          setPhase('ai_speaking');await tts(fb,lang);setPhase('waiting');return;
         }
-
-        historyRef.current.push({ role: 'assistant', content: nextQ });
-        setQIndex(nextIdx); qIndexRef.current = nextIdx;
-        setCurrentQ(nextQ);
-        setLiveText(''); liveTextRef.current = '';
-        setElapsed(0);   elapsedRef.current  = 0;
-        setPhase('ai_speaking');
-        await tts(nextQ);
-        setPhase('waiting');
+        historyRef.current.push({role:'assistant',content:nextQ});
+        setQIndex(nextIdx);qIndexRef.current=nextIdx;setCurrentQ(nextQ);
+        setLiveText('');liveTextRef.current='';setElapsed(0);elapsedRef.current=0;
+        setPhase('ai_speaking');await tts(nextQ,lang);setPhase('waiting');
       }
     };
     go();
-  }, [phase]);
+  },[phase]);
 
-  const parseScore = txt => {
-    if (!txt) return {};
-    const get = key => {
-      const m = txt.match(new RegExp(`${key}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:SCORE|VERDICT|POINTS|CONSEILS|COMMENTAIRE)|$)`,'i'));
-      return m ? m[1].trim() : null;
-    };
-    return {
-      score:   txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
-      verdict: txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
-      forts:   get('POINTS FORTS'),
-      fix:     get('POINTS À AMÉLIORER'),
+  const parseScore=txt=>{
+    if(!txt) return{};
+    const get=key=>{const m=txt.match(new RegExp(`${key}\\s*[:\\-]\\s*([\\s\\S]+?)(?=\\n\\s*[-•*]?\\s*(?:SCORE|VERDICT|POINTS|CONSEILS|COMMENTAIRE)|$)`,'i'));return m?m[1].trim():null;};
+    return{
+      score:txt.match(/SCORE\s*GLOBAL\s*[:\-]\s*(\d+)/i)?.[1],
+      verdict:txt.match(/VERDICT\s*[:\-]\s*(.+)/i)?.[1]?.trim(),
+      forts:get('POINTS FORTS'),fix:get('POINTS À AMÉLIORER'),
       conseils:get('CONSEILS PERSONNALISÉS'),
     };
   };
 
-  const parsed   = parseScore(finalScore);
-  const totalDur = allAnswers.reduce((a,b)=>a+b.duration,0);
-  const avgWords = allAnswers.length ? Math.round(allAnswers.reduce((a,b)=>a+(b.wordCount||0),0)/allAnswers.length) : 0;
-  const validWpm = allAnswers.filter(a=>a.wpm>0&&a.wpm<300);
-  const avgWpm   = validWpm.length ? Math.round(validWpm.reduce((a,b)=>a+b.wpm,0)/validWpm.length) : 0;
+  const parsed=parseScore(finalScore);
+  const totalDur=allAnswers.reduce((a,b)=>a+b.duration,0);
+  const avgWords=allAnswers.length?Math.round(allAnswers.reduce((a,b)=>a+(b.wordCount||0),0)/allAnswers.length):0;
+  const validWpm=allAnswers.filter(a=>a.wpm>0&&a.wpm<300);
+  const avgWpm=validWpm.length?Math.round(validWpm.reduce((a,b)=>a+b.wpm,0)/validWpm.length):0;
+
+  const metrics=[
+    {label:lang==='fr'?'Volume micro':'Mic volume',    v:liveVolume,     icon:'🎙'},
+    {label:lang==='fr'?'Stabilité voix':'Voice stability', v:liveStability,  icon:'📊'},
+    {label:lang==='fr'?'Ratio parole':'Speech ratio',   v:liveSpeakRatio, icon:'⏱'},
+  ];
+  const counters=[
+    {icon:'⏸',val:livePauses,    label:lang==='fr'?'pauses':'pauses',   warn:livePauses>5},
+    {icon:'💬',val:liveHesit,     label:lang==='fr'?'s hésit.':'s hesit.',warn:liveHesit>8},
+    {icon:'📝',val:liveWordCount, label:lang==='fr'?'mots':'words',       warn:false},
+  ];
+
+  const ANALYZE_STEPS=lang==='en'
+    ?['Content analysis','Scholarship relevance','Generating next question','Scoring in progress…']
+    :['Analyse du contenu','Pertinence à la bourse','Génération de la prochaine question','Score en cours…'];
 
   return (
-    <div style={T.root}>
-      {/* ── Topbar ────────────────────────────────────────────────────── */}
-      <div style={T.topbar}>
-        <div style={T.tbLeft}>
-          <div style={{...T.dot,background:phase==='recording'?'#ef4444':'#10b981'}}/>
-          <span style={T.tbName}>{bourse.nom}</span>
-          <span style={T.sep}>·</span>
-          <span style={T.tbMeta}>{bourse.pays} · {bourse.niveau}</span>
+        <div className="ep-session-root" style={{ background: dk ? '#15140f' : undefined, color: dk ? '#f2efe7' : undefined }}>
+            <div className="ep-topbar" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
+        <div className="ep-topbar-left">
+          <div className={`ep-status-dot ${phase==='recording'?'recording':'idle'}`}/>
+          <span className="ep-bourse-nom">{bourse.nom}</span>
+          <span className="ep-sep">·</span>
+          <span className="ep-bourse-meta-top">{bourse.pays} · {bourse.niveau}</span>
         </div>
-        <div style={T.prog}>
+        <div className="ep-progress">
           {[...Array(TOTAL_Q)].map((_,i)=>(
-            <div key={i} style={{...T.pDot,
-              background:  i<qIndex?'#8b5cf6':i===qIndex?'#e879f9':'rgba(255,255,255,.1)',
-              transform:   i===qIndex?'scale(1.4)':'scale(1)',
-              boxShadow:   i===qIndex?'0 0 10px #e879f9':'none',
-            }}/>
+            <div key={i} className={`ep-progress-dot ${i<qIndex?'done':i===qIndex?'current':'future'}`}/>
           ))}
-          {phase!=='intro'&&phase!=='result'&&<span style={T.pLabel}>Q{qIndex+1}/{TOTAL_Q}</span>}
+          {phase!=='intro'&&phase!=='result'&&<span className="ep-progress-label">Q{qIndex+1}/{TOTAL_Q}</span>}
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <button style={T.histBtn} onClick={()=>setShowHist(true)}>📋 Historique</button>
-          <button style={T.quitBtn} onClick={()=>{cleanup();onFinish();}}>✕ Quitter</button>
+        <div className="ep-topbar-actions">
+          <button className="ep-hist-btn" onClick={()=>setShowHist(true)}>📋 {lang==='fr'?'Historique':'History'}</button>
+          <button className="ep-quit-btn" onClick={()=>{cleanup();onFinish();}}>✕ {lang==='fr'?'Quitter':'Quit'}</button>
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────── */}
-      <div style={T.body}>
-        {/* Gauche : caméra + métriques vocales réelles */}
-        <div style={T.left}>
-          <div style={T.videoBox}>
+      <div className="ep-body">
+        <div className="ep-left" style={{ background: dk ? '#15140f' : undefined }}>
+          <div className="ep-video-box">
             {camError
-              ? <div style={T.noCam}><span style={{fontSize:40}}>📷</span><p>Caméra indisponible</p><small>L'entretien continue</small></div>
-              : <video ref={videoRef} autoPlay muted playsInline style={T.video}/>
+              ?<div className="ep-no-cam"><span style={{fontSize:40}}>📷</span><p>{lang==='fr'?'Caméra indisponible':'Camera unavailable'}</p><small>{lang==='fr'?"L'entretien continue":'Interview continues'}</small></div>
+              :<video ref={videoRef} autoPlay muted playsInline className="ep-video"/>
             }
-            {phase==='recording'&&<div style={T.recBadge}><div style={T.recDot}/>REC &nbsp; {fmt(elapsed)}</div>}
+            {phase==='recording'&&<div className="ep-rec-badge"><div className="ep-rec-dot"/>REC &nbsp; {fmt(elapsed)}</div>}
             {phase==='ai_speaking'&&(
-              <div style={T.aiOverlay}>
-                <div style={T.waveRow}>{[...Array(5)].map((_,i)=><div key={i} style={{...T.waveBar,animationDelay:`${i*0.12}s`}}/>)}</div>
-                Jury IA parle…
+              <div className="ep-ai-overlay">
+                <div className="ep-wave-row">{[...Array(5)].map((_,i)=><div key={i} className="ep-wave-bar" style={{animationDelay:`${i*0.12}s`}}/>)}</div>
+                {lang==='fr'?'Jury IA parle…':'AI Panel speaking…'}
               </div>
             )}
-            {/* Barre volume réelle */}
-            <div style={T.meterBg}><div style={{...T.meterFill,width:`${liveVolume}%`}}/></div>
+            <div className="ep-meter-bg"><div className="ep-meter-fill" style={{width:`${liveVolume}%`}}/></div>
           </div>
 
-          {/* Panel métriques vocales RÉELLES */}
           {phase!=='intro'&&phase!=='result'&&(
-            <div style={T.metricsBox}>
+            <div className="ep-metrics-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <div style={T.mHead}>ANALYSE VOCALE EN DIRECT</div>
-                {phase==='recording'&&<div style={{fontSize:10,color:'#475569'}}>{liveWordCount} mots</div>}
+                <div className="ep-metrics-head">{lang==='fr'?'ANALYSE VOCALE EN DIRECT':'LIVE VOICE ANALYSIS'}</div>
+                {phase==='recording'&&<div style={{fontSize:10,color: dk ? '#a19f96' : '#475569'}}>{liveWordCount} {lang==='fr'?'mots':'words'}</div>}
               </div>
-              {[
-                {label:'Volume micro',   v:liveVolume,     icon:'🎙'},
-                {label:'Stabilité voix', v:liveStability,  icon:'📊'},
-                {label:'Ratio parole',   v:liveSpeakRatio, icon:'⏱'},
-              ].map(m=>(
-                <div key={m.label} style={T.mRow}>
-                  <span style={T.mIcon}>{m.icon}</span>
-                  <div style={T.mBarBg}><div style={{...T.mBarFill,width:`${m.v}%`,background:m.v>75?'linear-gradient(90deg,#059669,#34d399)':m.v>45?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)'}}/></div>
-                  <span style={T.mPct}>{m.v}%</span>
-                  <span style={T.mLabel}>{m.label}</span>
+              {metrics.map(m=>(
+                <div key={m.label} className="ep-metric-row">
+                  <span className="ep-metric-icon">{m.icon}</span>
+                  <div className="ep-metric-bar-bg"><div className="ep-metric-bar-fill" style={{width:`${m.v}%`,background:m.v>75?'linear-gradient(90deg,#059669,#34d399)':m.v>45?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)'}}/></div>
+                  <span className="ep-metric-pct">{m.v}%</span>
+                  <span className="ep-metric-label">{m.label}</span>
                 </div>
               ))}
-              <div style={{display:'flex',gap:8,marginTop:4}}>
-                {[
-                  {icon:'⏸',val:livePauses, label:'pauses',  warn:livePauses>5},
-                  {icon:'💬',val:liveHesit,  label:'s hésit.', warn:liveHesit>8},
-                  {icon:'📝',val:liveWordCount,label:'mots',  warn:false},
-                ].map(c=>(
-                  <div key={c.label} style={{flex:1,textAlign:'center',padding:'6px 4px',borderRadius:8,
-                    background:`rgba(${c.warn?'239,68,68':'99,102,241'},.06)`,
-                    border:`1px solid rgba(${c.warn?'239,68,68':'99,102,241'},.15)`}}>
-                    <div style={{fontSize:15,fontWeight:700,color:c.warn?'#f87171':'#818cf8'}}>{c.val}</div>
-                    <div style={{fontSize:9,color:'#475569',textTransform:'uppercase'}}>{c.icon} {c.label}</div>
+              <div className="ep-counter-grid">
+                {counters.map(c=>(
+                  <div key={c.label} className={`ep-counter-item ${c.warn?'warn':'normal'}`}>
+                    <div className={`ep-counter-val ${c.warn?'warn':'normal'}`}>{c.val}</div>
+                    <div className="ep-counter-lbl">{c.icon} {c.label}</div>
                   </div>
                 ))}
               </div>
@@ -1291,262 +1443,266 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
           )}
         </div>
 
-        {/* Droite : question + contrôles */}
-        <div style={T.right}>
-
-          {/* INTRO */}
+        <div className="ep-right" style={{ background: dk ? '#1d1c16' : undefined }}>
           {phase==='intro'&&(
             <div style={{width:'100%',maxWidth:500,display:'flex',flexDirection:'column',height:'100%'}}>
               <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:14,paddingBottom:8}}>
                 <div style={{textAlign:'center',fontSize:48}}>🧑‍⚖️</div>
-                <h2 style={{...T.panelH2,fontSize:'1.45rem',marginBottom:0}}>Prêt pour votre entretien ?</h2>
-                <p style={{...T.panelP,marginBottom:0}}>Le jury IA va vous poser <strong style={{color:'#e879f9'}}>{TOTAL_Q} questions</strong> sur <strong style={{color:'#c4b5fd'}}>{bourse.nom}</strong>.</p>
+                <h2 className="ep-panel-title" style={{fontSize:'1.45rem'}}>{lang==='fr'?'Prêt pour votre entretien ?':'Ready for your interview?'}</h2>
+                <p className="ep-panel-subtitle">
+                  {lang==='fr'
+                    ? <>{TOTAL_Q} questions sur <strong style={{color:'#c4b5fd'}}>{bourse.nom}</strong></>
+                    : <>{TOTAL_Q} questions about <strong style={{color:'#c4b5fd'}}>{bourse.nom}</strong></>}
+                </p>
                 <div style={{padding:'14px 16px',borderRadius:12,background:'rgba(139,92,246,.06)',border:'1px solid rgba(139,92,246,.2)'}}>
-                  <div style={{fontSize:11,color:'#818cf8',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Analyse en temps réel</div>
-                  {[['📊','Contenu & richesse vocabulaire'],['⏱','Vitesse de parole réelle (mots/min)'],['⏸','Pauses et hésitations détectées'],['🎙','Volume et stabilité vocale'],['🧠','Questions et score générés par IA n8n'],].map(([ic,tx])=>(
+                  <div style={{fontSize:11,color:'#818cf8',fontWeight:700,textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>{lang==='fr'?'Analyse en temps réel':'Real-time analysis'}</div>
+                  {(lang==='fr'
+                    ? INTRO_ITEMS_FR
+                    : INTRO_ITEMS_EN
+                  ).map(([ic,tx])=>(
                     <div key={tx} style={{display:'flex',alignItems:'center',gap:10,fontSize:12,color:'#94a3b8',marginBottom:6}}><span>{ic}</span><span>{tx}</span></div>
                   ))}
                 </div>
-                {[['🎤','Parlez clairement — le micro transcrit en direct'],['👁️','Gardez le contact visuel'],['⏱️','Max 2 min par réponse'],['🔊','Activez le son pour entendre les questions'],].map(([ic,tx])=>(
+                {(lang==='fr' ? INSTR_ITEMS_FR : INSTR_ITEMS_EN).map(([ic,tx])=>(
                   <div key={tx} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 14px',borderRadius:10,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',fontSize:13,color:'#cbd5e1'}}><span>{ic}</span><span>{tx}</span></div>
                 ))}
               </div>
               <div style={{flexShrink:0,paddingTop:12}}>
-                <button style={T.btnStart} onClick={startInterview}>🚀 &nbsp; Démarrer l'entretien</button>
+                <button className="ep-btn-start" onClick={startInterview}>🚀 &nbsp; {lang==='fr'?"Démarrer l'entretien":'Start interview'}</button>
               </div>
             </div>
           )}
 
-          {/* ENTRETIEN EN COURS */}
           {['ai_speaking','waiting','recording','analyzing'].includes(phase)&&(
-            <div style={T.panel}>
-              <div style={T.qHead}>
-                <div style={T.qBadge}>Question {qIndex+1} / {TOTAL_Q}</div>
-                {phase==='recording'&&<div style={T.timerBadge}>{fmt(elapsed)}</div>}
+            <div className="ep-panel">
+              <div className="ep-q-head">
+                <div className="ep-q-badge">{lang==='fr'?`Question ${qIndex+1} / ${TOTAL_Q}`:`Question ${qIndex+1} / ${TOTAL_Q}`}</div>
+                {phase==='recording'&&<div className="ep-timer-badge">{fmt(elapsed)}</div>}
               </div>
-              <div style={T.qBubble}>
+              <div className="ep-q-bubble" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined, color: dk ? '#f2efe7' : undefined }}>
+
                 {aiLoading
-                  ? <div style={{display:'flex',gap:7}}>{[0,.15,.3].map(d=><div key={d} style={{...T.dot2,animationDelay:`${d}s`}}/>)}</div>
-                  : <p style={{margin:0,lineHeight:1.7}}>{currentQ}</p>
+                  ?<div className="ep-loading-dots">{[0,.15,.3].map(d=><div key={d} className="ep-dot" style={{animationDelay:`${d}s`}}/>)}</div>
+                  :<p style={{margin:0,lineHeight:1.7}}>{currentQ}</p>
                 }
               </div>
-
+              {/* Bouton répéter la question */}
+{(phase === 'waiting' || phase === 'recording') && currentQ && (
+  <button
+    onClick={async () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        await tts(currentQ, lang);
+      }
+    }}
+    style={{
+      padding: '8px 16px',
+      borderRadius: 8,
+      background: 'transparent',
+      border: `1px solid ${dk ? '#2b2a22' : '#d9d5cb'}`,
+      color: dk ? '#a19f96' : '#6b6b6b',
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      fontFamily: 'inherit',
+      transition: 'all 0.2s',
+    }}
+    onMouseEnter={e => {
+      e.currentTarget.style.background = dk ? '#1d1c16' : '#f2efe7';
+      e.currentTarget.style.borderColor = dk ? '#4c9fd9' : '#0066b3';
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.background = 'transparent';
+      e.currentTarget.style.borderColor = dk ? '#2b2a22' : '#d9d5cb';
+    }}
+  >
+    <span style={{ fontSize: 16 }}>🔊</span>
+    <span>{lang === 'fr' ? 'Répéter la question' : 'Repeat question'}</span>
+  </button>
+)}
               {phase==='recording'&&liveText&&(
-                <div style={T.liveBox}>
+                <div className="ep-live-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                    <div style={T.liveHead}>📝 TRANSCRIPTION EN DIRECT</div>
-                    <div style={{fontSize:10,color:'#64748b'}}>{liveWordCount} mots {liveWordCount>=40?'✓':liveWordCount>0?`(+${40-liveWordCount})`:''}</div>
+                    <div className="ep-live-head">📝 {lang==='fr'?'TRANSCRIPTION EN DIRECT':'LIVE TRANSCRIPTION'}</div>
+                    <div style={{fontSize:10,color:'#64748b'}}>{liveWordCount} {lang==='fr'?'mots':'words'} {liveWordCount>=40?'✓':liveWordCount>0?`(+${40-liveWordCount})`:''}</div>
                   </div>
-                  <p style={T.liveP}>{liveText}</p>
-                  <div style={{marginTop:6,height:2,borderRadius:99,background:'rgba(255,255,255,.05)',overflow:'hidden'}}>
-                    <div style={{height:'100%',borderRadius:99,width:`${Math.min(100,(liveWordCount/80)*100)}%`,background:liveWordCount>=40?'linear-gradient(90deg,#059669,#34d399)':'linear-gradient(90deg,#d97706,#fbbf24)',transition:'width .4s ease'}}/>
+                  <p className="ep-live-text">{liveText}</p>
+                  <div className="ep-live-progress-bg">
+                    <div className="ep-live-progress-fill" style={{width:`${Math.min(100,(liveWordCount/80)*100)}%`,background:liveWordCount>=40?'linear-gradient(90deg,#059669,#34d399)':'linear-gradient(90deg,#d97706,#fbbf24)'}}/>
                   </div>
                 </div>
               )}
-
               {phase==='analyzing'&&(
-                <div style={T.analyzeBox}>
-                  <div style={T.spinner}/>
+                <div className="ep-analyze-box" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
+                  <div className="ep-analyze-spinner"/>
                   <div>
-                    <div style={{color:'#e2e8f0',fontWeight:600,marginBottom:10}}>L'IA analyse votre réponse…</div>
-                    {['Analyse du contenu','Pertinence à la bourse','Génération de la prochaine question','Score en cours…'].map((s,i)=>(
-                      <div key={s} style={{display:'flex',alignItems:'center',gap:8,marginBottom:7,animation:'fadeUp .4s ease both',animationDelay:`${i*.3}s`,opacity:0}}>
-                        <div style={{width:6,height:6,borderRadius:'50%',background:'#8b5cf6',flexShrink:0}}/>
+                    <div style={{color:'#e2e8f0',fontWeight:600,marginBottom:10}}>{lang==='fr'?"L'IA analyse votre réponse…":'AI is analyzing your answer…'}</div>
+                    {ANALYZE_STEPS.map((s,i)=>(
+                      <div key={s} className="ep-analyze-item" style={{animationDelay:`${i*.3}s`}}>
+                        <div className="ep-analyze-dot"/>
                         <span style={{color:'#94a3b8',fontSize:13}}>{s}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
               <div>
-                {phase==='waiting'   &&<button style={T.btnRec}  onClick={startRecording}><span style={{fontSize:20}}>🎤</span> Répondre à la question</button>}
-                {phase==='recording' &&<button style={T.btnStop} onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> Terminer ma réponse</button>}
-                {(phase==='ai_speaking'||phase==='analyzing')&&<div style={T.hint}>{phase==='ai_speaking'?'🔊 Écoutez la question…':'⏳ Analyse IA en cours…'}</div>}
+                {phase==='waiting'&&<button className="ep-btn-rec" onClick={startRecording}><span style={{fontSize:20}}>🎤</span> {lang==='fr'?'Répondre à la question':'Answer the question'}</button>}
+                {phase==='recording'&&<button className="ep-btn-stop" onClick={stopRecording}><span style={{fontSize:20}}>⏹</span> {lang==='fr'?'Terminer ma réponse':'End my answer'}</button>}
+                {(phase==='ai_speaking'||phase==='analyzing')&&(
+                  <div className="ep-hint">{phase==='ai_speaking'?(lang==='fr'?'🔊 Écoutez la question…':'🔊 Listen to the question…'):(lang==='fr'?'⏳ Analyse IA en cours…':'⏳ AI analysis in progress…')}</div>
+                )}
               </div>
             </div>
           )}
 
-          {/* RÉSULTATS — affiche ce que n8n a retourné */}
           {phase==='result'&&(
-            <div style={{...T.panel,overflowY:'auto',gap:16,padding:'20px 24px'}}>
+            <div className="ep-panel" style={{overflowY:'auto',gap:16,padding:'20px 24px'}}>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:50,marginBottom:10}}>🏆</div>
-                <h2 style={T.panelH2}>Résultats de l'entretien</h2>
+                <h2 className="ep-panel-title">{lang==='fr'?'Résultats de l\'entretien':'Interview results'}</h2>
                 <p style={{color:'#64748b',fontSize:13}}>{bourse.nom} · {bourse.pays}</p>
-                {user?.id&&<p style={{color:'#10b981',fontSize:12,marginTop:4}}>✅ Sauvegardé dans votre historique</p>}
+                {user?.id&&<p style={{color:'#10b981',fontSize:12,marginTop:4}}>✅ {lang==='fr'?'Sauvegardé dans votre historique':'Saved in your history'}</p>}
               </div>
-
-              {/* Stats globales réelles */}
-              <div style={T.statsGrid}>
+              <div className="ep-result-stats">
                 {[
-                  {v:parsed.score?`${parsed.score}/100`:'—', l:'Score final'},
-                  {v:fmt(totalDur),                          l:'Durée totale'},
-                  {v:`${avgWpm} m/min`,                      l:'Vitesse moy.'},
-                  {v:`${avgWords} mots`,                     l:'Mots / réponse'},
+                  {v:parsed.score?`${parsed.score}/100`:'—', lFr:'Score final',       lEn:'Final score'},
+                  {v:fmt(totalDur),                          lFr:'Durée totale',      lEn:'Total duration'},
+                  {v:`${avgWpm} m/min`,                      lFr:'Vitesse moy.',      lEn:'Avg. speed'},
+                  {v:`${avgWords} ${lang==='fr'?'mots':'words'}`, lFr:'Mots / réponse', lEn:'Words / answer'},
                 ].map(s=>(
-                  <div key={s.l} style={T.statCard}>
-                    <div style={T.statV}>{s.v}</div>
-                    <div style={T.statL}>{s.l}</div>
+                  <div key={s.lFr} className="ep-stat-card" style={{ background: dk ? '#1a1912' : undefined }}>
+                    <div className="ep-stat-val">{s.v}</div>
+                    <div className="ep-stat-lbl">{lang==='fr'?s.lFr:s.lEn}</div>
                   </div>
                 ))}
               </div>
-
-              {/* Verdict */}
               {parsed.verdict&&(
                 <div style={{padding:'12px 18px',borderRadius:12,background:'rgba(16,185,129,.06)',border:'1px solid rgba(16,185,129,.2)',textAlign:'center'}}>
-                  <span style={{fontSize:13,color:'#64748b',display:'block',marginBottom:4}}>VERDICT</span>
+                  <span style={{fontSize:13,color:'#64748b',display:'block',marginBottom:4}}>{lang==='fr'?'VERDICT':'VERDICT'}</span>
                   <span style={{fontSize:16,fontWeight:700,color:'#34d399'}}>{parsed.verdict}</span>
                 </div>
               )}
-
-              {/* Points forts, à améliorer, conseils — viennent de n8n */}
-              {parsed.forts&&(
-                <div style={T.sectionCard}>
-                  <div style={{...T.sectionHead,color:'#34d399'}}>✅ POINTS FORTS</div>
-                  <div style={T.sectionBody}>{parsed.forts}</div>
-                </div>
-              )}
-              {parsed.fix&&(
-                <div style={{...T.sectionCard,background:'rgba(245,158,11,.04)',border:'1px solid rgba(245,158,11,.2)'}}>
-                  <div style={{...T.sectionHead,color:'#fbbf24'}}>⚠️ POINTS À AMÉLIORER</div>
-                  <div style={T.sectionBody}>{parsed.fix}</div>
-                </div>
-              )}
-              {parsed.conseils&&(
-                <div style={{...T.sectionCard,background:'rgba(139,92,246,.05)',border:'1px solid rgba(139,92,246,.2)'}}>
-                  <div style={{...T.sectionHead,color:'#a78bfa'}}>💡 CONSEILS PERSONNALISÉS</div>
-                  <div style={T.sectionBody}>{parsed.conseils}</div>
-                </div>
-              )}
-
-              {/* Si n8n n'a pas retourné le format attendu */}
+              {parsed.forts&&<div className="ep-section-card"><div className="ep-section-head" style={{color:'#34d399'}}>✅ {lang==='fr'?'POINTS FORTS':'STRENGTHS'}</div><div className="ep-section-body">{parsed.forts}</div></div>}
+              {parsed.fix&&<div className="ep-section-card warning"><div className="ep-section-head" style={{color:'#fbbf24'}}>⚠️ {lang==='fr'?'POINTS À AMÉLIORER':'AREAS TO IMPROVE'}</div><div className="ep-section-body">{parsed.fix}</div></div>}
+              {parsed.conseils&&<div className="ep-section-card purple"><div className="ep-section-head" style={{color:'#a78bfa'}}>💡 {lang==='fr'?'CONSEILS PERSONNALISÉS':'PERSONALIZED TIPS'}</div><div className="ep-section-body">{parsed.conseils}</div></div>}
               {!parsed.forts&&finalScore&&(
-                <div style={T.scoreCard}>
-                  <div style={T.scoreHead}>ÉVALUATION DU JURY IA</div>
-                  <div style={T.scoreBody}>{finalScore}</div>
+                <div style={{padding:'18px 20px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.12)',maxHeight:300,overflowY:'auto'}}>
+                  <div style={{fontSize:10,letterSpacing:2,color: dk ? '#a19f96' : '#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'ÉVALUATION DU JURY IA':'AI PANEL EVALUATION'}</div>
+                  <div style={{color: dk ? '#a19f96' : '#475569',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'}}>{finalScore}</div>
                 </div>
               )}
-
-              {/* Statistiques vocales réelles par question */}
               <div>
-                <div style={T.scoreHead}>DÉROULEMENT — STATISTIQUES RÉELLES</div>
+                <div style={{fontSize:10,letterSpacing:2,color: dk ? '#a19f96' : '#475569',fontWeight:700,marginBottom:10}}>{lang==='fr'?'DÉROULEMENT — STATISTIQUES RÉELLES':'BREAKDOWN — ACTUAL STATISTICS'}</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:10}}>
                   {allAnswers.map((a,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 14px',borderRadius:10,background:'rgba(255,255,255,.02)',border:'1px solid rgba(255,255,255,.05)'}}>
-                      <div style={{width:22,height:22,borderRadius:'50%',background:'rgba(139,92,246,.2)',border:'1px solid rgba(139,92,246,.4)',color:'#a78bfa',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:2}}>{i+1}</div>
+                    <div key={i} className="ep-answer-item" style={{ background: dk ? '#1a1912' : undefined, borderColor: dk ? '#2b2a22' : undefined }}>
+
+                      <div className="ep-answer-num">{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,color:'#cbd5e1',marginBottom:3}}>{a.q.slice(0,70)}{a.q.length>70?'…':''}</div>
-                        <div style={{fontSize:11,color:'#64748b'}}>
-                          ⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} mots · 🏃 {a.wpm||0} m/min
-                          {a.voice&&` · ⏸ ${a.voice.pauseCount||0} pauses · 💬 ${a.voice.hesitations||0}s`}
-                        </div>
-                        {a.a&&a.a!=='(aucune réponse détectée)'&&(
-                          <div style={{fontSize:11,color:'#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>
-                        )}
+                        <div style={{fontSize:11,color:'#64748b'}}>⏱ {fmt(a.duration)} · 📝 {a.wordCount||0} {lang==='fr'?'mots':'words'} · 🏃 {a.wpm||0} {lang==='fr'?'m/min':'w/min'}{a.voice&&` · ⏸ ${a.voice.pauseCount||0} ${lang==='fr'?'pauses':'pauses'} · 💬 ${a.voice.hesitations||0}s`}</div>
+                        {a.a&&a.a!=='(aucune réponse détectée)'&&a.a!=='(no answer detected)'&&<div style={{fontSize:11,color: dk ? '#a19f96' : '#475569',marginTop:4,fontStyle:'italic'}}>"{a.a.slice(0,80)}{a.a.length>80?'…':''}"</div>}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
               <div style={{display:'flex',gap:12}}>
-                <button style={T.btnRetry} onClick={()=>{
-                  answersRef.current=[]; setAllAnswers([]); setFinalScore(null);
-                  setQIndex(0); qIndexRef.current=0; setCurrentQ('');
-                  savedRef.current=false; aiLockRef.current=false;
-                  historyRef.current=[]; setPhase('intro');
-                }}>🔄 Recommencer</button>
-                <button style={T.btnDone} onClick={()=>{cleanup();onFinish();}}>✅ Terminer</button>
+                <button className="ep-btn-retry" onClick={()=>{
+                  answersRef.current=[];setAllAnswers([]);setFinalScore(null);
+                  setQIndex(0);qIndexRef.current=0;setCurrentQ('');
+                  savedRef.current=false;aiLockRef.current=false;
+                  historyRef.current=[];setPhase('intro');
+                }}>🔄 {lang==='fr'?'Recommencer':'Restart'}</button>
+                <button className="ep-btn-done" onClick={()=>{cleanup();onFinish();}}>✅ {lang==='fr'?'Terminer':'Finish'}</button>
               </div>
             </div>
           )}
         </div>
       </div>
-
       {showHist&&<HistoriquePanel userId={user?.id} onClose={()=>setShowHist(false)}/>}
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap');
-        @keyframes pulse    {0%,100%{opacity:1}50%{opacity:.35}}
-        @keyframes recPulse {0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}}
-        @keyframes wave     {from{height:4px}to{height:24px}}
-        @keyframes spin     {to{transform:rotate(360deg)}}
-        @keyframes bounce   {0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-        @keyframes fadeUp   {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-        @keyframes stopGlow {0%,100%{box-shadow:0 0 10px rgba(239,68,68,.4)}50%{box-shadow:0 0 28px rgba(239,68,68,.7)}}
-      `}</style>
     </div>
   );
 }
 
-const T = {
-  root:       {height:'100vh',display:'flex',flexDirection:'column',background:'#06060f',fontFamily:"'Outfit',sans-serif",overflow:'hidden'},
-  topbar:     {display:'flex',alignItems:'center',gap:14,padding:'11px 22px',flexShrink:0,background:'rgba(255,255,255,.02)',borderBottom:'1px solid rgba(255,255,255,.06)'},
-  tbLeft:     {display:'flex',alignItems:'center',gap:9},
-  dot:        {width:9,height:9,borderRadius:'50%',flexShrink:0,animation:'pulse 2s infinite'},
-  tbName:     {fontSize:14,fontWeight:700,color:'#f1f5f9'},
-  sep:        {color:'rgba(255,255,255,.12)'},
-  tbMeta:     {fontSize:13,color:'#64748b'},
-  prog:       {display:'flex',alignItems:'center',gap:7,marginLeft:'auto'},
-  pDot:       {width:9,height:9,borderRadius:'50%',transition:'all .4s ease',flexShrink:0},
-  pLabel:     {fontSize:12,color:'#64748b',marginLeft:6},
-  histBtn:    {padding:'6px 12px',borderRadius:8,background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.25)',color:'#818cf8',fontSize:12,cursor:'pointer'},
-  quitBtn:    {padding:'6px 14px',borderRadius:8,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#f87171',fontSize:13,cursor:'pointer'},
-  body:       {flex:1,display:'grid',gridTemplateColumns:'1fr 1.15fr',overflow:'hidden'},
-  left:       {display:'flex',flexDirection:'column',background:'#080818',borderRight:'1px solid rgba(255,255,255,.05)',overflow:'hidden'},
-  videoBox:   {flex:1,position:'relative',background:'#000',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'},
-  video:      {width:'100%',height:'100%',objectFit:'cover'},
-  noCam:      {display:'flex',flexDirection:'column',alignItems:'center',gap:8,color:'#475569',textAlign:'center'},
-  recBadge:   {position:'absolute',top:14,left:14,display:'flex',alignItems:'center',gap:7,padding:'6px 14px',borderRadius:99,background:'rgba(239,68,68,.88)',color:'#fff',fontSize:13,fontWeight:700,backdropFilter:'blur(8px)',animation:'recPulse 1.4s infinite'},
-  recDot:     {width:9,height:9,borderRadius:'50%',background:'#fff',animation:'pulse 1s infinite'},
-  aiOverlay:  {position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 22px',borderRadius:12,background:'rgba(99,102,241,.9)',color:'#fff',fontSize:13,backdropFilter:'blur(8px)',whiteSpace:'nowrap'},
-  waveRow:    {display:'flex',alignItems:'flex-end',gap:4,height:24},
-  waveBar:    {width:3,background:'#fff',borderRadius:99,animation:'wave .55s ease-in-out infinite alternate'},
-  meterBg:    {position:'absolute',bottom:0,left:0,right:0,height:4,background:'rgba(255,255,255,.05)'},
-  meterFill:  {height:'100%',borderRadius:'0 2px 2px 0',background:'linear-gradient(90deg,#6366f1,#10b981)',transition:'width .08s'},
-  metricsBox: {padding:'14px 18px',flexShrink:0,background:'rgba(0,0,0,.45)',borderTop:'1px solid rgba(255,255,255,.04)',display:'flex',flexDirection:'column',gap:8},
-  mHead:      {fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700},
-  mRow:       {display:'flex',alignItems:'center',gap:9},
-  mIcon:      {fontSize:14,width:18,textAlign:'center'},
-  mBarBg:     {flex:1,height:5,background:'rgba(255,255,255,.07)',borderRadius:99,overflow:'hidden'},
-  mBarFill:   {height:'100%',borderRadius:99,transition:'width .85s ease, background .5s'},
-  mPct:       {fontSize:11,color:'#94a3b8',width:30,textAlign:'right'},
-  mLabel:     {fontSize:11,color:'#64748b',width:90},
-  right:      {display:'flex',alignItems:'stretch',justifyContent:'center',padding:'24px 28px',overflow:'hidden',background:'radial-gradient(ellipse 80% 55% at 60% 20%,rgba(139,92,246,.07),transparent)'},
-  panel:      {width:'100%',maxWidth:500,display:'flex',flexDirection:'column',gap:20,maxHeight:'100%'},
-  panelH2:    {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.75rem',fontWeight:600,color:'#f1f5f9',textAlign:'center',lineHeight:1.2},
-  panelP:     {color:'#64748b',fontSize:14,textAlign:'center',lineHeight:1.6},
-  btnStart:   {display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'18px 24px',borderRadius:14,width:'100%',border:'none',background:'linear-gradient(135deg,#7c3aed,#be185d)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 28px rgba(124,58,237,.5)'},
-  qHead:      {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  qBadge:     {padding:'5px 14px',borderRadius:99,background:'rgba(139,92,246,.12)',border:'1px solid rgba(139,92,246,.3)',color:'#a78bfa',fontSize:12,fontWeight:700},
-  timerBadge: {padding:'5px 14px',borderRadius:99,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#f87171',fontSize:13,fontWeight:700},
-  qBubble:    {padding:'22px',borderRadius:16,background:'rgba(99,102,241,.07)',border:'1px solid rgba(99,102,241,.2)',color:'#e2e8f0',fontSize:15,minHeight:80,display:'flex',alignItems:'center'},
-  dot2:       {width:10,height:10,borderRadius:'50%',background:'#8b5cf6',animation:'bounce .8s ease-in-out infinite'},
-  liveBox:    {padding:'14px 16px',borderRadius:12,background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.07)',maxHeight:120,overflowY:'auto'},
-  liveHead:   {fontSize:10,color:'#475569',letterSpacing:1.5},
-  liveP:      {fontSize:13,color:'#94a3b8',fontStyle:'italic',margin:'6px 0 0'},
-  analyzeBox: {display:'flex',alignItems:'flex-start',gap:18,padding:'18px 20px',borderRadius:14,background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.07)'},
-  spinner:    {width:40,height:40,borderRadius:'50%',flexShrink:0,marginTop:2,border:'3px solid rgba(139,92,246,.12)',borderTopColor:'#8b5cf6',borderRightColor:'#e879f9',animation:'spin 1s linear infinite'},
-  btnRec:     {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',boxShadow:'0 6px 24px rgba(16,185,129,.45)'},
-  btnStop:    {display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px',borderRadius:14,border:'none',background:'linear-gradient(135deg,#b91c1c,#ef4444)',color:'#fff',fontSize:17,fontWeight:700,cursor:'pointer',animation:'stopGlow 1.6s ease-in-out infinite',boxShadow:'0 6px 24px rgba(239,68,68,.45)'},
-  hint:       {textAlign:'center',color:'#94a3b8',fontSize:14,padding:'16px',borderRadius:10,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)'},
-  statsGrid:  {display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10},
-  statCard:   {padding:'14px 8px',borderRadius:12,textAlign:'center',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.15)',display:'flex',flexDirection:'column',gap:5},
-  statV:      {fontFamily:"'Cormorant Garamond',serif",fontSize:'1.3rem',fontWeight:600,color:'#c4b5fd'},
-  statL:      {fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1},
-  sectionCard:{padding:'16px 18px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.18)'},
-  sectionHead:{fontSize:11,letterSpacing:1.5,fontWeight:700,marginBottom:10},
-  sectionBody:{color:'#e2e8f0',fontSize:13,lineHeight:1.75,whiteSpace:'pre-wrap'},
-  scoreCard:  {padding:'18px 20px',borderRadius:14,background:'rgba(16,185,129,.04)',border:'1px solid rgba(16,185,129,.18)',maxHeight:300,overflowY:'auto'},
-  scoreHead:  {fontSize:10,letterSpacing:2,color:'#475569',fontWeight:700,marginBottom:10},
-  scoreBody:  {color:'#e2e8f0',fontSize:14,lineHeight:1.75,whiteSpace:'pre-wrap'},
-  btnRetry:   {flex:1,padding:'13px',borderRadius:12,background:'rgba(139,92,246,.1)',border:'1px solid rgba(139,92,246,.25)',color:'#a78bfa',fontSize:14,fontWeight:600,cursor:'pointer'},
-  btnDone:    {flex:1,padding:'13px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#047857,#10b981)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'},
-};
+/* ── PAGE PRINCIPALE ── */
+export default function EntretienPage({ user, bourses=[], conversationId, setView, handleQuickReply }) {
+  const { lang } = useT();
+  const [showLogin, setShowLogin] = useState(false);
+  const [selected, setSelected]  = useState(null);
+  const [appliedBourses, setAppliedBourses] = useState([]);
 
-export default function EntretienPage({ user, bourses=[], conversationId, setView }) {
-  const [selected, setSelected] = useState(null);
-  if (!selected) return <BoursePicker bourses={bourses} userId={user?.id} onSelect={setSelected}/>;
+  // ✅ CHARGER LES BOURSES POSTULÉES
+  useEffect(() => {
+    if (!user?.id) return;
+    axiosInstance.get('/api/roadmap', {
+      params: { 'where[userId][equals]': user.id, limit: 100 }
+    })
+      .then(res => setAppliedBourses(res.data.docs || []))
+      .catch(err => console.error('Erreur chargement roadmap:', err));
+  }, [user?.id]);
+
+  if (!user) return (
+   <>
+  <div className="ep-locked">
+    <div style={{
+      background: '#ffffff',
+      border: `1px solid #e0e0e0`,
+      padding: '48px 40px',
+      maxWidth: 480,
+      width: '100%',
+      textAlign: 'center',
+      boxShadow: 'none',
+      borderRadius: 0,  // ← rectangle parfait
+    }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🧑‍⚖️</div>
+      <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: '#333' }}>
+        {lang === 'fr' ? 'Entretien virtuel non disponible' : 'AI interview unavailable'}
+      </h3>
+      <p style={{ fontSize: 14, color: '#666', lineHeight: 1.5, marginBottom: 24 }}>
+        {lang === 'fr'
+          ? 'Connectez-vous pour pratiquer vos entretiens de bourse avec notre jury IA et obtenir une évaluation personnalisée.'
+          : 'Sign in to practice your scholarship interviews with our AI panel and get personalized feedback.'}
+      </p>
+      <button
+        onClick={() => setShowLogin(true)}
+        style={{
+          padding: '12px 28px',
+          background: '#0066b3',
+          color: '#ffffff',
+          border: 'none',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          fontFamily: 'monospace',
+          borderRadius: 0,  // ← rectangle
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}
+      </button>
+    </div>
+  </div>
+  {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+</>
+  );
+
+  if (!selected) return (
+  <BoursePicker 
+    bourses={bourses} 
+    userId={user?.id} 
+    onSelect={setSelected}
+    appliedBourses={appliedBourses}  // ← PASSER ICI
+  />
+);
   return <EntretienSession bourse={selected} user={user} conversationId={conversationId} onFinish={()=>setSelected(null)}/>;
 }

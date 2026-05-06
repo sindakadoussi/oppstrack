@@ -1,5 +1,4 @@
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -12,13 +11,19 @@ import candidature from './collections/candidatures'
 import nodemailer from 'nodemailer'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
-
+import Favoris from './collections/Favoris'
+import Roadmap from './collections/Roadmap';
+import dns from 'dns'
+dns.setServers(['8.8.8.8', '8.8.4.4'])
+import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import Feedbacks from './collections/Feedbacks'
 const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
 
 export default buildConfig({
-  cors: ['http://localhost:5173'],
-  csrf: ['http://localhost:5173'],
+   cors: ['http://localhost:5173', 'http://localhost:5678'],
+  csrf: ['http://localhost:5173', 'http://localhost:5678'],
 
   admin: {
     user: Users.slug,
@@ -43,7 +48,7 @@ export default buildConfig({
     },
   }),
 
-  collections: [Users, Media, Messages, Bourses, candidature, Entretiens],
+  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris,Roadmap, Feedbacks],
   editor:      lexicalEditor(),
   secret:      process.env.PAYLOAD_SECRET || '',
 
@@ -57,4 +62,5 @@ export default buildConfig({
 
   sharp,
   plugins: [],
+
 })
