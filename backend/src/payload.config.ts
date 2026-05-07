@@ -13,8 +13,6 @@ import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
 import Favoris from './collections/Favoris'
 import Roadmap from './collections/Roadmap';
-import dns from 'dns'
-dns.setServers(['8.8.8.8', '8.8.4.4'])
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import Feedbacks from './collections/Feedbacks'
@@ -22,9 +20,6 @@ const filename = fileURLToPath(import.meta.url)
 const dirname  = path.dirname(filename)
 
 export default buildConfig({
-   cors: ['http://tkio2xxdskcinugnq08341re.51.254.130.227.sslip.io','http://localhost:5173', 'http://localhost:5678'],
-  csrf: ['http://localhost:5173', 'http://localhost:5678'],
-
   admin: {
     user: Users.slug,
     importMap: {
