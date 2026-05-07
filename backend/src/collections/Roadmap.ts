@@ -1,5 +1,6 @@
 import { CollectionConfig } from 'payload';
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 const Roadmap: CollectionConfig = {
   slug: 'roadmap',
   admin: {
@@ -7,10 +8,10 @@ const Roadmap: CollectionConfig = {
     defaultColumns: ['nom', 'pays', 'userId', 'statut', 'etapeCourante', 'dateLimite'],
   },
   access: {
-    read:   () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    read:   anyone,
+    create: authenticated,
+    update: authenticated,
+    delete: authenticated,
   },
   fields: [
     {

@@ -1,12 +1,13 @@
 import type { CollectionConfig } from 'payload'
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 export const Favoris: CollectionConfig = {
   slug: 'favoris',
   admin: {
     useAsTitle: 'userEmail',
     description: 'Bourses favorites par étudiant',
   },
-  access: { read: () => true, create: () => true, update: () => true, delete: () => true },
+  access: { read: anyone, create: authenticated, update: authenticated, delete: authenticated },
   fields: [
     {
       name: 'user',

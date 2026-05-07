@@ -1,6 +1,7 @@
 // backend/src/collections/Feedbacks.ts
 import { CollectionConfig } from 'payload';
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 const Feedbacks: CollectionConfig = {
   slug: 'feedbacks',
   admin: {
@@ -8,10 +9,10 @@ const Feedbacks: CollectionConfig = {
     defaultColumns: ['name', 'email', 'rating', 'createdAt'],
   },
   access: {
-    read: () => true,      // tout le monde peut lire (si tu veux afficher les témoignages)
-    create: () => true,    // accessible sans authentification (avis public)
-    update: () => false,   // personne ne peut modifier un avis
-    delete: () => false,   // seulement toi via admin
+    read:   anyone,
+    create: authenticated,
+    update: authenticated,
+    delete: authenticated,
   },
   fields: [
     {

@@ -1,12 +1,13 @@
 import type { CollectionConfig } from 'payload'
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 const Entretiens: CollectionConfig = {
   slug: 'entretiens',
-  access: {
-    read:   () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+   access: {
+    read:   anyone,
+    update: authenticated,
+    create: authenticated,
+    delete: authenticated,
   },
   fields: [
     { name: 'user',           type: 'relationship', relationTo: 'users', required: true },
