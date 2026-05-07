@@ -4,31 +4,49 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+
   resolve: {
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+
   server: {
     port: 5173,
+
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target:
+          process.env.VITE_API_URL ||
+          'http://localhost:3000',
+
         changeOrigin: true,
+
         secure: false,
       },
+
       '/webhook': {
-        target: 'http://localhost:5678',
+        target:
+          process.env.VITE_WEBHOOK_URL ||
+          'http://localhost:5678',
+
         changeOrigin: true,
+
         secure: false,
       },
     },
   },
+
   build: {
     rollupOptions: {
-      onwarn: () => {
-        return;
+      onwarn(warning, warn) {
+        if (
+          warning.code === 'MODULE_LEVEL_DIRECTIVE'
+        ) {
+          return;
+        }
+
+        warn(warning);
       },
     },
   },
