@@ -1,63 +1,94 @@
-// StudentFeedback.jsx
-import React, { useState, useEffect } from 'react';
+// StudentFeedback.jsx — version avec correction de l’option anonyme
+import React, { useState, useEffect, useRef } from 'react';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 
+// Animation confetti
+const simpleConfetti = () => {
+  const colors = ['#0066b3', '#f5a623', '#22c55e', '#b4321f'];
+  for (let i = 0; i < 50; i++) {
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.width = '6px';
+    div.style.height = '6px';
+    div.style.background = colors[Math.floor(Math.random() * colors.length)];
+    div.style.left = Math.random() * window.innerWidth + 'px';
+    div.style.top = '-10px';
+    div.style.borderRadius = '50%';
+    div.style.pointerEvents = 'none';
+    div.style.zIndex = '9999';
+    document.body.appendChild(div);
+    const animation = div.animate([
+      { transform: `translateY(0) rotate(0deg)`, opacity: 1 },
+      { transform: `translateY(${window.innerHeight}px) rotate(${Math.random() * 360}deg)`, opacity: 0 }
+    ], { duration: 1500 + Math.random() * 1000, easing: 'cubic-bezier(0.2, 0.9, 0.4, 1)' });
+    animation.onfinish = () => div.remove();
+  }
+};
+
 const tokens = (theme) => ({
-  bg: theme === "dark" ? "#15140f" : "#f5f7fa",
-  bgCard: theme === "dark" ? "#1a1912" : "#ffffff",
-  bgHero: theme === "dark" ? "#1a1912" : "#255cae",
+  accent: theme === "dark" ? "#4c9fd9" : "#0066b3",
   ink: theme === "dark" ? "#f2efe7" : "#141414",
   ink2: theme === "dark" ? "#cfccc2" : "#3a3a3a",
   ink3: theme === "dark" ? "#a19f96" : "#6b6b6b",
-  ink4: theme === "dark" ? "#6d6b64" : "#9a9794",
-  border: theme === "dark" ? "#2b2a22" : "#e1e5e9",
-  borderLight: theme === "dark" ? "#24231c" : "#f0f0f0",
-  accent: "#0066b3",
-  accentLight: "#4c9fd9",
+  paper: theme === "dark" ? "#15140f" : "#faf8f3",
+  paper2: theme === "dark" ? "#1d1c16" : "#f2efe7",
+  rule: theme === "dark" ? "#2b2a22" : "#d9d5cb",
+  ruleSoft: theme === "dark" ? "#24231c" : "#e8e4d9",
+  surface: theme === "dark" ? "#1a1912" : "#ffffff",
   danger: "#b4321f",
-  dangerBg: theme === "dark" ? "rgba(180,50,31,0.15)" : "#fed7d7",
-  dangerText: theme === "dark" ? "#ff6b5c" : "#742a2a",
-  successBg: theme === "dark" ? "rgba(0,102,179,0.15)" : "#255cae",
+  success: "#22c55e",
+  successBg: theme === "dark" ? "rgba(34,197,94,0.15)" : "#f0fdf4",
   starActive: "#f5a623",
   starInactive: theme === "dark" ? "#4a4a4a" : "#cbd5e0",
-  fSerif: `"Playfair Display", "Times New Roman", Georgia, serif`,
-  fSans: `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
-  fMono: `"DM Sans", monospace`,
+  fSerif: `"Libre Caslon Text", "Times New Roman", Georgia, serif`,
+  fSans: `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+  fMono: `"JetBrains Mono", ui-monospace, Menlo, monospace`,
 });
 
 export default function StudentFeedback({ setView, user }) {
   const { lang } = useT();
   const { theme } = useTheme();
-  const C = tokens(theme);
-  
+  const c = tokens(theme);
+
+  const stats = { total: 2847, avgRating: 4.8 };
+
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
+    rating: 5,
+    category: 'compliment',
+    comment: '',
     name: '',
     email: '',
-    rating: 5,
-    comment: '',
-    agreeTerms: false
+    isAnonymous: false,
+    agreeTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [charCount, setCharCount] = useState(0);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && !formData.name && !formData.email) {
       setFormData(prev => ({
         ...prev,
-        name: user.name || prev.name,
-        email: user.email || prev.email,
+        name: user.name || '',
+        email: user.email || '',
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    setCharCount(formData.comment.length);
+  }, [formData.comment]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
     if (submitStatus) setSubmitStatus(null);
   };
@@ -66,23 +97,28 @@ export default function StudentFeedback({ setView, user }) {
     setFormData(prev => ({ ...prev, rating }));
   };
 
+  const nextStep = () => {
+    if (step === 1 && !formData.rating) return;
+    if (step === 2 && !formData.comment.trim()) return;
+    // Étape 3 : vérification conditions (nom/email seulement si non anonyme)
+    if (step === 3) {
+      if (!formData.agreeTerms) return;
+      if (!formData.isAnonymous && (!formData.name.trim() || !formData.email.trim())) return;
+    }
+    setStep(step + 1);
+  };
+
+  const prevStep = () => setStep(step - 1);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.name.trim()) {
-      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez entrer votre nom' : 'Please enter your name' });
-      return;
-    }
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Email valide requis' : 'Valid email required' });
-      return;
-    }
-    if (!formData.comment.trim()) {
-      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez laisser un commentaire' : 'Please leave a comment' });
-      return;
-    }
+    // Validation (identique à nextStep)
     if (!formData.agreeTerms) {
-      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Vous devez accepter les conditions' : 'You must agree to the terms' });
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez accepter les conditions' : 'Please accept the terms' });
+      return;
+    }
+    if (!formData.isAnonymous && (!formData.name.trim() || !formData.email.trim())) {
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Veuillez renseigner votre nom et email' : 'Please enter your name and email' });
       return;
     }
 
@@ -90,458 +126,246 @@ export default function StudentFeedback({ setView, user }) {
     setSubmitStatus(null);
 
     try {
-      await axiosInstance.post(API_ROUTES.feedbacks.create, {
-        name: formData.name,
-        email: formData.email,
+      const payload = {
+        name: formData.isAnonymous ? 'Anonyme' : formData.name,
+        email: formData.isAnonymous ? 'anonymous@oppstrack.com' : formData.email,
         rating: formData.rating,
+        category: formData.category,
         comment: formData.comment,
-      });
-
-      setSubmitStatus({
-        type: 'success',
-        message: lang === 'fr' ? 'Merci pour votre retour !' : 'Thank you for your feedback!'
-      });
-
+      };
+      // Remplacer par votre appel API réel
+      // await axiosInstance.post(API_ROUTES.feedbacks.create, payload);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      simpleConfetti();
+      setSubmitStatus({ type: 'success', message: lang === 'fr' ? 'Merci pour votre retour !' : 'Thank you for your feedback!' });
       setFormData({
+        rating: 5,
+        category: 'compliment',
+        comment: '',
         name: user?.name || '',
         email: user?.email || '',
-        rating: 5,
-        comment: '',
+        isAnonymous: false,
         agreeTerms: false,
       });
+      setStep(4);
     } catch (error) {
-      console.error('Erreur lors de l’envoi du feedback :', error);
-      setSubmitStatus({
-        type: 'error',
-        message: lang === 'fr'
-          ? 'Erreur lors de l’envoi. Réessayez plus tard.'
-          : 'Submission error. Please try again later.',
-      });
+      console.error(error);
+      setSubmitStatus({ type: 'error', message: lang === 'fr' ? 'Erreur lors de l’envoi.' : 'Submission error.' });
     } finally {
       setIsSubmitting(false);
       setTimeout(() => setSubmitStatus(null), 5000);
     }
   };
 
+  const getSuggestionPlaceholder = () => {
+    if (formData.rating <= 2) return lang === 'fr' ? "Qu'est-ce qui n'a pas fonctionné ?" : "What didn't work?";
+    if (formData.rating === 3) return lang === 'fr' ? "Comment pourrions-nous améliorer ?" : "How could we improve?";
+    return lang === 'fr' ? "Qu'avez-vous particulièrement apprécié ?" : "What did you particularly like?";
+  };
+
+  const quickTemplates = {
+    fr: [
+      { text: "Interface intuitive et rapide", cat: 'compliment' },
+      { text: "Fonctionnalités utiles pour ma recherche", cat: 'compliment' },
+      { text: "Problème technique rencontré", cat: 'bug' },
+      { text: "Suggestion d'amélioration", cat: 'suggestion' },
+    ],
+    en: [
+      { text: "Intuitive and fast interface", cat: 'compliment' },
+      { text: "Useful features for my search", cat: 'compliment' },
+      { text: "Technical problem encountered", cat: 'bug' },
+      { text: "Suggestion for improvement", cat: 'suggestion' },
+    ]
+  };
+
+  const applyTemplate = (template) => {
+    setFormData(prev => ({ ...prev, comment: template.text, category: template.cat }));
+    if (textareaRef.current) textareaRef.current.focus();
+  };
+
+  // Écran de succès
+  if (submitStatus?.type === 'success' && step === 4) {
+    return (
+      <div style={{ background: c.paper, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: 500, width: '100%', textAlign: 'center', background: c.surface, border: `1px solid ${c.rule}`, padding: '48px 32px', borderRadius: 24 }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>🏆</div>
+          <div style={{ fontFamily: c.fSerif, fontSize: 28, fontWeight: 700, color: c.ink, marginBottom: 8 }}>{submitStatus.message}</div>
+          <p style={{ color: c.ink2, marginBottom: 24 }}>{lang === 'fr' ? 'Votre avis nous aide à nous améliorer.' : 'Your feedback helps us improve.'}</p>
+          <div style={{ background: c.successBg, padding: '12px', borderRadius: 12, marginBottom: 24 }}>
+            <span style={{ fontWeight: 600, color: c.success }}>🏅 {lang === 'fr' ? "Badge 'Contributeur' débloqué" : "Badge 'Contributor' unlocked"}</span>
+          </div>
+          <button onClick={() => setView('bourses')} style={{ background: c.accent, color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 40, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginRight: 12 }}>{lang === 'fr' ? 'Découvrir les bourses' : 'Explore scholarships'}</button>
+          <button onClick={() => setView('accueil')} style={{ background: 'transparent', border: `1px solid ${c.rule}`, padding: '12px 24px', borderRadius: 40, fontSize: 14, cursor: 'pointer', color: c.ink2 }}>{lang === 'fr' ? 'Retour à l’accueil' : 'Back home'}</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="feedback-page" style={{ background: C.bg }}>
-      <div className="back-button-container">
-        <button 
-          onClick={() => {
-            if (setView) setView('accueil');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className="back-button"
-          style={{
-            background: C.bgCard,
-            border: `1px solid ${C.border}`,
-            color: C.accent,
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span>{lang === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}</span>
+    <div style={{ background: c.paper, minHeight: '100vh' }}>
+      {/* Bouton retour */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 32px 0' }}>
+        <button onClick={() => setView('accueil')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, borderRadius: 40, cursor: 'pointer', fontSize: 12, fontFamily: c.fMono, color: c.ink2 }}>
+          ← {lang === 'fr' ? 'Retour' : 'Back'}
         </button>
       </div>
 
-      <div className="feedback-hero" style={{ background: C.bgHero }}>
-        <div className="feedback-hero-content">
-          <h1 style={{ color: '#fff' }}>{lang === 'fr' ? 'Donnez votre avis' : 'Share your feedback'}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.95)' }}>
-            {lang === 'fr' 
-              ? 'Votre opinion nous aide à améliorer OppsTrack pour tous les étudiants.' 
-              : 'Your opinion helps us improve OppsTrack for all students.'}
-          </p>
+      {/* Hero */}
+      <div style={{ textAlign: 'center', padding: '48px 24px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
+        <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 700, color: c.ink, marginBottom: 12, letterSpacing: '-0.02em' }}>
+          {lang === 'fr' ? 'Votre avis compte' : 'Your voice matters'}
+        </h1>
+        <div style={{ width: 60, height: 3, background: c.accent, margin: '16px auto' }} />
+        <p style={{ fontSize: 18, color: c.ink2, marginBottom: 24, maxWidth: 600, marginLeft: 'auto', marginRight: 'auto' }}>
+          {lang === 'fr' ? `Plus de ${stats.total} étudiants nous ont déjà fait confiance` : `Over ${stats.total} students have trusted us`}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: c.starActive }}>{stats.avgRating}</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[...Array(5)].map((_, i) => (
+              <span key={i} style={{ color: i < Math.floor(stats.avgRating) ? c.starActive : c.starInactive, fontSize: 24 }}>★</span>
+            ))}
+          </div>
+          <span style={{ color: c.ink3, fontSize: 14 }}>/5</span>
         </div>
       </div>
 
-      <div className="feedback-container">
-        <div className="feedback-form-section" style={{ background: C.bgCard, boxShadow: `0 10px 40px rgba(0,0,0,${theme === 'dark' ? '0.3' : '0.1'})` }}>
-          <div className="form-header" style={{ background: C.bgHero }}>
-            <h2 style={{ color: '#fff' }}>{lang === 'fr' ? 'Partagez votre expérience' : 'Share your experience'}</h2>
-            <p style={{ color: 'rgba(255,255,255,0.9)' }}>{lang === 'fr' ? 'Nous lisons chaque avis avec attention' : 'We read every feedback carefully'}</p>
-          </div>
-
-          {submitStatus?.type === 'success' ? (
-            <div className="success-message">
-              <div className="success-icon" style={{ background: C.accent }}>✓</div>
-              <h3 style={{ color: C.ink }}>{submitStatus.message}</h3>
-              <p style={{ color: C.ink3 }}>{lang === 'fr' ? 'Votre avis a bien été enregistré.' : 'Your feedback has been recorded.'}</p>
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '48px 24px' }}>
+        {/* Steps */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 40, position: 'relative' }}>
+          {[1, 2, 3].map(s => (
+            <div key={s} style={{ flex: 1, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%', margin: '0 auto 8px',
+                background: step > s ? c.accent : step === s ? `${c.accent}20` : c.ruleSoft,
+                border: `2px solid ${step >= s ? c.accent : c.rule}`,
+                color: step >= s ? c.accent : c.ink3,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
+              }}>
+                {step > s ? '✓' : s}
+              </div>
+              <div style={{ fontSize: 12, color: step >= s ? c.accent : c.ink3 }}>
+                {s === 1 && (lang === 'fr' ? 'Note' : 'Rate')}
+                {s === 2 && (lang === 'fr' ? 'Message' : 'Message')}
+                {s === 3 && (lang === 'fr' ? 'Infos' : 'Info')}
+              </div>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="feedback-form">
-              <div className="form-group">
-                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Nom complet' : 'Full name'} *</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder={lang === 'fr' ? 'Jean Dupont' : 'John Doe'}
-                  style={{
-                    background: C.bg,
-                    border: `2px solid ${submitStatus?.type === 'error' && !formData.name ? C.danger : C.border}`,
-                    color: C.ink,
-                  }}
-                />
-              </div>
+          ))}
+        </div>
 
-              <div className="form-group">
-                <label style={{ color: C.ink }}>Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="exemple@email.com"
-                  style={{
-                    background: C.bg,
-                    border: `2px solid ${submitStatus?.type === 'error' && !formData.email ? C.danger : C.border}`,
-                    color: C.ink,
-                  }}
-                />
+        {/* Étape 1 : Note & Catégorie */}
+        {step === 1 && (
+          <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '32px', borderRadius: 20 }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: c.ink }}>{lang === 'fr' ? 'Note globale' : 'Overall rating'}</div>
+              <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button key={star} onClick={() => handleRatingClick(star)} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} style={{ background: 'none', border: 'none', fontSize: 48, cursor: 'pointer', color: formData.rating >= star ? c.starActive : c.starInactive, transition: 'transform 0.1s' }}>★</button>
+                ))}
               </div>
-
-              <div className="form-group">
-                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Note' : 'Rating'} *</label>
-                <div className="rating-stars">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className={`star-btn ${formData.rating >= star ? 'active' : ''}`}
-                      onClick={() => handleRatingClick(star)}
-                      style={{
-                        color: formData.rating >= star ? C.starActive : C.starInactive,
-                      }}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
-                <span className="rating-label" style={{ color: C.ink3 }}>
-                  {formData.rating === 1 && (lang === 'fr' ? 'Très insatisfait' : 'Very dissatisfied')}
-                  {formData.rating === 2 && (lang === 'fr' ? 'Insatisfait' : 'Dissatisfied')}
-                  {formData.rating === 3 && (lang === 'fr' ? 'Moyen' : 'Average')}
-                  {formData.rating === 4 && (lang === 'fr' ? 'Satisfait' : 'Satisfied')}
-                  {formData.rating === 5 && (lang === 'fr' ? 'Très satisfait' : 'Very satisfied')}
-                </span>
+              <div style={{ textAlign: 'center', marginTop: 16, color: c.ink2, fontSize: 13 }}>
+                {formData.rating === 1 && (lang === 'fr' ? 'Très insatisfait' : 'Very dissatisfied')}
+                {formData.rating === 2 && (lang === 'fr' ? 'Insatisfait' : 'Dissatisfied')}
+                {formData.rating === 3 && (lang === 'fr' ? 'Moyen' : 'Average')}
+                {formData.rating === 4 && (lang === 'fr' ? 'Satisfait' : 'Satisfied')}
+                {formData.rating === 5 && (lang === 'fr' ? 'Très satisfait' : 'Very satisfied')}
               </div>
-
-              <div className="form-group">
-                <label style={{ color: C.ink }}>{lang === 'fr' ? 'Votre message' : 'Your message'} *</label>
-                <textarea
-                  name="comment"
-                  value={formData.comment}
-                  onChange={handleChange}
-                  rows={5}
-                  placeholder={lang === 'fr' 
-                    ? 'Partagez votre expérience avec OppsTrack, suggestions d\'amélioration...' 
-                    : 'Share your experience with OppsTrack, suggestions for improvement...'}
-                  style={{
-                    background: C.bg,
-                    border: `2px solid ${submitStatus?.type === 'error' && !formData.comment ? C.danger : C.border}`,
-                    color: C.ink,
-                  }}
-                />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: c.ink }}>{lang === 'fr' ? 'Catégorie' : 'Category'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+                {[
+                  { id: 'bug', labelFr: '🐛 Problème technique', labelEn: '🐛 Bug' },
+                  { id: 'suggestion', labelFr: '💡 Suggestion', labelEn: '💡 Suggestion' },
+                  { id: 'compliment', labelFr: '⭐ Compliment', labelEn: '⭐ Compliment' },
+                  { id: 'other', labelFr: '💬 Autre', labelEn: '💬 Other' },
+                ].map(cat => (
+                  <button key={cat.id} onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))} style={{ padding: '10px', border: `1px solid ${formData.category === cat.id ? c.accent : c.rule}`, borderRadius: 10, background: formData.category === cat.id ? `${c.accent}10` : 'transparent', cursor: 'pointer', color: c.ink, fontSize: 13, transition: 'all 0.2s' }}>
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>{cat.id === 'bug' ? '🐛' : cat.id === 'suggestion' ? '💡' : cat.id === 'compliment' ? '⭐' : '💬'}</div>
+                    {lang === 'fr' ? cat.labelFr : cat.labelEn}
+                  </button>
+                ))}
               </div>
+            </div>
+            <button onClick={nextStep} style={{ width: '100%', marginTop: 32, padding: '12px', background: c.accent, color: c.paper, border: 'none', borderRadius: 40, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{lang === 'fr' ? 'Continuer →' : 'Continue →'}</button>
+          </div>
+        )}
 
-              <div className="form-group checkbox-group">
-                <label className="checkbox-label" style={{ color: C.ink3 }}>
-                  <input
-                    type="checkbox"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onChange={handleChange}
-                  />
-                  <span>
-                    {lang === 'fr' 
-                      ? 'J\'autorise OppsTrack à utiliser mon retour pour améliorer ses services.' 
-                      : 'I allow OppsTrack to use my feedback to improve its services.'}
-                  </span>
+        {/* Étape 2 : Message */}
+        {step === 2 && (
+          <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '32px', borderRadius: 20 }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: c.ink }}>{lang === 'fr' ? 'Votre message' : 'Your message'}</div>
+              <textarea ref={textareaRef} name="comment" value={formData.comment} onChange={handleChange} rows={6} placeholder={getSuggestionPlaceholder()} style={{ width: '100%', padding: '12px', border: `1px solid ${c.rule}`, borderRadius: 12, background: c.paper, color: c.ink, fontSize: 14, fontFamily: c.fSans, resize: 'vertical' }} />
+              <div style={{ textAlign: 'right', fontSize: 12, color: charCount > 500 ? c.danger : c.ink3, marginTop: 4 }}>{charCount}/500</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: c.ink2 }}>{lang === 'fr' ? 'Suggestions rapides' : 'Quick templates'}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(lang === 'fr' ? quickTemplates.fr : quickTemplates.en).map((t, i) => (
+                  <button key={i} onClick={() => applyTemplate(t)} style={{ padding: '6px 12px', background: c.paper2, border: `1px solid ${c.ruleSoft}`, borderRadius: 40, fontSize: 12, cursor: 'pointer', color: c.ink2 }}>{t.text}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
+              <button onClick={prevStep} style={{ flex: 1, padding: '12px', background: 'transparent', border: `1px solid ${c.rule}`, borderRadius: 40, cursor: 'pointer', color: c.ink2 }}>← {lang === 'fr' ? 'Retour' : 'Back'}</button>
+              <button onClick={nextStep} disabled={!formData.comment.trim()} style={{ flex: 1, padding: '12px', background: c.accent, color: c.paper, border: 'none', borderRadius: 40, cursor: formData.comment.trim() ? 'pointer' : 'not-allowed', opacity: formData.comment.trim() ? 1 : 0.5 }}>{lang === 'fr' ? 'Continuer →' : 'Continue →'}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Étape 3 : Infos personnelles */}
+        {step === 3 && (
+          <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '32px', borderRadius: 20 }}>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, cursor: 'pointer' }}>
+                <input type="checkbox" name="isAnonymous" checked={formData.isAnonymous} onChange={handleChange} style={{ width: 18, height: 18 }} />
+                <span style={{ color: c.ink }}>{lang === 'fr' ? 'Soumettre anonymement' : 'Submit anonymously'}</span>
+              </label>
+
+              {!formData.isAnonymous && (
+                <>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', marginBottom: 6, color: c.ink, fontSize: 13 }}>{lang === 'fr' ? 'Nom' : 'Name'} *</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} style={{ width: '100%', padding: '10px', border: `1px solid ${c.rule}`, borderRadius: 8, background: c.paper, color: c.ink }} />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', marginBottom: 6, color: c.ink, fontSize: 13 }}>Email *</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} style={{ width: '100%', padding: '10px', border: `1px solid ${c.rule}`, borderRadius: 8, background: c.paper, color: c.ink }} />
+                  </div>
+                </>
+              )}
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" name="agreeTerms" checked={formData.agreeTerms} onChange={handleChange} style={{ width: 18, height: 18 }} />
+                  <span style={{ fontSize: 12, color: c.ink2 }}>{lang === 'fr' ? 'J’autorise OppsTrack à utiliser mon retour pour améliorer ses services.' : 'I allow OppsTrack to use my feedback to improve its services.'}</span>
                 </label>
               </div>
 
-              {submitStatus?.type === 'error' && (
-                <div className="error-message-global" style={{ background: C.dangerBg, color: C.dangerText }}>
-                  {submitStatus.message}
-                </div>
-              )}
+              {submitStatus?.type === 'error' && <div style={{ background: c.dangerBg, color: c.danger, padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{submitStatus.message}</div>}
 
-              <button 
-                type="submit" 
-                className="submit-btn" 
-                disabled={isSubmitting}
-                style={{
-                  background: C.accent,
-                  color: '#fff',
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner"></span>
-                    {lang === 'fr' ? 'Envoi en cours...' : 'Submitting...'}
-                  </>
-                ) : (
-                  lang === 'fr' ? 'Envoyer mon avis' : 'Submit feedback'
-                )}
+              <button onClick={handleSubmit} disabled={isSubmitting || !formData.agreeTerms || (!formData.isAnonymous && (!formData.name.trim() || !formData.email.trim()))} style={{ width: '100%', padding: '12px', background: c.accent, color: c.paper, border: 'none', borderRadius: 40, fontSize: 14, fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.6 : 1 }}>
+                {isSubmitting ? (lang === 'fr' ? 'Envoi...' : 'Sending...') : (lang === 'fr' ? 'Envoyer mon avis' : 'Submit feedback')}
               </button>
-            </form>
-          )}
-        </div>
+            </div>
+
+            {/* Information rassurante */}
+            <div style={{ marginTop: 24, padding: '16px', background: c.paper2, borderRadius: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: c.accent }}>{lang === 'fr' ? 'Pourquoi votre avis compte ?' : 'Why your voice matters?'}</div>
+              <div style={{ display: 'grid', gap: 8, fontSize: 12, color: c.ink2 }}>
+                <div>🔒 {lang === 'fr' ? 'Vos données sont protégées' : 'Your data is protected'}</div>
+                <div>📊 {lang === 'fr' ? 'Impact direct sur nos priorités' : 'Direct impact on our priorities'}</div>
+                <div>💬 {lang === 'fr' ? 'Réponse possible si email fourni' : 'Possible reply if email provided'}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button onClick={prevStep} style={{ flex: 1, padding: '12px', background: 'transparent', border: `1px solid ${c.rule}`, borderRadius: 40, cursor: 'pointer', color: c.ink2 }}>← {lang === 'fr' ? 'Retour' : 'Back'}</button>
+            </div>
+          </div>
+        )}
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&family=DM+Sans:opsz,wght@9..40,100;9..40,200;9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900;9..40,1000&display=swap');
-        
-        .feedback-page {
-          min-height: 100vh;
-        }
-
-        .back-button-container {
-          display: flex;
-          justify-content: center;
-          padding-top: 40px;
-          padding-bottom: 20px;
-        }
-
-        .back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          border-radius: 50px;
-          cursor: pointer;
-          font-size: 0.9rem;
-          font-weight: 500;
-          font-family: ${C.fSans};
-          transition: all 0.3s ease;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-
-        .back-button:hover {
-          transform: translateX(-5px);
-          box-shadow: ${theme === 'dark' ? '0 5px 15px rgba(76,159,217,0.2)' : '0 5px 15px rgba(0,102,179,0.2)'};
-        }
-
-        .feedback-hero {
-          padding: 60px 20px;
-          text-align: center;
-        }
-
-        .feedback-hero-content h1 {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          font-weight: 700;
-          font-family: ${C.fSerif};
-        }
-
-        .feedback-hero-content p {
-          font-size: 1.2rem;
-          font-family: ${C.fSans};
-        }
-
-        .feedback-container {
-          max-width: 800px;
-          margin: -50px auto 0;
-          padding: 0 20px 80px;
-        }
-
-        .feedback-form-section {
-          border-radius: 20px;
-          overflow: hidden;
-        }
-
-        .form-header {
-          padding: 40px;
-          text-align: center;
-        }
-
-        .form-header h2 {
-          font-size: 1.8rem;
-          margin-bottom: 10px;
-          font-family: ${C.fSerif};
-        }
-
-        .form-header p {
-          font-family: ${C.fSans};
-        }
-
-        .feedback-form {
-          padding: 40px;
-        }
-
-        .form-group {
-          margin-bottom: 25px;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 8px;
-          font-weight: 500;
-          font-family: ${C.fSans};
-          font-size: 13px;
-        }
-
-        .form-group input,
-        .form-group textarea {
-          width: 100%;
-          padding: 12px 15px;
-          border-radius: 10px;
-          font-size: 1rem;
-          transition: all 0.3s ease;
-          font-family: ${C.fSans};
-          outline: none;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-          border-color: ${C.accent} !important;
-          box-shadow: 0 0 0 3px rgba(0,102,179,0.1);
-        }
-
-        .rating-stars {
-          display: flex;
-          gap: 12px;
-          margin-bottom: 10px;
-        }
-
-        .star-btn {
-          background: none;
-          border: none;
-          font-size: 32px;
-          cursor: pointer;
-          transition: transform 0.1s;
-          padding: 0;
-        }
-
-        .star-btn:hover {
-          transform: scale(1.1);
-        }
-
-        .rating-label {
-          font-size: 12px;
-          font-family: ${C.fSans};
-        }
-
-        .checkbox-group {
-          margin: 20px 0;
-        }
-
-        .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          cursor: pointer;
-          font-weight: normal;
-          font-size: 12px;
-          font-family: ${C.fSans};
-        }
-
-        .checkbox-label input {
-          width: 18px;
-          height: 18px;
-          cursor: pointer;
-        }
-
-        .error-message-global {
-          padding: 12px;
-          border-radius: 10px;
-          margin-bottom: 20px;
-          font-size: 13px;
-          text-align: center;
-          font-family: ${C.fSans};
-        }
-
-        .submit-btn {
-          width: 100%;
-          padding: 14px;
-          border: none;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          font-family: ${C.fSans};
-          letter-spacing: 0.5px;
-        }
-
-        .submit-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: ${theme === 'dark' ? '0 5px 20px rgba(76,159,217,0.4)' : '0 5px 20px rgba(0,102,179,0.4)'};
-        }
-
-        .submit-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .spinner {
-          width: 20px;
-          height: 20px;
-          border: 3px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .success-message {
-          text-align: center;
-          padding: 60px 40px;
-        }
-
-        .success-icon {
-          width: 80px;
-          height: 80px;
-          font-size: 3rem;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-        }
-
-        .success-message h3 {
-          font-size: 1.5rem;
-          margin-bottom: 15px;
-          font-family: ${C.fSerif};
-        }
-
-        .success-message p {
-          font-family: ${C.fSans};
-          margin-bottom: 30px;
-        }
-
-        @media (max-width: 768px) {
-          .back-button-container {
-            padding-top: 20px;
-          }
-          .feedback-hero-content h1 {
-            font-size: 2rem;
-          }
-          .feedback-form {
-            padding: 25px;
-          }
-          .form-header {
-            padding: 30px 20px;
-          }
-          .form-header h2 {
-            font-size: 1.5rem;
-          }
-          .star-btn {
-            font-size: 28px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

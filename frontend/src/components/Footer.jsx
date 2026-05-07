@@ -54,7 +54,7 @@ export default function Footer({ setView }) {
       h: "Company",
       hf: "À propos",
       items: [
-        { fr: "À propos", en: "About", action: null },
+         { fr: "À propos", en: "About", action: "about" },
         { fr: "Contact", en: "Contact", action: "contact" },
         { fr: "Témoignages", en: "Testimonials", action: "feedback" },
       ],
