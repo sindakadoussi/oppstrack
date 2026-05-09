@@ -1001,7 +1001,7 @@ const handleAskAI = (bourse) => {
         onApply={handleApply}
         user={user}
       />
-      {matchBourse && <MatchDrawerIA bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
+      {matchBourse && <Matchdraweria bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} c={c} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} c={c} />}
 

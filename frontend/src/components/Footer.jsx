@@ -41,15 +41,16 @@ export default function Footer({ setView }) {
         { fr: "Simulateur d'entretien", en: "Interview Simulator", action: "entretien" },
       ],
     },
-    {
-      h: "Resources",
-      hf: "Ressources",
-      items: [
-        { fr: "Guides", en: "Guides", action: null },
-        { fr: "FAQ", en: "FAQ", action: null },
-        { fr: "Blog", en: "Blog", action: null },
-      ],
-    },
+    
+{
+  h: "Resources",
+  hf: "Ressources",
+  items: [
+    { fr: "Guides", en: "Guides", action: "guides" },
+    { fr: "FAQ", en: "FAQ", action: "faq" },
+    { fr: "Blog", en: "Blog", action: "blog" },
+  ],
+},
     {
       h: "Company",
       hf: "À propos",
