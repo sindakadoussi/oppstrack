@@ -114,7 +114,6 @@ function LoginModal({ onClose, c, lang }) {
 }
 
 /* ─── CALENDRIER (dynamique) ───────────────────────────────────────────── */
-/* ─── CALENDRIER (dynamique) ───────────────────────────────────────────── */
 function Calendrier({ deadlines, onSelectBourse, lang, c }) {
   const today = new Date();
   const [view, setView] = useState({ month: today.getMonth(), year: today.getFullYear() });

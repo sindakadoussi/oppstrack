@@ -1,3 +1,4 @@
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export const API_ROUTES = {
   auth: {
@@ -14,7 +15,7 @@ export const API_ROUTES = {
     list:   '/api/roadmap',
     byUser: (userId) => `/api/roadmap?where[userId][equals]=${userId}&limit=200&depth=0`,
     create: '/api/roadmap',
-      byId:   (id) => `/api/roadmap/${id}`, 
+    byId:   (id) => `/api/roadmap/${id}`,
     update: (id) => `/api/roadmap/${id}`,
     delete: (id) => `/api/roadmap/${id}`,
   },
@@ -32,15 +33,23 @@ export const API_ROUTES = {
     byUser: (userId) => `/api/favoris?where[user][equals]=${userId}&limit=1&depth=0`,
     create: '/api/favoris',
   },
-   feedbacks: {
+  feedbacks: {
     create: '/api/feedbacks',
     list: '/api/feedbacks',
+  },
+  scoreMatch: {
+    byUser: (userId) => `/api/score-match?where[user][equals]=${userId}&sort=-score&limit=10&depth=1`,
+    create: '/api/score-match',
+    byId: (id) => `/api/score-match/${id}`,
+    update: (id) => `/api/score-match/${id}`,
   },
 };
 
 export const WEBHOOK_ROUTES = {
- cv:              '/webhook/webhook',
-  entretien:       '/webhook/webhook',
-  chat:            '/webhook/webhook',
-  generateRoadmap: `/webhook/generate-roadmap-steps`,
+  cv:              `${WEBHOOK}/webhook/webhook`,
+  entretien:       `${WEBHOOK}/webhook/webhook`,
+  chat:            `${WEBHOOK}/webhook/webhook`,
+  generateRoadmap: `${WEBHOOK}/webhook/generate-roadmap-steps`,
 };
+
+export { API_BASE, WEBHOOK };

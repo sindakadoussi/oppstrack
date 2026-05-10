@@ -1,16 +1,18 @@
 import type { CollectionConfig, PayloadRequest } from 'payload'
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: { useAsTitle: 'email' },
   auth: true,
   access: {
-    read:   () => true,
-    update: () => true,
-    create: () => true,
-    delete: () => true,
+    read:   anyone,
+    update: authenticated,
+    create: authenticated,
+    delete: authenticated,
   },
   fields: [
     { name: 'name',    label: 'Nom complet',    type: 'text' },

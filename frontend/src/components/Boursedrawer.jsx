@@ -1,6 +1,6 @@
 // components/BourseDrawer.jsx — version style éditorial (tokens unipd.it)
 import React, { useState, useEffect} from 'react';
-import MatchDrawerIA from './MatchDrawerIA';
+import Matchdraweria from './Matchdraweria';
 import axiosInstance from '@/config/axiosInstance';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';  // ✅ pour les tokens

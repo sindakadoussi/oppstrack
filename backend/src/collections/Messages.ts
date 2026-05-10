@@ -1,13 +1,14 @@
 import { CollectionConfig } from 'payload';
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 const Messages: CollectionConfig = {
   slug: 'messages',
-  access: {
-    create: () => true,
-    read: () => true,
-    update: () => true,
-    delete: () => true,
-  },
+   access: {
+      read:   anyone,
+      update: authenticated,
+      create: authenticated,
+      delete: authenticated,
+    },
   fields: [
     { name: 'text', type: 'text', required: true },
     { name: 'role', type: 'select', options: ['user', 'assistant'], required: true },
@@ -31,9 +32,13 @@ const Messages: CollectionConfig = {
             } else {
               console.log("⚠️ Erreur n8n, Status:", response.status);
             }
-          } catch (error) {
-            console.error("❌ Erreur de connexion n8n :", error.message);
-          }
+          }catch (error) {
+  if (error instanceof Error) {
+    console.error("❌ Erreur de connexion n8n :", error.message);
+    console.error("Stack :", error.stack);
+  } else {
+    console.error("❌ Erreur inconnue :", JSON.stringify(error));
+  }}
         }
       },
     ],
