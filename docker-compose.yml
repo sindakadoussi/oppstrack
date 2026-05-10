@@ -7,7 +7,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - oppstrack-app_mongo_data:/data/db  # ← CHANGE: mongo_data → oppstrack-app_mongo_data
 
   # L'outil d'automatisation pour tes agents IA
   n8n:
@@ -28,5 +28,6 @@ services:
       - n8n_data:/home/node/.n8n
 
 volumes:
-  mongo_data:
+  oppstrack-app_mongo_data:  # ← CHANGE: mongo_data → oppstrack-app_mongo_data
+    external: true            # ← AJOUTE: external: true
   n8n_data:

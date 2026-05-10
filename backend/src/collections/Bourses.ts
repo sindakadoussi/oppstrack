@@ -1,6 +1,7 @@
 import { CollectionConfig } from 'payload';
-
+import { generateBourseEmbedding } from '../hooks/generateBourseEmbedding';
 const Bourses: CollectionConfig = {
+  
   slug: 'bourses',
   admin: {
     useAsTitle: 'nom',
@@ -8,7 +9,7 @@ const Bourses: CollectionConfig = {
       'nom', 'pays', 'niveau', 'financement',
       'dateOuverture', 'dateLimite', 'statut',
       'tunisienEligible', 'domaine', 'langue',
-      'description', 'eligibilite', 'documentsRequis','image'
+      'description', 'eligibilite', 'documentsRequis','embedding','image'
     ],
   },
   access: {
@@ -116,8 +117,19 @@ const Bourses: CollectionConfig = {
     description: 'Logo ou image représentative de la bourse',
   },
 },
+
+
+{
+  name: 'embedding',
+  type: 'json', 
+  admin: {
+    readOnly: true,
+    hidden: true, // Pas besoin de polluer l'interface admin avec des listes de nombres
+  },
+},
   ],
   hooks: {
+    beforeChange: [generateBourseEmbedding] ,
     afterChange: [
       async ({ doc, operation }) => {
         if (operation !== 'create') return;

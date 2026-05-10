@@ -764,74 +764,166 @@ export default function RecommandationsPage({
   }, [user?.id]);
 
   /* ── Chargement IA via webhook recommandation ── */
-  const loadData = useCallback(async () => {
-    if (!user?.id && !user?.email) return;
-    setLoading(true);
-    setError(null);
-    setGenerateStep(0);
+const loadData = useCallback(async () => {
+  if (!user?.id && !user?.email) return;
+  setLoading(true);
+  setError(null);
+  setGenerateStep(0);
 
-    const stepInterval = setInterval(() => {
-      setGenerateStep(prev => prev >= STEPS.length-1 ? prev : prev+1);
-    }, 600);
+  const stepInterval = setInterval(() => {
+    setGenerateStep(prev => prev >= STEPS.length-1 ? prev : prev+1);
+  }, 600);
 
-    try {
-      const [favRes, roadmapRes] = await Promise.all([
-        axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit:1, depth:0 } }),
-        axiosInstance.get(API_ROUTES.roadmap.list, { params: { 'where[userId][equals]': user.id, limit:100, depth:0 } }),
-      ]);
-      setStarredNoms(new Set((favRes.data.docs?.[0]?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
-      setAppliedNoms(new Set((roadmapRes.data.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
-      onStarChange?.((favRes.data.docs?.[0]?.bourses||[]).length);
+  try {
+    // 1️⃣ Récupérer le profil complet
+    console.log('📥 Récupération du profil...');
+    const { data: userData } = await axiosInstance.get(`/api/users/${user.id}`, { params: { depth: 2 } });
 
-      const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, userId: user.id }),
-        signal: AbortSignal.timeout(20000),
-      });
+    // 2️⃣ Générer embedding du profil et chercher les TOP 10 bourses similaires
+    console.log('🔍 Recherche vectorielle des meilleures bourses...');
+    const profileText = `${userData.prenom || ''} ${userData.nom || ''}, étudiant en ${userData.formation || ''}, GPA ${userData.gpa || 'N/A'}, ${userData.experienceMonths || 0} mois d'expérience`;
+    
+    const searchRes = await fetch('http://localhost:3000/api/search-bourses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profileText: profileText,
+        limit: 10,  // ✅ TOP 10 SEULEMENT
+      }),
+    });
 
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+    if (!searchRes.ok) throw new Error('Recherche vectorielle échouée');
+    
+    const searchData = await searchRes.json();
+    const topBourses = searchData.bourses || [];
 
-      const scored = (data.actives || []);
-      clearInterval(stepInterval);
-      setAllScholarships(scored);
-      setGenerateStep(STEPS.length-1);
-      setTimeout(() => setPhase('results'), 400);
-
-    } catch (err) {
-      clearInterval(stepInterval);
-      try {
-        const [userRes, boursesRes] = await Promise.all([
-          axiosInstance.get(`/api/users/${user.id}`, { params:{depth:0} }),
-          axiosInstance.get(API_ROUTES.bourses.list, { params:{limit:200, depth:0} }),
-        ]);
-        const profile = {
-          niveau: userRes.data.niveau || user.niveau || '',
-          domaine: userRes.data.domaine || user.domaine || '',
-        };
-        const scored = (boursesRes.data.docs||[]).map(b => {
-          let score = 0;
-          const matchReasons = [];
-          if (b.tunisienEligible==='oui') { score+=30; matchReasons.push('Éligible Tunisie'); }
-          if (profile.niveau && b.niveau?.toLowerCase().includes(profile.niveau.toLowerCase())) { score+=25; matchReasons.push(`Niveau ${b.niveau}`); }
-          else if (!b.niveau || b.niveau.toLowerCase().includes('tous')) score+=12;
-          if (profile.domaine && b.domaine?.toLowerCase().includes(profile.domaine.toLowerCase())) { score+=20; matchReasons.push(`Domaine ${b.domaine}`); }
-          if (b.statut==='active') { score+=15; matchReasons.push('Candidatures ouvertes'); }
-          if (b.dateLimite && Math.floor((new Date(b.dateLimite)-new Date())/86400000)>30) score+=3;
-          return { ...b, matchScore:score, matchReasons };
-        }).filter(b=>b.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore);
-        setAllScholarships(scored);
-        setGenerateStep(STEPS.length-1);
-        setTimeout(() => setPhase('results'), 400);
-      } catch {
-        setError(lang==='fr' ? 'Impossible de charger les recommandations.' : 'Could not load recommendations.');
-        setPhase('welcome');
-      }
-    } finally {
-      setLoading(false);
+    if (topBourses.length === 0) {
+      throw new Error(lang === 'fr' ? 'Aucune bourse compatible trouvée' : 'No matching scholarships found');
     }
-  }, [user, onStarChange, lang]);
+
+    console.log(`✅ ${topBourses.length} bourses trouvées par similarité`);
+
+    // 3️⃣ Pour CHAQUE bourse du TOP 10, calculer le score détaillé
+    console.log('📊 Calcul des scores détaillés...');
+    const scored = await Promise.all(
+      topBourses.map(async (bourse) => {
+        try {
+          // Récupérer les critères spécifiques de la bourse
+          const criteriaRes = await fetch('http://localhost:3000/api/get-bourse-criteria', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bourseId: bourse.bourse_id }),
+          });
+
+          if (!criteriaRes.ok) {
+            console.warn(`⚠️ Critères manquants pour ${bourse.titre}`);
+            return {
+              ...bourse,
+              matchScore: Math.round(bourse.similarity * 100),
+              pointsForts: [],
+              pointsFaibles: [],
+              planAmelioration: [],
+            };
+          }
+
+          const criteriaData = await criteriaRes.json();
+
+          // Analyser le match avec les critères spécifiques
+          const analyzeRes = await fetch('http://localhost:3000/api/analyze-match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: {
+                nom: userData.nom || 'N/A',
+                prenom: userData.prenom || 'N/A',
+                formation: userData.formation || 'N/A',
+                gpa: userData.gpa || 0,
+                hasLanguageTest: userData.hasLanguageTest || false,
+                experienceMonths: userData.experienceMonths || 0,
+                certifications: userData.certifications || [],
+              },
+              bourse: {
+                id: bourse.bourse_id,
+                nom: bourse.titre,
+              },
+              criteria: criteriaData.criteria,
+              similarity: bourse.similarity,
+            }),
+          });
+
+          if (!analyzeRes.ok) {
+            console.warn(`⚠️ Analyse échouée pour ${bourse.titre}`);
+            return {
+              ...bourse,
+              matchScore: Math.round(bourse.similarity * 100),
+              pointsForts: [],
+              pointsFaibles: [],
+              planAmelioration: [],
+            };
+          }
+
+          const analyzeData = await analyzeRes.json();
+
+          // Récupérer les données complètes de la bourse depuis Payload
+          const fullBourseRes = await axiosInstance.get(`${API_ROUTES.bourses.list}/${bourse.bourse_id}`);
+          const fullBourse = fullBourseRes.data;
+
+          return {
+            id: bourse.bourse_id,
+            nom: bourse.titre,
+            ...fullBourse,
+            matchScore: analyzeData.scoreGlobal,
+            similarity: bourse.similarity,
+            pointsForts: analyzeData.pointsForts,
+            pointsFaibles: analyzeData.pointsFaibles,
+            planAmelioration: analyzeData.planAmelioration,
+            recommendation: analyzeData.recommendation,
+          };
+        } catch (err) {
+          console.error(`❌ Erreur analyse ${bourse.titre}:`, err);
+          return {
+            id: bourse.bourse_id,
+            nom: bourse.titre,
+            matchScore: Math.round(bourse.similarity * 100),
+            pointsForts: [],
+            pointsFaibles: [],
+            planAmelioration: [],
+          };
+        }
+      })
+    );
+
+    // 4️⃣ Trier par score décroissant (déjà en ordre normalement)
+    const sorted = scored.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+
+    console.log('✅ Top 10 bourses calculées:', sorted.map(s => `${s.nom} (${s.matchScore}%)`));
+
+    clearInterval(stepInterval);
+    setAllScholarships(sorted);
+    setGenerateStep(STEPS.length - 1);
+    setTimeout(() => setPhase('results'), 400);
+
+    // Charger les favoris et roadmap
+    const [favRes, roadmapRes] = await Promise.all([
+      axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit:1, depth:0 } }),
+      axiosInstance.get(API_ROUTES.roadmap.list, { params: { 'where[userId][equals]': user.id, limit:100, depth:0 } }),
+    ]);
+    setStarredNoms(new Set((favRes.data.docs?.[0]?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
+    setAppliedNoms(new Set((roadmapRes.data.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
+    onStarChange?.((favRes.data.docs?.[0]?.bourses||[]).length);
+
+  } catch (err) {
+    clearInterval(stepInterval);
+    console.error('❌ Erreur loadData:', err);
+    setError(
+      err.message || 
+      (lang === 'fr' ? 'Erreur lors du chargement des recommandations.' : 'Error loading recommendations.')
+    );
+    setPhase('welcome');
+  } finally {
+    setLoading(false);
+  }
+}, [user?.id, user?.email, lang, onStarChange]);
 
   /* ── Favoris ── */
   const handleStar = async (bourse, isStarred) => {

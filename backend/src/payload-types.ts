@@ -76,6 +76,7 @@ export interface Config {
     favoris: Favoris;
     roadmap: Roadmap;
     feedbacks: Feedback;
+    match: Match;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -92,6 +93,7 @@ export interface Config {
     favoris: FavorisSelect<false> | FavorisSelect<true>;
     roadmap: RoadmapSelect<false> | RoadmapSelect<true>;
     feedbacks: FeedbacksSelect<false> | FeedbacksSelect<true>;
+    match: MatchSelect<false> | MatchSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -366,6 +368,15 @@ export interface Bourse {
    * Logo ou image représentative de la bourse
    */
   image?: (string | null) | Media;
+  embedding?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -469,6 +480,171 @@ export interface Feedback {
   createdAt: string;
 }
 /**
+ * Scores de compatibilité entre étudiants et bourses avec analyse détaillée
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "match".
+ */
+export interface Match {
+  id: string;
+  /**
+   * Étudiant
+   */
+  userId: string | User;
+  /**
+   * Bourse évaluée
+   */
+  bourseId: string | Bourse;
+  /**
+   * Score global de compatibilité (0-100)
+   */
+  matchScore: number;
+  matchBreakdown: {
+    /**
+     * Score d'éligibilité (35% du total)
+     */
+    eligibility: number;
+    /**
+     * Score d'expérience académique & pro (35% du total)
+     */
+    experience: number;
+    /**
+     * Score de certifications & tests (25% du total)
+     */
+    certifications: number;
+    /**
+     * Bonus ou malus additif
+     */
+    bonus: number;
+  };
+  /**
+   * L'étudiant dispose-t-il d'une certification de langue internationale ?
+   */
+  hasLanguageTest?: boolean | null;
+  /**
+   * Détails du test de langue si disponible
+   */
+  languageTestDetails?: {
+    /**
+     * Type de test
+     */
+    testType?: ('IELTS' | 'TOEFL' | 'DELF' | 'DALF' | 'TEF' | 'TCF') | null;
+    /**
+     * Score obtenu
+     */
+    score?: number | null;
+    /**
+     * Niveau (B1, B2, C1, C2, etc)
+     */
+    level?: string | null;
+    /**
+     * Date d'expiration du test
+     */
+    expiryDate?: string | null;
+  };
+  /**
+   * Raisons du match
+   */
+  matchReasons?: string | null;
+  /**
+   * Conseils pour améliorer le score
+   */
+  recommendations?:
+    | {
+        category: 'language' | 'experience' | 'certification' | 'academic' | 'gpa' | 'research';
+        /**
+         * Conseil détaillé
+         */
+        text: string;
+        /**
+         * Points potentiels à gagner
+         */
+        impact: '5' | '10' | '15' | '20';
+        priority: 'high' | 'medium' | 'low';
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Statut du score
+   */
+  statut: 'active' | 'archived' | 'pending';
+  /**
+   * Deadline de la bourse (copie depuis Bourses)
+   */
+  dateLimite: string;
+  /**
+   * Jours restants pour postuler (calculé)
+   */
+  jourcRestants?: number | null;
+  /**
+   * Détails académiques de l'étudiant au moment du scoring
+   */
+  academicDetails?: {
+    /**
+     * GPA/Moyenne au moment du scoring
+     */
+    gpa?: number | null;
+    /**
+     * Nombre de projets académiques
+     */
+    projectCount?: number | null;
+    /**
+     * Nombre de publications
+     */
+    publicationCount?: number | null;
+    /**
+     * A participé à la recherche
+     */
+    hasResearchExperience?: boolean | null;
+  };
+  /**
+   * Détails professionnels au moment du scoring
+   */
+  professionalDetails?: {
+    /**
+     * Mois d'expérience professionnelle
+     */
+    workExperienceMonths?: number | null;
+    /**
+     * A complété un stage
+     */
+    hasInternship?: boolean | null;
+    /**
+     * A une responsabilité de leadership
+     */
+    hasLeadershipRole?: boolean | null;
+    /**
+     * Nombre de certifications professionnelles
+     */
+    certificationCount?: number | null;
+  };
+  /**
+   * Détails de la bourse au moment du scoring (snapshot)
+   */
+  scholarshipDetails?: {
+    bourseNom?: string | null;
+    boursePays?: string | null;
+    bourseDomaine?: string | null;
+    bourseNiveau?: string | null;
+    bourseStatut?: string | null;
+    tunisienEligible?: string | null;
+  };
+  /**
+   * Version de l'algorithme utilisé
+   */
+  algorithmVersion?: string | null;
+  /**
+   * Quand le score a été calculé
+   */
+  calculatedAt: string;
+  /**
+   * Notes internes (non visibles à l'étudiant)
+   */
+  internalNotes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -527,6 +703,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'feedbacks';
         value: string | Feedback;
+      } | null)
+    | ({
+        relationTo: 'match';
+        value: string | Match;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -798,6 +978,7 @@ export interface BoursesSelect<T extends boolean = true> {
   dateOuverture?: T;
   lienOfficiel?: T;
   image?: T;
+  embedding?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -879,6 +1060,76 @@ export interface FeedbacksSelect<T extends boolean = true> {
   rating?: T;
   comment?: T;
   approved?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "match_select".
+ */
+export interface MatchSelect<T extends boolean = true> {
+  userId?: T;
+  bourseId?: T;
+  matchScore?: T;
+  matchBreakdown?:
+    | T
+    | {
+        eligibility?: T;
+        experience?: T;
+        certifications?: T;
+        bonus?: T;
+      };
+  hasLanguageTest?: T;
+  languageTestDetails?:
+    | T
+    | {
+        testType?: T;
+        score?: T;
+        level?: T;
+        expiryDate?: T;
+      };
+  matchReasons?: T;
+  recommendations?:
+    | T
+    | {
+        category?: T;
+        text?: T;
+        impact?: T;
+        priority?: T;
+        id?: T;
+      };
+  statut?: T;
+  dateLimite?: T;
+  jourcRestants?: T;
+  academicDetails?:
+    | T
+    | {
+        gpa?: T;
+        projectCount?: T;
+        publicationCount?: T;
+        hasResearchExperience?: T;
+      };
+  professionalDetails?:
+    | T
+    | {
+        workExperienceMonths?: T;
+        hasInternship?: T;
+        hasLeadershipRole?: T;
+        certificationCount?: T;
+      };
+  scholarshipDetails?:
+    | T
+    | {
+        bourseNom?: T;
+        boursePays?: T;
+        bourseDomaine?: T;
+        bourseNiveau?: T;
+        bourseStatut?: T;
+        tunisienEligible?: T;
+      };
+  algorithmVersion?: T;
+  calculatedAt?: T;
+  internalNotes?: T;
   updatedAt?: T;
   createdAt?: T;
 }
