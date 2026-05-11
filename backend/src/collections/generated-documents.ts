@@ -1,17 +1,17 @@
 import { CollectionConfig, PayloadRequest } from 'payload';
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 export const GeneratedDocuments: CollectionConfig = {
   slug: 'generated-documents',
   auth: false,
   admin: { useAsTitle: 'title' },
   access: {
-    read: ({ req }: { req: PayloadRequest }) => !!req.user,
-    create: ({ req }: { req: PayloadRequest }) => !!req.user,
-    delete: ({ req }: { req: PayloadRequest }) => {
-      const user = req.user as any; // ← Cast temporaire
-      return user?.role === 'admin';}
-    
+    read:   anyone,
+    update: authenticated,
+    create: authenticated,
+    delete: authenticated,
   },
+    
   fields: [
     {
       name: 'user',

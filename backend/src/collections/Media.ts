@@ -1,3 +1,5 @@
+import { anyone } from '@/access/anyone'
+import { authenticated } from '@/access/authenticated'
 import { CollectionConfig } from 'payload'
 
 const Media: CollectionConfig = {
@@ -6,12 +8,12 @@ const Media: CollectionConfig = {
   staticDir: 'media',
   mimeTypes: ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'],
 },
-  access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
-  },
+   access: {
+      read:   anyone,
+      update: authenticated,
+      create: authenticated,
+      delete: authenticated,
+    },
   fields: [
     {
       name: 'alt',

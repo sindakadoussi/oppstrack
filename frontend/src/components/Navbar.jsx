@@ -591,8 +591,8 @@ useEffect(() => {
                       </div>
                       <div style={{ padding:"6px 0" }}>
                         {(lang==="fr"
-                          ? ["Mon profil","Mes candidatures","Préférences","Confidentialité"]
-                          : ["My profile","My applications","Preferences","Privacy"]
+                          ? ["Mon profil","Mes candidatures"]
+                          : ["My profile","My applications"]
                         ).map((x,i) => (
                           <a key={i} href="#"
                             onClick={e=>{ e.preventDefault(); setView("profil"); setUserOpen(false); }}

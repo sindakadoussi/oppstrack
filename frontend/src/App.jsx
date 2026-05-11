@@ -18,8 +18,9 @@ import Footer from './components/Footer';
 import ContactPage from "./pages/ContactPage";
 import { AppProviders, useT } from './i18n';
 import StudentFeedback from './components/StudentFeedback';
-import Guestpage from './pages/Guestpage';
+import GuestPage from './pages/Guestpage';
 import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
 
 
 const tokens = (theme) => ({
@@ -405,6 +406,7 @@ function AppContent() {
   {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
   {view === 'contact'         && <ContactPage setView={setView} user={user} />}
   {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
+  {view === 'about' && <AboutPage setView={setView} />}
 </main>
 
       {/* ChatToggleButton - UN SEUL BOUTON */}

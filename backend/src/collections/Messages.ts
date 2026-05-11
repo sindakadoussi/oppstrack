@@ -1,13 +1,14 @@
 import { CollectionConfig } from 'payload';
-
+import { authenticated } from '@/access/authenticated'
+import { anyone } from '@/access/anyone'
 const Messages: CollectionConfig = {
   slug: 'messages',
-  access: {
-    create: () => true,
-    read: () => true,
-    update: () => true,
-    delete: () => true,
-  },
+   access: {
+      read:   anyone,
+      update: authenticated,
+      create: authenticated,
+      delete: authenticated,
+    },
   fields: [
     { name: 'text', type: 'text', required: true },
     { name: 'role', type: 'select', options: ['user', 'assistant'], required: true },
