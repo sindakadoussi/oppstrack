@@ -726,7 +726,7 @@ export default function RecommandationsPage({
   const [appliedNoms, setAppliedNoms] = useState(new Set());
   const [activeFilter, setActiveFilter] = useState('perso');
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  //const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 8;
   const autoLoadTriggered = useRef(false);
 
@@ -937,7 +937,7 @@ const loadSavedRecommendations = useCallback(async () => {
     } catch (e) { console.error('[handleApply]', e); }
   };
 
-  useEffect(() => { setCurrentPage(1); }, [activeFilter]);
+  //useEffect(() => { setCurrentPage(1); }, [activeFilter]);
   useEffect(() => { if (activeFilter !== 'test') setSearchQuery(''); }, [activeFilter]);
 
   // ── Filtrage ──
@@ -1006,10 +1006,11 @@ const filtered = useMemo(() => {
   return r.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
 }, [allScholarships, activeFilter, searchQuery, fullBoursesList, filterDeadline, filterCountry, user.targetCountries]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  //const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  //const safePage = Math.min(currentPage, totalPages);
+  //const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+// ✅ SÉPARATION PAR PAYS CIBLE
 // ✅ SÉPARATION PAR PAYS CIBLE
 const hasTargetCountries = user.targetCountries && user.targetCountries.length > 0;
 const targetCountriesLower = hasTargetCountries 
@@ -1017,12 +1018,14 @@ const targetCountriesLower = hasTargetCountries
   : [];
 
 const targetScholarships = hasTargetCountries 
-  ? paged.filter(s => targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
+  ? filtered.filter(s => targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
   : [];
 
 const otherScholarships = hasTargetCountries 
-  ? paged.filter(s => !targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
-  : paged;
+  ? filtered.filter(s => !targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
+  : filtered;
+
+
   const stats = useMemo(() => ({
     high: allScholarships.filter(s => s.matchScore >= 70).length,
     medium: allScholarships.filter(s => s.matchScore >= 40 && s.matchScore < 70).length,
@@ -1273,7 +1276,7 @@ const otherScholarships = hasTargetCountries
             </div>
           )}
 
-          {paged.length === 0 ? (
+          {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '80px 20px' }}>
               <div style={{ fontSize: 48, marginBottom: 16, color: c.ink4 }}>○</div>
               <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.ink, marginBottom: 8 }}>
@@ -1296,97 +1299,112 @@ const otherScholarships = hasTargetCountries
           ) : (
             <>
               {/* ✅ SECTION PAYS CIBLES */}
-              {hasTargetCountries && targetScholarships.length > 0 && (
-                <div style={{ marginBottom: 48 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 12, borderBottom: `2px solid ${c.accent}` }}>
-                    <span style={{ fontSize: 24 }}>📍</span>
-                    <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0 }}>
-                      {lang === 'fr' 
-                        ? `${targetScholarships.length} bourse${targetScholarships.length > 1 ? 's' : ''} dans vo${targetScholarships.length > 1 ? 's' : 'tre'} pays cible${targetScholarships.length > 1 ? 's' : ''}`
-                        : `${targetScholarships.length} scholarship${targetScholarships.length > 1 ? 's' : ''} in your target countr${targetScholarships.length > 1 ? 'ies' : 'y'}`}
-                    </h2>
-                  </div>
-                  <p style={{ fontSize: 14, color: c.ink3, marginBottom: 24, lineHeight: 1.6 }}>
-                    {lang === 'fr'
-                      ? `Ces bourses correspondent à vos pays cibles : ${user.targetCountries.map(tc => tCountry(tc.country, lang)).join(', ')}.`
-                      : `These scholarships match your target countries: ${user.targetCountries.map(tc => tCountry(tc.country, lang)).join(', ')}.`}
-                  </p>
-                  {targetScholarships.map((bourse, i) => (
-                    <ScholarshipCard
-                      key={bourse.id}
-                      bourse={bourse}
-                      index={i}
-                      onAnalyze={setAnalysisBourse}
-                      onSave={handleStar}
-                      onApply={handleApply}
-                      isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                      isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                      c={c}
-                      lang={lang}
-                    />
-                  ))}
-                </div>
-              )}
+             {/* Afficher TOUTES les bourses (sans pagination) */}
+<div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+  
+  {/* SECTION 1 : PAYS CIBLES */}
+  {hasTargetCountries && targetScholarships.length > 0 && (
+    <div style={{ marginBottom: 0 }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 12, 
+        marginBottom: 24, 
+        paddingBottom: 16, 
+        borderBottom: `3px solid ${c.accent}`,
+        position: 'relative'
+      }}>
+        <span style={{ fontSize: 28 }}>📍</span>
+        <div>
+          <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0 }}>
+            {lang === 'fr' 
+              ? `Bourses dans vos pays cibles`
+              : `Scholarships in your target countries`}
+          </h2>
+          <p style={{ fontSize: 13, color: c.accent, margin: '4px 0 0 0', fontFamily: c.fMono }}>
+            {targetScholarships.length} opportunité{targetScholarships.length > 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {targetScholarships.map((bourse, i) => (
+          <ScholarshipCard
+            key={bourse.id}
+            bourse={bourse}
+            index={i}
+            onAnalyze={setAnalysisBourse}
+            onSave={handleStar}
+            onApply={handleApply}
+            isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+            isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+            c={c}
+            lang={lang}
+          />
+        ))}
+      </div>
+    </div>
+  )}
 
-              {/* ✅ SECTION AUTRES PAYS */}
-              {otherScholarships.length > 0 && (
-                <div>
-                  {hasTargetCountries && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 12, borderBottom: `2px solid ${c.ink4}` }}>
-                      <span style={{ fontSize: 24 }}>🌍</span>
-                      <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0 }}>
-                        {lang === 'fr' 
-                          ? `${otherScholarships.length} autre${otherScholarships.length > 1 ? 's' : ''} opportunité${otherScholarships.length > 1 ? 's' : ''}`
-                          : `${otherScholarships.length} other opportunit${otherScholarships.length > 1 ? 'ies' : 'y'}`}
-                      </h2>
-                    </div>
-                  )}
-                  {hasTargetCountries && (
-                    <p style={{ fontSize: 14, color: c.ink3, marginBottom: 24, lineHeight: 1.6 }}>
-                      {lang === 'fr'
-                        ? 'Ces bourses sont dans d\'autres pays, mais vous avez de bonnes chances d\'acceptation.'
-                        : 'These scholarships are in other countries, but you have good chances of acceptance.'}
-                    </p>
-                  )}
-                  {otherScholarships.map((bourse, i) => (
-                    <ScholarshipCard
-                      key={bourse.id}
-                      bourse={bourse}
-                      index={hasTargetCountries ? i + targetScholarships.length : i}
-                      onAnalyze={setAnalysisBourse}
-                      onSave={handleStar}
-                      onApply={handleApply}
-                      isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                      isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                      c={c}
-                      lang={lang}
-                    />
-                  ))}
-                </div>
-              )}
+  {/* SECTION 2 : AUTRES PAYS (séparateur visuel clair) */}
+  {otherScholarships.length > 0 && (
+    <>
+      {/* Séparateur visuel entre les deux sections */}
+      {hasTargetCountries && targetScholarships.length > 0 && (
+        <div style={{ 
+          margin: '32px 0 16px 0',
+          height: 2,
+          background: `linear-gradient(90deg, ${c.rule}, ${c.accent}40, ${c.rule})`,
+        }} />
+      )}
+      
+      <div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 12, 
+          marginBottom: 24, 
+          paddingBottom: 16, 
+          borderBottom: `3px solid ${c.ink4}`,
+          position: 'relative'
+        }}>
+          <span style={{ fontSize: 28 }}>🌍</span>
+          <div>
+            <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0 }}>
+              {lang === 'fr' 
+                ? `Autres opportunités internationales`
+                : `Other international opportunities`}
+            </h2>
+            <p style={{ fontSize: 13, color: c.ink4, margin: '4px 0 0 0', fontFamily: c.fMono }}>
+              {otherScholarships.length} bourse{otherScholarships.length > 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {otherScholarships.map((bourse, i) => (
+            <ScholarshipCard
+              key={bourse.id}
+              bourse={bourse}
+              index={hasTargetCountries ? i + targetScholarships.length : i}
+              onAnalyze={setAnalysisBourse}
+              onSave={handleStar}
+              onApply={handleApply}
+              isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+              isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+              c={c}
+              lang={lang}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  )}
+
+</div>
 
               {/* Pagination */}
-             {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 32, borderTop: `1px solid ${c.rule}`, marginTop: 48 }}>
-                  <button 
-                    onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                    disabled={safePage === 1}
-                    style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${safePage === 1 ? c.ruleSoft : c.rule}`, color: safePage === 1 ? c.ink4 : c.ink2, fontSize: 12, cursor: safePage === 1 ? 'default' : 'pointer', fontFamily: c.fMono }}
-                  >
-                    ← {lang === 'fr' ? 'Précédent' : 'Previous'}
-                  </button>
-                  <span style={{ fontSize: 12, fontFamily: c.fMono, color: c.ink3 }}>
-                    <span style={{ color: c.accent, fontWeight: 600 }}>{safePage}</span> / {totalPages}
-                  </span>
-                  <button 
-                    onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                    disabled={safePage === totalPages}
-                    style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${safePage === totalPages ? c.ruleSoft : c.rule}`, color: safePage === totalPages ? c.ink4 : c.ink2, fontSize: 12, cursor: safePage === totalPages ? 'default' : 'pointer', fontFamily: c.fMono }}
-                  >
-                    {lang === 'fr' ? 'Suivant' : 'Next'} →
-                  </button>
-                </div>
-              )}
+             
             </>
           )}
         </div>
