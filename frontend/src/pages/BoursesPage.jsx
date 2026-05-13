@@ -5,7 +5,7 @@ import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
-import MatchDrawerIA from '../components/MatchDrawerIA';
+import Matchdraweria from '../components/Matchdraweria';
 const handleAskAI = (bourse) => {
   console.log('🔍 handleAskAI - Bourse:', bourse);
   console.log('🔍 User:', user);
@@ -1005,7 +1005,7 @@ const handleAskAI = (bourse) => {
         onApply={handleApply}
         user={user}
       />
-      {matchBourse && <MatchDrawerIA bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
+      {matchBourse && <Matchdraweria bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} c={c} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} c={c} />}
 

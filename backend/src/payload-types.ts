@@ -77,6 +77,7 @@ export interface Config {
     roadmap: Roadmap;
     feedbacks: Feedback;
     match: Match;
+    recommendations: Recommendation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -94,6 +95,7 @@ export interface Config {
     roadmap: RoadmapSelect<false> | RoadmapSelect<true>;
     feedbacks: FeedbacksSelect<false> | FeedbacksSelect<true>;
     match: MatchSelect<false> | MatchSelect<true>;
+    recommendations: RecommendationsSelect<false> | RecommendationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -646,6 +648,46 @@ export interface Match {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recommendations".
+ */
+export interface Recommendation {
+  id: string;
+  /**
+   * L'étudiant pour lequel les recommandations sont générées
+   */
+  studentProfile: string | User;
+  scholarships: {
+    bourseId: string;
+    titre: string;
+    description?: string | null;
+    domaine?: string | null;
+    niveau?: string | null;
+    pays?: string | null;
+    montant?: string | null;
+    deadline?: string | null;
+    lien?: string | null;
+    score: number;
+    raisons?:
+      | {
+          raison?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    id?: string | null;
+  }[];
+  /**
+   * Score maximum de la meilleure recommandation
+   */
+  scoreMax: number;
+  /**
+   * Date et heure de génération des recommandations
+   */
+  dateGeneration: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -707,6 +749,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'match';
         value: string | Match;
+      } | null)
+    | ({
+        relationTo: 'recommendations';
+        value: string | Recommendation;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1130,6 +1176,38 @@ export interface MatchSelect<T extends boolean = true> {
   algorithmVersion?: T;
   calculatedAt?: T;
   internalNotes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "recommendations_select".
+ */
+export interface RecommendationsSelect<T extends boolean = true> {
+  studentProfile?: T;
+  scholarships?:
+    | T
+    | {
+        bourseId?: T;
+        titre?: T;
+        description?: T;
+        domaine?: T;
+        niveau?: T;
+        pays?: T;
+        montant?: T;
+        deadline?: T;
+        lien?: T;
+        score?: T;
+        raisons?:
+          | T
+          | {
+              raison?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  scoreMax?: T;
+  dateGeneration?: T;
   updatedAt?: T;
   createdAt?: T;
 }
