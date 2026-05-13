@@ -626,21 +626,51 @@ export default function DashboardPage({
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.ds{animation:fadeUp 0.3s ease both}`}</style>
       <div style={{ maxWidth:1280, margin:'0 auto', padding:'32px 32px' }}>
         {/* HEADER */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:32, flexWrap:'wrap', gap:12 }} className="ds">
-          <div>
-            <div style={{ fontSize:11, color:c.ink3, fontWeight:500, marginBottom:6, letterSpacing:'0.06em', textTransform:'uppercase' }}>OppsTrack · {new Date().toLocaleDateString(lang==='fr'?'fr-FR':'en-US',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
-            <h1 style={{ fontSize:'2rem', fontWeight:700, color:c.ink, margin:'0 0 4px', letterSpacing:'-0.03em' }}>{lang==='fr'?'Tableau de Bord':'Dashboard'}</h1>
-            <p style={{ fontSize:13, color:c.ink2, margin:0 }}>{lang==='fr'?'Bonjour':'Hello'}, <strong style={{ color:c.ink }}>{user.name || user.email?.split('@')[0]}</strong> · {lang==='fr'?'Bourses · Opportunités · Suivi · Mises à jour en temps réel':'Scholarships · Opportunities · Tracking · Live updates'}</p>
-          </div>
-          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-            {urgentDeadlines.length > 0 && <span style={{ fontSize:11, fontWeight:600, padding:'5px 12px', background:c.redLt, color:c.danger, border:`1px solid ${c.danger}20` }}>⚡ {urgentDeadlines.length} {lang==='fr'?'urgente':'urgent'}{urgentDeadlines.length>1?'s':''}</span>}
-            <button style={{ padding:'8px 16px', background:c.accent, color:c.surface, border:'none', fontSize:12, fontWeight:600, cursor:'pointer' }} onClick={() => setView('bourses')}>{lang==='fr'?'Explorer les bourses':'Explore Scholarships'}</button>
-          </div>
-        </div>
+{/* HEADER - Pleine largeur sans espace avant */}
+<div style={{
+  background: c.paper,
+  padding: '40px 32px',
+  textAlign: 'center',
+  borderBottom: `1px solid ${c.rule}`,
+  width: '100%',
+  boxSizing: 'border-box',
+  margin: 0,
+}} className="ds">
+  <div style={{ fontSize:11, color:c.ink3, fontWeight:500, marginBottom:10, letterSpacing:'0.06em', textTransform:'uppercase' }}>
+    OppsTrack · {new Date().toLocaleDateString(lang==='fr'?'fr-FR':'en-US',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+  </div>
+  <h1 style={{
+    fontFamily: c.fSerif,
+    fontSize: 'clamp(32px, 5vw, 48px)',
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    color: c.ink,
+    margin: '0 0 12px',
+  }}>
+    {lang === 'fr'
+      ? <>Bonjour, <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>
+      : <>Hello, <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>}
+  </h1>
+  <p style={{ fontFamily: c.fSans, fontSize: 16, color: c.ink2, margin: '0 auto 20px', maxWidth: 600 }}>
+    {lang === 'fr'
+      ? 'Visualisez les opportunités de bourses, les échéances et leur répartition à l’échelle mondiale.'
+      : 'Scholarships · Opportunities · Tracking · Live updates'}
+  </p>
+  
+</div>
 
-        {/* ROW 1: GLOBAL STATS */}
-        <div style={{ marginBottom:20 }} className="ds"><GlobalStats bourses={bourses} deadlines={deadlines} lang={lang} c={c}/></div>
-
+{/* ROW 1: GLOBAL STATS - Pleine largeur sans marge externe */}
+<div style={{ 
+  background: c.surface,
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '24px 32px',
+  borderBottom: `1px solid ${c.rule}`,
+  margin: 0,
+  marginBottom: '32px'
+}} className="ds">
+  <GlobalStats bourses={bourses} deadlines={deadlines} lang={lang} c={c}/>
+</div>
         {/* ROW 2: CALENDAR + URGENT DEADLINES */}
         <div style={{ display:'grid', gridTemplateColumns:'1.35fr 1fr', gap:16, marginBottom:20 }} className="ds">
           <div style={cardStyle}>

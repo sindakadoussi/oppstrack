@@ -1181,9 +1181,88 @@ export default function ProfilPage({user,setUser,handleLogout,handleQuickReply,s
   const [saved,setSaved]=useState(false);
   const [favorites,setFavorites]=useState(0);
   const [aiAnalyzing,setAiAnalyzing]=useState(false);
-  const [aiAnalysis,setAiAnalysis]=useState(null);
-  const roadmap=roadmapData||[];
-  const setRoadmap=setRoadmapData;
+const [aiAnalysis,setAiAnalysis]=useState(null);
+const [showLoginModal, setShowLoginModal] = useState(false);
+const roadmap=roadmapData||[];
+const setRoadmap=setRoadmapData;
+
+const LoginModal = ({ onClose, c, lang }) => {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+  const send = async () => {
+    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
+    }
+  };
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
+      <div style={{ position: 'relative', zIndex: 2001, width: 420, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 8h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h2V7a6 6 0 1 1 12 0v1zm-2 0V7a4 4 0 1 0-8 0v1h8zm-5 6v2h2v-2h-2z" fill={c.accent}/>
+          </svg>
+          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 16, color: c.ink }}>{lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}</span>
+          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: c.ink3, fontSize: 18 }}>✕</button>
+        </div>
+        <div style={{ padding: 24 }}>
+          {status === 'idle' && (
+            <>
+              <p style={{ color: c.ink2, fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien magique.' : 'Enter your email to receive a magic link.'}
+              </p>
+              <input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} value={email} autoFocus
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${c.ruleSoft}`, background: c.paper, color: c.ink, fontSize: 13, outline: 'none', fontFamily: c.fSans }}
+              />
+              {errMsg && <div style={{ color: c.danger, fontSize: 11, marginTop: 6 }}>{errMsg}</div>}
+              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
+                {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
+            </>
+          )}
+          {status === 'sending' && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={{ width: 32, height: 32, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+              <p style={{ color: c.ink2, marginTop: 14 }}>{lang === 'fr' ? 'Envoi…' : 'Sending…'}</p>
+            </div>
+          )}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 12px' }}>
+                <path d="M3 3h18a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm17 4.238l-7.928 7.1L4 7.216V19h16V7.238zM4.511 5l7.55 6.662L19.502 5H4.511z" fill="#166534"/>
+              </svg>
+              <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
+              <p style={{ color: c.ink2, fontSize: 12 }}>{lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}</p>
+              <button onClick={onClose} style={{ width: '100%', marginTop: 16, padding: 10, background: '#166534', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto' }}>
+                <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z" fill={c.danger}/>
+              </svg>
+              <p style={{ color: c.danger, marginTop: 12 }}>{errMsg}</p>
+              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
   useEffect(()=>{
     const sp=(()=>{try{return JSON.parse(localStorage.getItem('opps_profile')||'{}');}catch{return{};}})();
@@ -1274,14 +1353,18 @@ const weeklyGain = sub.global - lastWeekScore;
       <div style={{background:c.surface,border:`1px solid ${c.rule}`,padding:'48px 40px',maxWidth:360,width:'100%',textAlign:'center'}}>
         <div style={{fontFamily:c.fSerif,fontSize:24,fontWeight:700,color:c.ink,marginBottom:12}}>{lang==='fr'?'Accès restreint':'Access restricted'}</div>
         <p style={{fontFamily:c.fSans,fontSize:13,color:c.ink2,lineHeight:1.6,marginBottom:24}}>{lang==='fr'?'Connectez-vous pour accéder à votre profil.':'Sign in to access your profile.'}</p>
-        <button onClick={()=>setView('accueil')} style={{padding:'10px 28px',background:c.accent,color:'#fff',border:'none',fontFamily:c.fSans,fontSize:12,fontWeight:700,cursor:'pointer',borderRadius:4}}>Se connecter</button>
+        <button onClick={()=>setShowLoginModal(true)} style={{padding:'10px 28px',background:c.accent,color:'#fff',border:'none',fontFamily:c.fSans,fontSize:12,fontWeight:700,cursor:'pointer',borderRadius:4}}>Se connecter</button>
       </div>
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
-
   // KPIs dynamiques
   const roadmapDone=roadmap.filter(r=>{const t=Array.isArray(r.etapes)?r.etapes.length:5;return(r.etapeCourante||0)>=t-1;}).length;
   const completionScore=Math.round([!!profile.name,!!profile.phone,!!profile.nationality,!!profile.currentLevel,!!profile.fieldOfStudy,!!profile.institution,!!profile.gpa,profile.languages.length>0,profile.skills.length>0,!!profile.targetDegree,profile.targetCountries.length>0,!!profile.motivationSummary,profile.academicHistory.length>0,profile.workExperience.length>0,profile.academicProjects.length>0].filter(Boolean).length/15*100);
+// Ajoutez ce composant LoginModal après le if(!user) return (...) 
+// et avant le return principal du composant
+
 
   return(
     <div style={{background:c.paper,minHeight:'100vh',fontFamily:c.fSans}}>

@@ -21,7 +21,9 @@ import StudentFeedback from './components/StudentFeedback';
 import GuestPage from './pages/Guestpage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
-
+import GuidesPage from './pages/GuidesPage';
+import FAQPage from './pages/FAQPage';
+import BlogPage from './pages/BlogPage';
 
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
@@ -406,7 +408,10 @@ function AppContent() {
   {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
   {view === 'contact'         && <ContactPage setView={setView} user={user} />}
   {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
-  {view === 'about' && <AboutPage setView={setView} />}
+  {view === 'about' && <AboutPage setView={setView} user={user} />}
+  {view === 'guides' && <GuidesPage setView={setView} />}
+{view === 'faq' && <FAQPage setView={setView} />}
+{view === 'blog' && <BlogPage setView={setView} />}
 </main>
 
       {/* ChatToggleButton - UN SEUL BOUTON */}

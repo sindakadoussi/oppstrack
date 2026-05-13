@@ -6,7 +6,11 @@ import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import Matchdraweria from '../components/Matchdraweria';
-
+const handleAskAI = (bourse) => {
+  console.log('🔍 handleAskAI - Bourse:', bourse);
+  console.log('🔍 User:', user);
+  setMatchBourse(bourse); // ← c'est ici que tu passes matchBourse
+};
 /* =============== TOKENS =============== */
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",

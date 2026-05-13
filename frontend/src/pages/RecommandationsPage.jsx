@@ -574,7 +574,7 @@ function ConseilsIA({ user, c, lang, handleQuickReply, setView }) {
 
     const fetchConseils = async () => {
       try {
-        const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation`, {
+        const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation-vectorisee`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -714,21 +714,26 @@ export default function RecommandationsPage({
   const { theme } = useTheme();
   const c = tokens(theme);
 
-  // FIX 2 — démarre directement en 'results' si l'user a déjà des données chargées
-  const [phase,         setPhase]         = useState('welcome');
-  const [generateStep,  setGenerateStep]  = useState(0);
+  // ── États ──
+  const [phase, setPhase] = useState('welcome');
+  const [generateStep, setGenerateStep] = useState(0);
   const [allScholarships, setAllScholarships] = useState([]);
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [analysisBourse, setAnalysisBourse] = useState(null);
-  const [selected,      setSelected]      = useState(null);
-  const [starredNoms,   setStarredNoms]   = useState(new Set());
-  const [appliedNoms,   setAppliedNoms]   = useState(new Set());
+  const [selected, setSelected] = useState(null);
+  const [starredNoms, setStarredNoms] = useState(new Set());
+  const [appliedNoms, setAppliedNoms] = useState(new Set());
   const [activeFilter, setActiveFilter] = useState('perso');
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [currentPage,   setCurrentPage]   = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 8;
   const autoLoadTriggered = useRef(false);
+
+// ✅ NOUVEAUX ÉTATS POUR LES FILTRES
+const [filterDeadline, setFilterDeadline] = useState('all'); // 'all', '30days', '60days', '90days'
+const [filterCountry, setFilterCountry] = useState('all'); // 'all', 'target', 'other', ou nom de pays spécifique
+const [availableCountries, setAvailableCountries] = useState([]); // Liste dynamique des pays
 
   const [searchQuery, setSearchQuery] = useState('');
   const [fullBoursesList, setFullBoursesList] = useState([]);
@@ -749,217 +754,328 @@ export default function RecommandationsPage({
     }
   }, [fullBoursesList.length, loadingFull]);
 
-  const STEPS = lang==='fr'
+  // ✅ CALCUL DES PAYS DISPONIBLES
+useEffect(() => {
+  const countries = new Set();
+  allScholarships.forEach(s => {
+    if (s.pays) countries.add(s.pays);
+  });
+  setAvailableCountries(Array.from(countries).sort());
+}, [allScholarships]);
+
+  const STEPS = lang === 'fr'
     ? ['Récupération de votre profil...', 'Chargement des bourses...', 'Calcul des scores IA...', 'Tri par compatibilité...']
     : ['Fetching your profile...', 'Loading scholarships...', 'Calculating AI scores...', 'Sorting by compatibility...'];
 
-  /* ── FIX 2 : auto-chargement quand l'user arrive sur la page ──
-     On ne montre plus le bouton "Générer" — on charge directement
-  ── */
+  // ── 1. generateNewRecommendations (fonction normale) ──
+const generateNewRecommendations = async () => {
+  if (!user?.id && !user?.email) return;
+  setLoading(true);
+  setError(null);
+  setGenerateStep(0);
+
+  const stepInterval = setInterval(() => {
+    setGenerateStep(prev => prev >= STEPS.length - 1 ? prev : prev + 1);
+  }, 600);
+
+  try {
+    const response = await fetch('http://localhost:5678/webhook/recommandation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, userId: user.id }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) throw new Error('Erreur n8n');
+
+    const data = await response.json();
+    const rawBourses = data.bourses || [];
+
+    if (rawBourses.length === 0) {
+      throw new Error(lang === 'fr' ? 'Aucune bourse trouvée' : 'No scholarships found');
+    }
+
+    // ✅ FORMATER LES DONNÉES COMME DANS loadSavedRecommendations
+    const formattedBourses = rawBourses.map(b => ({
+      id: b.id || b.bourseId || `temp-${Date.now()}`,
+      nom: b.titre || b.nom || 'Bourse sans nom',  // ← Clé importante !
+      description: b.description || '',
+      domaine: b.domaine || '',
+      niveau: b.niveau || '',
+      pays: b.pays || '',
+      montant: b.montant || '',
+      dateLimite: b.deadline || b.dateLimite || null,
+      lienOfficiel: b.lien || b.lienOfficiel || '',
+      financement: b.financement || 'fully_funded',
+      matchScore: b.score || b.matchScore || 0,
+      raisons: b.raisons || [],
+    }));
+
+    const sorted = formattedBourses.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+
+    clearInterval(stepInterval);
+    setAllScholarships(sorted);
+    setGenerateStep(STEPS.length - 1);
+    setTimeout(() => setPhase('results'), 400);
+  } catch (err) {
+    clearInterval(stepInterval);
+    setError(err.message);
+    setPhase('welcome');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // ── 2. loadSavedRecommendations (avec useCallback) ──
+const loadSavedRecommendations = useCallback(async () => {
+  if (!user?.id) return;
+  setLoading(true);
+  setError(null);
+
+  try {
+    const res = await axiosInstance.get('/api/recommendations', {
+      params: {
+        'where[studentProfile][equals]': user.id,
+        limit: 1,
+        sort: '-dateGeneration',
+        depth: 0
+      }
+    });
+
+    const savedRec = res.data.docs?.[0];
+    
+    console.log('📦 RAW savedRec.scholarships[0]:', savedRec?.scholarships?.[0]); 
+    
+    if (savedRec?.scholarships && savedRec.scholarships.length > 0) {
+      const formatted = savedRec.scholarships.map(s => {
+        // ✅ DEBUG : affiche chaque champ
+        console.log('🔍 Mapping bourse:', {
+          titre: s.titre,
+          nom: s.nom,
+          bourseId: s.bourseId,
+          id: s.id
+        });
+        
+        return {
+          id: s.bourseId || s.id || `temp-${Date.now()}`,
+          nom: s.titre || s.nom || 'Bourse sans nom',  // ← PRIORITÉ au titre
+          description: s.description || '',
+          domaine: s.domaine || '',
+          niveau: s.niveau || '',
+          pays: s.pays || '',
+          montant: s.montant || '',
+          dateLimite: s.deadline || s.dateLimite || null,
+          lienOfficiel: s.lien || s.lienOfficiel || '',
+          financement: s.financement || 'fully_funded',
+          matchScore: s.score || 0,
+          raisons: s.raisons?.map(r => r.raison) || []
+        };
+      });
+
+      console.log('✅ formatted[0]:', formatted[0]);
+
+      setAllScholarships(formatted);
+      setPhase('results');
+    } else {
+      await generateNewRecommendations();
+    }
+  } catch (err) {
+    console.error('[loadSavedRecommendations]', err);
+    await generateNewRecommendations();
+  } finally {
+    setLoading(false);
+  }
+}, [user?.id]);
+
+  // ── 3. useEffect d'auto-chargement (APRÈS les fonctions) ──
   useEffect(() => {
     if (!user?.id || autoLoadTriggered.current) return;
     autoLoadTriggered.current = true;
     setPhase('generating');
-    loadData();
-  }, [user?.id]);
+    loadSavedRecommendations();
+  }, [user?.id, loadSavedRecommendations]);
 
-  /* ── Chargement IA via webhook recommandation ── */
-  const loadData = useCallback(async () => {
-    if (!user?.id && !user?.email) return;
-    setLoading(true);
-    setError(null);
-    setGenerateStep(0);
-
-    const stepInterval = setInterval(() => {
-      setGenerateStep(prev => prev >= STEPS.length-1 ? prev : prev+1);
-    }, 600);
-
-    try {
-      const [favRes, roadmapRes] = await Promise.all([
-        axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit:1, depth:0 } }),
-        axiosInstance.get(API_ROUTES.roadmap.list, { params: { 'where[userId][equals]': user.id, limit:100, depth:0 } }),
-      ]);
-      setStarredNoms(new Set((favRes.data.docs?.[0]?.bourses||[]).map(b=>b.nom?.trim().toLowerCase())));
-      setAppliedNoms(new Set((roadmapRes.data.docs||[]).map(b=>b.nom?.trim().toLowerCase())));
-      onStarChange?.((favRes.data.docs?.[0]?.bourses||[]).length);
-
-      const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, userId: user.id }),
-        signal: AbortSignal.timeout(20000),
-      });
-
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-
-      const scored = (data.actives || []);
-      clearInterval(stepInterval);
-      setAllScholarships(scored);
-      setGenerateStep(STEPS.length-1);
-      setTimeout(() => setPhase('results'), 400);
-
-    } catch (err) {
-      clearInterval(stepInterval);
-      try {
-        const [userRes, boursesRes] = await Promise.all([
-          axiosInstance.get(`/api/users/${user.id}`, { params:{depth:0} }),
-          axiosInstance.get(API_ROUTES.bourses.list, { params:{limit:200, depth:0} }),
-        ]);
-        const profile = {
-          niveau: userRes.data.niveau || user.niveau || '',
-          domaine: userRes.data.domaine || user.domaine || '',
-        };
-        const scored = (boursesRes.data.docs||[]).map(b => {
-          let score = 0;
-          const matchReasons = [];
-          if (b.tunisienEligible==='oui') { score+=30; matchReasons.push('Éligible Tunisie'); }
-          if (profile.niveau && b.niveau?.toLowerCase().includes(profile.niveau.toLowerCase())) { score+=25; matchReasons.push(`Niveau ${b.niveau}`); }
-          else if (!b.niveau || b.niveau.toLowerCase().includes('tous')) score+=12;
-          if (profile.domaine && b.domaine?.toLowerCase().includes(profile.domaine.toLowerCase())) { score+=20; matchReasons.push(`Domaine ${b.domaine}`); }
-          if (b.statut==='active') { score+=15; matchReasons.push('Candidatures ouvertes'); }
-          if (b.dateLimite && Math.floor((new Date(b.dateLimite)-new Date())/86400000)>30) score+=3;
-          return { ...b, matchScore:score, matchReasons };
-        }).filter(b=>b.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore);
-        setAllScholarships(scored);
-        setGenerateStep(STEPS.length-1);
-        setTimeout(() => setPhase('results'), 400);
-      } catch {
-        setError(lang==='fr' ? 'Impossible de charger les recommandations.' : 'Could not load recommendations.');
-        setPhase('welcome');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [user, onStarChange, lang]);
-
-  /* ── Favoris ── */
+  // ── Favoris ──
   const handleStar = async (bourse, isStarred) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id) return;
     try {
-      const { data } = await axiosInstance.get('/api/favoris', { params:{'where[user][equals]':user.id, limit:1, depth:0} });
+      const { data } = await axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } });
       const doc = data.docs?.[0];
       if (isStarred) {
         if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:(doc.bourses||[]).filter(b=>b.nom?.trim().toLowerCase()!==nomKey) });
-        setStarredNoms(prev=>{ const s=new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
+        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
       } else {
-        const nb = { nom:bourse.nom, pays:bourse.pays||'', lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'', dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString() };
-        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses:[...(doc.bourses||[]), nb] });
-        else await axiosInstance.post('/api/favoris', { user:user.id, userEmail:user.email||'', bourses:[nb] });
-        setStarredNoms(prev=>{ const s=new Set([...prev,nomKey]); onStarChange?.(s.size); return s; });
+        const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
+        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
+        else await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
+        setStarredNoms(prev => { const s = new Set([...prev, nomKey]); onStarChange?.(s.size); return s; });
       }
       window.dispatchEvent(new CustomEvent('favoris-updated'));
-    } catch(e) { console.error('[handleStar]', e); }
+    } catch (e) { console.error('[handleStar]', e); }
   };
 
-  /* ── Postuler ── */
+  // ── Postuler ──
   const handleApply = async (bourse) => {
     const nomKey = bourse.nom?.trim().toLowerCase();
     if (!user?.id || appliedNoms.has(nomKey)) return;
     try {
       const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId:user.id, userEmail:user.email||'', nom:bourse.nom, pays:bourse.pays||'',
-        lienOfficiel:bourse.lienOfficiel||'', financement:bourse.financement||'',
-        dateLimite:bourse.dateLimite||null, ajouteLe:new Date().toISOString(), statut:'en_cours', etapeCourante:0,
+        userId: user.id, userEmail: user.email || '', nom: bourse.nom, pays: bourse.pays || '',
+        lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '',
+        dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
       });
       await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
-        roadmapId:res.data.doc.id,
-        user:{ id:user.id, email:user.email, niveau:user.niveau, domaine:user.domaine },
-        bourse:{ nom:bourse.nom, pays:bourse.pays, lien:bourse.lienOfficiel },
+        roadmapId: res.data.doc.id,
+        user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
+        bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
       });
-      setAppliedNoms(prev=>new Set([...prev, nomKey]));
+      setAppliedNoms(prev => new Set([...prev, nomKey]));
       window.dispatchEvent(new CustomEvent('roadmap-updated'));
       setTimeout(() => setView?.('roadmap'), 1000);
-    } catch(e) { console.error('[handleApply]', e); }
+    } catch (e) { console.error('[handleApply]', e); }
   };
 
   useEffect(() => { setCurrentPage(1); }, [activeFilter]);
   useEffect(() => { if (activeFilter !== 'test') setSearchQuery(''); }, [activeFilter]);
 
-  /* ── Filtrage ── */
-  const filtered = useMemo(() => {
-    let r = [...allScholarships];
-    if (activeFilter === 'easy') {
-      r = r.filter(s => s.matchScore >= 70);
-    } else if (activeFilter === 'nolang') {
-      r = r.filter(s => !((s.description||'').toLowerCase().includes('ielts') || (s.description||'').toLowerCase().includes('toefl')));
-    } else if (activeFilter === 'deadline') {
-      const d30 = new Date(Date.now() + 30*86400000);
-      r = r.filter(s => s.dateLimite && new Date(s.dateLimite) <= d30 && new Date(s.dateLimite) >= new Date());
-    } else if (activeFilter === 'perso') {
-      r = r.filter(s => s.matchScore >= 40);
-    } else if (activeFilter === 'test') {
-      if (searchQuery.trim() !== '') {
-        const q = searchQuery.toLowerCase();
-        r = fullBoursesList.filter(b =>
-          (b.nom?.toLowerCase().includes(q) || (b.pays && b.pays.toLowerCase().includes(q)))
-        );
-      } else {
-        r = [];
-      }
-    }
-    if (activeFilter === 'test') return r.sort((a,b) => (a.nom || '').localeCompare(b.nom || ''));
-    return r.sort((a,b) => (b.matchScore || 0) - (a.matchScore || 0));
-  }, [allScholarships, activeFilter, searchQuery, fullBoursesList]);
+  // ── Filtrage ──
+ // ✅ FILTRAGE AVEC DEADLINE ET PAYS
+const filtered = useMemo(() => {
+  let r = [...allScholarships];
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
-  const safePage   = Math.min(currentPage, totalPages);
-  const paged      = filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE);
+  // Filtre par onglet actif
+  if (activeFilter === 'easy') {
+    r = r.filter(s => s.matchScore >= 70);
+  } else if (activeFilter === 'nolang') {
+    r = r.filter(s => !((s.description || '').toLowerCase().includes('ielts') || (s.description || '').toLowerCase().includes('toefl')));
+  } else if (activeFilter === 'deadline') {
+    const d30 = new Date(Date.now() + 30 * 86400000);
+    r = r.filter(s => s.dateLimite && new Date(s.dateLimite) <= d30 && new Date(s.dateLimite) >= new Date());
+  } else if (activeFilter === 'perso') {
+    r = r.filter(s => !s.matchScore || s.matchScore >= 40);
+  } else if (activeFilter === 'test') {
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      r = fullBoursesList.filter(b =>
+        (b.nom?.toLowerCase().includes(q) || (b.pays && b.pays.toLowerCase().includes(q)))
+      );
+    } else {
+      r = [];
+    }
+  }
+
+  // ✅ FILTRE PAR DEADLINE
+  if (filterDeadline !== 'all') {
+    const today = new Date();
+    const daysMap = { '30days': 30, '60days': 60, '90days': 90 };
+    const targetDate = new Date(today.getTime() + daysMap[filterDeadline] * 86400000);
+    
+    r = r.filter(s => {
+      if (!s.dateLimite) return false;
+      const deadline = new Date(s.dateLimite);
+      return deadline >= today && deadline <= targetDate;
+    });
+  }
+
+  // ✅ FILTRE PAR PAYS
+  if (filterCountry !== 'all') {
+    if (filterCountry === 'target') {
+      // Pays cibles de l'étudiant
+      const targetCountries = (user.targetCountries || []).map(tc => 
+        tc.country?.toLowerCase().trim()
+      ).filter(Boolean);
+      r = r.filter(s => targetCountries.includes(s.pays?.toLowerCase().trim()));
+    } else if (filterCountry === 'other') {
+      // Autres pays
+      const targetCountries = (user.targetCountries || []).map(tc => 
+        tc.country?.toLowerCase().trim()
+      ).filter(Boolean);
+      r = r.filter(s => !targetCountries.includes(s.pays?.toLowerCase().trim()));
+    } else {
+      // Pays spécifique
+      r = r.filter(s => s.pays?.toLowerCase() === filterCountry.toLowerCase());
+    }
+  }
+
+  if (activeFilter === 'test') {
+    return r.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+  }
+
+  return r.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+}, [allScholarships, activeFilter, searchQuery, fullBoursesList, filterDeadline, filterCountry, user.targetCountries]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+// ✅ SÉPARATION PAR PAYS CIBLE
+const hasTargetCountries = user.targetCountries && user.targetCountries.length > 0;
+const targetCountriesLower = hasTargetCountries 
+  ? user.targetCountries.map(tc => tc.country?.toLowerCase().trim()).filter(Boolean)
+  : [];
+
+const targetScholarships = hasTargetCountries 
+  ? paged.filter(s => targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
+  : [];
+
+const otherScholarships = hasTargetCountries 
+  ? paged.filter(s => !targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
+  : paged;
   const stats = useMemo(() => ({
-    high:   allScholarships.filter(s=>s.matchScore>=70).length,
-    medium: allScholarships.filter(s=>s.matchScore>=40&&s.matchScore<70).length,
-    low:    allScholarships.filter(s=>s.matchScore<40).length,
-    total:  allScholarships.length,
+    high: allScholarships.filter(s => s.matchScore >= 70).length,
+    medium: allScholarships.filter(s => s.matchScore >= 40 && s.matchScore < 70).length,
+    low: allScholarships.filter(s => s.matchScore < 40).length,
+    total: allScholarships.length,
   }), [allScholarships]);
 
-  /* ── Non connecté ── */
+  // ── Non connecté ──
   if (!user) return (
     <>
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:c.paper, padding:24 }}>
-        <div style={{ background:c.surface, border:`1px solid ${c.rule}`, padding:'48px 40px', maxWidth:400, width:'100%', textAlign:'center' }}>
-          <div style={{ fontSize:48, marginBottom:16 }}>🎓</div>
-          <h3 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, margin:'0 0 12px' }}>
-            {lang==='fr' ? 'Recommandations personnalisées' : 'Personalized recommendations'}
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
+        <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '48px 40px', maxWidth: 400, width: '100%', textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎓</div>
+          <h3 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: '0 0 12px' }}>
+            {lang === 'fr' ? 'Recommandations personnalisées' : 'Personalized recommendations'}
           </h3>
-          <p style={{ color:c.ink3, fontSize:14, lineHeight:1.6, margin:'0 0 28px' }}>
-            {lang==='fr' ? 'Connectez-vous pour découvrir les bourses compatibles avec votre profil.' : 'Sign in to discover scholarships matching your profile.'}
+          <p style={{ color: c.ink3, fontSize: 14, lineHeight: 1.6, margin: '0 0 28px' }}>
+            {lang === 'fr' ? 'Connectez-vous pour découvrir les bourses compatibles avec votre profil.' : 'Sign in to discover scholarships matching your profile.'}
           </p>
-          <button onClick={()=>setShowLoginModal(true)} style={{ padding:'13px 36px', background:c.accent, color:'#fff', border:'none', fontSize:14, fontWeight:600, fontFamily:c.fMono, cursor:'pointer' }}>
-            {lang==='fr' ? 'Se connecter' : 'Sign in'}
+          <button onClick={() => setShowLoginModal(true)} style={{ padding: '13px 36px', background: c.accent, color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer' }}>
+            {lang === 'fr' ? 'Se connecter' : 'Sign in'}
           </button>
         </div>
       </div>
-      {showLoginModal && <LoginModal onClose={()=>setShowLoginModal(false)} c={c} lang={lang} />}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
       <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
     </>
   );
 
-  /* ── PHASE GENERATING ── */
+  // ── PHASE GENERATING ──
   if (phase === 'generating') return (
-    <div style={{ minHeight:'100vh', background:c.paper, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-      <div style={{ background:c.surface, border:`1px solid ${c.rule}`, padding:'56px 48px', maxWidth:480, width:'100%', textAlign:'center' }}>
-        <div style={{ width:52, height:52, border:`3px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.9s linear infinite', margin:'0 auto 28px' }} />
-        <h3 style={{ fontFamily:c.fSerif, fontSize:22, fontWeight:700, color:c.ink, marginBottom:28 }}>
-          {lang==='fr' ? 'Analyse IA en cours...' : 'AI analysis in progress...'}
+    <div style={{ minHeight: '100vh', background: c.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '56px 48px', maxWidth: 480, width: '100%', textAlign: 'center' }}>
+        <div style={{ width: 52, height: 52, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 28px' }} />
+        <h3 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 28 }}>
+          {lang === 'fr' ? 'Analyse IA en cours...' : 'AI analysis in progress...'}
         </h3>
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {STEPS.map((step,i)=>(
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'10px 16px', background:i<=generateStep?`${c.accent}10`:c.paper2, border:`1px solid ${i<=generateStep?`${c.accent}30`:c.ruleSoft}`, transition:'all 0.3s ease' }}>
-              <div style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, background:i<generateStep?c.success:i===generateStep?c.accent:c.ruleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                {i<generateStep ? <span style={{ color:'#fff', fontSize:11 }}>✓</span>
-                 : i===generateStep ? <div style={{ width:8, height:8, borderRadius:'50%', background:'#fff', animation:'pulse 1s infinite' }} />
-                 : null}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {STEPS.map((step, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 16px', background: i <= generateStep ? `${c.accent}10` : c.paper2, border: `1px solid ${i <= generateStep ? `${c.accent}30` : c.ruleSoft}`, transition: 'all 0.3s ease' }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: i < generateStep ? c.success : i === generateStep ? c.accent : c.ruleSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {i < generateStep ? <span style={{ color: '#fff', fontSize: 11 }}>✓</span>
+                  : i === generateStep ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1s infinite' }} />
+                    : null}
               </div>
-              <span style={{ fontSize:13, color:i<=generateStep?c.ink2:c.ink4, fontFamily:c.fSans, textAlign:'left' }}>{step}</span>
+              <span style={{ fontSize: 13, color: i <= generateStep ? c.ink2 : c.ink4, fontFamily: c.fSans, textAlign: 'left' }}>{step}</span>
             </div>
           ))}
         </div>
         {error && (
-          <div style={{ marginTop:20, padding:'12px 16px', background:c.dangerBg, color:c.danger, fontSize:13, borderLeft:`3px solid ${c.danger}` }}>
+          <div style={{ marginTop: 20, padding: '12px 16px', background: c.dangerBg, color: c.danger, fontSize: 13, borderLeft: `3px solid ${c.danger}` }}>
             {error}
-            <button onClick={()=>{setPhase('welcome');setError(null);}} style={{ marginLeft:12, color:c.danger, background:'none', border:'none', cursor:'pointer', textDecoration:'underline', fontSize:12 }}>
+            <button onClick={() => { setPhase('welcome'); setError(null); }} style={{ marginLeft: 12, color: c.danger, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}>
               Réessayer
             </button>
           </div>
@@ -969,9 +1085,9 @@ export default function RecommandationsPage({
     </div>
   );
 
-  /* ── PHASE RESULTS ── */
+  // ── PHASE RESULTS ──
   return (
-    <main style={{ background:c.paper, color:c.ink, fontFamily:c.fSans, minHeight:'100vh' }}>
+    <main style={{ background: c.paper, color: c.ink, fontFamily: c.fSans, minHeight: '100vh' }}>
       <style>{`
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
         @keyframes cardIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
@@ -981,37 +1097,38 @@ export default function RecommandationsPage({
       `}</style>
 
       {/* ── Hero ── */}
-      <div style={{ background:c.paper2, padding:'40px 32px', textAlign:'center', borderBottom:`1px solid ${c.rule}`, animation:'fadeIn 0.5s ease' }}>
-        <h1 style={{ fontFamily:c.fSerif, fontSize:'clamp(28px,4vw,44px)', fontWeight:700, letterSpacing:'-0.02em', color:c.ink, margin:'0 0 10px' }}>
-          {lang==='fr'
-            ? <>L’<em style={{ color:c.accent, fontStyle:'italic' }}>IA </em>a trouvé vos <em style={{ color:c.accent, fontStyle:'italic' }}>meilleures opportunités</em>.</>
-            : <>Your <em style={{ color:c.accent, fontStyle:'italic' }}>personalized recommendations</em>.</>}
+      <div style={{ background: c.paper2, padding: '40px 32px', textAlign: 'center', borderBottom: `1px solid ${c.rule}`, animation: 'fadeIn 0.5s ease' }}>
+        <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, letterSpacing: '-0.02em', color: c.ink, margin: '0 0 10px' }}>
+          {lang === 'fr'
+            ? <>L'<em style={{ color: c.accent, fontStyle: 'italic' }}>IA </em>a trouvé vos <em style={{ color: c.accent, fontStyle: 'italic' }}>meilleures opportunités</em>.</>
+            : <>Your <em style={{ color: c.accent, fontStyle: 'italic' }}>personalized recommendations</em>.</>}
         </h1>
-        <p style={{ fontFamily:c.fSans, fontSize:15, color:c.ink2, maxWidth:520, margin:'0 auto 24px' }}>
-          {lang==='fr'
+        <p style={{ fontFamily: c.fSans, fontSize: 15, color: c.ink2, maxWidth: 520, margin: '0 auto 24px' }}>
+          {lang === 'fr'
             ? `${stats.total} opportunités à fort potentiel vous attendent dès maintenant.`
             : `${stats.total} scholarships analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
         </p>
         <button
-  onClick={() => { 
-    autoLoadTriggered.current = false; 
-    setPhase('generating');  // ✅ Repasse en phase "generating" pour afficher l'alerte
-    setGenerateStep(0);       // ✅ Reset les étapes
-    setError(null);           // ✅ Efface les erreurs
-    loadData(); 
-  }}
-  style={{ background:'transparent', border:`1px solid ${c.rule}`, color:c.ink3, padding:'7px 18px', fontSize:12, cursor:'pointer', fontFamily:c.fMono }}
->
-  ↺ {lang==='fr' ? 'Actualiser' : 'Refresh'}
-</button>
+          onClick={() => {
+            autoLoadTriggered.current = false;
+            setPhase('generating');
+            setGenerateStep(0);
+            setError(null);
+            generateNewRecommendations();
+          }}
+          style={{ background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, padding: '7px 18px', fontSize: 12, cursor: 'pointer', fontFamily: c.fMono }}
+        >
+          ↺ {lang === 'fr' ? 'Actualiser' : 'Refresh'}
+        </button>
       </div>
 
-{/* ── Filtres intelligents (design onglets centrés) ── */}
+      {/* ── Filtres intelligents ── */}
+      {/* ── Filtres intelligents ── */}
 <div style={{ background: '#ffffff', borderBottom: `1px solid #e5e5e5`, padding: '0 32px' }}>
-  <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: activeFilter === 'test' ? 0 : 24 }}>
+  <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: activeFilter === 'test' ? 0 : 24 }}>
     {[
       { id: 'perso', label: lang === 'fr' ? 'Recommandations' : 'Recommendations' },
-      { id: 'test', label: lang === 'fr' ? 'Vérifier' : 'Verify'},
+      { id: 'test', label: lang === 'fr' ? 'Vérifier' : 'Verify' },
       { id: 'conseils', label: lang === 'fr' ? 'Conseils' : 'Advice' },
     ].map(tab => {
       const isActive = activeFilter === tab.id;
@@ -1040,136 +1157,271 @@ export default function RecommandationsPage({
             transition: 'all 0.2s ease',
           }}
         >
-          <span style={{ fontSize: 16 }}>{tab.icon}</span>
           <span>{tab.label}</span>
         </button>
       );
     })}
   </div>
-</div>
 
+  {/* ✅ FILTRES DEADLINE ET PAYS */}
+  {activeFilter === 'perso' && (
+    <div style={{ maxWidth: 960, margin: '0 auto', paddingBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      {/* Filtre Deadline */}
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <label style={{ display: 'block', fontSize: 11, color: c.ink3, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: c.fMono }}>
+          {lang === 'fr' ? 'Deadline' : 'Deadline'}
+        </label>
+        <select 
+          value={filterDeadline} 
+          onChange={e => { setFilterDeadline(e.target.value); setCurrentPage(1); }}
+          style={{ width: '100%', padding: '10px 12px', background: c.surface, border: `1px solid ${c.rule}`, color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer' }}
+        >
+          <option value="all">{lang === 'fr' ? 'Toutes' : 'All'}</option>
+          <option value="30days">{lang === 'fr' ? 'Dans 30 jours' : 'Within 30 days'}</option>
+          <option value="60days">{lang === 'fr' ? 'Dans 60 jours' : 'Within 60 days'}</option>
+          <option value="90days">{lang === 'fr' ? 'Dans 90 jours' : 'Within 90 days'}</option>
+        </select>
+      </div>
+
+      {/* Filtre Pays */}
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <label style={{ display: 'block', fontSize: 11, color: c.ink3, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: c.fMono }}>
+          {lang === 'fr' ? 'Pays' : 'Country'}
+        </label>
+        <select 
+          value={filterCountry} 
+          onChange={e => { setFilterCountry(e.target.value); setCurrentPage(1); }}
+          style={{ width: '100%', padding: '10px 12px', background: c.surface, border: `1px solid ${c.rule}`, color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer' }}
+        >
+          <option value="all">{lang === 'fr' ? 'Tous les pays' : 'All countries'}</option>
+          {hasTargetCountries && (
+            <>
+              <option value="target">
+                📍 {lang === 'fr' ? 'Mes pays cibles' : 'My target countries'} 
+                ({targetScholarships.length})
+              </option>
+              <option value="other">
+                🌍 {lang === 'fr' ? 'Autres pays' : 'Other countries'} 
+                ({otherScholarships.length})
+              </option>
+              <option disabled>──────────</option>
+            </>
+          )}
+          {availableCountries.map(country => (
+            <option key={country} value={country}>
+              {tCountry(country, lang)} ({allScholarships.filter(s => s.pays === country).length})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Bouton Reset */}
+      {(filterDeadline !== 'all' || filterCountry !== 'all') && (
+        <button 
+          onClick={() => { setFilterDeadline('all'); setFilterCountry('all'); setCurrentPage(1); }}
+          style={{ alignSelf: 'flex-end', padding: '10px 20px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, fontSize: 12, cursor: 'pointer', fontFamily: c.fMono }}
+        >
+          ✕ {lang === 'fr' ? 'Réinitialiser' : 'Reset'}
+        </button>
+      )}
+    </div>
+  )}
+</div>
 
       {/* Barre de recherche pour l'onglet test */}
       {activeFilter === 'test' && (
-         <div style={{ background:'#ffffff', padding:'24px 32px 0' }}>
-  <div style={{ maxWidth:960, margin:'0 auto' }}>
-          <div style={{ display:'flex', gap:12, alignItems:'center', background:'#ffffff', padding:'8px 16px', border:`1px solid #e0e0e0`, borderRadius:40 }}>
-            <span style={{ fontSize:18 }}>🔍</span>
-            <input
-              type="text"
-              placeholder={lang === 'fr' ? 'Nom de la bourse, pays...' : 'Scholarship name, country...'}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ flex:1, background:'transparent', border:'none', padding:'12px 0', outline:'none', color:c.ink, fontSize:14 }}
-              autoFocus
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, color:c.ink3, padding:'0 8px' }}>
-                ✕
-              </button>
-            )}
+        <div style={{ background: '#ffffff', padding: '24px 32px 0' }}>
+          <div style={{ maxWidth: 960, margin: '0 auto' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#ffffff', padding: '8px 16px', border: `1px solid #e0e0e0`, borderRadius: 40 }}>
+              <span style={{ fontSize: 18 }}>🔍</span>
+              <input
+                type="text"
+                placeholder={lang === 'fr' ? 'Nom de la bourse, pays...' : 'Scholarship name, country...'}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ flex: 1, background: 'transparent', border: 'none', padding: '12px 0', outline: 'none', color: c.ink, fontSize: 14 }}
+                autoFocus
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.ink3, padding: '0 8px' }}>
+                  ✕
+                </button>
+              )}
+            </div>
+            {loadingFull && <div style={{ textAlign: 'center', padding: 20, fontSize: 13, color: c.ink3 }}>Chargement des bourses...</div>}
           </div>
-          {loadingFull && <div style={{ textAlign:'center', padding:20, fontSize:13, color:c.ink3 }}>Chargement des bourses...</div>}
-        </div>
         </div>
       )}
 
       {/* ── Liste ── */}
       {activeFilter === 'conseils' ? (
-  <ConseilsIA
-    user={user}
-    c={c}
-    lang={lang}
-    handleQuickReply={handleQuickReply}
-    setView={setView}
-  />
-) : (
-  <div style={{ maxWidth:960, margin:'0 auto', padding:'32px 32px 80px' }}>
-        {error && (
-          <div style={{ padding:'14px 20px', background:c.dangerBg, borderLeft:`3px solid ${c.danger}`, marginBottom:24, display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13 }}>
-            <span style={{ color:c.danger }}>{error}</span>
-            <button onClick={loadData} style={{ padding:'6px 16px', background:c.danger, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:11 }}>
-              {lang==='fr' ? 'Réessayer' : 'Retry'}
-            </button>
-          </div>
-        )}
-
-        {paged.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'80px 20px' }}>
-            <div style={{ fontSize:48, marginBottom:16, color:c.ink4 }}>○</div>
-            <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:600, color:c.ink, marginBottom:8 }}>
-              {lang==='fr' ? 'Aucun résultat' : 'No results'}
-            </div>
-            <p style={{ color:c.ink3, fontSize:13 }}>
-              {activeFilter === 'test'
-                ? (lang==='fr' ? 'Commencez à taper le nom d\'une bourse ou d\'un pays.' : 'Start typing a scholarship name or country.')
-                : (lang==='fr' ? 'Complétez votre profil pour de meilleures suggestions.' : 'Complete your profile for better suggestions.')}
-            </p>
-          </div>
-        ) : (
-          <>
-            {paged.map((bourse, i) => (
-              <ScholarshipCard
-                key={bourse.id}
-                bourse={bourse}
-                index={i}
-                onAnalyze={setAnalysisBourse}
-                onSave={handleStar}
-                onApply={handleApply}
-                isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                c={c}
-                lang={lang}
-              />
-            ))}
-            {totalPages > 1 && (
-              <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:12, paddingTop:32, borderTop:`1px solid ${c.rule}`, marginTop:8 }}>
-                <button onClick={()=>{setCurrentPage(p=>Math.max(1,p-1));window.scrollTo({top:0,behavior:'smooth'});}} disabled={safePage===1}
-                  style={{ padding:'8px 20px', background:'transparent', border:`1px solid ${safePage===1?c.ruleSoft:c.rule}`, color:safePage===1?c.ink4:c.ink2, fontSize:12, cursor:safePage===1?'default':'pointer', fontFamily:c.fMono }}>
-                  ← {lang==='fr'?'Précédent':'Previous'}
-                </button>
-                <span style={{ fontSize:12, fontFamily:c.fMono, color:c.ink3 }}>
-                  <span style={{ color:c.accent, fontWeight:600 }}>{safePage}</span> / {totalPages}
-                </span>
-                <button onClick={()=>{setCurrentPage(p=>Math.min(totalPages,p+1));window.scrollTo({top:0,behavior:'smooth'});}} disabled={safePage===totalPages}
-                  style={{ padding:'8px 20px', background:'transparent', border:`1px solid ${safePage===totalPages?c.ruleSoft:c.rule}`, color:safePage===totalPages?c.ink4:c.ink2, fontSize:12, cursor:safePage===totalPages?'default':'pointer', fontFamily:c.fMono }}>
-                  {lang==='fr'?'Suivant':'Next'} →
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      )}
-
-     
-
-      {/* ── Drawers ── */}
-      {analysisBourse && (
-        <MatchAnalysisPanel
-          bourse={analysisBourse}
+        <ConseilsIA
           user={user}
-          onClose={()=>setAnalysisBourse(null)}
-          onSave={handleStar}
-          onApply={handleApply}
-          isStarred={starredNoms.has(analysisBourse.nom?.trim().toLowerCase())}
-          isApplied={appliedNoms.has(analysisBourse.nom?.trim().toLowerCase())}
           c={c}
           lang={lang}
+          handleQuickReply={handleQuickReply}
+          setView={setView}
         />
+      ) : (
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 32px 80px' }}>
+          {error && (
+            <div style={{ padding: '14px 20px', background: c.dangerBg, borderLeft: `3px solid ${c.danger}`, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <span style={{ color: c.danger }}>{error}</span>
+              <button onClick={generateNewRecommendations} style={{ padding: '6px 16px', background: c.danger, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 11 }}>
+                {lang === 'fr' ? 'Réessayer' : 'Retry'}
+              </button>
+            </div>
+          )}
+
+          {paged.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 16, color: c.ink4 }}>○</div>
+              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.ink, marginBottom: 8 }}>
+                {lang === 'fr' ? 'Aucun résultat' : 'No results'}
+              </div>
+              <p style={{ color: c.ink3, fontSize: 13 }}>
+                {activeFilter === 'test'
+                  ? (lang === 'fr' ? 'Commencez à taper le nom d\'une bourse ou d\'un pays.' : 'Start typing a scholarship name or country.')
+                  : (lang === 'fr' ? 'Essayez de changer les filtres ou complétez votre profil.' : 'Try changing filters or complete your profile.')}
+              </p>
+              {(filterDeadline !== 'all' || filterCountry !== 'all') && (
+                <button 
+                  onClick={() => { setFilterDeadline('all'); setFilterCountry('all'); }}
+                  style={{ marginTop: 16, padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 12 }}
+                >
+                  {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* ✅ SECTION PAYS CIBLES */}
+              {hasTargetCountries && targetScholarships.length > 0 && (
+                <div style={{ marginBottom: 48 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 12, borderBottom: `2px solid ${c.accent}` }}>
+                    <span style={{ fontSize: 24 }}>📍</span>
+                    <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0 }}>
+                      {lang === 'fr' 
+                        ? `${targetScholarships.length} bourse${targetScholarships.length > 1 ? 's' : ''} dans vo${targetScholarships.length > 1 ? 's' : 'tre'} pays cible${targetScholarships.length > 1 ? 's' : ''}`
+                        : `${targetScholarships.length} scholarship${targetScholarships.length > 1 ? 's' : ''} in your target countr${targetScholarships.length > 1 ? 'ies' : 'y'}`}
+                    </h2>
+                  </div>
+                  <p style={{ fontSize: 14, color: c.ink3, marginBottom: 24, lineHeight: 1.6 }}>
+                    {lang === 'fr'
+                      ? `Ces bourses correspondent à vos pays cibles : ${user.targetCountries.map(tc => tCountry(tc.country, lang)).join(', ')}.`
+                      : `These scholarships match your target countries: ${user.targetCountries.map(tc => tCountry(tc.country, lang)).join(', ')}.`}
+                  </p>
+                  {targetScholarships.map((bourse, i) => (
+                    <ScholarshipCard
+                      key={bourse.id}
+                      bourse={bourse}
+                      index={i}
+                      onAnalyze={setAnalysisBourse}
+                      onSave={handleStar}
+                      onApply={handleApply}
+                      isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                      isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                      c={c}
+                      lang={lang}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* ✅ SECTION AUTRES PAYS */}
+              {otherScholarships.length > 0 && (
+                <div>
+                  {hasTargetCountries && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 12, borderBottom: `2px solid ${c.ink4}` }}>
+                      <span style={{ fontSize: 24 }}>🌍</span>
+                      <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0 }}>
+                        {lang === 'fr' 
+                          ? `${otherScholarships.length} autre${otherScholarships.length > 1 ? 's' : ''} opportunité${otherScholarships.length > 1 ? 's' : ''}`
+                          : `${otherScholarships.length} other opportunit${otherScholarships.length > 1 ? 'ies' : 'y'}`}
+                      </h2>
+                    </div>
+                  )}
+                  {hasTargetCountries && (
+                    <p style={{ fontSize: 14, color: c.ink3, marginBottom: 24, lineHeight: 1.6 }}>
+                      {lang === 'fr'
+                        ? 'Ces bourses sont dans d\'autres pays, mais vous avez de bonnes chances d\'acceptation.'
+                        : 'These scholarships are in other countries, but you have good chances of acceptance.'}
+                    </p>
+                  )}
+                  {otherScholarships.map((bourse, i) => (
+                    <ScholarshipCard
+                      key={bourse.id}
+                      bourse={bourse}
+                      index={hasTargetCountries ? i + targetScholarships.length : i}
+                      onAnalyze={setAnalysisBourse}
+                      onSave={handleStar}
+                      onApply={handleApply}
+                      isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                      isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                      c={c}
+                      lang={lang}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+             {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 32, borderTop: `1px solid ${c.rule}`, marginTop: 48 }}>
+                  <button 
+                    onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                    disabled={safePage === 1}
+                    style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${safePage === 1 ? c.ruleSoft : c.rule}`, color: safePage === 1 ? c.ink4 : c.ink2, fontSize: 12, cursor: safePage === 1 ? 'default' : 'pointer', fontFamily: c.fMono }}
+                  >
+                    ← {lang === 'fr' ? 'Précédent' : 'Previous'}
+                  </button>
+                  <span style={{ fontSize: 12, fontFamily: c.fMono, color: c.ink3 }}>
+                    <span style={{ color: c.accent, fontWeight: 600 }}>{safePage}</span> / {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                    disabled={safePage === totalPages}
+                    style={{ padding: '8px 20px', background: 'transparent', border: `1px solid ${safePage === totalPages ? c.ruleSoft : c.rule}`, color: safePage === totalPages ? c.ink4 : c.ink2, fontSize: 12, cursor: safePage === totalPages ? 'default' : 'pointer', fontFamily: c.fMono }}
+                  >
+                    {lang === 'fr' ? 'Suivant' : 'Next'} →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
-      {selected && (
-        <BourseDrawer
-          bourse={selected}
-          onClose={()=>setSelected(null)}
-          onAskAI={()=>{}}
-          starred={starredNoms.has(selected.nom?.trim().toLowerCase())}
-          onStar={handleStar}
-          applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}
-          onApply={handleApply}
-          user={user}
-        />
-      )}
+
+
+      {/* ── Drawers ── */}
+{analysisBourse && (
+  <BourseDrawer
+    bourse={analysisBourse}
+    user={user}
+    onClose={() => setAnalysisBourse(null)}
+    onAskAI={(b) => {
+      // Ici tu peux déclencher l'assistant IA
+      console.log('Ask AI pour:', b.nom);
+      setAnalysisBourse(null);
+    }}
+    starred={starredNoms.has(analysisBourse.nom?.trim().toLowerCase())}
+    onStar={handleStar}
+    applied={appliedNoms.has(analysisBourse.nom?.trim().toLowerCase())}
+    onApply={handleApply}
+  />
+)}
+{selected && (
+  <BourseDrawer
+    bourse={selected}
+    onClose={() => setSelected(null)}
+    onAskAI={(b) => console.log('Ask AI:', b.nom)}
+    starred={starredNoms.has(selected.nom?.trim().toLowerCase())}
+    onStar={handleStar}
+    applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}
+    onApply={handleApply}
+    user={user}
+  />
+)}
     </main>
   );
 }

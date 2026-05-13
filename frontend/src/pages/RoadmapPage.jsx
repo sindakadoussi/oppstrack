@@ -267,17 +267,14 @@ function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
         >
           {lang === 'fr' ? (
             <>
-              Ma{' '}
-              <em style={{ color: c.accent, fontStyle: 'italic' }}>
-                Roadmap Bourses
-              </em>
-              .
+              {' '}
+              <em style={{ color: c.accent, fontStyle: 'italic' }}>Pipeline </em> de candidatures piloté par l’IA.
             </>
           ) : (
             <>
-              My{' '}
+              AI-driven candidate{' '}
               <em style={{ color: c.accent, fontStyle: 'italic' }}>
-                Scholarship Roadmap
+                 pipeline
               </em>
               .
             </>
@@ -295,8 +292,8 @@ function TopBar({ lang, c, totalCount, onTabChange, activeTab, focusMode }) {
           }}
         >
           {lang === 'fr'
-            ? `${totalCount} bourses suivies, progression personnalisée par l’IA.`
-            : `${totalCount} scholarships tracked, AI‑powered progress.`}
+            ? `${totalCount} bourses organisées en étapes séquentielles et priorisées.`
+            : `${totalCount} scholarships organized in sequential and prioritized stages.`}
         </p>
       </div>
 

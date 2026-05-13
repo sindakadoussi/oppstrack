@@ -4,10 +4,138 @@ import { NextResponse } from 'next/server'
 import { authenticated } from '@/access/authenticated'
 import { anyone } from '@/access/anyone'
 
+
+
+// ✅ NOUVEAU : Hook d'invalidation des recommandations
+// ✅ HOOK AMÉLIORÉ : Invalidation + Régénération automatique
+const invalidateRecommendationsOnProfileChange = async ({
+  doc,
+  previousDoc,
+  req,
+  operation,
+}: any) => {
+  if (operation !== 'update') return doc;
+
+  const criticalFields = [
+    'targetCountries',
+    'domaine',
+    'niveau',
+    'workExperience',
+    'academicHistory',
+    'skills',
+    'languages',
+    'publications',
+    'certifications',
+    'academicProjects',
+    'awards',
+    'fieldOfStudy',
+    'currentLevel',
+    'targetFields',
+  ];
+
+  let shouldInvalidate = false;
+  let changedFields: string[] = [];
+  
+  for (const field of criticalFields) {
+    const oldValue = JSON.stringify(previousDoc[field] || null);
+    const newValue = JSON.stringify(doc[field] || null);
+    
+    if (oldValue !== newValue) {
+      shouldInvalidate = true;
+      changedFields.push(field);
+      console.log(`🔄 [INVALIDATE] Changement détecté sur: ${field}`);
+    }
+  }
+
+  if (!shouldInvalidate) {
+    console.log('✅ [INVALIDATE] Aucun changement critique');
+    return doc;
+  }
+
+  console.log(`📢 [INVALIDATE] Champs modifiés: ${changedFields.join(', ')}`);
+  console.log(`🆔 Utilisateur: ${doc.id} (${doc.email})`);
+
+  // 1️⃣ SUPPRIMER LES ANCIENNES RECOMMANDATIONS
+  let deletedCount = 0;
+  try {
+    const existingRecs = await req.payload.find({
+      collection: 'recommendations',
+      where: {
+        studentProfile: {
+          equals: doc.id,
+        },
+      },
+      limit: 100,
+    });
+
+    if (existingRecs.docs.length > 0) {
+      console.log(`🗑️ [INVALIDATE] Suppression de ${existingRecs.docs.length} recommandation(s)`);
+      
+      for (const rec of existingRecs.docs) {
+        await req.payload.delete({
+          collection: 'recommendations',
+          id: rec.id,
+        });
+      }
+      
+      deletedCount = existingRecs.docs.length;
+      console.log('✅ [INVALIDATE] Recommandations supprimées');
+    }
+  } catch (error: any) {
+    console.error('❌ [INVALIDATE] Erreur suppression:', error.message);
+  }
+
+  // 2️⃣ DÉCLENCHER LA RÉGÉNÉRATION AUTOMATIQUE VIA N8N
+  try {
+    console.log('🚀 [INVALIDATE] Déclenchement régénération n8n...');
+    
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678';
+    const regenUrl = `${webhookUrl}/webhook/recommandation`;
+    
+    const response = await fetch(regenUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Trigger-Source': 'profile-hook',
+      },
+      body: JSON.stringify({ 
+        email: doc.email, 
+        userId: doc.id,
+        forceRefresh: true,
+        triggerSource: 'profile-update',
+        changedFields: changedFields,
+        deletedCount: deletedCount,
+        timestamp: new Date().toISOString()
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const newCount = result.bourses?.length || 0;
+    
+    console.log(`✅ [INVALIDATE] Régénération réussie: ${newCount} nouvelles recommandations`);
+    
+  } catch (error: any) {
+    console.error('❌ [INVALIDATE] Erreur régénération n8n:', error.message);
+    // Ne pas bloquer si webhook échoue - frontend régénérera au chargement
+    console.log('ℹ️ [INVALIDATE] Les recommandations seront régénérées au prochain chargement');
+  }
+
+  return doc;
+};
+
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: { useAsTitle: 'email' },
   auth: true,
+  hooks: {
+  afterChange: [
+    invalidateRecommendationsOnProfileChange,
+  ],
+},
   access: {
     read:   anyone,
     update: authenticated,
