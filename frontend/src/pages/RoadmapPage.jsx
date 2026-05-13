@@ -460,7 +460,8 @@ function BourseCard({ bourse, onClick, onDelete, onRegenerate, c, lang }) {
   );
 }
 
-function TodayBanner({ bourses, onFocusBourse, c, lang }) {
+function TodayBanner({ bourses, onFocusBourse, c, lang, theme }) {
+  const isDark = theme === "dark";
   const urgent = useMemo(() => {
     const list = bourses
       .filter(b => b.etapes?.length > 0 && b.etapeCourante < b.etapes.length)
@@ -475,14 +476,19 @@ function TodayBanner({ bourses, onFocusBourse, c, lang }) {
   if (!urgent) return null;
   const remaining = urgent.bourse.etapes.length - urgent.bourse.etapeCourante;
 
+  // Couleurs dynamiques
+  const bannerBg = isDark ? "#2d2a1e" : "#fffbeb";
+  const bannerBorder = isDark ? "#4a3b1a" : "#fde68a";
+  const titleColor = isDark ? "#fcd34d" : "#92400e";
+
   return (
-    <div style={{ margin: '16px 0', background: '#fffbeb', border: `1px solid #fde68a`, padding: '16px 20px' }}>
+    <div style={{ margin: '16px 0', background: bannerBg, border: `1px solid ${bannerBorder}`, padding: '16px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ width: 36, height: 36, background: c.warn, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <RI name="calendar" size={18} color="#fff" />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: titleColor, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
             {lang === 'fr' ? 'À FAIRE AUJOURD\'HUI' : 'DO TODAY'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -508,8 +514,8 @@ function TodayBanner({ bourses, onFocusBourse, c, lang }) {
   );
 }
 
-function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, onReload, c, lang }) {
-  // ✅ FONCTION DE TRI PAR DEADLINE
+function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, onReload, c, lang, theme }) {
+    // ✅ FONCTION DE TRI PAR DEADLINE
   const sortByDeadline = (a, b) => {
     const dateA = a.deadline ? new Date(a.deadline) : null;
     const dateB = b.deadline ? new Date(b.deadline) : null;
@@ -544,8 +550,7 @@ function KanbanView({ bourses, loading, onFocusBourse, onDelete, onRegenerate, o
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px' }}>
-      <TodayBanner bourses={bourses} onFocusBourse={onFocusBourse} c={c} lang={lang} />
-
+      <TodayBanner bourses={bourses} onFocusBourse={onFocusBourse} c={c} lang={lang} theme={theme} />
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '24px 0', color: c.ink3 }}>
           <div style={{ width: 22, height: 22, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
@@ -682,7 +687,8 @@ function StepBlock({ etape, index, isOpen, onToggle, completedDocs, onUploadDoc,
   );
 }
 
-function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onGenerateDraft, onAskAI, onRegenerate, onDelete, onBack, c, lang }) {
+function FocusModeView({ bourse, completedDocs, onUploadDocument, onSetStep, onGenerateDraft, onAskAI, onRegenerate, onDelete, onBack, c, lang, theme }) {
+  const isDark = theme === "dark";
   const [expandedSteps, setExpandedSteps] = useState(() => ({ [bourse.etapeCourante || 0]: true }));
   const { translated, translating } = useTranslatedEtapes(bourse.etapes, lang);
   const etapesDisplay = lang === 'en' && translated ? translated : (bourse.etapes || []);
@@ -804,26 +810,31 @@ const handleUploadDoc = (stepTitle, docName) => {
       </div>
 
       {currentStep && (
-        <div style={{ background: '#eff6ff', border: `1px solid #bfdbfe`, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <RI name="rocket" size={14} color="#1e40af" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {lang === 'fr' ? 'Prochaine action' : 'Next action'}
-            </span>
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: c.ink, marginBottom: 10 }}>{currentStep.titre}</div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={() => goToStep(currentIdx + 1 < etapesDisplay.length ? currentIdx + 1 : currentIdx)}
-              style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <RI name="sparkle" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
-            </button>
-            <button style={{ padding: '7px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
-              {lang === 'fr' ? 'Plus tard' : 'Later'}
-            </button>
-          </div>
-        </div>
-      )}
+  <div style={{ 
+    background: isDark ? "#1e293b" : "#eff6ff", 
+    border: `1px solid ${isDark ? "#334155" : "#bfdbfe"}`, 
+    padding: '14px 16px', 
+    marginBottom: 16 
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <RI name="rocket" size={14} color={isDark ? "#60a5fa" : "#1e40af"} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#93c5fd" : "#1e40af", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {lang === 'fr' ? 'Prochaine action' : 'Next action'}
+      </span>
+    </div>
+    <div style={{ fontSize: 14, fontWeight: 600, color: c.ink, marginBottom: 10 }}>{currentStep.titre}</div>
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button
+        onClick={() => goToStep(currentIdx + 1 < etapesDisplay.length ? currentIdx + 1 : currentIdx)}
+        style={{ padding: '7px 16px', background: c.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <RI name="sparkle" size={12} /> {lang === 'fr' ? 'COMMENCER' : 'START'}
+      </button>
+      <button style={{ padding: '7px 14px', background: 'transparent', border: `1px solid ${c.ruleSoft}`, color: c.ink2, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono }}>
+        {lang === 'fr' ? 'Plus tard' : 'Later'}
+      </button>
+    </div>
+  </div>
+)}
 
       {risks.length > 0 && (
         <div style={{ background: '#fef2f2', border: `1px solid #fecaca`, padding: '10px 14px', marginBottom: 16 }}>
@@ -891,10 +902,10 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
   const submitted = (bourses || []).filter(b => b.col === 'soumises' || b.col === 'acceptees').length;
   const badgesCount = BADGES_UNLOCKED.length;
   const statCards = [
-    {      label: lang==='fr'?'Progression globale':'Global progress',     value: `${avgProgress}%`, tag: lang==='fr'?'Total':'Total',         tagBg: '#e0f2fe', tagColor: '#0369a1', bg: '#fef9f0',  },
-    {  label: lang==='fr'?'Jours consécutifs':'Streak days',           value: streak,            tag: 'Streak',                            tagBg: '#fee2e2', tagColor: '#dc2626', bg: '#fff7f5',  },
-    { label: lang==='fr'?'Candidatures soumises':'Submitted',         value: submitted,         tag: lang==='fr'?'Complétées':'Done',      tagBg: '#dcfce7', tagColor: '#16a34a', bg: '#f0fdf4'},
-    {    label: lang==='fr'?`sur 9 débloqués`:'of 9 unlocked',          value: badgesCount,       tag: lang==='fr'?'Badges':'Badges',       tagBg: '#fef9c3', tagColor: '#854d0e', bg: '#fffef5' },
+    { label: lang === 'fr' ? 'Progression globale' : 'Global progress', value: `${avgProgress}%`, tag: lang === 'fr' ? 'Total' : 'Total', icon: 'chart' },
+    { label: lang === 'fr' ? 'Jours consécutifs' : 'Streak days', value: streak, tag: 'Streak', icon: 'calendar' },
+    { label: lang === 'fr' ? 'Candidatures soumises' : 'Submitted', value: submitted, tag: lang === 'fr' ? 'Complétées' : 'Done', icon: 'send' },
+    { label: lang === 'fr' ? `sur 9 débloqués` : 'of 9 unlocked', value: badgesCount, tag: lang === 'fr' ? 'Badges' : 'Badges', icon: 'medal' },
   ];
   const currentLevelIdx = avgProgress < 20 ? 0 : avgProgress < 40 ? 1 : avgProgress < 60 ? 2 : avgProgress < 80 ? 3 : 4;
   const nextLevelTarget = [20, 40, 60, 80, 100][currentLevelIdx] || 100;
@@ -905,15 +916,15 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
       {/* Stats cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {statCards.map((s, i) => (
-          <div key={i} style={{ background: s.bg, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+          <div key={i} style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <RI name={s.icon} size={18} />
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: c.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RI name={s.icon} size={18} color={c.accent} />
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: c.paper2, color: c.ink3 }}>{s.tag}</span>
             </div>
             <div style={{ fontSize: 32, fontWeight: 700, color: c.ink, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: c.ink3, marginTop: 6 }}>{s.label}</div>
+            <div style={{ fontSize: 12, color: c.ink2, marginTop: 6 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -922,15 +933,15 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
       <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: c.ink }}>{lang==='fr'?'Niveau :':'Level:'} {LEVELS[currentLevelIdx]}</div>
-            <div style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>{lang==='fr'?'Continue comme ça pour débloquer le niveau suivant !':'Keep going to unlock the next level!'}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: c.ink }}>{lang === 'fr' ? 'Niveau :' : 'Level:'} {LEVELS[currentLevelIdx]}</div>
+            <div style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>{lang === 'fr' ? 'Continue comme ça pour débloquer le niveau suivant !' : 'Keep going to unlock the next level!'}</div>
           </div>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <RI name="trophy" size={22} />
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: c.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RI name="trophy" size={22} color={c.accent} />
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: c.ink3, marginBottom: 6, marginTop: 12 }}>
-          <span>{lang==='fr'?`Progression vers ${LEVELS[Math.min(currentLevelIdx+1,4)]}`:`Progress to ${LEVELS[Math.min(currentLevelIdx+1,4)]}`}</span>
+          <span>{lang === 'fr' ? `Progression vers ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}` : `Progress to ${LEVELS[Math.min(currentLevelIdx + 1, 4)]}`}</span>
           <span style={{ fontWeight: 600, color: c.ink }}>{avgProgress}/{nextLevelTarget}</span>
         </div>
         <div style={{ height: 10, background: c.ruleSoft, borderRadius: 5, overflow: 'hidden', marginBottom: 14 }}>
@@ -944,29 +955,29 @@ function ProgressionView({ bourses = [], avgProgress, streak, c, lang }) {
       </div>
 
       {/* Badges débloqués */}
-     {/* Badges débloqués */}
-<div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-  <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-    {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
-  </div>
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-    {BADGES_UNLOCKED.map((b, i) => (
-      <div key={i} style={{ background: b.bg, border: `1px solid ${b.border}`, borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: c.ink, marginBottom: 2 }}>{b.label}</div>
-          <div style={{ fontSize: 11, color: c.ink3 }}>{b.desc}</div>
+      <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {lang === 'fr' ? `Badges débloqués (${badgesCount})` : `Unlocked badges (${badgesCount})`}
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: b.color, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
-        </span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {BADGES_UNLOCKED.map((b, i) => (
+            <div key={i} style={{ background: c.paper2, border: `1px solid ${c.ruleSoft}`, borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.ink, marginBottom: 2 }}>{b.label}</div>
+                <div style={{ fontSize: 11, color: c.ink3 }}>{b.desc}</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: c.accent, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <RI name="check" size={10} /> {lang === 'fr' ? 'Débloqué ✓' : 'Unlocked ✓'}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
-    ))}
-  </div>
-</div>
+
       {/* Badges à débloquer */}
       <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, borderRadius: 12, padding: '20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: c.ink, marginBottom: 16 }}>
-        {lang==='fr'?'Prochains badges à débloquer':'Next badges to unlock'}
+          {lang === 'fr' ? 'Prochains badges à débloquer' : 'Next badges to unlock'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {BADGES_LOCKED.map((b, i) => {
@@ -1268,6 +1279,8 @@ useEffect(() => {
           onBack={handleBackToKanban}
           c={c}
           lang={lang}
+            theme={theme}                       // ← ajouter
+
         />
       ) : (
         <>
@@ -1281,6 +1294,7 @@ useEffect(() => {
               onReload={reload}
               c={c}
               lang={lang}
+              theme={theme} 
             />
           )}
           {activeTab === 'progression' && (

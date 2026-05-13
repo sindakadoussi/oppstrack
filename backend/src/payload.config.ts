@@ -11,9 +11,7 @@ import nodemailer from 'nodemailer'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
 import Favoris from './collections/Favoris'
-import Roadmap from './collections/Roadmap'
-import dns from 'dns'
-dns.setServers(['8.8.8.8', '8.8.4.4'])
+import Roadmap from './collections/Roadmap';
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import Feedbacks from './collections/Feedbacks'
@@ -26,7 +24,6 @@ const dirname = path.dirname(filename)
 export default buildConfig({
   cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
   csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
-
   admin: {
     user: Users.slug,
     importMap: {
@@ -53,6 +50,7 @@ export default buildConfig({
   collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks, Match , Recommendations],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
+  
 
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

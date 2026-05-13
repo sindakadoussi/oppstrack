@@ -21,25 +21,30 @@ import { useT } from "../i18n";
 const ThemeContext = createContext({ theme: "light", toggleTheme: () => {} });
 
 export const ThemeProvider = ({ children }) => {
+  // Lire depuis localStorage au démarrage
   const [theme, setTheme] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("app-theme");
-      if (saved) return saved;
-      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }
-    return "light";
+    const saved = localStorage.getItem('opps_theme');
+    return saved === 'dark' ? 'dark' : 'light';
   });
+
   useEffect(() => {
-    localStorage.setItem("app-theme", theme);
-    document.documentElement.setAttribute("data-theme", theme);
+    // Sauvegarder dans localStorage à chaque changement
+    localStorage.setItem('opps_theme', theme);
+    // Appliquer l'attribut data-theme sur le body (optionnel mais recommandé)
+    document.body.setAttribute('data-theme', theme);
   }, [theme]);
-  const toggleTheme = () => setTheme((p) => (p === "light" ? "dark" : "light"));
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
 };
+
 export const useTheme = () => useContext(ThemeContext);
 
 /* ==================== HOOKS ==================== */

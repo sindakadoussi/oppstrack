@@ -47,8 +47,417 @@ const emptyProfile = {
   targetDegree:'',targetCountries:[],targetFields:[],motivationSummary:'',avatar:null,
 };
 const LANGUAGE_SUGGESTIONS=['Anglais','Français','Arabe','Espagnol','Allemand','Italien','Chinois','Russe','Portugais','Japonais'];
-const COUNTRY_SUGGESTIONS=['France','Canada','Belgique','Suisse','Allemagne','Italie','Espagne','Royaume-Uni','États-Unis','Australie','Tunisie','Maroc','Algérie'];
-const FIELD_SUGGESTIONS=['Informatique','Génie logiciel','Intelligence Artificielle','Data Science','Cybersécurité','Gestion','Marketing','Finance','Droit','Médecine'];
+const COUNTRIES_DATA=[
+  {name:'Afghanistan',code:'AF',nationality:'Afghane'},
+  {name:'Afrique du Sud',code:'ZA',nationality:'Sud-africaine'},
+  {name:'Albanie',code:'AL',nationality:'Albanaise'},
+  {name:'Algérie',code:'DZ',nationality:'Algérienne'},
+  {name:'Allemagne',code:'DE',nationality:'Allemande'},
+  {name:'Andorre',code:'AD',nationality:'Andorrane'},
+  {name:'Angola',code:'AO',nationality:'Angolaise'},
+  {name:'Anguilla',code:'AI',nationality:'Anguillienne'},
+  {name:'Antarctique',code:'AQ',nationality:'Antarctique'},
+  {name:'Antigua-et-Barbuda',code:'AG',nationality:'Antiguaise'},
+  {name:'Arabie Saoudite',code:'SA',nationality:'Saoudienne'},
+  {name:'Argentine',code:'AR',nationality:'Argentine'},
+  {name:'Arménie',code:'AM',nationality:'Arménienne'},
+  {name:'Aruba',code:'AW',nationality:'Arubienne'},
+  {name:'Australie',code:'AU',nationality:'Australienne'},
+  {name:'Autriche',code:'AT',nationality:'Autrichienne'},
+  {name:'Azerbaïdjan',code:'AZ',nationality:'Azerbaïdjanaise'},
+  {name:'Bahamas',code:'BS',nationality:'Bahamienne'},
+  {name:'Bahreïn',code:'BH',nationality:'Bahreïnienne'},
+  {name:'Bangladesh',code:'BD',nationality:'Bangladaise'},
+  {name:'Barbade',code:'BB',nationality:'Barbadienne'},
+  {name:'Belgique',code:'BE',nationality:'Belge'},
+  {name:'Belize',code:'BZ',nationality:'Bélizienne'},
+  {name:'Bénin',code:'BJ',nationality:'Béninoise'},
+  {name:'Bermudes',code:'BM',nationality:'Bermudienne'},
+  {name:'Bhoutan',code:'BT',nationality:'Bhoutanaise'},
+  {name:'Biélorussie',code:'BY',nationality:'Biélorusse'},
+  {name:'Birmanie',code:'MM',nationality:'Birmane'},
+  {name:'Birmanie (Myanmar)',code:'MM',nationality:'Birmane'},
+  {name:'Birmanie',code:'MM',nationality:'Birmane'},
+  {name:'Bissau-Guinée',code:'GW',nationality:'Bissau-Guinéenne'},
+  {name:'Bolivie',code:'BO',nationality:'Bolivienne'},
+  {name:'Bosnie-Herzégovine',code:'BA',nationality:'Bosniaque'},
+  {name:'Botswana',code:'BW',nationality:'Botswanaise'},
+  {name:'Brésil',code:'BR',nationality:'Brésilienne'},
+  {name:'Brunei',code:'BN',nationality:'Brunéienne'},
+  {name:'Bulgarie',code:'BG',nationality:'Bulgare'},
+  {name:'Burkina Faso',code:'BF',nationality:'Burkinabée'},
+  {name:'Burundi',code:'BI',nationality:'Burundaise'},
+  {name:'Cambodge',code:'KH',nationality:'Cambodgienne'},
+  {name:'Cameroun',code:'CM',nationality:'Camerounaise'},
+  {name:'Canada',code:'CA',nationality:'Canadienne'},
+  {name:'Canal Zone',code:'CZ',nationality:'Canalienne'},
+  {name:'Cap-Vert',code:'CV',nationality:'Capverdienne'},
+  {name:'Chili',code:'CL',nationality:'Chilienne'},
+  {name:'Chine',code:'CN',nationality:'Chinoise'},
+  {name:'Chypre',code:'CY',nationality:'Chypriote'},
+  {name:'Colombie',code:'CO',nationality:'Colombienne'},
+  {name:'Comores',code:'KM',nationality:'Comorienne'},
+  {name:'Congo',code:'CG',nationality:'Congolaise'},
+  {name:'Congo (RDC)',code:'CD',nationality:'Congolaise'},
+  {name:'Corée du Nord',code:'KP',nationality:'Nord-Coréenne'},
+  {name:'Corée du Sud',code:'KR',nationality:'Sud-Coréenne'},
+  {name:'Côte d\'Ivoire',code:'CI',nationality:'Ivoirienne'},
+  {name:'Croatie',code:'HR',nationality:'Croate'},
+  {name:'Cuba',code:'CU',nationality:'Cubaine'},
+  {name:'Curaçao',code:'CW',nationality:'Curaçaienne'},
+  {name:'Danemark',code:'DK',nationality:'Danoise'},
+  {name:'Djibouti',code:'DJ',nationality:'Djiboutienne'},
+  {name:'Dominique',code:'DM',nationality:'Dominiquaise'},
+  {name:'Égypte',code:'EG',nationality:'Égyptienne'},
+  {name:'Émirats Arabes Unis',code:'AE',nationality:'Émiratienne'},
+  {name:'Équateur',code:'EC',nationality:'Équatorienne'},
+  {name:'Érythrée',code:'ER',nationality:'Érythréenne'},
+  {name:'Espagne',code:'ES',nationality:'Espagnole'},
+  {name:'Estonie',code:'EE',nationality:'Estonienne'},
+  {name:'États-Unis',code:'US',nationality:'Américaine'},
+  {name:'Éthiopie',code:'ET',nationality:'Éthiopienne'},
+  {name:'Fidji',code:'FJ',nationality:'Fidjienne'},
+  {name:'Finlande',code:'FI',nationality:'Finlandaise'},
+  {name:'France',code:'FR',nationality:'Française'},
+  {name:'Gabon',code:'GA',nationality:'Gabonaise'},
+  {name:'Gambie',code:'GM',nationality:'Gambienne'},
+  {name:'Géorgie',code:'GE',nationality:'Géorgienne'},
+  {name:'Géorgie du Sud',code:'GS',nationality:'Géorgienne'},
+  {name:'Ghana',code:'GH',nationality:'Ghanéenne'},
+  {name:'Gibraltar',code:'GI',nationality:'Gibraltarienne'},
+  {name:'Grèce',code:'GR',nationality:'Grecque'},
+  {name:'Grenade',code:'GD',nationality:'Grenadienne'},
+  {name:'Groenland',code:'GL',nationality:'Groenlandaise'},
+  {name:'Guadeloupe',code:'GP',nationality:'Guadeloupéenne'},
+  {name:'Guam',code:'GU',nationality:'Guamienne'},
+  {name:'Guatémala',code:'GT',nationality:'Guatémaltèque'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guernesey',code:'GG',nationality:'Guernesienne'},
+  {name:'Guesseley',code:'GG',nationality:'Guernesienne'},
+  {name:'Guinée',code:'GN',nationality:'Guinéenne'},
+  {name:'Guinée équatoriale',code:'GQ',nationality:'Équato-guinéenne'},
+  {name:'Guinée-Bissau',code:'GW',nationality:'Bissau-Guinéenne'},
+  {name:'Guyana',code:'GY',nationality:'Guyanienne'},
+  {name:'Guyane française',code:'GF',nationality:'Guyanaise'},
+  {name:'Haïti',code:'HT',nationality:'Haïtienne'},
+  {name:'Honduras',code:'HN',nationality:'Hondurienne'},
+  {name:'Hong Kong',code:'HK',nationality:'Hongkongaise'},
+  {name:'Hongrie',code:'HU',nationality:'Hongroise'},
+  {name:'Île Bouvet',code:'BV',nationality:'Île Bouvet'},
+  {name:'Île Christmas',code:'CX',nationality:'Île Christmas'},
+  {name:'Île Norfolk',code:'NF',nationality:'Île Norfolk'},
+  {name:'Îles Åland',code:'AX',nationality:'Ålandaise'},
+  {name:'Îles Caïmans',code:'KY',nationality:'Caïmanienne'},
+  {name:'Îles Cocos',code:'CC',nationality:'Îles Cocos'},
+  {name:'Îles Cook',code:'CK',nationality:'Cook'},
+  {name:'Îles Féroé',code:'FO',nationality:'Féroïenne'},
+  {name:'Îles Heard et McDonald',code:'HM',nationality:'Îles Heard'},
+  {name:'Îles Malouines',code:'FK',nationality:'Malouine'},
+  {name:'Îles Mariannes',code:'MP',nationality:'Mariannes'},
+  {name:'Îles Marshall',code:'MH',nationality:'Marshallaise'},
+  {name:'Îles Pitcairn',code:'PN',nationality:'Pitcairn'},
+  {name:'Îles Salomon',code:'SB',nationality:'Salomonnaise'},
+  {name:'Îles Turques-et-Caïques',code:'TC',nationality:'Turques et Caïques'},
+  {name:'Îles Vierges',code:'VG',nationality:'Vierge'},
+  {name:'Îles Vierges américaines',code:'VI',nationality:'Vierge américaine'},
+  {name:'Inde',code:'IN',nationality:'Indienne'},
+  {name:'Indonésie',code:'ID',nationality:'Indonésienne'},
+  {name:'Irak',code:'IQ',nationality:'Irakienne'},
+  {name:'Iran',code:'IR',nationality:'Iranienne'},
+  {name:'Irlande',code:'IE',nationality:'Irlandaise'},
+  {name:'Islande',code:'IS',nationality:'Islandaise'},
+  {name:'Israël',code:'IL',nationality:'Israélienne'},
+  {name:'Italie',code:'IT',nationality:'Italienne'},
+  {name:'Jamaïque',code:'JM',nationality:'Jamaïquaine'},
+  {name:'Japon',code:'JP',nationality:'Japonaise'},
+  {name:'Jersey',code:'JE',nationality:'Jersaise'},
+  {name:'Jordanie',code:'JO',nationality:'Jordanienne'},
+  {name:'Kazakhstan',code:'KZ',nationality:'Kazakhe'},
+  {name:'Kenya',code:'KE',nationality:'Kenyane'},
+  {name:'Kirghizistan',code:'KG',nationality:'Kirghize'},
+  {name:'Kiribati',code:'KI',nationality:'Kiribatienne'},
+  {name:'Koweït',code:'KW',nationality:'Koweïtienne'},
+  {name:'Laos',code:'LA',nationality:'Laotienne'},
+  {name:'Lesotho',code:'LS',nationality:'Lesothane'},
+  {name:'Lettonie',code:'LV',nationality:'Lettone'},
+  {name:'Liban',code:'LB',nationality:'Libanaise'},
+  {name:'Liberia',code:'LR',nationality:'Libérienne'},
+  {name:'Libye',code:'LY',nationality:'Libyenne'},
+  {name:'Liechtenstein',code:'LI',nationality:'Liechtensteinoise'},
+  {name:'Lituanie',code:'LT',nationality:'Lituanienne'},
+  {name:'Livonie',code:'LV',nationality:'Livonienne'},
+  {name:'Luxembourg',code:'LU',nationality:'Luxembourgeoise'},
+  {name:'Macao',code:'MO',nationality:'Macanaise'},
+  {name:'Macédoine',code:'MK',nationality:'Macédonienne'},
+  {name:'Macédoine du Nord',code:'MK',nationality:'Macédonienne'},
+  {name:'Madagascar',code:'MG',nationality:'Malgache'},
+  {name:'Madère',code:'PT',nationality:'Madérienne'},
+  {name:'Malaisie',code:'MY',nationality:'Malaisienne'},
+  {name:'Malawi',code:'MW',nationality:'Malawite'},
+  {name:'Maldives',code:'MV',nationality:'Maldivienne'},
+  {name:'Mali',code:'ML',nationality:'Malienne'},
+  {name:'Malte',code:'MT',nationality:'Maltaise'},
+  {name:'Maroc',code:'MA',nationality:'Marocaine'},
+  {name:'Martinique',code:'MQ',nationality:'Martiniquaise'},
+  {name:'Mauritanie',code:'MR',nationality:'Mauritanienne'},
+  {name:'Maurice',code:'MU',nationality:'Mauricienne'},
+  {name:'Mayenne',code:'FR',nationality:'Mayennaise'},
+  {name:'Mayotte',code:'YT',nationality:'Mayottaise'},
+  {name:'Mexique',code:'MX',nationality:'Mexicaine'},
+  {name:'Micronésie',code:'FM',nationality:'Micronésienne'},
+  {name:'Moldavie',code:'MD',nationality:'Moldave'},
+  {name:'Moldavie',code:'MD',nationality:'Moldave'},
+  {name:'Monaco',code:'MC',nationality:'Monégasque'},
+  {name:'Mongolie',code:'MN',nationality:'Mongole'},
+  {name:'Monténégro',code:'ME',nationality:'Monténégrine'},
+  {name:'Montserrat',code:'MS',nationality:'Montserratienne'},
+  {name:'Mozambique',code:'MZ',nationality:'Mozambicaine'},
+  {name:'Namibie',code:'NA',nationality:'Namibienne'},
+  {name:'Nauru',code:'NR',nationality:'Naurienne'},
+  {name:'Népal',code:'NP',nationality:'Népalaise'},
+  {name:'Nicaragua',code:'NI',nationality:'Nicaraguayenne'},
+  {name:'Niger',code:'NE',nationality:'Nigérienne'},
+  {name:'Nigeria',code:'NG',nationality:'Nigériane'},
+  {name:'Niue',code:'NU',nationality:'Niouéenne'},
+  {name:'Norvège',code:'NO',nationality:'Norvégienne'},
+  {name:'Nouvelle-Calédonie',code:'NC',nationality:'Calédonienne'},
+  {name:'Nouvelle-Zélande',code:'NZ',nationality:'Néo-zélandaise'},
+  {name:'Oman',code:'OM',nationality:'Omanaise'},
+  {name:'Ouganda',code:'UG',nationality:'Ougandaise'},
+  {name:'Ouzbékistan',code:'UZ',nationality:'Ouzbèke'},
+  {name:'Pakis',code:'PK',nationality:'Pakistanaise'},
+  {name:'Pakistan',code:'PK',nationality:'Pakistanaise'},
+  {name:'Palaos',code:'PW',nationality:'Palaosienne'},
+  {name:'Palestine',code:'PS',nationality:'Palestinienne'},
+  {name:'Panama',code:'PA',nationality:'Panaméenne'},
+  {name:'Papouasie-Nouvelle-Guinée',code:'PG',nationality:'Papouane'},
+  {name:'Paque',code:'CL',nationality:'Pascuane'},
+  {name:'Paraguay',code:'PY',nationality:'Paraguayenne'},
+  {name:'Pays-Bas',code:'NL',nationality:'Néerlandaise'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Pérou',code:'PE',nationality:'Péruvienne'},
+  {name:'Philippines',code:'PH',nationality:'Philippine'},
+  {name:'Pologne',code:'PL',nationality:'Polonaise'},
+  {name:'Polynésie française',code:'PF',nationality:'Polynésienne'},
+  {name:'Poméranie',code:'PL',nationality:'Pomérienne'},
+  {name:'Pont-à-Mousson',code:'FR',nationality:'Pontoise'},
+  {name:'Porto Rico',code:'PR',nationality:'Portoricaine'},
+  {name:'Portugal',code:'PT',nationality:'Portugaise'},
+  {name:'Pou',code:'PW',nationality:'Palaosienne'},
+  {name:'Proche-Orient',code:'XO',nationality:'Proche-Orientale'},
+  {name:'Provence',code:'FR',nationality:'Provençale'},
+  {name:'Qatar',code:'QA',nationality:'Qatarienne'},
+  {name:'Québec',code:'CA',nationality:'Québécoise'},
+  {name:'Réunion',code:'RE',nationality:'Réunionnaise'},
+  {name:'Rhodésie',code:'ZW',nationality:'Rhodésienne'},
+  {name:'Roumanie',code:'RO',nationality:'Roumaine'},
+  {name:'Royaume-Uni',code:'GB',nationality:'Britannique'},
+  {name:'Russie',code:'RU',nationality:'Russe'},
+  {name:'Ruwanda',code:'RW',nationality:'Rwandaise'},
+  {name:'Rwanda',code:'RW',nationality:'Rwandaise'},
+  {name:'Sahara Occidental',code:'EH',nationality:'Sahraoui'},
+  {name:'Saint-Barthélemy',code:'BL',nationality:'Saint-Barthéléenne'},
+  {name:'Saint-Marin',code:'SM',nationality:'Saint-Marinaise'},
+  {name:'Saint-Martin',code:'MF',nationality:'Saint-Martinoise'},
+  {name:'Saint-Pierre-et-Miquelon',code:'PM',nationality:'Miquelonnaise'},
+  {name:'Sainte-Hélène',code:'SH',nationality:'Sainte-Hélénienne'},
+  {name:'Sainte-Lucie',code:'LC',nationality:'Sainte-Lucienne'},
+  {name:'Salvador',code:'SV',nationality:'Salvadorienne'},
+  {name:'Samoa',code:'WS',nationality:'Samoane'},
+  {name:'Samoa américaines',code:'AS',nationality:'Samoane'},
+  {name:'Samoa samoane',code:'WS',nationality:'Samoane'},
+  {name:'Sandwish du Sud',code:'GS',nationality:'Sandwichienne'},
+  {name:'Sao Tomé-et-Principe',code:'ST',nationality:'Santoméenne'},
+  {name:'Sarajevo',code:'BA',nationality:'Sarajévienne'},
+  {name:'Sardaigne',code:'IT',nationality:'Sardaigne'},
+  {name:'Senech',code:'SN',nationality:'Sénégalaise'},
+  {name:'Sénégal',code:'SN',nationality:'Sénégalaise'},
+  {name:'Serbie',code:'RS',nationality:'Serbe'},
+  {name:'Serbie-et-Monténégro',code:'CS',nationality:'Serbe'},
+  {name:'Seychelles',code:'SC',nationality:'Seychelloise'},
+  {name:'Sierra Leone',code:'SL',nationality:'Léonaise'},
+  {name:'Sikkiam',code:'IN',nationality:'Sikkimaise'},
+  {name:'Singapour',code:'SG',nationality:'Singapourienne'},
+  {name:'Sint Maarten',code:'SX',nationality:'Sint-Maartennoise'},
+  {name:'Slovaquie',code:'SK',nationality:'Slovaque'},
+  {name:'Slovénie',code:'SI',nationality:'Slovène'},
+  {name:'Somalie',code:'SO',nationality:'Somalienne'},
+  {name:'Somaliland',code:'SO',nationality:'Somalienne'},
+  {name:'Sombie',code:'BJ',nationality:'Béninoise'},
+  {name:'Soudan',code:'SD',nationality:'Soudanaise'},
+  {name:'Soudan du Sud',code:'SS',nationality:'Sud-soudanaise'},
+  {name:'Spy',code:'ES',nationality:'Espagnole'},
+  {name:'Sri Lanka',code:'LK',nationality:'Sri-lankaise'},
+  {name:'Suède',code:'SE',nationality:'Suédoise'},
+  {name:'Suisse',code:'CH',nationality:'Suisse'},
+  {name:'Suriname',code:'SR',nationality:'Surinamaise'},
+  {name:'Swaziland',code:'SZ',nationality:'Swazi'},
+  {name:'Swaziland (Eswatini)',code:'SZ',nationality:'Swazi'},
+  {name:'Swaziland',code:'SZ',nationality:'Swazi'},
+  {name:'Syrie',code:'SY',nationality:'Syrienne'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Tadjikistan',code:'TJ',nationality:'Tadjike'},
+  {name:'Taiwan',code:'TW',nationality:'Taiwanaise'},
+  {name:'Tanzanie',code:'TZ',nationality:'Tanzanienne'},
+  {name:'Tchad',code:'TD',nationality:'Tchadienne'},
+  {name:'Tchécoslovaquie',code:'CS',nationality:'Tchécoslovaque'},
+  {name:'Tchéquie',code:'CZ',nationality:'Tchèque'},
+  {name:'Terres australes françaises',code:'TF',nationality:'Française'},
+  {name:'Territoire britannique de l\'océan Indien',code:'IO',nationality:'Britannique'},
+  {name:'Territoire des Îles du Pacifique',code:'AS',nationality:'Pacifique'},
+  {name:'Territoire palestinien',code:'PS',nationality:'Palestinienne'},
+  {name:'Territoire palestinien autonome',code:'PS',nationality:'Palestinienne'},
+  {name:'Territoire palestinien occupé',code:'PS',nationality:'Palestinienne'},
+  {name:'Territoires palestiniens',code:'PS',nationality:'Palestinienne'},
+  {name:'Thaïlande',code:'TH',nationality:'Thaïlandaise'},
+  {name:'Timor oriental',code:'TL',nationality:'Timoraise'},
+  {name:'Togo',code:'TG',nationality:'Togolaise'},
+  {name:'Tokelau',code:'TK',nationality:'Tokélaienne'},
+  {name:'Tonga',code:'TO',nationality:'Tonganaise'},
+  {name:'Trinité-et-Tobago',code:'TT',nationality:'Trinidadienne'},
+  {name:'Tristan da Cunha',code:'TA',nationality:'Tristanienne'},
+  {name:'Tunisie',code:'TN',nationality:'Tunisienne'},
+  {name:'Turkménistan',code:'TM',nationality:'Turkmène'},
+  {name:'Turquie',code:'TR',nationality:'Turque'},
+  {name:'Tuvalu',code:'TV',nationality:'Tuvaluane'},
+  {name:'Tuyệt đối',code:'VN',nationality:'Vietnamienne'},
+  {name:'Ukraine',code:'UA',nationality:'Ukrainienne'},
+  {name:'Union Soviétique',code:'SU',nationality:'Soviétique'},
+  {name:'Uruguay',code:'UY',nationality:'Uruguayenne'},
+  {name:'Uzbekistan',code:'UZ',nationality:'Ouzbèke'},
+  {name:'Vanuatu',code:'VU',nationality:'Vanuataise'},
+  {name:'Vatican',code:'VA',nationality:'Vaticane'},
+  {name:'Vénézuela',code:'VE',nationality:'Vénézuélienne'},
+  {name:'Vietnam',code:'VN',nationality:'Vietnamienne'},
+  {name:'Viêt Nam',code:'VN',nationality:'Vietnamienne'},
+  {name:'Wallis-et-Futuna',code:'WF',nationality:'Wallisienne'},
+  {name:'Yémen',code:'YE',nationality:'Yéménite'},
+  {name:'Yougoslavie',code:'YU',nationality:'Yougoslave'},
+  {name:'Zambie',code:'ZM',nationality:'Zambienne'},
+  {name:'Zanzibar',code:'TZ',nationality:'Zanzibari'},
+  {name:'Zimbabwe',code:'ZW',nationality:'Zimbabwéenne'},
+];
+
+const COUNTRY_SUGGESTIONS = COUNTRIES_DATA.map(c => c.name);
+const FIELD_SUGGESTIONS=[
+  'Informatique','Génie logiciel','Intelligence Artificielle','Data Science','Cybersécurité',
+  'Développement Web','Mobile Dev','DevOps','Cloud Computing','IoT','Blockchain',
+  'Machine Learning','Computer Vision','NLP','Robotique',
+  'Ingénierie Électrique','Génie Civil','Mécanique','Chimie','Matériaux',
+  'Gestion','Management','Marketing','Finance','Comptabilité','Entrepreneuriat',
+  'Droit','Droit International','Droit Fiscal','Droit du Travail',
+  'Médecine','Chirurgie','Dentisterie','Pharmacie','Infirmerie','Santé Publique','Biologie',
+  'Sciences','Physique','Mathématiques','Chimie','Biologie','Écologie',
+  'Ingénierie Alimentaire','Agriculture','Agroalimentaire',
+  'Architecture','Design','Urbanisme','Arts Plastiques','Design Graphique',
+  'Éducation','Enseignement','Pédagogie','Formation',
+  'Économie','Économétrie','Commerce International',
+  'Ressources Humaines','Psychologie du Travail','Relations Industrielles',
+  'Logistique','Supply Chain','Transport','Commerce Électronique',
+  'Journalisme','Communication','Relations Publiques','Médias',
+  'Tourisme','Hôtellerie','Gastronomie','Événementiel',
+  'Musique','Danse','Théâtre','Cinéma','Arts du Spectacle',
+  'Langues','Traduction','Linguistique','Littérature',
+  'Histoire','Géographie','Anthropologie','Sociologie','Sciences Politiques',
+  'Environnement','Énergies Renouvelables','Développement Durable','Éco-Conception',
+  'Aviation','Aéronautique','Aérospatiale','Navigation Maritime',
+  'Défense','Sécurité','Criminologie','Police',
+  'Consultance','Conseil en Stratégie','Consulting',
+  'Immobilier','Construction','Bâtiment',
+  'Industrie 4.0','Fabrication','Automatisation',
+  'Télécommunications','Réseaux','5G'
+];
 const SKILL_SUGGESTIONS={
   language:['Python','JavaScript','Java','C++','PHP','Ruby','Go','Swift'],
   framework:['React','Angular','Vue.js','Django','Flask','Spring Boot','Laravel','Node.js'],
@@ -58,6 +467,11 @@ const SKILL_SUGGESTIONS={
   method:['Agile','Scrum','Kanban','DevOps','CI/CD','TDD'],
   design:['UI/UX Design','Figma','Sketch','Adobe XD'],
   other:['Microsoft Office','Excel','Salesforce','SAP'],
+};
+// Mapping fonction pour récupérer la nationalité
+const getNationalityByCountry = (countryName) => {
+  const countryData = COUNTRIES_DATA.find(c => c.name === countryName);
+  return countryData ? countryData.nationality : '';
 };
 const DEG_LEVELS=['Licence 1','Licence 2','Licence 3','Master 1','Master 2','Doctorat','Ingénieur 1','Ingénieur 2','Ingénieur 3'];
 
@@ -256,16 +670,68 @@ function AvatarUploader({avatarId,onUpload,c}){
   );
 }
 
-function AutocompleteInput({value,onChange,suggestions,placeholder,label,type='text',c}){
-  const[open,setOpen]=useState(false);const[inp,setInp]=useState(value||'');
-  useEffect(()=>setInp(value||''),[value]);
-  const filtered=(suggestions||[]).filter(s=>s.toLowerCase().includes((inp||'').toLowerCase())).slice(0,8);
-  if(type==='date')return(<div><div style={{fontSize:11,fontWeight:600,color:c.ink2,marginBottom:4,fontFamily:c.fSans}}>{label}</div><input type="date" value={value||''} onChange={e=>onChange(e.target.value)} style={{width:'100%',padding:'9px 12px',border:`1px solid ${c.ruleSoft}`,background:c.paper,fontFamily:c.fSans,fontSize:13,color:c.ink,outline:'none',borderRadius:4}}/></div>);
-  return(
-    <div style={{position:'relative'}}>
-      {label&&<div style={{fontSize:11,fontWeight:600,color:c.ink2,marginBottom:4,fontFamily:c.fSans,letterSpacing:'0.04em',textTransform:'uppercase'}}>{label}</div>}
-      <input value={inp} onChange={e=>{setInp(e.target.value);onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),200)} placeholder={placeholder} style={{width:'100%',padding:'9px 12px',border:`1px solid ${c.ruleSoft}`,background:c.paper,fontFamily:c.fSans,fontSize:13,color:c.ink,outline:'none',borderRadius:4}}/>
-      {open&&filtered.length>0&&<div style={{position:'absolute',top:'100%',left:0,right:0,background:c.surface,border:`1px solid ${c.rule}`,zIndex:20,boxShadow:`0 8px 24px ${c.ink}18`}}>{filtered.map((s,i)=><div key={i} onClick={()=>{setInp(s);onChange(s);setOpen(false);}} style={{padding:'8px 12px',cursor:'pointer',fontSize:12,fontFamily:c.fSans,color:c.ink2,borderBottom:`1px solid ${c.ruleSoft}`}}>{s}</div>)}</div>}
+function AutocompleteInput({value, onChange, suggestions, placeholder, label, type='text', c, onCountrySelect}) {
+  const [open, setOpen] = useState(false);
+  const [inp, setInp] = useState(value || '');
+
+  useEffect(() => {
+    setInp(value || '');
+  }, [value]);
+
+  const filtered = (suggestions || []).filter(s => s.toLowerCase().includes((inp || '').toLowerCase())).slice(0, 8);
+
+  if (type === 'date') return (
+    <div>
+      <div style={{fontSize: 11, fontWeight: 600, color: c.ink2, marginBottom: 4, fontFamily: c.fSans}}>{label}</div>
+      <input
+        type="date"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        style={{width: '100%', padding: '9px 12px', border: `1px solid ${c.ruleSoft}`, background: c.paper, fontFamily: c.fSans, fontSize: 13, color: c.ink, outline: 'none', borderRadius: 4}}
+      />
+    </div>
+  );
+
+  return (
+    <div style={{position: 'relative'}}>
+      {label && (
+        <div style={{fontSize: 11, fontWeight: 600, color: c.ink2, marginBottom: 4, fontFamily: c.fSans, letterSpacing: '0.04em', textTransform: 'uppercase'}}>
+          {label}
+        </div>
+      )}
+      <input
+        value={inp}
+        onChange={e => {
+          setInp(e.target.value);
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={placeholder}
+        style={{width: '100%', padding: '9px 12px', border: `1px solid ${c.ruleSoft}`, background: c.paper, fontFamily: c.fSans, fontSize: 13, color: c.ink, outline: 'none', borderRadius: 4}}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{position: 'absolute', top: '100%', left: 0, right: 0, background: c.surface, border: `1px solid ${c.rule}`, zIndex: 20, boxShadow: `0 8px 24px ${c.ink}18`, maxHeight: '250px', overflowY: 'auto'}}>
+          {filtered.map((s, i) => (
+            <div
+              key={i}
+              onMouseDown={e => {
+                e.preventDefault();
+                setInp(s);
+                onChange(s);
+                setOpen(false);
+                if (onCountrySelect) onCountrySelect(s);
+              }}
+              style={{padding: '8px 12px', cursor: 'pointer', fontSize: 12, fontFamily: c.fSans, color: c.ink2, borderBottom: `1px solid ${c.ruleSoft}`, transition: 'background 0.1s'}}
+              onMouseEnter={e => e.currentTarget.style.background = c.paper2}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1101,8 +1567,22 @@ const weeklyGain = sub.global - lastWeekScore;
                   <Field label="Email" v={profile.email} readOnly c={c}/>
                   <Field label={lang==='fr'?'Téléphone':'Phone'} v={profile.phone} s={v=>setProfile(p=>({...p,phone:v}))} ph="+216 XX XXX XXX" c={c}/>
                   <AutocompleteInput label={lang==='fr'?'Date de naissance':'Date of birth'} value={profile.dateOfBirth} onChange={v=>setProfile(p=>({...p,dateOfBirth:v}))} suggestions={[]} type="date" c={c}/>
-                  <AutocompleteInput label={lang==='fr'?'Nationalité':'Nationality'} value={profile.nationality} onChange={v=>setProfile(p=>({...p,nationality:v}))} suggestions={COUNTRY_SUGGESTIONS} placeholder="Ex: Tunisienne" c={c}/>
-                  <AutocompleteInput label={lang==='fr'?'Pays de résidence':'Residence'} value={profile.countryOfResidence} onChange={v=>setProfile(p=>({...p,countryOfResidence:v}))} suggestions={COUNTRY_SUGGESTIONS} placeholder="Ex: Tunisie" c={c}/>
+                 <AutocompleteInput
+  label={lang === 'fr' ? 'Nationalité' : 'Nationality'}
+  value={profile.nationality}
+  onChange={v => setProfile(p => ({...p, nationality: v}))}
+  suggestions={COUNTRIES_DATA.map(c => c.nationality).filter((v, i, a) => a.indexOf(v) === i)}
+  placeholder="Ex: Tunisienne"
+  c={c}
+/>
+<AutocompleteInput
+  label={lang === 'fr' ? 'Pays de résidence' : 'Country of residence'}
+  value={profile.countryOfResidence}
+  onChange={v => setProfile(p => ({...p, countryOfResidence: v}))}
+  suggestions={COUNTRY_SUGGESTIONS}
+  placeholder="Ex: Tunisie"
+  c={c}
+/>
                 </div>
                 <SecTitle c={c}>{lang==='fr'?'Liens professionnels':'Professional links'}</SecTitle>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:28}}>
@@ -1274,11 +1754,25 @@ const weeklyGain = sub.global - lastWeekScore;
                 <div style={{marginBottom:20}}>
                   <div style={{fontSize:11,fontWeight:600,color:c.ink2,marginBottom:8,fontFamily:c.fSans,textTransform:'uppercase',letterSpacing:'0.04em'}}>{lang==='fr'?'Pays cibles':'Target countries'}</div>
                   {profile.targetCountries.map((tc,i)=>(
-                    <div key={i} style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
-                      <div style={{flex:1}}><AutocompleteInput value={tc.country} onChange={v=>upd('targetCountries')(i,'country',v)} suggestions={COUNTRY_SUGGESTIONS} placeholder="France, Canada..." c={c}/></div>
-                      <button onClick={()=>delItem('targetCountries')(i)} style={{color:c.danger,background:'none',border:'none',cursor:'pointer',fontFamily:c.fSans,fontSize:12,padding:'8px'}}>✕</button>
-                    </div>
-                  ))}
+  <div key={i} style={{display:'flex',gap:8,marginBottom:8,alignItems:'flex-start'}}>
+    <div style={{flex:1}}>
+      <AutocompleteInput 
+        value={tc.country} 
+        onChange={v=>{
+          setProfile(p=>{
+            const arr = [...p.targetCountries];
+            arr[i] = {...arr[i], country: v};
+            return {...p, targetCountries: arr};
+          });
+        }} 
+        suggestions={COUNTRY_SUGGESTIONS} 
+        placeholder="France, Canada..." 
+        c={c}
+      />
+    </div>
+    <button onClick={()=>delItem('targetCountries')(i)} style={{color:c.danger,background:'none',border:'none',cursor:'pointer',fontFamily:c.fSans,fontSize:12,padding:'8px',alignSelf:'flex-start',marginTop:'28px'}}>✕</button>
+  </div>
+))}
                   <button onClick={addItem('targetCountries',{country:''})} style={{padding:'7px 14px',background:c.accent,color:'#fff',border:'none',fontFamily:c.fSans,fontSize:12,fontWeight:700,cursor:'pointer',borderRadius:4}}>+ {lang==='fr'?'Ajouter un pays':'Add country'}</button>
                 </div>
                 <div style={{marginBottom:20}}>
