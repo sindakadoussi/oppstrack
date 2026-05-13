@@ -1,3 +1,5 @@
+import { anyone } from '@/access/anyone';
+import { authenticated } from '@/access/authenticated';
 import { CollectionConfig } from 'payload';
 const Bourses: CollectionConfig = {
   
@@ -11,11 +13,11 @@ const Bourses: CollectionConfig = {
       'description', 'eligibilite', 'documentsRequis','embedding','image'
     ],
   },
-  access: {
-    read:   () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+   access: {
+    read:   anyone,
+    update: authenticated,
+    create: authenticated,
+    delete: authenticated,
   },
   fields: [
     {

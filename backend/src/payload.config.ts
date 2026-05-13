@@ -11,28 +11,34 @@ import nodemailer from 'nodemailer'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import Entretiens from './collections/Entretiens'
 import Favoris from './collections/Favoris'
-import Roadmap from './collections/Roadmap'
-import dns from 'dns'
-dns.setServers(['8.8.8.8', '8.8.4.4'])
+import Roadmap from './collections/Roadmap';
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import Feedbacks from './collections/Feedbacks'
 import Match from './collections/Match'
 import Recommendations from './collections/recommendations';
-
+import cors from 'cors'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
-  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
-  csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
-
+  
   admin: {
     user: Users.slug,
     importMap: {
       baseDir: path.resolve(dirname),
     },
   },
+  express: {
+  middleware: [
+    cors({
+      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    }),
+  ],
+},
 
   // ── Email : lit depuis .env ─────────────────────────────────────────────
   email: nodemailerAdapter({
