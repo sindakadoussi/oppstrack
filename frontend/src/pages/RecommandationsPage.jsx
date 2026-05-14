@@ -366,6 +366,9 @@ function MatchAnalysisPanel({ bourse, user, onClose, onSave, onApply, isStarred,
 /* ═══════════════════════════════════════════════════════════════════
    SCHOLARSHIP CARD
 ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   SCHOLARSHIP CARD — Version améliorée avec indicateurs détaillés
+═══════════════════════════════════════════════════════════════════ */
 function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred, isApplied, c, lang }) {
   const [applyLoading, setApplyLoading] = useState(false);
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
@@ -373,6 +376,46 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
   
   const hasMatchScore = bourse.matchScore !== undefined;
   const col = hasMatchScore ? scoreColor(bourse.matchScore, c) : c.ink4;
+
+  // Calcul de la probabilité (étoiles)
+  const getProbabilityStars = (score) => {
+    if (!score) return { stars: '☆☆☆☆☆', label: 'Non évaluée' };
+    if (score >= 85) return { stars: '★★★★★', label: lang === 'fr' ? 'Très élevée' : 'Very high' };
+    if (score >= 70) return { stars: '★★★★☆', label: lang === 'fr' ? 'Élevée' : 'High' };
+    if (score >= 55) return { stars: '★★★☆☆', label: lang === 'fr' ? 'Moyenne' : 'Medium' };
+    if (score >= 40) return { stars: '★★☆☆☆', label: lang === 'fr' ? 'Faible' : 'Low' };
+    return { stars: '★☆☆☆☆', label: lang === 'fr' ? 'Très faible' : 'Very low' };
+  };
+
+  const probability = getProbabilityStars(bourse.matchScore);
+
+  // Drapeau par pays
+  const getCountryFlag = (countryCode) => {
+    const flags = {
+      'france': '🇫🇷', 'usa': '🇺🇸', 'canada': '🇨🇦', 'uk': '🇬🇧', 'germany': '🇩🇪',
+      'australia': '🇦🇺', 'netherlands': '🇳🇱', 'switzerland': '🇨🇭', 'belgium': '🇧🇪',
+      'italy': '🇮🇹', 'spain': '🇪🇸', 'japan': '🇯🇵', 'china': '🇨🇳', 'india': '🇮🇳'
+    };
+    return flags[countryCode?.toLowerCase()] || '🌍';
+  };
+
+  // Données mockées pour la démo — À remplacer par les vraies données de l'API
+  const strengths = bourse.pointsForts || [
+    'Pays cible dans votre profil',
+    `${bourse.niveau || 'Master'} accepté`,
+    'Votre GPA dépasse le minimum requis',
+    'Expériences renforcent votre dossier'
+  ];
+  
+  const profileStrengths = bourse.profileAtouts || [
+    'GPA dans le top 20% des candidats',
+    'Projets alignés avec priorités'
+  ];
+  
+  const warnings = bourse.avertissements || [
+    `Très compétitive (${Math.floor(Math.random() * 15 + 5)}% d'acceptation)`,
+    'Déposer dossier 2 mois avant la deadline'
+  ];
 
   // ----- Détermination du statut -----
   const getStatus = () => {
@@ -403,10 +446,8 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
     <article
       onClick={() => onAnalyze(bourse)}
       style={{
-        display: 'flex',
-        gap: 24,
-        alignItems: 'flex-start',
-        padding: '24px 20px',
+        display: 'block',
+        padding: '20px',
         marginBottom: 16,
         borderBottom: `1px solid ${c.ruleSoft}`,
         cursor: 'pointer',
@@ -428,120 +469,153 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
         e.currentTarget.style.borderLeft = '0px solid transparent';
       }}
     >
-      {/* Contenu - sans image */}
-      <div style={{ flex: 1 }}>
-        {/* Ligne titre + deadline + statut */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em' }}>
-            {bourse.nom}
-          </h3>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            {bourse.dateLimite && (
-              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
-                <strong>Deadline</strong> {formatDate(bourse.dateLimite)}
-              </span>
-            )}
-            <span style={{
-              fontFamily: c.fMono,
-              fontSize: 10,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 20,
-              background: status.intensity === 'solid' ? status.color : `${status.color}20`,
-              color: status.intensity === 'solid' ? '#fff' : status.color,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-            }}>
-              {status.label}
+      {/* En-tête : Drapeau + Nom + Score */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 28 }}>{getCountryFlag(bourse.pays)}</span>
+        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em', flex: 1 }}>
+          {bourse.nom}
+        </h3>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {bourse.dateLimite && (
+            <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+              📅 {formatDate(bourse.dateLimite)}
+            </span>
+          )}
+          <span style={{
+            fontFamily: c.fMono,
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '2px 8px',
+            borderRadius: 20,
+            background: status.intensity === 'solid' ? status.color : `${status.color}20`,
+            color: status.intensity === 'solid' ? '#fff' : status.color,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            {status.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Score et probabilité */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16, letterSpacing: 2, color: c.warning }}>
+            {probability.stars}
+          </span>
+          <span style={{ fontSize: 12, color: c.ink2 }}>
+            {lang === 'fr' ? 'Probabilité' : 'Probability'} : {probability.label}
+          </span>
+        </div>
+      </div>
+
+      {/* ✅ Pourquoi cette bourse ? */}
+      {(strengths.length > 0 || bourse.raisons?.length > 0) && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.success }}>✅</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.success, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Pourquoi cette bourse ?' : 'Why this scholarship?'}
             </span>
           </div>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {(bourse.raisons?.length > 0 ? bourse.raisons : strengths).slice(0, 4).map((raison, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
+                • {raison}
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
 
-        {/* Grille des métadonnées (pays, niveau) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
-          {bourse.pays && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📍</span> <strong>Pays</strong> {tCountry(bourse.pays, lang)}
-            </div>
-          )}
-          {bourse.niveau && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {tLevel(bourse.niveau, lang)}
-            </div>
-          )}
-        </div>
-
-        {/* Domaine - ligne complète séparée */}
-        {bourse.domaine && (
-          <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
+      {/* 💡 Points forts de votre profil */}
+      {profileStrengths.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.accent }}>💡</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Points forts de votre profil' : 'Your profile strengths'}
+            </span>
           </div>
-        )}
-
-        {/* Financement */}
-        {bourse.financement && (
-          <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {tFunding(bourse.financement, lang)}
-          </div>
-        )}
-
-        {/* Description courte */}
-        {bourse.description && (
-          <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {bourse.description.length > 150 ? `${bourse.description.substring(0, 150)}...` : bourse.description}
-          </p>
-        )}
-
-        {/* Boutons d'action */}
-        <div style={{
-          display: 'flex', gap: 12, flexWrap: 'wrap',
-          opacity: 0,
-          transition: 'opacity 0.2s ease 0.1s',
-        }} className="card-actions">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }} 
-            style={{ 
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
-              background: isStarred ? c.accent : 'transparent', 
-              color: isStarred ? c.paper : c.ink3 
-            }}
-          >
-            {isStarred ? '★' : '☆'} Favori
-          </button>
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (isApplied || applyLoading) return;
-              setApplyLoading(true);
-              await onApply(bourse);
-              setApplyLoading(false);
-            }}
-            style={{
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-              background: isApplied ? '#2e6b3e' : c.accent,
-              color: '#fff',
-              opacity: applyLoading ? 0.6 : 1
-            }}
-            disabled={isApplied || applyLoading}
-          >
-            {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onAnalyze(bourse); }} 
-            style={{ 
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-              background: c.accent, color: '#fff' 
-            }}
-          >
-            Match IA
-          </button>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {profileStrengths.slice(0, 2).map((strength, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
+                • {strength}
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {/* ⚠️ À savoir / Avertissements */}
+      {warnings.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.warning }}>⚠️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.warning, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'À savoir' : 'Note'}
+            </span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {warnings.slice(0, 2).map((warning, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink3, marginBottom: 4, lineHeight: 1.5 }}>
+                • {warning}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Boutons d'action (inchangés) */}
+      <div style={{
+        display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8,
+        opacity: 0,
+        transition: 'opacity 0.2s ease 0.1s',
+      }} className="card-actions">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }} 
+          style={{ 
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
+            background: isStarred ? c.accent : 'transparent', 
+            color: isStarred ? c.paper : c.ink3 
+          }}
+        >
+          {isStarred ? '★' : '☆'} Favori
+        </button>
+        <button
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (isApplied || applyLoading) return;
+            setApplyLoading(true);
+            await onApply(bourse);
+            setApplyLoading(false);
+          }}
+          style={{
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+            background: isApplied ? '#2e6b3e' : c.accent,
+            color: '#fff',
+            opacity: applyLoading ? 0.6 : 1
+          }}
+          disabled={isApplied || applyLoading}
+        >
+          {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onAnalyze(bourse); }} 
+          style={{ 
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+            background: c.accent, color: '#fff' 
+          }}
+        >
+          Match IA
+        </button>
       </div>
 
       <style>{`
