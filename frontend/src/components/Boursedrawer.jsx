@@ -493,7 +493,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {showMatch && <MatchDrawerIA bourse={bourse} user={user} onBack={() => setShowMatch(false)} />}
+      {showMatch && <Matchdraweria bourse={bourse} user={user} onBack={() => setShowMatch(false)} />}
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
       <style>{`

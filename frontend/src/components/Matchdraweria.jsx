@@ -1,4 +1,4 @@
-// components/MatchDrawerIA.jsx — version avec recherche vectorielle + analyse détaillée
+// components/Matchdraweria.jsx — version avec recherche vectorielle + analyse détaillée
 import React, { useState, useEffect } from 'react';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';

@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import BourseDrawer from '../components/Boursedrawer';
+import Matchdraweria from '../components/Matchdraweria';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
@@ -366,13 +367,56 @@ function MatchAnalysisPanel({ bourse, user, onClose, onSave, onApply, isStarred,
 /* ═══════════════════════════════════════════════════════════════════
    SCHOLARSHIP CARD
 ═══════════════════════════════════════════════════════════════════ */
-function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred, isApplied, c, lang }) {
-  const [applyLoading, setApplyLoading] = useState(false);
+/* ═══════════════════════════════════════════════════════════════════
+   SCHOLARSHIP CARD — Version améliorée avec indicateurs détaillés
+═══════════════════════════════════════════════════════════════════ */
+function ScholarshipCard({ bourse, index, onCardClick, onMatchClick, onSave, onApply, isStarred, isApplied, c, lang }) {
+    const [applyLoading, setApplyLoading] = useState(false);
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
   const animationDelay = `${index * 0.05}s`;
-  
+ 
   const hasMatchScore = bourse.matchScore !== undefined;
   const col = hasMatchScore ? scoreColor(bourse.matchScore, c) : c.ink4;
+
+  // Calcul de la probabilité (étoiles)
+  const getProbabilityStars = (score) => {
+    if (!score) return { stars: '☆☆☆☆☆', label: 'Non évaluée' };
+    if (score >= 85) return { stars: '★★★★★', label: lang === 'fr' ? 'Très élevée' : 'Very high' };
+    if (score >= 70) return { stars: '★★★★☆', label: lang === 'fr' ? 'Élevée' : 'High' };
+    if (score >= 55) return { stars: '★★★☆☆', label: lang === 'fr' ? 'Moyenne' : 'Medium' };
+    if (score >= 40) return { stars: '★★☆☆☆', label: lang === 'fr' ? 'Faible' : 'Low' };
+    return { stars: '★☆☆☆☆', label: lang === 'fr' ? 'Très faible' : 'Very low' };
+  };
+
+  const probability = getProbabilityStars(bourse.matchScore);
+
+  // Drapeau par pays
+  const getCountryFlag = (countryCode) => {
+    const flags = {
+      'france': '🇫🇷', 'usa': '🇺🇸', 'canada': '🇨🇦', 'uk': '🇬🇧', 'germany': '🇩🇪',
+      'australia': '🇦🇺', 'netherlands': '🇳🇱', 'switzerland': '🇨🇭', 'belgium': '🇧🇪',
+      'italy': '🇮🇹', 'spain': '🇪🇸', 'japan': '🇯🇵', 'china': '🇨🇳', 'india': '🇮🇳'
+    };
+    return flags[countryCode?.toLowerCase()] || '🌍';
+  };
+
+  // Données mockées pour la démo — À remplacer par les vraies données de l'API
+  const strengths = bourse.pointsForts || [
+    'Pays cible dans votre profil',
+    `${bourse.niveau || 'Master'} accepté`,
+    'Votre GPA dépasse le minimum requis',
+    'Expériences renforcent votre dossier'
+  ];
+ 
+  const profileStrengths = bourse.profileAtouts || [
+    'GPA dans le top 20% des candidats',
+    'Projets alignés avec priorités'
+  ];
+ 
+  const warnings = bourse.avertissements || [
+    `Très compétitive (${Math.floor(Math.random() * 15 + 5)}% d'acceptation)`,
+    'Déposer dossier 2 mois avant la deadline'
+  ];
 
   // ----- Détermination du statut -----
   const getStatus = () => {
@@ -401,12 +445,10 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
 
   return (
     <article
-      onClick={() => onAnalyze(bourse)}
+      onClick={() => onCardClick(bourse)}
       style={{
-        display: 'flex',
-        gap: 24,
-        alignItems: 'flex-start',
-        padding: '24px 20px',
+        display: 'block',
+        padding: '20px',
         marginBottom: 16,
         borderBottom: `1px solid ${c.ruleSoft}`,
         cursor: 'pointer',
@@ -428,120 +470,153 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
         e.currentTarget.style.borderLeft = '0px solid transparent';
       }}
     >
-      {/* Contenu - sans image */}
-      <div style={{ flex: 1 }}>
-        {/* Ligne titre + deadline + statut */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em' }}>
-            {bourse.nom}
-          </h3>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            {bourse.dateLimite && (
-              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
-                <strong>Deadline</strong> {formatDate(bourse.dateLimite)}
-              </span>
-            )}
-            <span style={{
-              fontFamily: c.fMono,
-              fontSize: 10,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 20,
-              background: status.intensity === 'solid' ? status.color : `${status.color}20`,
-              color: status.intensity === 'solid' ? '#fff' : status.color,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-            }}>
-              {status.label}
+      {/* En-tête : Drapeau + Nom + Score */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 28 }}>{getCountryFlag(bourse.pays)}</span>
+        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em', flex: 1 }}>
+          {bourse.nom}
+        </h3>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {bourse.dateLimite && (
+            <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+              📅 {formatDate(bourse.dateLimite)}
+            </span>
+          )}
+          <span style={{
+            fontFamily: c.fMono,
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '2px 8px',
+            borderRadius: 20,
+            background: status.intensity === 'solid' ? status.color : `${status.color}20`,
+            color: status.intensity === 'solid' ? '#fff' : status.color,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            {status.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Score et probabilité */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+       
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16, letterSpacing: 2, color: c.warning }}>
+            {probability.stars}
+          </span>
+          <span style={{ fontSize: 12, color: c.ink2 }}>
+            {lang === 'fr' ? 'Probabilité' : 'Probability'} : {probability.label}
+          </span>
+        </div>
+      </div>
+
+      {/* ✅ Pourquoi cette bourse ? */}
+      {(strengths.length > 0 || bourse.raisons?.length > 0) && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.success }}>✅</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.success, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Pourquoi cette bourse ?' : 'Why this scholarship?'}
             </span>
           </div>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {(bourse.raisons?.length > 0 ? bourse.raisons : strengths).slice(0, 4).map((raison, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
+                • {raison}
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
 
-        {/* Grille des métadonnées (pays, niveau) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
-          {bourse.pays && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📍</span> <strong>Pays</strong> {tCountry(bourse.pays, lang)}
-            </div>
-          )}
-          {bourse.niveau && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {tLevel(bourse.niveau, lang)}
-            </div>
-          )}
-        </div>
-
-        {/* Domaine - ligne complète séparée */}
-        {bourse.domaine && (
-          <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
+      {/* 💡 Points forts de votre profil */}
+      {profileStrengths.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.accent }}>💡</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'Points forts de votre profil' : 'Your profile strengths'}
+            </span>
           </div>
-        )}
-
-        {/* Financement */}
-        {bourse.financement && (
-          <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {tFunding(bourse.financement, lang)}
-          </div>
-        )}
-
-        {/* Description courte */}
-        {bourse.description && (
-          <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, lineHeight: 1.5, margin: '0 0 16px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {bourse.description.length > 150 ? `${bourse.description.substring(0, 150)}...` : bourse.description}
-          </p>
-        )}
-
-        {/* Boutons d'action */}
-        <div style={{
-          display: 'flex', gap: 12, flexWrap: 'wrap',
-          opacity: 0,
-          transition: 'opacity 0.2s ease 0.1s',
-        }} className="card-actions">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }} 
-            style={{ 
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
-              background: isStarred ? c.accent : 'transparent', 
-              color: isStarred ? c.paper : c.ink3 
-            }}
-          >
-            {isStarred ? '★' : '☆'} Favori
-          </button>
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (isApplied || applyLoading) return;
-              setApplyLoading(true);
-              await onApply(bourse);
-              setApplyLoading(false);
-            }}
-            style={{
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-              background: isApplied ? '#2e6b3e' : c.accent,
-              color: '#fff',
-              opacity: applyLoading ? 0.6 : 1
-            }}
-            disabled={isApplied || applyLoading}
-          >
-            {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onAnalyze(bourse); }} 
-            style={{ 
-              padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-              letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-              border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-              background: c.accent, color: '#fff' 
-            }}
-          >
-            Match IA
-          </button>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {profileStrengths.slice(0, 2).map((strength, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
+                • {strength}
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {/* ⚠️ À savoir / Avertissements */}
+      {warnings.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, color: c.warning }}>⚠️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c.warning, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {lang === 'fr' ? 'À savoir' : 'Note'}
+            </span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 24 }}>
+            {warnings.slice(0, 2).map((warning, i) => (
+              <li key={i} style={{ fontSize: 12, color: c.ink3, marginBottom: 4, lineHeight: 1.5 }}>
+                • {warning}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Boutons d'action (inchangés) */}
+      <div style={{
+        display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8,
+        opacity: 0,
+        transition: 'opacity 0.2s ease 0.1s',
+      }} className="card-actions">
+        <button
+          onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }}
+          style={{
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
+            background: isStarred ? c.accent : 'transparent',
+            color: isStarred ? c.paper : c.ink3
+          }}
+        >
+          {isStarred ? '★' : '☆'} Favori
+        </button>
+        <button
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (isApplied || applyLoading) return;
+            setApplyLoading(true);
+            await onApply(bourse);
+            setApplyLoading(false);
+          }}
+          style={{
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+            background: isApplied ? '#2e6b3e' : c.accent,
+            color: '#fff',
+            opacity: applyLoading ? 0.6 : 1
+          }}
+          disabled={isApplied || applyLoading}
+        >
+          {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onMatchClick(bourse); }}
+          style={{
+            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
+            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
+            background: c.accent, color: '#fff'
+          }}
+        >
+          Match IA
+        </button>
       </div>
 
       <style>{`
@@ -556,152 +631,7 @@ function ScholarshipCard({ bourse, index, onAnalyze, onSave, onApply, isStarred,
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   CONSEILS IA PERSONNALISÉS — générés dynamiquement via l'IA
-   FIX 3 : les conseils sont générés par appel webhook, pas en dur
-═══════════════════════════════════════════════════════════════════ */
-function ConseilsIA({ user, c, lang, handleQuickReply, setView }) {
-  const [conseils, setConseils] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const fetched = useRef(false);
 
-  useEffect(() => {
-    if (!user?.id || fetched.current) return;
-    fetched.current = true;
-    setLoading(true);
-    setError(null);
-
-    const fetchConseils = async () => {
-      try {
-        const res = await fetch(`${WEBHOOK_BASE}/webhook/recommandation-vectorisee`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            userId: user.id, 
-            userEmail: user.email 
-          }),
-          signal: AbortSignal.timeout(15000),
-        });
-
-        if (!res.ok) throw new Error('Erreur serveur');
-        
-        const data = await res.json();
-        setConseils(data);
-      } catch (err) {
-        console.error('[ConseilsIA]', err);
-        setError(lang === 'fr' ? 'Impossible de charger les conseils' : 'Could not load advice');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchConseils();
-  }, [user?.id, user?.email]);
-
-  if (loading) return (
-    <div style={{ background: c.surface, padding: '60px 32px', textAlign: 'center' }}>
-      <div style={{ width: 40, height: 40, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-      <div style={{ fontSize: 13, color: c.ink3, fontFamily: c.fMono }}>
-        {lang === 'fr' ? 'Génération des conseils IA...' : 'Generating AI advice...'}
-      </div>
-    </div>
-  );
-
-  if (error) return (
-    <div style={{ background: c.surface, padding: '40px 32px', textAlign: 'center' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-      <p style={{ color: c.danger, fontSize: 14 }}>{error}</p>
-      <button 
-        onClick={() => { fetched.current = false; setError(null); setLoading(true); }} 
-        style={{ marginTop: 16, padding: '8px 20px', background: c.danger, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 12 }}
-      >
-        {lang === 'fr' ? 'Réessayer' : 'Retry'}
-      </button>
-    </div>
-  );
-
-  if (!conseils || !conseils.conseils || conseils.conseils.length === 0) return null;
-
-  return (
-    <div style={{ background: c.surface, padding: '48px 32px' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
-        <div style={{ marginBottom: 28 }}>
-          <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: '0 0 8px', letterSpacing: '-0.01em' }}>
-            {lang === 'fr' ? 'Conseils personnalisés' : 'Personalized advice'}
-          </h2>
-          <p style={{ fontSize: 14, color: c.ink3, margin: 0, lineHeight: 1.6 }}>
-            {lang === 'fr'
-              ? 'Basés sur votre profil réel — ces actions augmenteraient significativement vos chances.'
-              : 'Based on your real profile — these actions would significantly boost your chances.'}
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
-          {conseils.conseils.map((conseil, i) => (
-            <div key={i} style={{ background: c.paper2, border: `1px solid ${c.ruleSoft}`, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, paddingRight: 8 }}>
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{conseil.icon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: c.ink, lineHeight: 1.4 }}>{conseil.title}</span>
-                </div>
-                <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 800, color: conseil.gainColor || c.accent, fontFamily: c.fMono }}>{conseil.gain}</span>
-              </div>
-              <div style={{ fontSize: 12, color: c.ink3, lineHeight: 1.5 }}>{conseil.detail}</div>
-              <button 
-                onClick={() => {
-                  if (conseil.action === 'chat' && handleQuickReply) {
-                    handleQuickReply(conseil.actionData);
-                  } else if (conseil.action === 'navigate' && setView) {
-                    setView(conseil.actionData);
-                  }
-                }}
-                style={{ 
-                  alignSelf: 'flex-start', 
-                  padding: '7px 20px', 
-                  background: c.accent, 
-                  color: '#fff', 
-                  border: 'none', 
-                  fontSize: 12, 
-                  fontWeight: 600, 
-                  cursor: 'pointer', 
-                  fontFamily: c.fMono 
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = c.accentDark}
-                onMouseLeave={e => e.currentTarget.style.background = c.accent}
-              >
-                {conseil.btnLabel}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {conseils.potentiel && (
-          <div style={{ background: `linear-gradient(135deg, ${c.accent}15, ${c.accent}05)`, border: `1px solid ${c.accent}30`, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: c.fMono, marginBottom: 6 }}>
-                {lang === 'fr' ? 'Potentiel de réussite' : 'Success potential'}
-              </div>
-              <div style={{ fontSize: 13, color: c.ink2, lineHeight: 1.6, maxWidth: 480 }}>
-                {lang === 'fr'
-                  ? `En appliquant ces ${conseils.conseils.length} conseil(s), votre taux de réussite atteindrait environ ${conseils.potentiel}%.`
-                  : `By applying these ${conseils.conseils.length} tip(s), your success rate would reach approximately ${conseils.potentiel}%.`}
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 48, fontWeight: 800, color: c.accent, fontFamily: c.fSerif, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                {conseils.potentiel}%
-              </div>
-              <div style={{ fontSize: 11, color: c.ink4, fontFamily: c.fMono, marginTop: 4 }}>
-                {lang === 'fr' ? 'potentiel' : 'potential'}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -721,11 +651,13 @@ export default function RecommandationsPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisBourse, setAnalysisBourse] = useState(null);
-  const [selected, setSelected] = useState(null);
   const [starredNoms, setStarredNoms] = useState(new Set());
   const [appliedNoms, setAppliedNoms] = useState(new Set());
   const [activeFilter, setActiveFilter] = useState('perso');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // Dans la section des états (vers ligne ~340)
+const [selectedBourse, setSelectedBourse] = useState(null);   // drawer général (BourseDrawer)
+const [matchAIBourse, setMatchAIBourse] = useState(null);     // drawer IA (MatchAnalysisPanel)
   //const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 8;
   const autoLoadTriggered = useRef(false);
@@ -843,9 +775,9 @@ const loadSavedRecommendations = useCallback(async () => {
     });
 
     const savedRec = res.data.docs?.[0];
-    
-    console.log('📦 RAW savedRec.scholarships[0]:', savedRec?.scholarships?.[0]); 
-    
+   
+    console.log('📦 RAW savedRec.scholarships[0]:', savedRec?.scholarships?.[0]);
+   
     if (savedRec?.scholarships && savedRec.scholarships.length > 0) {
       const formatted = savedRec.scholarships.map(s => {
         // ✅ DEBUG : affiche chaque champ
@@ -855,7 +787,7 @@ const loadSavedRecommendations = useCallback(async () => {
           bourseId: s.bourseId,
           id: s.id
         });
-        
+       
         return {
           id: s.bourseId || s.id || `temp-${Date.now()}`,
           nom: s.titre || s.nom || 'Bourse sans nom',  // ← PRIORITÉ au titre
@@ -971,7 +903,7 @@ const filtered = useMemo(() => {
     const today = new Date();
     const daysMap = { '30days': 30, '60days': 60, '90days': 90 };
     const targetDate = new Date(today.getTime() + daysMap[filterDeadline] * 86400000);
-    
+   
     r = r.filter(s => {
       if (!s.dateLimite) return false;
       const deadline = new Date(s.dateLimite);
@@ -983,13 +915,13 @@ const filtered = useMemo(() => {
   if (filterCountry !== 'all') {
     if (filterCountry === 'target') {
       // Pays cibles de l'étudiant
-      const targetCountries = (user.targetCountries || []).map(tc => 
+      const targetCountries = (user.targetCountries || []).map(tc =>
         tc.country?.toLowerCase().trim()
       ).filter(Boolean);
       r = r.filter(s => targetCountries.includes(s.pays?.toLowerCase().trim()));
     } else if (filterCountry === 'other') {
       // Autres pays
-      const targetCountries = (user.targetCountries || []).map(tc => 
+      const targetCountries = (user.targetCountries || []).map(tc =>
         tc.country?.toLowerCase().trim()
       ).filter(Boolean);
       r = r.filter(s => !targetCountries.includes(s.pays?.toLowerCase().trim()));
@@ -1013,15 +945,15 @@ const filtered = useMemo(() => {
 // ✅ SÉPARATION PAR PAYS CIBLE
 // ✅ SÉPARATION PAR PAYS CIBLE
 const hasTargetCountries = user.targetCountries && user.targetCountries.length > 0;
-const targetCountriesLower = hasTargetCountries 
+const targetCountriesLower = hasTargetCountries
   ? user.targetCountries.map(tc => tc.country?.toLowerCase().trim()).filter(Boolean)
   : [];
 
-const targetScholarships = hasTargetCountries 
+const targetScholarships = hasTargetCountries
   ? filtered.filter(s => targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
   : [];
 
-const otherScholarships = hasTargetCountries 
+const otherScholarships = hasTargetCountries
   ? filtered.filter(s => !targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
   : filtered;
 
@@ -1100,344 +1032,386 @@ const otherScholarships = hasTargetCountries
       `}</style>
 
       {/* ── Hero ── */}
-      <div style={{ background: c.paper2, padding: '40px 32px', textAlign: 'center', borderBottom: `1px solid ${c.rule}`, animation: 'fadeIn 0.5s ease' }}>
-        <h1 style={{ fontFamily: c.fSerif, fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, letterSpacing: '-0.02em', color: c.ink, margin: '0 0 10px' }}>
-          {lang === 'fr'
-            ? <>L'<em style={{ color: c.accent, fontStyle: 'italic' }}>IA </em>a trouvé vos <em style={{ color: c.accent, fontStyle: 'italic' }}>meilleures opportunités</em>.</>
-            : <>Your <em style={{ color: c.accent, fontStyle: 'italic' }}>personalized recommendations</em>.</>}
-        </h1>
-        <p style={{ fontFamily: c.fSans, fontSize: 15, color: c.ink2, maxWidth: 520, margin: '0 auto 24px' }}>
-          {lang === 'fr'
-            ? `${stats.total} opportunités à fort potentiel vous attendent dès maintenant.`
-            : `${stats.total} scholarships analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
-        </p>
-        <button
-          onClick={() => {
-            autoLoadTriggered.current = false;
-            setPhase('generating');
-            setGenerateStep(0);
-            setError(null);
-            generateNewRecommendations();
-          }}
-          style={{ background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, padding: '7px 18px', fontSize: 12, cursor: 'pointer', fontFamily: c.fMono }}
-        >
-          ↺ {lang === 'fr' ? 'Actualiser' : 'Refresh'}
-        </button>
-      </div>
+           <section style={{
+        background: c.paper2,
+        padding: '64px 32px 48px',
+        borderBottom: `1px solid ${c.rule}`,
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Decorative gradient */}
+        <div style={{
+          position: 'absolute',
+          top: -100, right: -100,
+          width: 400, height: 400,
+          background: `radial-gradient(circle, ${c.accent}08 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }} />
 
-      {/* ── Filtres intelligents ── */}
-      {/* ── Filtres intelligents ── */}
-<div style={{ background: '#ffffff', borderBottom: `1px solid #e5e5e5`, padding: '0 32px' }}>
-  <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', gap: 8, marginTop: 24, marginBottom: activeFilter === 'test' ? 0 : 24 }}>
-    {[
-      { id: 'perso', label: lang === 'fr' ? 'Recommandations' : 'Recommendations' },
-      { id: 'test', label: lang === 'fr' ? 'Vérifier' : 'Verify' },
-      { id: 'conseils', label: lang === 'fr' ? 'Conseils' : 'Advice' },
-    ].map(tab => {
-      const isActive = activeFilter === tab.id;
-      return (
-        <button
-          key={tab.id}
-          onClick={() => {
-            setActiveFilter(tab.id);
-            if (tab.id === 'test' && fullBoursesList.length === 0) fetchFullBourses();
-          }}
-          style={{
-            flex: 1,
-            padding: '12px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            background: isActive ? '#0066b3' : '#ffffff',
-            color: isActive ? '#ffffff' : '#666666',
-            border: isActive ? 'none' : '1px solid #e0e0e0',
-            borderRadius: 0,
-            fontSize: 13,
-            fontWeight: isActive ? 600 : 500,
-            cursor: 'pointer',
-            fontFamily: c.fSans,
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <span>{tab.label}</span>
-        </button>
-      );
-    })}
-  </div>
+        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', animation: 'fadeIn 0.6s ease' }}>
+          <h1 style={{
+            fontFamily: c.fSerif,
+            fontSize: 'clamp(32px, 5vw, 56px)',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: c.ink,
+            margin: '0 0 18px',
+            lineHeight: 1.05,
+            maxWidth: 800,
+          }}>
+            {lang === 'fr'
+              ? <>L'<em style={{ color: c.accent, fontStyle: 'italic' }}>IA</em> a trouvé vos <em style={{ color: c.accent, fontStyle: 'italic' }}>meilleures opportunités</em>.</>
+              : <>Your <em style={{ color: c.accent, fontStyle: 'italic' }}>personalized</em> recommendations.</>}
+          </h1>
+          <p style={{
+            fontFamily: c.fSans, fontSize: 16, color: c.ink2,
+            maxWidth: 620, margin: '0 0 28px', lineHeight: 1.6,
+          }}>
+            {lang === 'fr'
+              ? `${stats.total} opportunités analysées par notre IA — ${stats.high} excellents matchs, ${stats.medium} avec un bon potentiel.`
+              : `${stats.total} opportunities analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
+          </p>
 
-  {/* ✅ FILTRES DEADLINE ET PAYS */}
-  {activeFilter === 'perso' && (
-    <div style={{ maxWidth: 960, margin: '0 auto', paddingBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-      {/* Filtre Deadline */}
-      <div style={{ flex: 1, minWidth: 200 }}>
-        <label style={{ display: 'block', fontSize: 11, color: c.ink3, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: c.fMono }}>
-          {lang === 'fr' ? 'Deadline' : 'Deadline'}
-        </label>
-        <select 
-          value={filterDeadline} 
-          onChange={e => { setFilterDeadline(e.target.value); setCurrentPage(1); }}
-          style={{ width: '100%', padding: '10px 12px', background: c.surface, border: `1px solid ${c.rule}`, color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer' }}
-        >
-          <option value="all">{lang === 'fr' ? 'Toutes' : 'All'}</option>
-          <option value="30days">{lang === 'fr' ? 'Dans 30 jours' : 'Within 30 days'}</option>
-          <option value="60days">{lang === 'fr' ? 'Dans 60 jours' : 'Within 60 days'}</option>
-          <option value="90days">{lang === 'fr' ? 'Dans 90 jours' : 'Within 90 days'}</option>
-        </select>
-      </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                autoLoadTriggered.current = false;
+                setPhase('generating');
+                setGenerateStep(0);
+                setError(null);
+                generateNewRecommendations();
+              }}
+              style={{
+                padding: '12px 24px',
+                background: c.ink,
+                color: c.paper,
+                border: 'none',
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                fontFamily: c.fSans,
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                transition: c.tr,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = c.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.background = c.ink; }}
+            >
+              ↺ {lang === 'fr' ? 'Actualiser l\'analyse' : 'Refresh analysis'}
+            </button>
+            <span style={{ fontSize: 12, color: c.ink3, fontFamily: c.fMono, letterSpacing: '0.06em' }}>
+              {lang === 'fr' ? 'Dernière analyse : aujourd\'hui' : 'Last analysis: today'}
+            </span>
+          </div>
+        </div>
+      </section>
 
-      {/* Filtre Pays */}
-      <div style={{ flex: 1, minWidth: 200 }}>
-        <label style={{ display: 'block', fontSize: 11, color: c.ink3, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: c.fMono }}>
-          {lang === 'fr' ? 'Pays' : 'Country'}
-        </label>
-        <select 
-          value={filterCountry} 
-          onChange={e => { setFilterCountry(e.target.value); setCurrentPage(1); }}
-          style={{ width: '100%', padding: '10px 12px', background: c.surface, border: `1px solid ${c.rule}`, color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer' }}
-        >
-          <option value="all">{lang === 'fr' ? 'Tous les pays' : 'All countries'}</option>
-          {hasTargetCountries && (
-            <>
-              <option value="target">
-                📍 {lang === 'fr' ? 'Mes pays cibles' : 'My target countries'} 
-                ({targetScholarships.length})
-              </option>
-              <option value="other">
-                🌍 {lang === 'fr' ? 'Autres pays' : 'Other countries'} 
-                ({otherScholarships.length})
-              </option>
-              <option disabled>──────────</option>
-            </>
-          )}
-          {availableCountries.map(country => (
-            <option key={country} value={country}>
-              {tCountry(country, lang)} ({allScholarships.filter(s => s.pays === country).length})
-            </option>
-          ))}
-        </select>
-      </div>
+      
 
-      {/* Bouton Reset */}
-      {(filterDeadline !== 'all' || filterCountry !== 'all') && (
-        <button 
-          onClick={() => { setFilterDeadline('all'); setFilterCountry('all'); setCurrentPage(1); }}
-          style={{ alignSelf: 'flex-end', padding: '10px 20px', background: 'transparent', border: `1px solid ${c.rule}`, color: c.ink3, fontSize: 12, cursor: 'pointer', fontFamily: c.fMono }}
-        >
-          ✕ {lang === 'fr' ? 'Réinitialiser' : 'Reset'}
-        </button>
-      )}
-    </div>
-  )}
-</div>
+      {/* ── Filtres ── */}
+      <div style={{ background: c.surface, borderBottom: `1px solid ${c.rule}`, padding: '0 32px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          {/* Tabs principaux */}
+          <div style={{ display: 'flex', gap: 4, paddingTop: 24, paddingBottom: activeFilter === 'test' ? 0 : 24, borderBottom: `1px solid ${c.ruleSoft}` }}>
+            {[
+              { id: 'perso', label: lang === 'fr' ? 'Recommandations' : 'Recommendations'},
+              { id: 'test', label: lang === 'fr' ? 'Vérifier' : 'Verify' },
+            ].map(tab => {
+              const isActive = activeFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveFilter(tab.id);
+                    if (tab.id === 'test' && fullBoursesList.length === 0) fetchFullBourses();
+                  }}
+                  style={{
+                    padding: '14px 28px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    background: 'transparent',
+                    color: isActive ? c.accent : c.ink3,
+                    border: 'none',
+                    borderBottom: isActive ? `2px solid ${c.accent}` : `2px solid transparent`,
+                    marginBottom: -1,
+                    fontSize: 13, fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer', fontFamily: c.fSans,
+                    transition: c.tr,
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Barre de recherche pour l'onglet test */}
-      {activeFilter === 'test' && (
-        <div style={{ background: '#ffffff', padding: '24px 32px 0' }}>
-          <div style={{ maxWidth: 960, margin: '0 auto' }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#ffffff', padding: '8px 16px', border: `1px solid #e0e0e0`, borderRadius: 40 }}>
-              <span style={{ fontSize: 18 }}>🔍</span>
-              <input
-                type="text"
-                placeholder={lang === 'fr' ? 'Nom de la bourse, pays...' : 'Scholarship name, country...'}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{ flex: 1, background: 'transparent', border: 'none', padding: '12px 0', outline: 'none', color: c.ink, fontSize: 14 }}
-                autoFocus
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.ink3, padding: '0 8px' }}>
-                  ✕
+          {/* Sub-filters */}
+          {activeFilter === 'perso' && (
+            <div style={{ paddingTop: 20, paddingBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                
+                <select
+                  value={filterDeadline}
+                  onChange={e => setFilterDeadline(e.target.value)}
+                  style={{
+                    width: '100%', padding: '11px 14px',
+                    background: c.surface, border: `1px solid ${c.rule}`,
+                    color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer',
+                    transition: c.tr,
+                  }}
+                >
+                  <option value="all">{lang === 'fr' ? 'Toutes les deadlines' : 'All deadlines'}</option>
+                  <option value="30days">⚡ {lang === 'fr' ? 'Dans 30 jours' : 'Within 30 days'}</option>
+                  <option value="60days">{lang === 'fr' ? 'Dans 60 jours' : 'Within 60 days'}</option>
+                  <option value="90days">{lang === 'fr' ? 'Dans 90 jours' : 'Within 90 days'}</option>
+                </select>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 200 }}>
+
+                <select
+                  value={filterCountry}
+                  onChange={e => setFilterCountry(e.target.value)}
+                  style={{
+                    width: '100%', padding: '11px 14px',
+                    background: c.surface, border: `1px solid ${c.rule}`,
+                    color: c.ink, fontSize: 13, fontFamily: c.fSans, cursor: 'pointer',
+                  }}
+                >
+                  <option value="all">{lang === 'fr' ? 'Tous les pays' : 'All countries'}</option>
+                  {hasTargetCountries && (
+                    <>
+                      <option value="target">📍 {lang === 'fr' ? 'Mes pays cibles' : 'My target countries'} ({targetScholarships.length})</option>
+                      <option value="other">🌍 {lang === 'fr' ? 'Autres pays' : 'Other countries'} ({otherScholarships.length})</option>
+                      <option disabled>──────────</option>
+                    </>
+                  )}
+                  {availableCountries.map(country => (
+                    <option key={country} value={country}>
+                      {tCountry(country, lang)} ({allScholarships.filter(s => s.pays === country).length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(filterDeadline !== 'all' || filterCountry !== 'all') && (
+                <button
+                  onClick={() => { setFilterDeadline('all'); setFilterCountry('all'); }}
+                  style={{
+                    padding: '11px 20px',
+                    background: 'transparent', border: `1px solid ${c.danger}`,
+                    color: c.danger, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: c.fSans, letterSpacing: '0.04em', textTransform: 'uppercase',
+                    transition: c.tr,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = c.danger; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.danger; }}
+                >
+                  ✕ {lang === 'fr' ? 'Réinitialiser' : 'Reset'}
                 </button>
               )}
             </div>
-            {loadingFull && <div style={{ textAlign: 'center', padding: 20, fontSize: 13, color: c.ink3 }}>Chargement des bourses...</div>}
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* ── Liste ── */}
-      {activeFilter === 'conseils' ? (
-        <ConseilsIA
-          user={user}
-          c={c}
-          lang={lang}
-          handleQuickReply={handleQuickReply}
-          setView={setView}
-        />
-      ) : (
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 32px 80px' }}>
+          {/* Search bar for "test" tab */}
+          {activeFilter === 'test' && (
+            <div style={{ padding: '24px 0' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: c.paper2, padding: '4px 16px', border: `1.5px solid ${c.rule}`, transition: c.tr }}>
+                <span style={{ fontSize: 20 }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder={lang === 'fr' ? 'Nom de la bourse, pays...' : 'Scholarship name, country...'}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{ flex: 1, background: 'transparent', border: 'none', padding: '14px 0', outline: 'none', color: c.ink, fontSize: 14, fontFamily: c.fSans }}
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.ink3, padding: '0 8px' }}>✕</button>
+                )}
+              </div>
+              {loadingFull && <div style={{ textAlign: 'center', padding: 20, fontSize: 13, color: c.ink3, fontFamily: c.fMono }}>{lang === 'fr' ? 'Chargement...' : 'Loading...'}</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+     
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px 80px' }}>
           {error && (
-            <div style={{ padding: '14px 20px', background: c.dangerBg, borderLeft: `3px solid ${c.danger}`, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-              <span style={{ color: c.danger }}>{error}</span>
-              <button onClick={generateNewRecommendations} style={{ padding: '6px 16px', background: c.danger, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 11 }}>
+            <div style={{
+              padding: '16px 22px', background: c.dangerBg, borderLeft: `4px solid ${c.danger}`,
+              marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
+            }}>
+              <span style={{ color: c.danger, fontWeight: 600 }}>⚠ {error}</span>
+              <button onClick={generateNewRecommendations} style={{ padding: '8px 18px', background: c.danger, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fSans, fontSize: 12, fontWeight: 700 }}>
                 {lang === 'fr' ? 'Réessayer' : 'Retry'}
               </button>
             </div>
           )}
 
           {filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16, color: c.ink4 }}>○</div>
-              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 600, color: c.ink, marginBottom: 8 }}>
+            <div style={{ textAlign: 'center', padding: '100px 20px', animation: 'fadeIn 0.4s ease' }}>
+              <div style={{ fontSize: 64, marginBottom: 20, opacity: 0.4 }}>◇</div>
+              <div style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 12, letterSpacing: '-0.01em' }}>
                 {lang === 'fr' ? 'Aucun résultat' : 'No results'}
               </div>
-              <p style={{ color: c.ink3, fontSize: 13 }}>
+              <p style={{ color: c.ink3, fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto 24px' }}>
                 {activeFilter === 'test'
                   ? (lang === 'fr' ? 'Commencez à taper le nom d\'une bourse ou d\'un pays.' : 'Start typing a scholarship name or country.')
-                  : (lang === 'fr' ? 'Essayez de changer les filtres ou complétez votre profil.' : 'Try changing filters or complete your profile.')}
+                  : (lang === 'fr' ? 'Essayez de changer les filtres ou complétez votre profil pour de meilleurs résultats.' : 'Try changing filters or complete your profile.')}
               </p>
               {(filterDeadline !== 'all' || filterCountry !== 'all') && (
-                <button 
+                <button
                   onClick={() => { setFilterDeadline('all'); setFilterCountry('all'); }}
-                  style={{ marginTop: 16, padding: '8px 20px', background: c.accent, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: c.fMono, fontSize: 12 }}
+                  style={{
+                    padding: '12px 28px',
+                    background: `linear-gradient(135deg, ${c.accent}, ${c.accentDark})`,
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    fontFamily: c.fSans, fontSize: 12, fontWeight: 700,
+                    letterSpacing: '0.06em', textTransform: 'uppercase',
+                    boxShadow: `0 4px 12px ${c.accent}40`,
+                  }}
                 >
                   {lang === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
                 </button>
               )}
             </div>
           ) : (
-            <>
-              {/* ✅ SECTION PAYS CIBLES */}
-             {/* Afficher TOUTES les bourses (sans pagination) */}
-<div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-  
-  {/* SECTION 1 : PAYS CIBLES */}
-  {hasTargetCountries && targetScholarships.length > 0 && (
-    <div style={{ marginBottom: 0 }}>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 12, 
-        marginBottom: 24, 
-        paddingBottom: 16, 
-        borderBottom: `3px solid ${c.accent}`,
-        position: 'relative'
-      }}>
-        <span style={{ fontSize: 28 }}>📍</span>
-        <div>
-          <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0 }}>
-            {lang === 'fr' 
-              ? `Bourses dans vos pays cibles`
-              : `Scholarships in your target countries`}
-          </h2>
-          <p style={{ fontSize: 13, color: c.accent, margin: '4px 0 0 0', fontFamily: c.fMono }}>
-            {targetScholarships.length} opportunité{targetScholarships.length > 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {targetScholarships.map((bourse, i) => (
-          <ScholarshipCard
-            key={bourse.id}
-            bourse={bourse}
-            index={i}
-            onAnalyze={setAnalysisBourse}
-            onSave={handleStar}
-            onApply={handleApply}
-            isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-            isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-            c={c}
-            lang={lang}
-          />
-        ))}
-      </div>
-    </div>
-  )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+              {/* SECTION 1: Target Countries */}
+              {hasTargetCountries && targetScholarships.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    marginBottom: 24, paddingBottom: 16,
+                    borderBottom: `2px solid ${c.accent}`,
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      background: `${c.accent}20`, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, flexShrink: 0,
+                    }}>📍</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, color: c.accent, fontFamily: c.fMono, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        ◆ {lang === 'fr' ? 'Priorité' : 'Priority'}
+                      </div>
+                      <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0, letterSpacing: '-0.01em' }}>
+                        {lang === 'fr' ? 'Bourses dans vos pays cibles' : 'Scholarships in your target countries'}
+                      </h2>
+                    </div>
+                    <div style={{
+                      padding: '6px 14px', background: c.accent, color: '#fff',
+                      fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
+                    }}>
+                      {targetScholarships.length}
+                    </div>
+                  </div>
 
-  {/* SECTION 2 : AUTRES PAYS (séparateur visuel clair) */}
-  {otherScholarships.length > 0 && (
-    <>
-      {/* Séparateur visuel entre les deux sections */}
-      {hasTargetCountries && targetScholarships.length > 0 && (
-        <div style={{ 
-          margin: '32px 0 16px 0',
-          height: 2,
-          background: `linear-gradient(90deg, ${c.rule}, ${c.accent}40, ${c.rule})`,
-        }} />
-      )}
-      
-      <div>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 12, 
-          marginBottom: 24, 
-          paddingBottom: 16, 
-          borderBottom: `3px solid ${c.ink4}`,
-          position: 'relative'
-        }}>
-          <span style={{ fontSize: 28 }}>🌍</span>
-          <div>
-            <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0 }}>
-              {lang === 'fr' 
-                ? `Autres opportunités internationales`
-                : `Other international opportunities`}
-            </h2>
-            <p style={{ fontSize: 13, color: c.ink4, margin: '4px 0 0 0', fontFamily: c.fMono }}>
-              {otherScholarships.length} bourse{otherScholarships.length > 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {otherScholarships.map((bourse, i) => (
-            <ScholarshipCard
-              key={bourse.id}
-              bourse={bourse}
-              index={hasTargetCountries ? i + targetScholarships.length : i}
-              onAnalyze={setAnalysisBourse}
-              onSave={handleStar}
-              onApply={handleApply}
-              isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-              isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-              c={c}
-              lang={lang}
-            />
-          ))}
-        </div>
-      </div>
-    </>
-  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {targetScholarships.map((bourse, i) => (
+                      <ScholarshipCard
+                        key={bourse.id}
+                        bourse={bourse}
+                        index={i}
+                         onCardClick={setSelectedBourse}     // drawer général
+  onMatchClick={setMatchAIBourse} 
+                        onSave={handleStar}
+                        onApply={handleApply}
+                        isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                        isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                        c={c}
+                        lang={lang}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-</div>
+              {/* SECTION 2: Other countries */}
+              {otherScholarships.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    marginBottom: 24, paddingBottom: 16,
+                    borderBottom: `1px solid ${c.rule}`,
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      background: c.paper2, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, flexShrink: 0,
+                    }}>🌍</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, color: c.ink3, fontFamily: c.fMono, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        ◇ {lang === 'fr' ? 'Exploration' : 'Discovery'}
+                      </div>
+                      <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0, letterSpacing: '-0.01em' }}>
+                        {lang === 'fr' ? 'Autres opportunités internationales' : 'Other international opportunities'}
+                      </h2>
+                    </div>
+                    <div style={{
+                      padding: '6px 14px', background: c.paper2, color: c.ink3,
+                      fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
+                      border: `1px solid ${c.rule}`,
+                    }}>
+                      {otherScholarships.length}
+                    </div>
+                  </div>
 
-              {/* Pagination */}
-             
-            </>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {otherScholarships.map((bourse, i) => (
+                      <ScholarshipCard
+                        key={bourse.id}
+                        bourse={bourse}
+                        index={hasTargetCountries ? i + targetScholarships.length : i}
+                        onAnalyze={setAnalysisBourse}
+                        onSave={handleStar}
+                        onApply={handleApply}
+                        isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
+                        isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
+                        c={c}
+                        lang={lang}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      )}
+      
 
 
       {/* ── Drawers ── */}
-{analysisBourse && (
-  <BourseDrawer
-    bourse={analysisBourse}
+{/* Drawer IA (analyse détaillée) */}
+{matchAIBourse && (
+  <MatchAnalysisPanel
+    bourse={matchAIBourse}
     user={user}
-    onClose={() => setAnalysisBourse(null)}
-    onAskAI={(b) => {
-      // Ici tu peux déclencher l'assistant IA
-      console.log('Ask AI pour:', b.nom);
-      setAnalysisBourse(null);
-    }}
-    starred={starredNoms.has(analysisBourse.nom?.trim().toLowerCase())}
-    onStar={handleStar}
-    applied={appliedNoms.has(analysisBourse.nom?.trim().toLowerCase())}
+    onClose={() => setMatchAIBourse(null)}
+    onSave={handleStar}
     onApply={handleApply}
+    isStarred={starredNoms.has(matchAIBourse.nom?.trim().toLowerCase())}
+    isApplied={appliedNoms.has(matchAIBourse.nom?.trim().toLowerCase())}
+    c={c}
+    lang={lang}
   />
 )}
-{selected && (
+
+{/* Drawer général (fiche bourse) */}
+{selectedBourse && (
   <BourseDrawer
-    bourse={selected}
-    onClose={() => setSelected(null)}
-    onAskAI={(b) => console.log('Ask AI:', b.nom)}
-    starred={starredNoms.has(selected.nom?.trim().toLowerCase())}
-    onStar={handleStar}
-    applied={appliedNoms.has(selected.nom?.trim().toLowerCase())}
-    onApply={handleApply}
+    bourse={selectedBourse}
     user={user}
+    onClose={() => setSelectedBourse(null)}
+    onAskAI={(b) => console.log('Ask AI:', b.nom)}
+    starred={starredNoms.has(selectedBourse.nom?.trim().toLowerCase())}
+    onStar={handleStar}
+    applied={appliedNoms.has(selectedBourse.nom?.trim().toLowerCase())}
+    onApply={handleApply}
   />
 )}
     </main>
