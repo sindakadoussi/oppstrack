@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { downloadCVPDF, downloadLMPDF } from './pdfGenerator';
 
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/generate-documents';
 
 async function callN8N(userId, bourseId, context, extra = {}) {
   const response = await axios.post(N8N_WEBHOOK_URL, {

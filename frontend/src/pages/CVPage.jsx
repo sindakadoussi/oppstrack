@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axiosInstance from '@/config/axiosInstance';
+// ✅ AJOUTER useEffect à l'import:
+import React, { useState, useEffect, useRef } from 'react';import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
@@ -138,20 +138,114 @@ function DownloadBtn({ content, filename, docType, lang, C }) {
 
 // ── Aperçu live HTML ──────────────────────────────────────────
 function LivePreview({ content, docType, lang, C }) {
-  if (!content) return (
-    <div style={{ textAlign: 'center', color: C.ink3, padding: 60, fontSize: 13, background: C.bgSecondary, borderRadius: 8, border: `1px solid ${C.borderLight}` }}>
-      {lang === 'fr' ? '📭 Aucun contenu — générez ou collez du texte' : '📭 No content — generate or paste text'}
+  const iframeRef = useRef(null);
+ 
+  useEffect(() => {
+    if (!content) {
+      console.log('❌ Pas de content reçu');
+      return;
+    }
+ 
+    console.log('═══════════════════════════════════════════');
+    console.log('🔍 DEBUG LivePreview');
+    console.log('═══════════════════════════════════════════');
+    
+    // 1. Vérifier le contenu
+    console.log('1️⃣ Content reçu:');
+    console.log('   Longueur:', content.length, 'caractères');
+    console.log('   Premiers 200 chars:', content.substring(0, 200));
+    
+    // 2. Vérifier buildPreviewHTML existe
+    console.log('2️⃣ buildPreviewHTML fonction:', typeof buildPreviewHTML);
+    
+    // 3. Essayer de générer le HTML
+    let html = '';
+    try {
+      html = buildPreviewHTML(content, docType, lang);
+      console.log('3️⃣ HTML généré:');
+      console.log('   Longueur:', html.length, 'caractères');
+      console.log('   Premiers 300 chars:', html.substring(0, 300));
+      console.log('   Contient <html>:', html.includes('<html'));
+      console.log('   Contient <body>:', html.includes('<body'));
+    } catch (e) {
+      console.error('❌ ERREUR buildPreviewHTML:', e.message);
+      console.error('Stack:', e.stack);
+      return;
+    }
+ 
+    // 4. Vérifier iframeRef
+    console.log('4️⃣ iframeRef:', iframeRef.current ? '✅ existe' : '❌ NULL');
+    if (!iframeRef.current) {
+      console.error('❌ ERREUR: iframeRef.current est NULL');
+      return;
+    }
+ 
+    // 5. Essayer srcdoc
+    console.log('5️⃣ Appel srcdoc...');
+    try {
+      iframeRef.current.srcdoc = html;
+      console.log('✅ srcdoc appliqué avec succès');
+      console.log('   iframe.srcdoc longueur:', iframeRef.current.srcdoc.length);
+    } catch (e) {
+      console.error('❌ ERREUR srcdoc:', e.message);
+    }
+ 
+    // 6. Fallback contentDocument
+    console.log('6️⃣ Fallback contentDocument...');
+    try {
+      if (iframeRef.current.contentDocument) {
+        iframeRef.current.contentDocument.open();
+        iframeRef.current.contentDocument.write(html);
+        iframeRef.current.contentDocument.close();
+        console.log('✅ contentDocument appliqué avec succès');
+      } else {
+        console.warn('⚠️ contentDocument est null (normal avec srcdoc)');
+      }
+    } catch (e) {
+      console.error('❌ ERREUR contentDocument:', e.message);
+    }
+ 
+    console.log('═══════════════════════════════════════════');
+ 
+  }, [content, docType, lang]);
+ 
+  if (!content) {
+    return (
+      <div style={{
+        textAlign: 'center', color: C.ink3, padding: 60, fontSize: 13,
+        background: C.bgSecondary, borderRadius: 8, border: `1px solid ${C.borderLight}`
+      }}>
+        {lang === 'fr' ? '📭 Aucun contenu' : '📭 No content'}
+      </div>
+    );
+  }
+ 
+  return (
+    <div>
+      {/* Zone de debug visible */}
+      <div style={{
+        fontSize: 11, color: '#888', padding: '8px 12px', background: '#f5f5f5',
+        borderRadius: 6, marginBottom: 8, border: '1px solid #ddd', fontFamily: 'monospace'
+      }}>
+        📊 DEBUG: Content={content.length}chars | DocType={docType} | Lang={lang}
+      </div>
+ 
+      {/* L'iframe */}
+      <iframe
+        ref={iframeRef}
+        style={{
+          width: '100%', height: 520, border: `1px solid ${C.borderLight}`,
+          borderRadius: 8, background: '#fff', display: 'block',
+          boxSizing: 'border-box'
+        }}
+        title="document-preview"
+        sandbox="allow-same-origin allow-scripts"
+
+      />
     </div>
   );
-  const html = buildPreviewHTML(content, docType, lang);
-  return (
-    <iframe
-  srcDoc={buildPreviewHTML(content, docType, lang)}
-  style={{ width: '100%', height: 520, border: `1px solid ${C.borderLight}`, borderRadius: 8, background: '#fff', display: 'block' }}
-  title="document-preview"
-/>
-  );
 }
+ 
 
 // ── Parse sections pour le panel analyse ─────────────────────
 function parseSections(text) {
