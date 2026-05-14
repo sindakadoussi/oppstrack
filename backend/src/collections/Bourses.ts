@@ -14,12 +14,12 @@ const Bourses: CollectionConfig = {
       'description', 'eligibilite', 'documentsRequis','embedding','image'
     ],
   },
-   access: {
-    read:   anyone,
-    update: authenticated,
-    create: authenticated,
-    delete: authenticated,
-  },
+  access: {
+  read:   () => true,
+  update: () => true,
+  create: () => true,  // ← Temporaire!
+  delete: authenticated,
+},
   fields: [
     {
       name: 'nom',

@@ -22,6 +22,8 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
+  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
+  csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
   admin: {
     user: Users.slug,
     importMap: {
@@ -48,6 +50,7 @@ export default buildConfig({
   collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks, Match , Recommendations],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
+  
 
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
