@@ -5,12 +5,12 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import axios from 'axios';
 import { downloadCVPDF, downloadLMPDF, buildPreviewHTML } from './pdfGenerator';
-import Workspaceimport from './Workspaceimport';
+import WorkspaceImport from './WorkspaceImport';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  N8N WEBHOOK
 // ═══════════════════════════════════════════════════════════════════════════
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/generate-documents';
 
 async function callN8N(userId, bourseId, context, extra = {}) {
   const response = await axios.post(N8N_WEBHOOK_URL, {
