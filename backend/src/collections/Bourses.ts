@@ -20,6 +20,37 @@ const Bourses: CollectionConfig = {
   create: () => true,  // ← Temporaire!
   delete: authenticated,
 },
+
+hooks: {
+    afterChange: [
+      async ({ doc, operation, req }) => {
+        // Déclencher le webhook SEULEMENT à la création
+        if (operation === 'create') {
+          try {
+            const webhookUrl = 'http://localhost:5678/webhook/nouvelle-bourse';
+            
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nom: doc.nom,
+                pays: doc.pays,
+                niveau: doc.niveau,
+                financement: doc.financement,
+                dateLimite: doc.dateLimite,
+                domaine: doc.domaine,
+              }),
+            });
+            
+            console.log('✅ Webhook n8n déclenché pour la bourse:', doc.nom);
+          } catch (error) {
+            console.error('❌ Erreur webhook n8n:', error);
+            // Ne pas bloquer la création si le webhook échoue
+          }
+        }
+      },
+    ],
+  },
   fields: [
     {
       name: 'nom',
