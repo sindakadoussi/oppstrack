@@ -7,12 +7,46 @@ const Roadmap: CollectionConfig = {
     useAsTitle: 'nom',
     defaultColumns: ['nom', 'pays', 'userId', 'statut', 'etapeCourante', 'dateLimite'],
   },
-  access: {
-    read:   anyone,
-    create: authenticated,
-    update: authenticated,
-    delete: authenticated,
+
+   access: {
+  read:   () => true,
+  create: () => true,
+  update: () => true,
+  delete: () => true,
+
   },
+
+  // collections/roadmap.ts
+
+hooks: {
+  afterChange: [
+    async ({ doc, operation, req }) => {
+      // Déclencher SEULEMENT si on modifie la dateLimite
+      if (operation === 'update' && doc.dateLimite) {
+        try {
+          // 🎯 Déclenchez le workflow par son URL d'exécution
+          const workflowUrl = 'http://localhost:5678/webhook/deadline';
+          
+          await fetch(workflowUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: doc.userId,
+              userEmail: doc.userEmail,
+              dateLimite: doc.dateLimite,
+              nom: doc.nom,
+            }),
+          });
+          
+          console.log('✅ Workflow déclenché pour:', doc.nom);
+        } catch (error) {
+          console.error('❌ Erreur:', error);
+          // Ne pas bloquer si erreur
+        }
+      }
+    },
+  ],
+},
   fields: [
     {
       name: 'userId',
