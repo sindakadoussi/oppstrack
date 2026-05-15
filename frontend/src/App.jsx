@@ -22,7 +22,7 @@ import GuestPage from './pages/Guestpage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import GuidesPage from './pages/GuidesPage';
-import FaQPage from './pages/FaQPage'; 
+import FAQPage from './pages/FAQPage'; 
 import BlogPage from './pages/BlogPage';
 
 const tokens = (theme) => ({
@@ -413,7 +413,7 @@ function AppContent() {
         {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
         {view === 'about'           && <AboutPage setView={setView} user={user} />}
         {view === 'guides'          && <GuidesPage setView={setView} />}
-        {view === 'faQ'             && <FaQPage setView={setView} onToggleChat={handleToggleChat} />}  {/* ✅ CORRIGÉ */}
+        {view === 'FAQ'             && <FAQPage setView={setView} onToggleChat={handleToggleChat} />}  {/* ✅ CORRIGÉ */}
         {view === 'blog'            && <BlogPage setView={setView} />}
       </main>
 
