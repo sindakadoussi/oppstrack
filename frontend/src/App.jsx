@@ -413,7 +413,7 @@ function AppContent() {
         {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
         {view === 'about'           && <AboutPage setView={setView} user={user} />}
         {view === 'guides'          && <GuidesPage setView={setView} />}
-        {view === 'faq'             && <FaqPage setView={setView} onToggleChat={handleToggleChat} />}  {/* ✅ CORRIGÉ */}
+        {view === 'faQ'             && <FaQPage setView={setView} onToggleChat={handleToggleChat} />}  {/* ✅ CORRIGÉ */}
         {view === 'blog'            && <BlogPage setView={setView} />}
       </main>
 
