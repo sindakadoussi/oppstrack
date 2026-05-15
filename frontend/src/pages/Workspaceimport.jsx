@@ -264,7 +264,7 @@ function SectionCard({ block, index, lang }) {
   );
 }
 
-export default function WorkspaceImport({ user, bourse, content, setContent, docType, setLoading, setLoadingStep, lang, C }) {
+export default function Workspaceimport({ user, bourse, content, setContent, docType, setLoading, setLoadingStep, lang, C }) {
   const [analysis, setAnalysis] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [improving, setImproving] = useState(false);
