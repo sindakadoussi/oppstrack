@@ -5,7 +5,7 @@ import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import axios from 'axios';
 import { buildPreviewHTML, downloadCVPDF, downloadLMPDF } from './pdfGenerator';
-import WorkspaceImport from './WorkspaceImport';
+import Workspaceimport from './Workspaceimport';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  N8N WEBHOOK
@@ -586,12 +586,12 @@ export default function CVPage({ user, setView }) {
             {workspaceMode === 'generate' && activeTab === 'cv' && <WorkspaceGenerate content={cvContent} setContent={setCvContent} docType="cv" lang={lang} C={C} />}
             {workspaceMode === 'generate' && activeTab === 'lm' && <WorkspaceGenerate content={lmContent} setContent={setLmContent} docType="lm" lang={lang} C={C} />}
            {workspaceMode === 'import' && activeTab === 'cv' && 
-  <WorkspaceImport user={user} bourse={selectedBourse} content={cvContent} 
+  <Workspaceimport user={user} bourse={selectedBourse} content={cvContent} 
     setContent={setCvContent} docType="cv" setLoading={setLoading} 
     setLoadingStep={setLoadingStep} lang={lang} C={C} />}
 
 {workspaceMode === 'import' && activeTab === 'lm' && 
-  <WorkspaceImport user={user} bourse={selectedBourse} content={lmContent} 
+  <Workspaceimport user={user} bourse={selectedBourse} content={lmContent} 
     setContent={setLmContent} docType="lm" setLoading={setLoading} 
     setLoadingStep={setLoadingStep} lang={lang} C={C} />}
     </div>
