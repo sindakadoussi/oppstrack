@@ -22,7 +22,7 @@ import GuestPage from './pages/Guestpage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import GuidesPage from './pages/GuidesPage';
-import FaqPage from './pages/FaqPage';  // ✅ CORRIGÉ - respecter la casse
+import FaQPage from './pages/FaQPage'; 
 import BlogPage from './pages/BlogPage';
 
 const tokens = (theme) => ({
