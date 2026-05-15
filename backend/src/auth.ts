@@ -21,6 +21,10 @@ export async function sendMagicLink(email: string): Promise<void> {
     from: `"OppsTrack" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: "🔐 Votre lien de connexion OppsTrack",
+
+
+
+    
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;background:#f8fafc;border-radius:12px">
         <h2 style="color:#2563eb;text-align:center">👋 Bienvenue sur OppsTrack</h2>

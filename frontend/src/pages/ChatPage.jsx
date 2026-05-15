@@ -480,29 +480,10 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onRename, onDelete,
   );
 }
 
-// ── Action Bar ──
-function ActionBar({ onAction, lang }) {
-  const ACTION_CHIPS = [
-    { icon: '📄', label: lang === 'fr' ? 'Ajouter à ma roadmap' : 'Add to roadmap', prompt: lang === 'fr' ? 'Ajouter cette bourse à ma roadmap' : 'Add this scholarship to my roadmap' },
-    { icon: '📊', label: lang === 'fr' ? 'Analyser cette bourse' : 'Analyze scholarship', prompt: lang === 'fr' ? 'Analyse cette bourse en détail' : 'Analyze this scholarship in detail' },
-    { icon: '⚖️', label: lang === 'fr' ? 'Comparer' : 'Compare', prompt: lang === 'fr' ? 'Compare cette bourse avec une autre similaire' : 'Compare this scholarship with a similar one' },
-    { icon: '✉️', label: lang === 'fr' ? 'Préparer candidature' : 'Prepare application', prompt: lang === 'fr' ? 'Aide-moi à préparer ma candidature pour cette bourse' : 'Help me prepare my application for this scholarship' },
-  ];
 
-  return (
-    <div className="action-bar">
-      {ACTION_CHIPS.map((chip, i) => (
-        <button key={i} className="action-chip" onClick={() => onAction(chip.prompt)} title={chip.label}>
-          <span style={{ fontSize: 12 }}>{chip.icon}</span>
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ── Message Bubble ──
-function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction, lang }) {
+function MessageBubble({ message, isUser, delay = 0,   lang }) {
   const formattedContent = useMemo(() => {
     if (!message.text) return null;
     const lines = message.text.split('\n');
@@ -584,9 +565,7 @@ function MessageBubble({ message, isUser, delay = 0, isLast = false, onAction, l
         }}>
           {formattedContent}
         </div>
-        {(isLast || message.showActions) && onAction && (
-          <ActionBar onAction={onAction} lang={lang} />
-        )}
+        
       </div>
     </div>
   );
@@ -832,7 +811,6 @@ export default function ChatInterface() {
         sender: 'ai',
         text: finalText,
         timestamp: new Date().toISOString(),
-        showActions: true,
       };
 
       setConversations(prev => prev.map(c =>
@@ -888,13 +866,7 @@ export default function ChatInterface() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(inputValue); }
   };
 
-  const lastAiIndex = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].sender === 'ai') return i;
-    }
-    return -1;
-  }, [messages]);
-
+ 
   return (
     <>
       <style>{styles}</style>
@@ -971,17 +943,14 @@ export default function ChatInterface() {
               )}
 
               {messages.map((msg, idx) => (
-                <MessageBubble
-                  key={msg.id || idx}
-                  message={msg}
-                  isUser={msg.sender === 'user'}
-                  delay={idx * 0.025}
-                  isLast={idx === lastAiIndex}
-                  onAction={msg.sender === 'ai' ? handleSendMessage : null}
-                  lang={lang}
-                />
-              ))}
-
+  <MessageBubble
+    key={msg.id || idx}
+    message={msg}
+    isUser={msg.sender === 'user'}
+    delay={idx * 0.025}
+    lang={lang}
+  />
+))}
               {loading && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fade-up 0.25s ease both' }}>
                   <div style={{

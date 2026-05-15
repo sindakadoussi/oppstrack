@@ -1,4 +1,3 @@
-
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -16,10 +15,15 @@ import Roadmap from './collections/Roadmap';
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import Feedbacks from './collections/Feedbacks'
+import Match from './collections/Match'
+import Recommendations from './collections/recommendations';
+
 const filename = fileURLToPath(import.meta.url)
-const dirname  = path.dirname(filename)
+const dirname = path.dirname(filename)
 
 export default buildConfig({
+  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
+  csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
   admin: {
     user: Users.slug,
     importMap: {
@@ -31,7 +35,7 @@ export default buildConfig({
   email: nodemailerAdapter({
     defaultFromName: 'OppTrack',
     defaultFromAddress: process.env.GMAIL_USER || 'opportunitylink32@gmail.com',
-    skipVerify: true,   // ← évite l'erreur EAUTH au démarrage
+    skipVerify: true, // ← évite l'erreur EAUTH au démarrage
     transportOptions: {
       host: 'smtp.gmail.com',
       port: 587,
@@ -43,9 +47,10 @@ export default buildConfig({
     },
   }),
 
-  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris,Roadmap, Feedbacks],
-  editor:      lexicalEditor(),
-  secret:      process.env.PAYLOAD_SECRET || '',
+  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks, Match , Recommendations],
+  editor: lexicalEditor(),
+  secret: process.env.PAYLOAD_SECRET || '',
+  
 
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
@@ -58,4 +63,8 @@ export default buildConfig({
   sharp,
   plugins: [],
 
+  // ========================================
+  // ROUTES PERSONNALISÉES
+  // ========================================
+ 
 })

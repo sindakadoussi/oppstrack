@@ -3,6 +3,7 @@ import { authenticated } from '@/access/authenticated'
 import { anyone } from '@/access/anyone'
 
 const Bourses: CollectionConfig = {
+  
   slug: 'bourses',
   admin: {
     useAsTitle: 'nom',
@@ -10,15 +11,15 @@ const Bourses: CollectionConfig = {
       'nom', 'pays', 'niveau', 'financement',
       'dateOuverture', 'dateLimite', 'statut',
       'tunisienEligible', 'domaine', 'langue',
-      'description', 'eligibilite', 'documentsRequis','image'
+      'description', 'eligibilite', 'documentsRequis','embedding','image'
     ],
   },
-   access: {
-    read:   anyone,
-    update: authenticated,
-    create: authenticated,
-    delete: authenticated,
-  },
+  access: {
+  read:   () => true,
+  update: () => true,
+  create: () => true,  // ← Temporaire!
+  delete: authenticated,
+},
   fields: [
     {
       name: 'nom',
@@ -118,31 +119,18 @@ const Bourses: CollectionConfig = {
     description: 'Logo ou image représentative de la bourse',
   },
 },
-  ],
-  hooks: {
-    afterChange: [
-      async ({ doc, operation }) => {
-        if (operation !== 'create') return;
-        try {
-          await fetch('http://localhost:5678/webhook/nouvelle-bourse', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nom:          doc.nom          || '',
-              pays:         doc.pays         || '',
-              financement:  doc.financement  || '',
-              dateLimite:   doc.dateLimite   || '',
-              lienOfficiel: doc.lienOfficiel || '',
-              niveau:       doc.niveau       || '',
-              description:  doc.description  || '',
-            }),
-          });
-        } catch (e) {
-          console.warn('Hook nouvelle bourse:', (e as Error).message);
-        }
-      },
-    ],
+
+
+{
+  name: 'embedding',
+  type: 'json', 
+  admin: {
+    readOnly: true,
+    hidden: true, // Pas besoin de polluer l'interface admin avec des listes de nombres
   },
+},
+  ],
+ 
 };
 
 export default Bourses;

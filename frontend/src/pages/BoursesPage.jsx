@@ -6,7 +6,11 @@ import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import Matchdraweria from '../components/Matchdraweria';
-
+const handleAskAI = (bourse) => {
+  console.log('🔍 handleAskAI - Bourse:', bourse);
+  console.log('🔍 User:', user);
+  setMatchBourse(bourse); // ← c'est ici que tu passes matchBourse
+};
 /* =============== TOKENS =============== */
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
@@ -224,10 +228,10 @@ const [applyLoading, setApplyLoading] = useState(false);
           </h3>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
             {bourse.dateLimite && (
-              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
-                <strong>Deadline</strong> {formatDate(bourse.dateLimite)}
-              </span>
-            )}
+  <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+    <strong>{lang === 'fr' ? 'Date limite' : 'Deadline'}</strong> {formatDate(bourse.dateLimite)}
+  </span>
+)}
             <span style={{
               fontFamily: c.fMono,
               fontSize: 10,
@@ -244,38 +248,38 @@ const [applyLoading, setApplyLoading] = useState(false);
           </div>
         </div>
 
-       {/* APRÈS la section Financement/Deadline, AVANT les Documents requis */}
-
-
         {/* Grille des métadonnées (pays, niveau) - sans domaine ici */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
-          {bourse.pays && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📍</span> <strong>Pays</strong> {bourse.pays}
-            </div>
-          )}
-          {bourse.niveau && (
-            <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>🎓</span> <strong>Niveau</strong> {bourse.niveau}
-            </div>
-          )}
-        </div>
+        {/* Grille des métadonnées (pays, niveau) */}
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px 16px', marginBottom: 8 }}>
+  {bourse.pays && (
+    <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 14 }}>📍</span> 
+      <strong>{lang === 'fr' ? 'Pays' : 'Country'}</strong> {bourse.pays}
+    </div>
+  )}
+  {bourse.niveau && (
+    <div style={{ fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 14 }}>🎓</span> 
+      <strong>{lang === 'fr' ? 'Niveau' : 'Level'}</strong> {bourse.niveau}
+    </div>
+  )}
+</div>
 
-        
+{/* Domaine */}
+{bourse.domaine && (
+  <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ fontSize: 14 }}>📚</span> 
+    <strong>{lang === 'fr' ? 'Domaine' : 'Field'}</strong> {bourse.domaine}
+  </div>
+)}
 
-        {/* Domaine - ligne complète séparée */}
-        {bourse.domaine && (
-          <div style={{ marginBottom: 12, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>📚</span> <strong>Domaine</strong> {bourse.domaine}
-          </div>
-        )}
-
-        {/* Financement */}
-        {bourse.financement && (
-          <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 14 }}>💰</span> <strong>Financement</strong> {bourse.financement}
-          </div>
-        )}
+{/* Financement */}
+{bourse.financement && (
+  <div style={{ marginBottom: 16, fontSize: 13, color: c.ink2, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ fontSize: 14 }}>💰</span> 
+    <strong>{lang === 'fr' ? 'Financement' : 'Funding'}</strong> {bourse.financement}
+  </div>
+)}
 
         {/* Description courte */}
         {bourse.description && (
@@ -521,7 +525,12 @@ function MiniHero({ c, lang, totalCount }) {
         marginLeft: 'auto',
         marginRight: 'auto',
       }}>
-        Découvrez +{totalCount} opportunités entièrement financées et évaluez instantanément votre compatibilité.
+        {lang === "fr" ? (
+                  <>Découvrez +{totalCount} opportunités entièrement financées et évaluez instantanément votre compatibilité.</>
+                ) : (
+                  <> Discover +{totalCount} fully funded opportunities and instantly assess your compatibility.</>
+                )}
+        
       </p>
     </div>
   );
@@ -868,14 +877,25 @@ const handleAskAI = (bourse) => {
               />
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: c.ink3 }}>🔍</span>
             </div>
-            <select value={filterNiveau} onChange={e => setFilterNiveau(e.target.value)} style={selectStyle(c)}>
-              <option value="">{t('bourses', 'filterNiveau')}</option>
-              {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            <select value={filterPays} onChange={e => setFilterPays(e.target.value)} style={selectStyle(c)}>
-              <option value="">{t('bourses', 'filterPays')}</option>
-              {paysList.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <select 
+  key={`niveau-${theme}`}
+  value={filterNiveau} 
+  onChange={e => setFilterNiveau(e.target.value)} 
+  style={selectStyle(c)}
+>
+  <option value="">{t('bourses', 'filterNiveau')}</option>
+  {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
+</select>
+
+<select 
+  key={`pays-${theme}`}
+  value={filterPays} 
+  onChange={e => setFilterPays(e.target.value)} 
+  style={selectStyle(c)}
+>
+  <option value="">{t('bourses', 'filterPays')}</option>
+  {paysList.map(p => <option key={p} value={p}>{p}</option>)}
+</select>
             {(search || filterNiveau || filterPays) && (
               <button onClick={() => { setSearch(''); setFilterNiveau(''); setFilterPays(''); }} style={{ ...clearButton(c) }}>
                 ✕ Effacer
@@ -1001,7 +1021,7 @@ const handleAskAI = (bourse) => {
         onApply={handleApply}
         user={user}
       />
-      {matchBourse && <MatchDrawerIA bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
+      {matchBourse && <Matchdraweria bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} c={c} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} c={c} />}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback , useMemo} from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar, { ThemeProvider, useTheme } from './components/Navbar'; // ← Ajoutez useTheme ici
-import ChatToggleButton from './components/ChatToggleButton'; // ← Import du bouton chat
+import Navbar, { ThemeProvider, useTheme } from './components/Navbar';
+import ChatToggleButton from './components/ChatToggleButton';
 import ChatPage from './pages/ChatPage';
 import BoursesPage from './pages/BoursesPage';
 import RoadmapPage from './pages/RoadmapPage';
@@ -21,7 +21,9 @@ import StudentFeedback from './components/StudentFeedback';
 import GuestPage from './pages/Guestpage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
-
+import GuidesPage from './pages/GuidesPage';
+import FaqPage from './pages/FaqPage';  // ✅ CORRIGÉ - respecter la casse
+import BlogPage from './pages/BlogPage';
 
 const tokens = (theme) => ({
   accent:     theme === "dark" ? "#4c9fd9" : "#0066b3",
@@ -41,9 +43,10 @@ const tokens = (theme) => ({
   fSans:  `"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
   fMono:  `"DM Sans", monospace`,
 });
+
 function AppContent() {
   const { t, lang, setLang } = useT();
-  const { theme } = useTheme();  // ← AJOUTE CETTE LIGNE
+  const { theme } = useTheme();
   const c = tokens(theme);  
   const location = useLocation();
   const [view, setView]                       = useState('accueil');
@@ -58,7 +61,7 @@ function AppContent() {
   const [roadmapData, setRoadmapData] = useState([]);
   const [serverStatus, setServerStatus]       = useState({ n8n: null, payload: null });
   const [cvContext, setCvContext]             = useState('cv');
-  const [showFloatChat, setShowFloatChat]     = useState(false); // ← État pour le chat
+  const [showFloatChat, setShowFloatChat]     = useState(false);
 
   const chatContainerRef = useRef(null);
   const historyLoaded    = useRef(false);
@@ -71,8 +74,6 @@ function AppContent() {
     conversationId.current = saved || `chat-guest-${Date.now()}`;
     if (!saved) sessionStorage.setItem('opps_conv_id', conversationId.current);
   }
-
-  // ... (garde tous tes useEffect existants) ...
 
   useEffect(() => {
     const saved = localStorage.getItem('opps_user');
@@ -159,15 +160,14 @@ function AppContent() {
   }, [user]);
 
   const fetchRoadmap = useCallback(async () => {
-  if (!user?.id) return;
-  try {
-    const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id), {
-      signal: AbortSignal.timeout(5000),
-    });
-    setRoadmapData(res.data.docs || []);
-  } catch (e) { console.warn('Roadmap:', e.message); }
-}, [user]);
-
+    if (!user?.id) return;
+    try {
+      const res = await axiosInstance.get(API_ROUTES.roadmap.byUser(user.id), {
+        signal: AbortSignal.timeout(5000),
+      });
+      setRoadmapData(res.data.docs || []);
+    } catch (e) { console.warn('Roadmap:', e.message); }
+  }, [user]);
 
   useEffect(() => {
     if (!historyLoaded.current) {
@@ -331,6 +331,11 @@ function AppContent() {
     setView('accueil');
   };
 
+  // ✅ AJOUTÉ - Fonction pour basculer le chat
+  const handleToggleChat = () => {
+    setShowFloatChat(prev => !prev);
+  };
+
   const handleQuickReply    = (text) => handleSend(text);
   const askAboutScholarship = (bourse) => {
     handleSend(`Peux-tu me donner plus de détails sur la bourse "${bourse.nom}" et me dire si je suis éligible ?`);
@@ -343,8 +348,8 @@ function AppContent() {
     chatContainerRef, currentStep, setCurrentStep,
     bourses, askAboutScholarship, entretienScores,
     fetchEntretienScores, conversationId: conversationId.current,
-    view, setView, serverStatus,lang,setLang,roadmapData,
-  setRoadmapData,
+    view, setView, serverStatus, lang, setLang, roadmapData,
+    setRoadmapData,
     onOpenBourse: (nom) => { setInitialSelected(nom); setView('bourses'); },
   };
 
@@ -357,8 +362,8 @@ function AppContent() {
   }
 
   return (
-<div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''} ${view === 'Home' ? 'view-home' : ''}`}>
-        {/* Navbar - avec onToggleChat */}
+    <div className={`app-root ${view === 'contact' || view === 'feedback' ? 'no-navbar' : ''} ${view === 'Home' ? 'view-home' : ''}`}>
+      {/* Navbar - avec onToggleChat */}
       {view !== 'contact' && view !== 'feedback' && (
         <Navbar
           view={view}
@@ -367,7 +372,7 @@ function AppContent() {
           onLogout={handleLogout}
           serverStatus={serverStatus}
           onOpenBourse={(nom) => { setInitialSelected(nom); setView('bourses'); }}
-          onToggleChat={() => setShowFloatChat(prev => !prev)}  // ← AJOUTÉ !
+          onToggleChat={handleToggleChat}  // ✅ AJOUTÉ
         />
       )}
 
@@ -383,310 +388,313 @@ function AppContent() {
         </div>
       )}
 
-<main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
-  {/* Accueil : assistant IA pour tous */}
-  {view === 'accueil' && <ChatPage {...sharedProps} />}
+      <main className={`main-content ${view === 'contact' ? 'contact-main' : ''}`}>
+        {/* Accueil : assistant IA pour tous */}
+        {view === 'accueil' && <ChatPage {...sharedProps} />}
 
-  {/* Home : GuestPage si invité, HomePage si connecté */}
-  {view === 'Home' && (
-    user ? (
-      <HomePage {...sharedProps} />
-    ) : (
-      <GuestPage bourses={bourses} onSignup={() => {}} setView={setView} />
-    )
-  )}
+        {/* Home : GuestPage si invité, HomePage si connecté */}
+        {view === 'Home' && (
+          user ? (
+            <HomePage {...sharedProps} />
+          ) : (
+            <GuestPage bourses={bourses} onSignup={() => {}} setView={setView} />
+          )
+        )}
 
-  {/* Autres vues */}
-  {view === 'bourses'         && <BoursesPage {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
-  {view === 'recommandations' && <RecommandationsPage {...sharedProps} />}
-  {view === 'roadmap'         && <RoadmapPage {...sharedProps} />}
-  {view === 'dashboard'       && <DashboardPage {...sharedProps} />}
-  {view === 'profil'          && <ProfilPage {...sharedProps} />}
-  {view === 'entretien'       && <EntretienPage {...sharedProps} />}
-  {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
-  {view === 'contact'         && <ContactPage setView={setView} user={user} />}
-  {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
-  {view === 'about' && <AboutPage setView={setView} />}
-</main>
+        {/* Autres vues */}
+        {view === 'bourses'         && <BoursesPage {...sharedProps} initialSelected={initialSelected} onClearInitialSelected={() => setInitialSelected(null)} />}
+        {view === 'recommandations' && <RecommandationsPage {...sharedProps} />}
+        {view === 'roadmap'         && <RoadmapPage {...sharedProps} />}
+        {view === 'dashboard'       && <DashboardPage {...sharedProps} />}
+        {view === 'profil'          && <ProfilPage {...sharedProps} />}
+        {view === 'entretien'       && <EntretienPage {...sharedProps} />}
+        {view === 'cv'              && <CVPage {...sharedProps} initialTab={cvContext} />}
+        {view === 'contact'         && <ContactPage setView={setView} user={user} />}
+        {view === 'feedback'        && <StudentFeedback setView={setView} user={user} />}
+        {view === 'about'           && <AboutPage setView={setView} user={user} />}
+        {view === 'guides'          && <GuidesPage setView={setView} />}
+        {view === 'faq'             && <FaqPage setView={setView} onToggleChat={handleToggleChat} />}  {/* ✅ CORRIGÉ */}
+        {view === 'blog'            && <BlogPage setView={setView} />}
+      </main>
 
       {/* ChatToggleButton - UN SEUL BOUTON */}
       {view !== 'accueil' && (
-  <ChatToggleButton
-    isOpen={showFloatChat}
-    onClick={() => setShowFloatChat(prev => !prev)}
-    position="bottom-right"
-    offsetX={24}
-    offsetY={24}
-    showBadge={messages.filter(m => m.sender === 'ai' && !m.read).length > 0}
-    badgeCount={messages.filter(m => m.sender === 'ai' && !m.read).length}
-  />
-)}
+        <ChatToggleButton
+          isOpen={showFloatChat}
+          onClick={() => setShowFloatChat(prev => !prev)}
+          position="bottom-right"
+          offsetX={24}
+          offsetY={24}
+          showBadge={messages.filter(m => m.sender === 'ai' && !m.read).length > 0}
+          badgeCount={messages.filter(m => m.sender === 'ai' && !m.read).length}
+        />
+      )}
 
       {/* Chat flottant */}
       {showFloatChat && view !== 'accueil' && (
-  <div style={{
-    position: 'fixed', bottom: 90, right: 24, width: 400,
-    maxWidth: 'calc(100vw - 48px)', height: 560,
-    background: c.paper,
-    borderRadius: 0,
-    boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.05)',
-    display: 'flex', flexDirection: 'column', zIndex: 1000,
-    overflow: 'hidden',
-    border: `1px solid ${c.rule}`,
-    fontFamily: c.fSans,
-  }}>
-    {/* Header */}
-    <div style={{
-      background: c.accent,
-      color: c.paper,
-      padding: '16px 20px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      borderBottom: `1px solid ${c.rule}`,
-    }}>
-      <div>
-        <span style={{
-          fontFamily: c.fSerif,
-          fontSize: 16,
-          fontWeight: 700,
-          letterSpacing: '-0.01em',
-        }}>
-          Assistant IA
-        </span>
-        <span style={{
-          fontFamily: c.fMono,
-          fontSize: 10,
-          marginLeft: 12,
-          opacity: 0.8,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}>
-          OppsTrack
-        </span>
-      </div>
-      <button
-        onClick={() => setShowFloatChat(false)}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: c.paper,
-          fontSize: 20,
-          cursor: 'pointer',
-          padding: '0 4px',
-          opacity: 0.8,
-          transition: 'opacity 0.2s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.opacity = 1}
-        onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
-      >
-        ✕
-      </button>
-    </div>
-
-    {/* Messages */}
-    <div
-      ref={floatContainerRef}
-      style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '16px 20px',
-        position: 'relative',
-        background: c.paper,
-      }}
-    >
-      {messages.length === 0 && (
         <div style={{
-          textAlign: 'center',
-          color: c.ink3,
-          marginTop: 60,
+          position: 'fixed', bottom: 90, right: 24, width: 400,
+          maxWidth: 'calc(100vw - 48px)', height: 560,
+          background: c.paper,
+          borderRadius: 0,
+          boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.05)',
+          display: 'flex', flexDirection: 'column', zIndex: 1000,
+          overflow: 'hidden',
+          border: `1px solid ${c.rule}`,
           fontFamily: c.fSans,
-          fontSize: 13,
-          lineHeight: 1.5,
         }}>
+          {/* Header */}
           <div style={{
-            marginBottom: 12,
-            fontSize: 32,
-            color: c.accent,
-            opacity: 0.5,
-          }}>
-            ⌨️
-          </div>
-          <div style={{ fontFamily: c.fSerif, fontSize: 16, color: c.ink2, marginBottom: 8 }}>
-            Assistant IA OppsTrack
-          </div>
-          <p>
-            Analyse de profil, recommandations de bourses,<br />
-            conseils personnalisés.
-          </p>
-        </div>
-      )}
-      {messages.map((msg, idx) => (
-        <div
-          key={idx}
-          style={{
+            background: c.accent,
+            color: c.paper,
+            padding: '16px 20px',
             display: 'flex',
-            justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-            marginBottom: 16,
-          }}
-        >
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${c.rule}`,
+          }}>
+            <div>
+              <span style={{
+                fontFamily: c.fSerif,
+                fontSize: 16,
+                fontWeight: 700,
+                letterSpacing: '-0.01em',
+              }}>
+                Assistant IA
+              </span>
+              <span style={{
+                fontFamily: c.fMono,
+                fontSize: 10,
+                marginLeft: 12,
+                opacity: 0.8,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+                OppsTrack
+              </span>
+            </div>
+            <button
+              onClick={() => setShowFloatChat(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: c.paper,
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: '0 4px',
+                opacity: 0.8,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = 1}
+              onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Messages */}
           <div
+            ref={floatContainerRef}
             style={{
-              background: msg.sender === 'user' ? c.accent : c.paper2,
-              color: msg.sender === 'user' ? c.paper : c.ink,
-              padding: '10px 16px',
-              borderRadius: 0,
-              maxWidth: '85%',
-              fontSize: 13,
-              lineHeight: 1.5,
-              fontFamily: c.fSans,
-              border: msg.sender === 'user' ? 'none' : `1px solid ${c.ruleSoft}`,
-              letterSpacing: '0.01em',
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px 20px',
+              position: 'relative',
+              background: c.paper,
             }}
           >
-            {msg.text}
+            {messages.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                color: c.ink3,
+                marginTop: 60,
+                fontFamily: c.fSans,
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}>
+                <div style={{
+                  marginBottom: 12,
+                  fontSize: 32,
+                  color: c.accent,
+                  opacity: 0.5,
+                }}>
+                  ⌨️
+                </div>
+                <div style={{ fontFamily: c.fSerif, fontSize: 16, color: c.ink2, marginBottom: 8 }}>
+                  Assistant IA OppsTrack
+                </div>
+                <p>
+                  Analyse de profil, recommandations de bourses,<br />
+                  conseils personnalisés.
+                </p>
+              </div>
+            )}
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    background: msg.sender === 'user' ? c.accent : c.paper2,
+                    color: msg.sender === 'user' ? c.paper : c.ink,
+                    padding: '10px 16px',
+                    borderRadius: 0,
+                    maxWidth: '85%',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    fontFamily: c.fSans,
+                    border: msg.sender === 'user' ? 'none' : `1px solid ${c.ruleSoft}`,
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
+                <div style={{
+                  background: c.paper2,
+                  color: c.ink2,
+                  padding: '10px 16px',
+                  borderRadius: 0,
+                  fontSize: 12,
+                  fontFamily: c.fMono,
+                  border: `1px solid ${c.ruleSoft}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    background: c.accent,
+                    borderRadius: '50%',
+                    animation: 'pulse 1.2s infinite',
+                  }} />
+                  <span style={{
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    background: c.accent,
+                    borderRadius: '50%',
+                    animation: 'pulse 1.2s infinite 0.2s',
+                  }} />
+                  <span style={{
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    background: c.accent,
+                    borderRadius: '50%',
+                    animation: 'pulse 1.2s infinite 0.4s',
+                  }} />
+                  <span style={{ marginLeft: 4 }}>
+                    {lang === 'fr' ? 'L\'IA réfléchit...' : 'AI is thinking...'}
+                  </span>
+                </div>
+              </div>
+            )}
+            {showFloatScroll && (
+              <button
+                onClick={() => floatContainerRef.current?.scrollTo({ top: floatContainerRef.current.scrollHeight, behavior: 'smooth' })}
+                style={{
+                  position: 'absolute',
+                  bottom: 16,
+                  right: 16,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 0,
+                  background: c.accent,
+                  border: 'none',
+                  color: c.paper,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  transition: 'all 0.2s',
+                  fontFamily: c.fMono,
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                ↓
+              </button>
+            )}
           </div>
-        </div>
-      ))}
-      {loading && (
-        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
+
+          {/* Input */}
           <div style={{
-            background: c.paper2,
-            color: c.ink2,
-            padding: '10px 16px',
-            borderRadius: 0,
-            fontSize: 12,
-            fontFamily: c.fMono,
-            border: `1px solid ${c.ruleSoft}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
+            padding: '16px 20px',
+            borderTop: `1px solid ${c.rule}`,
+            background: c.surface,
           }}>
-            <span style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              background: c.accent,
-              borderRadius: '50%',
-              animation: 'pulse 1.2s infinite',
-            }} />
-            <span style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              background: c.accent,
-              borderRadius: '50%',
-              animation: 'pulse 1.2s infinite 0.2s',
-            }} />
-            <span style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              background: c.accent,
-              borderRadius: '50%',
-              animation: 'pulse 1.2s infinite 0.4s',
-            }} />
-            <span style={{ marginLeft: 4 }}>
-              {lang === 'fr' ? 'L\'IA réfléchit...' : 'AI is thinking...'}
-            </span>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && handleSend(input)}
+                placeholder={lang === 'fr' ? 'Écrivez votre message...' : 'Type your message...'}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  border: `1px solid ${c.ruleSoft}`,
+                  borderRadius: 0,
+                  outline: 'none',
+                  fontFamily: c.fSans,
+                  fontSize: 13,
+                  background: c.paper,
+                  color: c.ink,
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => e.target.style.borderColor = c.accent}
+                onBlur={e => e.target.style.borderColor = c.ruleSoft}
+              />
+              <button
+                onClick={() => handleSend(input)}
+                disabled={loading || !input.trim()}
+                style={{
+                  background: c.accent,
+                  border: 'none',
+                  borderRadius: 0,
+                  padding: '10px 20px',
+                  cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontFamily: c.fMono,
+                  fontSize: 11,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: c.paper,
+                  transition: 'all 0.2s',
+                  opacity: loading || !input.trim() ? 0.5 : 1,
+                }}
+                onMouseEnter={e => {
+                  if (!loading && input.trim()) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                {lang === 'fr' ? 'Envoyer' : 'Send'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-      {showFloatScroll && (
-        <button
-          onClick={() => floatContainerRef.current?.scrollTo({ top: floatContainerRef.current.scrollHeight, behavior: 'smooth' })}
-          style={{
-            position: 'absolute',
-            bottom: 16,
-            right: 16,
-            width: 32,
-            height: 32,
-            borderRadius: 0,
-            background: c.accent,
-            border: 'none',
-            color: c.paper,
-            fontSize: 14,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            transition: 'all 0.2s',
-            fontFamily: c.fMono,
-          }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          ↓
-        </button>
-      )}
-    </div>
 
-    {/* Input */}
-    <div style={{
-      padding: '16px 20px',
-      borderTop: `1px solid ${c.rule}`,
-      background: c.surface,
-    }}>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyPress={e => e.key === 'Enter' && handleSend(input)}
-          placeholder={lang === 'fr' ? 'Écrivez votre message...' : 'Type your message...'}
-          style={{
-            flex: 1,
-            padding: '10px 14px',
-            border: `1px solid ${c.ruleSoft}`,
-            borderRadius: 0,
-            outline: 'none',
-            fontFamily: c.fSans,
-            fontSize: 13,
-            background: c.paper,
-            color: c.ink,
-            transition: 'border-color 0.2s',
-          }}
-          onFocus={e => e.target.style.borderColor = c.accent}
-          onBlur={e => e.target.style.borderColor = c.ruleSoft}
-        />
-        <button
-          onClick={() => handleSend(input)}
-          disabled={loading || !input.trim()}
-          style={{
-            background: c.accent,
-            border: 'none',
-            borderRadius: 0,
-            padding: '10px 20px',
-            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-            fontWeight: 600,
-            fontFamily: c.fMono,
-            fontSize: 11,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-            color: c.paper,
-            transition: 'all 0.2s',
-            opacity: loading || !input.trim() ? 0.5 : 1,
-          }}
-          onMouseEnter={e => {
-            if (!loading && input.trim()) {
-              e.currentTarget.style.transform = 'translateY(-1px)';
+          <style>{`
+            @keyframes pulse {
+              0%, 100% { opacity: 0.4; transform: scale(1); }
+              50% { opacity: 1; transform: scale(1.2); }
             }
-          }}
-          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          {lang === 'fr' ? 'Envoyer' : 'Send'}
-        </button>
-      </div>
-    </div>
-
-    <style>{`
-      @keyframes pulse {
-        0%, 100% { opacity: 0.4; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.2); }
-      }
-    `}</style>
-  </div>
+          `}</style>
+        </div>
       )}
 
       {/* Footer */}
@@ -700,18 +708,17 @@ function AppContent() {
           color: #1a3a6b; -webkit-font-smoothing: antialiased;
         }
         #root { min-height: 100vh; background: #f8f9fc !important; }
-.app-root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: #f8f9fc;
-  padding-top: 97px;
-}
-
-/* HomePage : le hero doit commencer à top:0 derrière la navbar transparente */
-.app-root.view-home {
-  padding-top: 0 !important;
-}        .main-content { flex: 1; overflow-x: hidden; background: #f8f9fc; }
+        .app-root {
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          background: #f8f9fc;
+          padding-top: 97px;
+        }
+        .app-root.view-home {
+          padding-top: 0 !important;
+        }
+        .main-content { flex: 1; overflow-x: hidden; background: #f8f9fc; }
         .server-alert {
           background: #fff3cd; border-bottom: 2px solid #f5a623;
           color: #856404; padding: 10px 24px; font-size: 13px;
@@ -761,22 +768,20 @@ function AppContent() {
         .no-navbar .server-alert {
           display: none !important;
         }
-          
       `}</style>
     </div>
   );
 }
 
-// ==================== EXPORT PRINCIPAL AVEC THEME PROVIDER ====================
+// Export principal avec ThemeProvider
 export default function App() {
   return (
     <AppProviders>
-      <ThemeProvider>  {/* ← AJOUTÉ ! */}
+      <ThemeProvider>
         <BrowserRouter>
           <AppContent />
         </BrowserRouter>
       </ThemeProvider>
     </AppProviders>
   );
-  
 }

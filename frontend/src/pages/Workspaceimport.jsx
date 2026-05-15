@@ -1,21 +1,66 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ✅ FIX - callN8N avec DEBUG et gestion d'erreurs complète
+// ═══════════════════════════════════════════════════════════════════════════
+
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { downloadCVPDF, downloadLMPDF } from './pdfGenerator';
+import parseAnalysisFixed from './parseAnalysisFixed';
 
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
+
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/generate-documents';
 
 async function callN8N(userId, bourseId, context, extra = {}) {
-  const response = await axios.post(N8N_WEBHOOK_URL, {
-    userId, bourseId, context,
-    timestamp: new Date().toISOString(),
-    ...extra,
-  }, { headers: { 'Content-Type': 'application/json' }, timeout: 120000 });
-  return response.data.output || response.data.message || response.data;
+  console.log('🟡 callN8N - Démarrage');
+  console.log('  userId:', userId);
+  console.log('  bourseId:', bourseId);
+  console.log('  context:', context);
+  console.log('  URL:', N8N_WEBHOOK_URL);
+
+  try {
+    const payload = {
+      userId,
+      bourseId,
+      context,
+      timestamp: new Date().toISOString(),
+      ...extra,
+    };
+    
+    console.log('🟡 Payload:', JSON.stringify(payload, null, 2));
+
+    const response = await axios.post(N8N_WEBHOOK_URL, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 300000
+    });
+
+    console.log('✅ Réponse n8n reçue:');
+    console.log('  Status:', response.status);
+    console.log('  Data:', response.data);
+
+    const output = response.data.output || response.data.message || response.data;
+    console.log('✅ Output final:', typeof output, output.substring ? output.substring(0, 100) : output);
+    
+    return output;
+  } catch (error) {
+    console.error('❌ ERREUR callN8N:');
+    console.error('  Message:', error.message);
+    console.error('  Code:', error.code);
+    console.error('  Response Status:', error.response?.status);
+    console.error('  Response Data:', error.response?.data);
+    console.error('  Full Error:', error);
+
+    // Relancer l'erreur avec plus de contexte
+    throw new Error(
+      `Erreur n8n: ${error.response?.data?.message || error.message}. ` +
+      `Vérifiez que n8n tourne sur ${N8N_WEBHOOK_URL}`
+    );
+  }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  PDF.js extractor
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// Reste du composant...
+// ═══════════════════════════════════════════════════════════════════════════
+
 const extractPDFText = async (file) => {
   if (!window.pdfjsLib) {
     await new Promise((resolve, reject) => {
@@ -38,9 +83,6 @@ const extractPDFText = async (file) => {
   return fullText.trim();
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  PDF download DIRECT — blob + <a> click, aucune fenêtre
-// ═══════════════════════════════════════════════════════════════
 async function loadHtml2pdf() {
   if (window.html2pdf) return window.html2pdf;
   await new Promise((resolve, reject) => {
@@ -91,9 +133,6 @@ async function downloadDirect(htmlContent, filename) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  Parse analyse → sections ordonnées
-// ═══════════════════════════════════════════════════════════════
 const SECTION_DEFS = [
   { key: 'score',    fr: ['score', 'adéquat', 'compatib', 'bourse'],       en: ['score', 'match', 'compat'] },
   { key: 'strong',   fr: ['fort', 'positif', 'atout', 'strength'],         en: ['strength', 'strong', 'positive'] },
@@ -150,16 +189,12 @@ function parseAnalysis(text) {
   }
   if (cur) sections.push(cur);
 
-  // Trier dans l'ordre défini
   const order = ['score', 'strong', 'weak', 'error', 'action', 'rewrite', 'other'];
   return sections
     .filter(s => s.items.length > 0 || s.score !== null)
     .sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  Score Ring SVG
-// ═══════════════════════════════════════════════════════════════
 function ScoreRing({ score, color }) {
   const r = 32, stroke = 6;
   const circ = 2 * Math.PI * r;
@@ -192,9 +227,6 @@ function ScoreRing({ score, color }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  Section Card — avec animation d'apparition
-// ═══════════════════════════════════════════════════════════════
 function SectionCard({ block, index, lang }) {
   const cfg = SECTION_CONFIG[block.key] || SECTION_CONFIG.other;
   const label = lang === 'fr' ? cfg.label.fr : cfg.label.en;
@@ -208,7 +240,6 @@ function SectionCard({ block, index, lang }) {
       padding: '20px 24px',
       animation: `fadeUp 0.4s ease ${index * 0.08}s both`,
     }}>
-      {/* En-tête section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <span style={{ fontSize: 18 }}>{cfg.icon}</span>
         <span style={{ fontSize: 13, fontWeight: 800, color: cfg.color, textTransform: 'uppercase', letterSpacing: '.08em' }}>
@@ -217,61 +248,38 @@ function SectionCard({ block, index, lang }) {
         <div style={{ flex: 1, height: 1, background: `${cfg.border}33` }} />
       </div>
 
-      {/* Score ring si section score */}
       {block.score !== null && <ScoreRing score={block.score} color={cfg.border} />}
 
-      {/* Items */}
       {block.items.length > 0 && (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-          {block.items.map((item, i) => {
-            // Détecter les paires "Phrase originale / Version améliorée"
-            const isOriginal = item.toLowerCase().startsWith('phrase originale') || item.toLowerCase().startsWith('original');
-            const isImproved = item.toLowerCase().startsWith('version améliorée') || item.toLowerCase().startsWith('improved');
-
-            if (isOriginal || isImproved) {
-              return (
-                <li key={i} style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: isImproved ? '#10B981' : '#9CA3AF', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
-                    {isOriginal ? '❝ Original' : '✨ Amélioré'}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.6, fontStyle: isOriginal ? 'italic' : 'normal', background: isImproved ? '#ECFDF5' : '#F9FAFB', borderRadius: 6, padding: '6px 10px' }}>
-                    {item.replace(/^(phrase originale|version améliorée|original|improved)\s*:\s*/i, '"').replace(/"$/, '') + '"'}
-                  </div>
-                </li>
-              );
-            }
-
-            return (
-              <li key={i} style={{ display: 'flex', gap: 10, marginBottom: 7, alignItems: 'flex-start' }}>
-                <span style={{ color: cfg.border, fontWeight: 700, fontSize: 14, lineHeight: 1.4, flexShrink: 0 }}>›</span>
-                <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item}</span>
-              </li>
-            );
-          })}
+          {block.items.map((item, i) => (
+            <li key={i} style={{ display: 'flex', gap: 10, marginBottom: 7, alignItems: 'flex-start' }}>
+              <span style={{ color: cfg.border, fontWeight: 700, fontSize: 14, lineHeight: 1.4, flexShrink: 0 }}>›</span>
+              <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item}</span>
+            </li>
+          ))}
         </ul>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════
 export default function WorkspaceImport({ user, bourse, content, setContent, docType, setLoading, setLoadingStep, lang, C }) {
-  const [analysis,    setAnalysis]    = useState(null);
-  const [analyzing,   setAnalyzing]   = useState(false);
-  const [improving,   setImproving]   = useState(false);
-  const [improved,    setImproved]    = useState('');
+  const [analysis, setAnalysis] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [improving, setImproving] = useState(false);
+  const [improved, setImproved] = useState('');
   const [downloading, setDownloading] = useState(false);
-  const fileRef   = useRef(null);
+  const fileRef = useRef(null);
   const resultRef = useRef(null);
 
   const docLabel = docType === 'cv' ? 'CV' : (lang === 'fr' ? 'Lettre de motivation' : 'Cover Letter');
 
-  // ── Import PDF ou TXT ───────────────────────────────────────
   const handleFile = async (file) => {
-    setLoading(true); setLoadingStep('📄 Extraction...');
-    setAnalysis(null); setImproved('');
+    setLoading(true); 
+    setLoadingStep('📄 Extraction...');
+    setAnalysis(null); 
+    setImproved('');
     try {
       let text = '';
       if (file.name.endsWith('.pdf')) {
@@ -280,13 +288,15 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
           alert(lang === 'fr'
             ? '⚠️ PDF scanné détecté (image). Copiez-collez le texte directement.'
             : '⚠️ Scanned PDF detected. Please copy-paste the text directly.');
-          setLoading(false); return;
+          setLoading(false); 
+          return;
         }
       } else if (file.name.match(/\.docx?$/)) {
         alert(lang === 'fr'
           ? '⚠️ Format Word non supporté. Exportez en PDF depuis Word.'
           : '⚠️ Word format not supported. Export as PDF from Word.');
-        setLoading(false); return;
+        setLoading(false); 
+        return;
       } else {
         text = await file.text();
       }
@@ -297,57 +307,164 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
     setLoading(false);
   };
 
-  // ── Analyser ────────────────────────────────────────────────
   const handleAnalyze = async () => {
-    if (!content?.trim()) return;
-    setAnalyzing(true); setAnalysis(null); setImproved('');
-    setLoading(true); setLoadingStep('📊 Analyse IA...');
-    try {
-      const result = await callN8N(user?.id, bourse?.id, `analyze_${docType}`, {
-        cvContent: docType === 'cv' ? content : '',
-        lmContent: docType === 'lm' ? content : '',
-      });
-      setAnalysis(typeof result === 'string' ? result : JSON.stringify(result));
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
-    } catch { alert(lang === 'fr' ? 'Erreur analyse' : 'Analysis error'); }
-    setLoading(false); setAnalyzing(false);
-  };
+  if (!content?.trim()) return;
+  setAnalyzing(true); 
+  setAnalysis(null); 
+  setImproved('');
+  setLoading(true); 
+  setLoadingStep('📊 Analyse IA...');
+  
+  try {
+    console.log('═══════════════════════════════════════');
+    console.log('🔍 handleAnalyze DÉMARRAGE');
+    console.log('═══════════════════════════════════════');
+    
+    const result = await callN8N(user?.id, bourse?.id, `analyze_${docType}`, {
+      cvContent: docType === 'cv' ? content : '',
+      lmContent: docType === 'lm' ? content : '',
+    });
+    
+    console.log('✅ Analyse reçue:', result.substring(0, 200));
+    
+    // ✅ CLEF: Ne pas utiliser 'analysis' qui est encore null!
+    // Utiliser 'result' directement
+    const analysisText = typeof result === 'string' ? result : JSON.stringify(result);
+    
+    console.log('🟢 analysisText:');
+    console.log('   Length:', analysisText.length);
+    console.log('   First 300:', analysisText.substring(0, 300));
+    
+    // Mettre à jour le state
+    setAnalysis(analysisText);
+    console.log('🟢 setAnalysis() appelé');
+    
+    // Scroller après un délai court
+    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    
+    console.log('✅ handleAnalyze SUCCÈS');
+    console.log('═══════════════════════════════════════');
+    
+  } catch (error) {
+    console.error('❌ Erreur dans handleAnalyze:', error);
+    alert(error.message || (lang === 'fr' ? 'Erreur analyse' : 'Analysis error'));
+  }
+  
+  setLoading(false); 
+  setAnalyzing(false);
+};
 
-  // ── Améliorer ───────────────────────────────────────────────
-  const handleImprove = async () => {
-    setImproving(true);
-    setLoading(true); setLoadingStep('✨ Amélioration IA...');
-    try {
-      const result = await callN8N(user?.id, bourse?.id, `generate_${docType}`, {
-        cvContent: docType === 'cv' ? content : '',
-        lmContent: docType === 'lm' ? content : '',
-      });
-      setImproved(typeof result === 'string' ? result : JSON.stringify(result));
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 200);
-    } catch { alert('Erreur'); }
-    setLoading(false); setImproving(false);
-  };
+  // 🔧 REMPLACER handleImprove par CELLE-CI:
 
-  // ── Télécharger PDF DIRECT (aucune fenêtre) ─────────────────
+const handleImprove = async () => {
+  setImproving(true);
+  setLoading(true); 
+  setLoadingStep('✨ Amélioration IA...');
+  
+  console.log('═══════════════════════════════════════');
+  console.log('🤖 handleImprove DÉMARRAGE');
+  console.log('═══════════════════════════════════════');
+  
+  try {
+    const result = await callN8N(user.id, bourse.id, `generate_${docType}`, {
+      cvContent: docType === 'cv' ? content : '',
+      lmContent: docType === 'lm' ? content : '',
+    });
+    
+    console.log('✅ Result reçu:');
+    console.log('   Type:', typeof result);
+    console.log('   Length:', result?.length);
+    console.log('   First 300:', result?.substring(0, 300));
+    
+    // ✅ IMPORTANT: Ne pas utiliser 'improved' qui est null!
+    // Utiliser 'result' ou une variable locale
+    const improvedText = typeof result === 'string' ? result : JSON.stringify(result);
+    
+    if (!improvedText || improvedText.length < 50) {
+      console.error('❌ ERREUR: improvedText trop court!');
+      alert('❌ Erreur: N8N a retourné un résultat vide');
+      setLoading(false); 
+      setImproving(false);
+      return;
+    }
+    
+    console.log('✅ improvedText prêt:');
+    console.log('   Length:', improvedText.length);
+    
+    // Mettre à jour le state
+    setImproved(improvedText);
+    console.log('✅ setImproved() appelé');
+    
+    // Scroller après
+    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 200);
+    
+    console.log('✅ handleImprove SUCCÈS');
+    console.log('═══════════════════════════════════════');
+    
+  } catch (error) {
+    console.error('❌ ERREUR dans handleImprove:', error);
+    console.error('   Message:', error.message);
+    alert(error.message || (lang === 'fr' ? 'Erreur amélioration' : 'Improvement error'));
+  }
+  
+  setLoading(false); 
+  setImproving(false);
+};
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BONUS: Ajoute aussi ce debug dans handleDownload
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   const handleDownload = async () => {
-    if (!improved || downloading) return;
+    console.log('═══════════════════════════════════════');
+    console.log('💾 handleDownload DÉMARRAGE');
+    console.log('═══════════════════════════════════════');
+    
+    console.log('1️⃣ State check:');
+    console.log('   improved.length:', improved?.length);
+    console.log('   downloading:', downloading);
+    console.log('   improved exists:', !!improved);
+    
+    if (!improved || downloading) {
+      console.error('❌ ERREUR: improved est vide ou download en cours');
+      alert('❌ Rien à télécharger. Veuillez d\'abord améliorer le CV.');
+      return;
+    }
+  
     setDownloading(true);
     try {
       const filename = docType === 'cv' ? 'CV_Ameliore.pdf' : 'LM_Amelioree.pdf';
-      // Récupérer le HTML depuis pdfGenerator
-      const { buildPreviewHTML } = await import('./pdfGenerator');
-      const html = buildPreviewHTML(improved, docType, lang);
-      await downloadDirect(html, filename);
-    } catch (e) { alert('Erreur PDF: ' + e.message); }
+      
+      console.log('2️⃣ Params:');
+      console.log('   filename:', filename);
+      console.log('   docType:', docType);
+      console.log('   lang:', lang);
+      console.log('   improved.length:', improved.length);
+      
+      console.log('3️⃣ Appel downloadCVPDF...');
+      
+      if (docType === 'cv') {
+        await downloadCVPDF(improved, filename, lang);
+      } else {
+        await downloadLMPDF(improved, filename, lang);
+      }
+      
+      console.log('✅ downloadCVPDF SUCCÈS');
+      console.log('═══════════════════════════════════════');
+      
+    } catch (error) { 
+      console.error('❌ ERREUR PDF:', error);
+      alert('Erreur PDF: ' + error.message); 
+    }
+    
     setDownloading(false);
   };
 
-  const sections = parseAnalysis(analysis);
+  const sections = parseAnalysisFixed(analysis);
+
 
   return (
     <div style={{ width: '85%', maxWidth: 900, margin: '0 auto' }}>
-
-      {/* ── Zone import + textarea ── */}
       <div style={{
         background: C.bgCard, border: `1px solid ${C.border}`,
         borderRadius: 16, padding: '28px 32px', marginBottom: 28,
@@ -377,7 +494,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
           {content?.length || 0} {lang === 'fr' ? 'caractères' : 'characters'}
         </div>
 
-        {/* Boutons */}
         <div style={{ display: 'flex', gap: 12 }}>
           <label style={{
             padding: '11px 20px', border: `1.5px solid ${C.border}`, borderRadius: 9,
@@ -405,10 +521,8 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
         </div>
       </div>
 
-      {/* ── Résultat analyse ── */}
       {sections.length > 0 && (
         <div ref={resultRef}>
-          {/* Titre résultat */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
             <div style={{ width: 4, height: 32, background: C.accent, borderRadius: 4 }} />
             <div>
@@ -421,14 +535,12 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
             </div>
           </div>
 
-          {/* Cards sections — espacées */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
             {sections.map((block, i) => (
               <SectionCard key={i} block={block} index={i} lang={lang} />
             ))}
           </div>
 
-          {/* ── Bouton Améliorer — centré, en dessous ── */}
           {!improved && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
               <button onClick={handleImprove} disabled={improving} style={{
@@ -450,7 +562,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
         </div>
       )}
 
-      {/* ── Document amélioré ── */}
       {improved && (
         <div style={{
           background: C.bgCard,
@@ -460,7 +571,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
           marginTop: 8,
           animation: 'fadeUp .5s ease both',
         }}>
-          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: `${C.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>✨</div>
@@ -474,7 +584,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
               </div>
             </div>
 
-            {/* Bouton téléchargement direct */}
             <button onClick={handleDownload} disabled={downloading} style={{
               padding: '11px 26px',
               background: downloading ? C.border : C.accent,
@@ -489,7 +598,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
             </button>
           </div>
 
-          {/* Aperçu texte */}
           <div style={{
             background: C.bgSecondary, borderRadius: 10,
             padding: '18px 20px', fontSize: 13, color: C.ink2,
@@ -500,7 +608,6 @@ export default function WorkspaceImport({ user, bourse, content, setContent, doc
             {improved}
           </div>
 
-          {/* Relancer l'analyse */}
           <div style={{ marginTop: 16, textAlign: 'center' }}>
             <button onClick={() => { setImproved(''); setAnalysis(null); }} style={{
               background: 'transparent', border: 'none', color: C.ink3,

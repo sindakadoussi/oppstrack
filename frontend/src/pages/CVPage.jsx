@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axiosInstance from '@/config/axiosInstance';
+// ✅ AJOUTER useEffect à l'import:
+import React, { useState, useEffect, useRef } from 'react';import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import axios from 'axios';
-import { downloadCVPDF, downloadLMPDF, buildPreviewHTML } from './pdfGenerator';
-import Workspaceimport from './Workspaceimport';
+import { buildPreviewHTML, downloadCVPDF, downloadLMPDF } from './pdfGenerator';
+import WorkspaceImport from './WorkspaceImport';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  N8N WEBHOOK
 // ═══════════════════════════════════════════════════════════════════════════
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/webhook';
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/generate-documents';
 
 async function callN8N(userId, bourseId, context, extra = {}) {
   const response = await axios.post(N8N_WEBHOOK_URL, {
@@ -138,78 +138,197 @@ function DownloadBtn({ content, filename, docType, lang, C }) {
 
 // ── Aperçu live HTML ──────────────────────────────────────────
 function LivePreview({ content, docType, lang, C }) {
-  if (!content) return (
-    <div style={{ textAlign: 'center', color: C.ink3, padding: 60, fontSize: 13, background: C.bgSecondary, borderRadius: 8, border: `1px solid ${C.borderLight}` }}>
-      {lang === 'fr' ? '📭 Aucun contenu — générez ou collez du texte' : '📭 No content — generate or paste text'}
-    </div>
-  );
-  const html = buildPreviewHTML(content, docType, lang);
+  const iframeRef = useRef(null);
+ 
+  useEffect(() => {
+    if (!content || !iframeRef.current) return;
+ 
+    console.log('🔍 LivePreview - Génération HTML...');
+    console.log('  Content length:', content.length);
+    console.log('  DocType:', docType);
+ 
+    try {
+      // ✅ buildPreviewHTML est déjà importée en haut du fichier
+      const html = buildPreviewHTML(content, docType, lang);
+ 
+      if (!html || html.length < 200) {
+        console.error('❌ HTML générée trop courte:', html?.length);
+        iframeRef.current.srcdoc = `<html><body style="color:red"><h1>❌ Erreur: HTML vide ou trop court</h1></body></html>`;
+        return;
+      }
+ 
+      console.log('✅ HTML générée:', html.length, 'caractères');
+ 
+      // 2. Appliquer au iframe
+      iframeRef.current.srcdoc = html;
+      console.log('✅ srcdoc appliqué');
+ 
+    } catch (error) {
+      console.error('❌ ERREUR LivePreview:', error);
+      iframeRef.current.srcdoc = `<html><body><h1>❌ Erreur:</h1><pre>${error.message}</pre></body></html>`;
+    }
+ 
+  }, [content, docType, lang]);
+ 
+  if (!content) {
+    return (
+      <div style={{
+        textAlign: 'center', color: C.ink3, padding: 60, fontSize: 13,
+        background: C.bgSecondary, borderRadius: 8, border: `1px solid ${C.borderLight}`
+      }}>
+        {lang === 'fr' ? '📭 Aucun contenu' : '📭 No content'}
+      </div>
+    );
+  }
+ 
   return (
     <iframe
-  srcDoc={buildPreviewHTML(content, docType, lang)}
-  style={{ width: '100%', height: 520, border: `1px solid ${C.borderLight}`, borderRadius: 8, background: '#fff', display: 'block' }}
-  title="document-preview"
-/>
+      ref={iframeRef}
+      style={{
+        width: '100%', height: 520, border: `1px solid ${C.borderLight}`,
+        borderRadius: 8, background: '#fff', display: 'block',
+        boxSizing: 'border-box'
+      }}
+      title="document-preview"
+      sandbox="allow-same-origin allow-scripts"
+    />
   );
 }
+ 
 
 // ── Parse sections pour le panel analyse ─────────────────────
 function parseSections(text) {
+  if (!text) return [];
+  
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const sections = [];
   let cur = null;
-  const isTitle = l => /^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇ\s\/&\-]{4,}$/.test(l) && l.length < 70;
-  for (const l of lines) {
-    if (isTitle(l)) { if (cur) sections.push(cur); cur = { title: l, items: [] }; }
-    else { if (!cur) cur = { title: '', items: [] }; cur.items.push(l); }
+ 
+  // Pattern pour reconnaître les titres
+  const isTitle = l => {
+    return (
+      /^#+\s+[A-Z]/.test(l) ||                  // ## TITRE
+      /^\*\*[^*]{5,80}\*\*$/.test(l) ||        // **TITRE**
+      /^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇ\s]{5,70}$/.test(l.replace(/\*\*/g, '')) // TITRE MAJUSCULES
+    ) && l.length < 100;
+  };
+ 
+  for (const line of lines) {
+    if (/^-{3,}|^={3,}|^_{3,}/.test(line)) continue;
+ 
+    if (isTitle(line)) {
+      if (cur && cur.items.length > 0) sections.push(cur);
+      const cleanTitle = line.replace(/^#+\s+/, '').replace(/\*\*/g, '').trim();
+      cur = { title: cleanTitle, items: [], icon: '📋' };
+    } else if (cur) {
+      const clean = line.replace(/^[-•\d+.]\s*/, '').trim();
+      if (clean && clean !== '--' && clean.length > 3) {
+        cur.items.push(clean);
+      }
+    }
   }
-  if (cur) sections.push(cur);
+ 
+  if (cur && cur.items.length > 0) sections.push(cur);
   return sections;
 }
 
 // ── Panel Analyse ─────────────────────────────────────────────
 function AnalysePanel({ analysis, onImprove, improving, C, lang }) {
   if (!analysis) return null;
-  const sC = [C.accentBg, C.blueBg, C.warnBg, C.dangerBg];
-  const sA = [C.accent, C.blue, C.warn, C.danger];
+ 
   const sections = parseSections(analysis);
-
+  
+  // Couleurs alternées
+  const colors = [
+    { bg: C.accentBg, border: C.accent, text: C.accent, icon: '📊' },
+    { bg: C.blueBg, border: C.blue, text: C.blue, icon: '📋' },
+    { bg: C.warnBg, border: C.warn, text: C.warn, icon: '⚠️' },
+    { bg: C.dangerBg, border: C.danger, text: C.danger, icon: '❌' },
+  ];
+ 
   return (
     <div style={{ marginTop: 28 }}>
       {/* Badge titre */}
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.accentBg, padding: '9px 24px', borderRadius: 30, border: `1px solid ${C.accent}`, fontSize: 14, fontWeight: 700, color: C.accent }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          background: C.accentBg, padding: '9px 24px', borderRadius: 30,
+          border: `1px solid ${C.accent}`, fontSize: 14, fontWeight: 700,
+          color: C.accent
+        }}>
           📊 {lang === 'fr' ? "Résultat de l'analyse" : 'Analysis Result'}
         </span>
       </div>
-
-      {/* Cards sections */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14, marginBottom: 24 }}>
-        {sections.map((sec, idx) => (
-          <div key={idx} style={{ background: sC[idx % 4], border: `1px solid ${sA[idx % 4]}33`, borderRadius: 12, padding: '16px 18px' }}>
-            {sec.title && <div style={{ fontSize: 10, fontWeight: 700, color: sA[idx % 4], marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.1em' }}>{sec.title}</div>}
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-              {sec.items.map((item, j) => (
-                <li key={j} style={{ fontSize: 12, color: C.ink2, lineHeight: 1.6, marginBottom: 5, paddingLeft: 13, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 0, color: sA[idx % 4], fontWeight: 700 }}>›</span>
-                  {item.replace(/^[-•]\s*/, '')}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+ 
+      {/* Grid des sections */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: 14, marginBottom: 24
+      }}>
+        {sections.map((sec, idx) => {
+          const col = colors[idx % colors.length];
+          return (
+            <div key={idx} style={{
+              background: col.bg,
+              border: `1px solid ${col.border}33`,
+              borderLeft: `4px solid ${col.border}`,
+              borderRadius: 12,
+              padding: '16px 18px',
+              transition: 'all .2s'
+            }}>
+              {sec.title && (
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: col.text,
+                  marginBottom: 10, textTransform: 'uppercase',
+                  letterSpacing: '.1em', display: 'flex', gap: 6,
+                  alignItems: 'center'
+                }}>
+                  <span>{col.icon}</span>
+                  <span>{sec.title}</span>
+                </div>
+              )}
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                {sec.items.map((item, j) => (
+                  <li key={j} style={{
+                    fontSize: 12, color: C.ink2, lineHeight: 1.6,
+                    marginBottom: 5, paddingLeft: 13, position: 'relative'
+                  }}>
+                    <span style={{
+                      position: 'absolute', left: 0, color: col.border,
+                      fontWeight: 700
+                    }}>›</span>
+                    {item.replace(/^[-•]\s*/, '')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </div>
-
+ 
       {/* Bouton Améliorer */}
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <button onClick={onImprove} disabled={improving} style={{
-          padding: '13px 40px', background: improving ? C.ink3 : `linear-gradient(135deg, ${C.accent}, #0a3d20)`,
-          color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700,
-          cursor: improving ? 'not-allowed' : 'pointer', fontFamily: C.fSans,
-          display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: improving ? 'none' : `0 6px 20px ${C.accent}55`, transition: 'all .3s',
+          padding: '13px 40px',
+          background: improving ? C.ink3 : `linear-gradient(135deg, ${C.accent}, #0a3d20)`,
+          color: '#fff', border: 'none', borderRadius: 12, fontSize: 14,
+          fontWeight: 700, cursor: improving ? 'not-allowed' : 'pointer',
+          fontFamily: C.fSans, display: 'flex', alignItems: 'center',
+          gap: 10, boxShadow: improving ? 'none' : `0 6px 20px ${C.accent}55`,
+          transition: 'all .3s',
         }}>
-          {improving ? <><Spinner /> {lang === 'fr' ? 'Amélioration en cours...' : 'Improving...'}</> : <>✨ {lang === 'fr' ? "Améliorer avec l'IA" : 'Improve with AI'}</>}
+          {improving
+            ? <>
+              <span style={{
+                width: 13, height: 13, border: '2px solid rgba(255,255,255,0.35)',
+                borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block',
+                animation: 'spin .7s linear infinite'
+              }} />
+              {lang === 'fr' ? 'Amélioration en cours...' : 'Improving...'}
+            </>
+            : <>✨ {lang === 'fr' ? "Améliorer avec l'IA" : 'Improve with AI'}</>
+          }
         </button>
       </div>
     </div>
