@@ -6,6 +6,9 @@ import { API_ROUTES } from '@/config/routes';
 import './Entretienpage.css';
 import { useT, useDark } from '../i18n';
 import { useTheme } from '../components/Navbar';
+import LoginModal from '@/components/LoginModal';
+import RestrictedAccessCard from '@/components/RestrictedAccessCard';
+
 
 const TOTAL_Q = 8;
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -110,74 +113,7 @@ function detectLang(text) {
 }
 
 
-function LoginModal({ onClose }) {
-  const { lang } = useT();
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
 
-  const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg(lang==='fr'?'Email invalide':'Invalid email'); return; }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang==='fr'?'Impossible de contacter le serveur':'Cannot contact server'));
-    }
-  };
-
-  return (
-    <div className="ep-modal-overlay">
-      <div className="ep-modal-container">
-        <div className="ep-modal-header">
-          <span style={{ fontSize:22 }}>🔐</span>
-          <span>{lang==='fr'?'Connexion à OppsTrack':'Sign in to OppsTrack'}</span>
-          <button className="ep-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="ep-modal-body">
-          {status==='idle' && (
-            <>
-              <p>{lang==='fr'?<>Entrez votre email pour recevoir un <strong style={{ color:'#255cae' }}>lien de connexion magique</strong>.</>:<>Enter your email to receive a <strong style={{ color:'#255cae' }}>magic login link</strong>.</>}</p>
-              <input type="email" placeholder={lang==='fr'?'votre@email.com':'your@email.com'}
-                value={email} autoFocus onChange={e=>setEmail(e.target.value)}
-                onKeyDown={e=>e.key==='Enter'&&send()} className="ep-modal-input"/>
-              {errMsg && <div className="ep-modal-error">{errMsg}</div>}
-              <button className="ep-modal-btn" onClick={send}>✉️ {lang==='fr'?'Envoyer le lien magique':'Send magic link'}</button>
-            </>
-          )}
-          {status==='sending' && (
-            <div className="ep-modal-center">
-              <div className="ep-spinner"/>
-              <p style={{ color:'#64748b', marginTop:14 }}>{lang==='fr'?'Envoi en cours...':'Sending...'}</p>
-            </div>
-          )}
-          {status==='success' && (
-            <div className="ep-modal-center">
-              <div style={{ fontSize:52, marginBottom:12 }}>✉️</div>
-              <div style={{ fontSize:16, fontWeight:700, color:'#166534', marginBottom:8 }}>{lang==='fr'?'Lien envoyé !':'Link sent!'}</div>
-              <p style={{ color:'#64748b', fontSize:13, lineHeight:1.6 }}>
-                {lang==='fr'?<>Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.</>:<>Check your inbox (and spam).<br/>Click the link to sign in.</>}
-              </p>
-              <button className="ep-modal-btn success" style={{ marginTop:20 }} onClick={onClose}>✓ {lang==='fr'?'Fermer':'Close'}</button>
-            </div>
-          )}
-          {status==='error' && (
-            <div className="ep-modal-center">
-              <div style={{ fontSize:40, marginBottom:12 }}>⚠️</div>
-              <p style={{ color:'#dc2626', marginBottom:12 }}>{errMsg}</p>
-              <button className="ep-modal-btn error" onClick={()=>{setStatus('idle');setErrMsg('');}}>
-                {lang==='fr'?'Réessayer':'Retry'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="ep-modal-backdrop" onClick={onClose}/>
-    </div>
-  );
-}
 
 /* ── EntretienDetail ── */
 function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, formatDate, dk = false }) {
@@ -1651,47 +1587,11 @@ export default function EntretienPage({ user, bourses=[], conversationId, setVie
 
   if (!user) return (
    <>
-  <div className="ep-locked">
-    <div style={{
-      background: '#ffffff',
-      border: `1px solid #e0e0e0`,
-      padding: '48px 40px',
-      maxWidth: 480,
-      width: '100%',
-      textAlign: 'center',
-      boxShadow: 'none',
-      borderRadius: 0,  // ← rectangle parfait
-    }}>
-      <div style={{ fontSize: 56, marginBottom: 16 }}>🧑‍⚖️</div>
-      <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: '#333' }}>
-        {lang === 'fr' ? 'Entretien virtuel non disponible' : 'AI interview unavailable'}
-      </h3>
-      <p style={{ fontSize: 14, color: '#666', lineHeight: 1.5, marginBottom: 24 }}>
-        {lang === 'fr'
-          ? 'Connectez-vous pour pratiquer vos entretiens de bourse avec notre jury IA et obtenir une évaluation personnalisée.'
-          : 'Sign in to practice your scholarship interviews with our AI panel and get personalized feedback.'}
-      </p>
-      <button
-        onClick={() => setShowLogin(true)}
-        style={{
-          padding: '12px 28px',
-          background: '#0066b3',
-          color: '#ffffff',
-          border: 'none',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          fontFamily: 'monospace',
-          borderRadius: 0,  // ← rectangle
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        🔐 {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-      </button>
-    </div>
-  </div>
+  <RestrictedAccessCard
+  pageName={lang === 'fr' ? 'Entretien IA' : 'AI Interview'}
+  icon="🎤"
+  onLoginClick={() => setShowLoginModal(true)}
+/>
   {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
 </>
   );

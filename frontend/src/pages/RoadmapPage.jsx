@@ -6,6 +6,8 @@ import axiosInstance from '@/config/axiosInstance';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
+import LoginModal from '@/components/LoginModal';
+import RestrictedAccessCard from '@/components/RestrictedAccessCard';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TOKENS — identiques à la homepage et BoursesPage
@@ -1025,79 +1027,7 @@ const BADGES_LOCKED = [
 const LEVELS = ['Débutant', 'Novice', 'Intermédiaire', 'Avancé', 'Expert'];
 
 
-function LoginModal({ onClose, c, lang }) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
-  const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
-    }
-  };
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-      <div style={{ position: 'relative', zIndex: 2001, width: 420, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
-          <RI name="lock" size={20} />
-          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 16, color: c.ink }}>{lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}</span>
-          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: c.ink3 }}>
-            <RI name="close" size={18} />
-          </button>
-        </div>
-        <div style={{ padding: 24 }}>
-          {status === 'idle' && (
-            <>
-              <p style={{ color: c.ink2, fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
-                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien magique.' : 'Enter your email to receive a magic link.'}
-              </p>
-              <input type="email" placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'} value={email} autoFocus
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && send()}
-                style={{ width: '100%', padding: '10px 12px', border: `1px solid ${c.ruleSoft}`, background: c.paper, color: c.ink, fontSize: 13, outline: 'none', fontFamily: c.fSans }}
-              />
-              {errMsg && <div style={{ color: c.danger, fontSize: 11, marginTop: 6 }}>{errMsg}</div>}
-              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <RI name="mail" size={14} /> {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
-              </button>
-            </>
-          )}
-          {status === 'sending' && (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ width: 32, height: 32, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-              <p style={{ color: c.ink2, marginTop: 14 }}>{lang === 'fr' ? 'Envoi…' : 'Sending…'}</p>
-            </div>
-          )}
-          {status === 'success' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}><RI name="mail" size={48} /></div>
-              <div style={{ fontFamily: c.fSerif, fontSize: 16, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}</div>
-              <p style={{ color: c.ink2, fontSize: 12 }}>{lang === 'fr' ? 'Vérifiez votre boîte mail.' : 'Check your inbox.'}</p>
-              <button onClick={onClose} style={{ width: '100%', marginTop: 16, padding: 10, background: '#166534', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <RI name="check" size={12} /> {lang === 'fr' ? 'Fermer' : 'Close'}
-              </button>
-            </div>
-          )}
-          {status === 'error' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <RI name="warning" size={40} color={c.danger} />
-              <p style={{ color: c.danger, marginTop: 12 }}>{errMsg}</p>
-              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ width: '100%', marginTop: 16, padding: 10, background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                {lang === 'fr' ? 'Réessayer' : 'Retry'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -1227,24 +1157,12 @@ useEffect(() => {
   if (!user) {
     return (
       <>
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
-          <div style={{ background: c.surface, border: `1px solid ${c.ruleSoft}`, padding: '48px 40px', maxWidth: 380, width: '100%', textAlign: 'center' }}>
-            <RI name="map" size={56} color={c.ink3} />
-            <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, color: c.ink, margin: '16px 0 8px' }}>
-              {lang === 'fr' ? 'Roadmap non disponible' : 'Roadmap unavailable'}
-            </h3>
-            <p style={{ color: c.ink2, fontSize: 13, lineHeight: 1.5, margin: '0 0 24px' }}>
-              {lang === 'fr' ? 'Connectez-vous pour suivre vos candidatures.' : 'Sign in to track your applications.'}
-            </p>
-            <button
-              onClick={() => setShowLoginModal(true)}
-              style={{ padding: '10px 28px', background: c.accent, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <RI name="lock" size={14} /> {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-            </button>
-          </div>
-        </div>
-        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
+        <RestrictedAccessCard
+          pageName={lang === 'fr' ? 'Roadmap' : 'Roadmap'}
+          icon="🗺️"
+          onLoginClick={() => setShowLoginModal(true)}
+        />
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>
     );

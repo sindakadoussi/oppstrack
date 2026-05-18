@@ -9,6 +9,10 @@ import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
 import { tCountry, tLevel, tFunding } from '@/utils/translateDB';
+import LoginModal from '@/components/LoginModal';
+import RestrictedAccessCard from '@/components/RestrictedAccessCard';
+
+
 
 const WEBHOOK_BASE = import.meta.env?.VITE_WEBHOOK_URL || 'http://localhost:5678';
 
@@ -90,61 +94,7 @@ function useNavbarBottom() {
   return navBottom;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   LOGIN MODAL
-═══════════════════════════════════════════════════════════════════ */
-function LoginModal({ onClose, c, lang }) {
-  const [email, setEmail]   = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
 
-  const send = async () => {
-    if (!email?.includes('@')) { setErrMsg('Email invalide'); return; }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (e) { setStatus('error'); setErrMsg(e.response?.data?.message || 'Erreur serveur'); }
-  };
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(6px)' }} />
-      <div style={{ position:'relative', zIndex:3001, width:420, maxWidth:'92vw', background:c.surface, borderTop:`3px solid ${c.accent}`, boxShadow:'0 24px 60px rgba(0,0,0,0.18)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'18px 24px', background:c.accent }}>
-          <span style={{ color:'#fff', fontSize:16 }}>🔐</span>
-          <span style={{ fontFamily:c.fSerif, fontSize:16, fontWeight:600, color:'#fff', flex:1 }}>
-            {lang==='fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
-          </span>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:28, height:28, cursor:'pointer', fontSize:16, borderRadius:4 }}>×</button>
-        </div>
-        <div style={{ padding:'28px 24px' }}>
-          {status==='idle' && <>
-            <input type="email" autoFocus placeholder="votre@email.com" value={email}
-              onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
-              style={{ width:'100%', boxSizing:'border-box', padding:'11px 14px', border:`1.5px solid ${c.rule}`, background:c.paper, color:c.ink, fontFamily:c.fSans, fontSize:14, outline:'none' }} />
-            {errMsg && <div style={{ color:c.danger, fontSize:12, marginTop:6 }}>{errMsg}</div>}
-            <button onClick={send} disabled={!email.trim()} style={{ width:'100%', marginTop:16, padding:12, background:email.trim()?c.accent:c.ruleSoft, color:email.trim()?'#fff':c.ink4, border:'none', fontFamily:c.fMono, fontSize:13, cursor:email.trim()?'pointer':'not-allowed' }}>
-              ✉ {lang==='fr' ? 'Envoyer le lien magique' : 'Send magic link'}
-            </button>
-          </>}
-          {status==='sending' && <div style={{ textAlign:'center', padding:'32px 0' }}>
-            <div style={{ width:36, height:36, margin:'0 auto', border:`2px solid ${c.ruleSoft}`, borderTopColor:c.accent, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-          </div>}
-          {status==='success' && <div style={{ textAlign:'center', padding:'16px 0' }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>✉️</div>
-            <div style={{ fontFamily:c.fSerif, fontSize:18, fontWeight:600, color:c.success, marginBottom:10 }}>Lien envoyé !</div>
-            <button onClick={onClose} style={{ padding:'10px 28px', background:c.success, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:13 }}>✓ Fermer</button>
-          </div>}
-          {status==='error' && <div style={{ textAlign:'center', padding:'16px 0' }}>
-            <p style={{ color:c.danger, marginBottom:16, fontSize:14 }}>{errMsg}</p>
-            <button onClick={()=>{setStatus('idle');setErrMsg('');}} style={{ padding:'10px 24px', background:c.danger, color:'#fff', border:'none', cursor:'pointer', fontFamily:c.fMono, fontSize:12 }}>Réessayer</button>
-          </div>}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    MATCH ANALYSIS PANEL
@@ -1062,18 +1012,18 @@ const filtered = useMemo(() => {
   }
 
   // ✅ FILTRE PAR PAYS
-  if (filterCountry !== 'all') {
+   if (filterCountry !== 'all') {
     if (filterCountry === 'target') {
       // Pays cibles de l'étudiant
-      const targetCountries = (user.targetCountries || []).map(tc =>
-        tc.country?.toLowerCase().trim()
-      ).filter(Boolean);
+      const targetCountries = user && (user.targetCountries || [])  // ✅ Ajouter `user &&`
+        .map(tc => tc.country?.toLowerCase().trim())
+        .filter(Boolean);
       r = r.filter(s => targetCountries.includes(s.pays?.toLowerCase().trim()));
     } else if (filterCountry === 'other') {
       // Autres pays
-      const targetCountries = (user.targetCountries || []).map(tc =>
-        tc.country?.toLowerCase().trim()
-      ).filter(Boolean);
+      const targetCountries = user && (user.targetCountries || [])  // ✅ Ajouter `user &&`
+        .map(tc => tc.country?.toLowerCase().trim())
+        .filter(Boolean);
       r = r.filter(s => !targetCountries.includes(s.pays?.toLowerCase().trim()));
     } else {
       // Pays spécifique
@@ -1086,16 +1036,15 @@ const filtered = useMemo(() => {
   }
 
   return r.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-}, [allScholarships, activeFilter, searchQuery, fullBoursesList, filterDeadline, filterCountry, user.targetCountries]);
-
+}, [allScholarships, activeFilter, searchQuery, fullBoursesList, filterDeadline, filterCountry, user?.targetCountries]);
   //const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   //const safePage = Math.min(currentPage, totalPages);
   //const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+
 // ✅ SÉPARATION PAR PAYS CIBLE
-// ✅ SÉPARATION PAR PAYS CIBLE
-const hasTargetCountries = user.targetCountries && user.targetCountries.length > 0;
-const targetCountriesLower = hasTargetCountries
+const hasTargetCountries = user && user.targetCountries && user.targetCountries.length > 0;  // ✅ Ajouter `user &&`
+const targetCountriesLower = hasTargetCountries && user
   ? user.targetCountries.map(tc => tc.country?.toLowerCase().trim()).filter(Boolean)
   : [];
 // ✅ Charger les favoris au démarrage
@@ -1135,25 +1084,19 @@ const otherScholarships = hasTargetCountries
 
   // ── Non connecté ──
   if (!user) return (
-    <>
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper, padding: 24 }}>
-        <div style={{ background: c.surface, border: `1px solid ${c.rule}`, padding: '48px 40px', maxWidth: 400, width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🎓</div>
-          <h3 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: '0 0 12px' }}>
-            {lang === 'fr' ? 'Recommandations personnalisées' : 'Personalized recommendations'}
-          </h3>
-          <p style={{ color: c.ink3, fontSize: 14, lineHeight: 1.6, margin: '0 0 28px' }}>
-            {lang === 'fr' ? 'Connectez-vous pour découvrir les bourses compatibles avec votre profil.' : 'Sign in to discover scholarships matching your profile.'}
-          </p>
-          <button onClick={() => setShowLoginModal(true)} style={{ padding: '13px 36px', background: c.accent, color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: c.fMono, cursor: 'pointer' }}>
-            {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-          </button>
-        </div>
-      </div>
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
-      <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
-    </>
-  );
+
+  <>
+    <RestrictedAccessCard
+      pageName={lang === 'fr' ? 'Recommandations' : 'Recommendations'}
+      icon="🎓"
+      onLoginClick={() => setShowLoginModal(true)}
+    />
+    {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
+    <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
+  </>
+);
+     
+
 
   // ── PHASE GENERATING ──
   if (phase === 'generating') return (
