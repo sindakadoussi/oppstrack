@@ -5,7 +5,7 @@ import axiosInstance from '@/config/axiosInstance';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';  // ✅ pour les tokens
 import { tCountry, tLevel, tFunding, tField, tDescription } from '@/utils/translateDB';
-
+import LoginModal from '@/components/LoginModal';
 /* ═══════════════════════════════════════════════════════════════════════════
    TOKENS (identique à la homepage)
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -60,87 +60,7 @@ const formatDate = (d, lang = 'fr') => { /* inchangé */ return null; };
 /* ═══════════════════════════════════════════════════════════════════════════
    LOGIN MODAL (style adapté aux tokens)
 ═══════════════════════════════════════════════════════════════════════════ */
-function LoginModal({ onClose }) {
-  const { lang } = useT();
-  const { theme } = useTheme();
-  const c = tokens(theme);
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
 
-  const send = async () => {
-    if (!email || !email.includes('@')) {
-      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email');
-      return;
-    }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Impossible de contacter le serveur' : 'Cannot contact server'));
-    }
-  };
-
-  const t = {
-    title: lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack',
-      eligibility: lang === 'fr' ? "Critères d'éligibilité" : 'Eligibility criteria',  // ✅ DÉJÀ PRÉSENT
-    desc: lang === 'fr' ? 'Entrez votre email pour recevoir un <strong>lien de connexion magique</strong>.' : 'Enter your email to receive a <strong>magic login link</strong>.',
-    placeholder: lang === 'fr' ? 'votre@email.com' : 'your@email.com',
-    sendBtn: lang === 'fr' ? '✉️ Envoyer le lien magique' : '✉️ Send magic link',
-    sending: lang === 'fr' ? 'Envoi en cours...' : 'Sending...',
-    sent: lang === 'fr' ? 'Lien envoyé !' : 'Link sent!',
-    sentDesc: lang === 'fr' ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.' : 'Check your inbox (and spam).<br/>Click the link to sign in.',
-    close: lang === 'fr' ? '✓ Fermer' : '✓ Close',
-    retry: lang === 'fr' ? 'Réessayer' : 'Retry',
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-      <div style={{ position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', background: c.surface, borderTop: `3px solid ${c.accent}`, boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
-          <span style={{ fontSize: 22 }}>🔐</span>
-          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 16, color: c.ink }}>{t.title}</span>
-          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
-        </div>
-        <div style={{ padding: '24px' }}>
-          {status === 'idle' && (
-            <>
-              <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, marginBottom: 20, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: t.desc }} />
-              <input type="email" placeholder={t.placeholder} value={email} autoFocus onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
-                style={{ width: '100%', padding: '11px 14px', border: `1px solid ${c.ruleSoft}`, background: c.paper, color: c.ink, fontSize: 14, outline: 'none', fontFamily: c.fSans }} />
-              {errMsg && <div style={{ color: c.danger, fontSize: 12, marginTop: 8 }}>{errMsg}</div>}
-              <button onClick={send} style={{ width: '100%', marginTop: 16, padding: '12px', background: c.accent, color: c.paper, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, letterSpacing: '0.05em' }}>{t.sendBtn}</button>
-            </>
-          )}
-          {status === 'sending' && (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ width: 40, height: 40, border: `3px solid ${c.ruleSoft}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-              <p style={{ color: c.ink2, marginTop: 14 }}>{t.sending}</p>
-            </div>
-          )}
-          {status === 'success' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>✉️</div>
-              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: '#166534', marginBottom: 8 }}>{t.sent}</div>
-              <p style={{ color: c.ink2, fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: t.sentDesc }} />
-              <button onClick={onClose} style={{ ...modalBtn, background: '#166534', marginTop: 20 }}>{t.close}</button>
-            </div>
-          )}
-          {status === 'error' && (
-            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-              <p style={{ color: c.danger }}>{errMsg}</p>
-              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ ...modalBtn, background: c.accent, marginTop: 16 }}>{t.retry}</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const modalBtn = {
   width: '100%', padding: '12px', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.05em'
@@ -231,7 +151,7 @@ useEffect(() => {
     favorite: lang === 'fr' ? '☆ Ajouter aux favoris' : '☆ Add to favorites',
     favorited: lang === 'fr' ? '★ Favori' : '★ Favorited',
     askAI: lang === 'fr' ? "🤖 Demander à l'IA" : '🤖 Ask AI',
-    matchAnalysis: lang === 'fr' ? 'Analyse IA complète du match' : 'Complete AI match analysis',
+  
     lockedTitle: lang === 'fr' ? 'Contenu réservé' : 'Content reserved',
     lockedDesc: lang === 'fr' ? 'Connectez-vous pour voir les détails complets de cette bourse,\nvotre score de compatibilité et postuler directement.' : 'Sign in to see full scholarship details,\nyour compatibility score and apply directly.',
     signIn: lang === 'fr' ? '🔐 Se connecter' : '🔐 Sign in',
@@ -482,14 +402,7 @@ useEffect(() => {
             </button>
           </div>
 
-          <button
-            onClick={() => setShowMatch(true)}
-            style={{ width: '100%', padding: '10px', background: c.paper, border: `1px solid ${c.ruleSoft}`, color: c.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            <span>🤖</span>
-            <span>{t.matchAnalysis} — {pct}%</span>
-            <span style={{ marginLeft: 'auto', color: c.ink3 }}>→</span>
-          </button>
+          
         </div>
       </div>
 

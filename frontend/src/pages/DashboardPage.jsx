@@ -12,6 +12,8 @@ import BourseDrawer from '../components/Boursedrawer';
 import ChatInput from '../components/ChatInput';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
+import LoginModal from '@/components/LoginModal';
+import RestrictedAccessCard from '@/components/RestrictedAccessCard';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TOKENS (identique à la homepage)
@@ -73,45 +75,7 @@ function isItemDone(item) {
   return t > 0 && (item.etapeCourante || 0) >= t - 1;
 }
 
-/* ─── LOGIN MODAL (dynamique) ──────────────────────────────────────────── */
-function LoginModal({ onClose, c, lang }) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
 
-  const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg('Email invalide'); return; }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (err) { setStatus('error'); setErrMsg(err.response?.data?.message || 'Erreur serveur'); }
-  };
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(8px)' }} onClick={onClose}/>
-      <div style={{ position:'relative', zIndex:1, width:400, maxWidth:'92vw', background:c.surface, borderRadius:20, overflow:'hidden', border:`1px solid ${c.rule}`, boxShadow:'0 24px 64px rgba(0,0,0,0.12)' }}>
-        <div style={{ padding:'20px 24px', borderBottom:`1px solid ${c.rule}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ fontSize:15, fontWeight:600, color:c.ink }}>Connexion à OppsTrack</span>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:c.ink2, fontSize:18, cursor:'pointer', lineHeight:1 }}>×</button>
-        </div>
-        <div style={{ padding:'24px' }}>
-          {status === 'idle' && (<>
-            <p style={{ color:c.ink2, fontSize:13, marginBottom:20, lineHeight:1.6 }}>Entrez votre email pour recevoir un <strong style={{ color:c.ink }}>lien magique</strong>.</p>
-            <input type="email" placeholder="votre@email.com" value={email} autoFocus onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
-              style={{ width:'100%', padding:'10px 14px', borderRadius:10, border:`1.5px solid ${c.rule}`, background:c.paper, color:c.ink, fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:4 }}/>
-            {errMsg && <div style={{ color:c.danger, fontSize:12, marginTop:8 }}>{errMsg}</div>}
-            <button style={{ padding:'8px 16px', borderRadius:8, background:c.blue, color:c.white, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', width:'100%', marginTop:16, padding:'12px', fontSize:13 }} onClick={send}>Envoyer le lien magique</button>
-          </>)}
-          {status === 'sending' && <div style={{ textAlign:'center', padding:'32px 0' }}><div style={{ width:32, height:32, border:`2px solid ${c.rule}`, borderTopColor:c.blue, borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto' }}/></div>}
-          {status === 'success' && <div style={{ textAlign:'center', padding:'24px 0' }}><div style={{ fontSize:40, marginBottom:12 }}>✉️</div><div style={{ fontSize:15, fontWeight:600, color:c.ink, marginBottom:8 }}>Lien envoyé !</div><p style={{ color:c.ink2, fontSize:13 }}>Vérifiez votre boîte mail.</p><button style={{ padding:'8px 16px', borderRadius:8, background:c.blue, color:c.white, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', marginTop:20, padding:'10px 24px' }} onClick={onClose}>Fermer</button></div>}
-          {status === 'error'   && <div style={{ textAlign:'center', padding:'24px 0' }}><p style={{ color:c.danger, marginBottom:12 }}>{errMsg}</p><button style={{ padding:'8px 16px', borderRadius:8, background:c.danger, color:c.white, border:'none', fontSize:12, fontWeight:600, cursor:'pointer' }} onClick={()=>{setStatus('idle');setErrMsg('');}}>Réessayer</button></div>}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── CALENDRIER (dynamique) ───────────────────────────────────────────── */
 function Calendrier({ deadlines, onSelectBourse, lang, c }) {
@@ -579,42 +543,12 @@ export default function DashboardPage({
   /* ── NOT LOGGED IN ── */
   if (!user) return (
     <>
-  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.paper }}>
-    <div style={{
-      background: c.surface,
-      border: `1px solid ${c.rule}`,
-      borderRadius: 0,
-      padding: '56px 48px',
-      maxWidth: 380,
-      width: '100%',
-      textAlign: 'center',
-      boxShadow: 'none',
-    }}>
-      <div style={{ fontSize: 52, marginBottom: 20 }}>📊</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: c.ink, marginBottom: 8 }}>
-        {lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
-      </div>
-      <p style={{ color: c.ink2, fontSize: 13, lineHeight: 1.6, marginBottom: 28 }}>
-        {lang === 'fr' ? 'Connectez-vous pour accéder à votre espace personnel.' : 'Sign in to access your personal space.'}
-      </p>
-      <button
-        style={{
-          padding: '12px 32px',
-          background: c.accent,
-          color: c.surface,
-          border: 'none',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          borderRadius: 0,
-        }}
-        onClick={() => setShowLoginModal(true)}
-      >
-        {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-      </button>
-    </div>
-  </div>
-  {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} c={c} lang={lang} />}
+  <RestrictedAccessCard
+        pageName={lang === 'fr' ? 'Tableau de bord' : 'Dashboard'}
+        icon="📊"
+        onLoginClick={() => setShowLoginModal(true)}
+      />
+  {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
   <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 </>
   );

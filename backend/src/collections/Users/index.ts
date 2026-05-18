@@ -4,9 +4,6 @@ import { NextResponse } from 'next/server'
 import { authenticated } from '@/access/authenticated'
 import { anyone } from '@/access/anyone'
 
-
-
-// ✅ NOUVEAU : Hook d'invalidation des recommandations
 // ✅ HOOK AMÉLIORÉ : Invalidation + Régénération automatique
 const invalidateRecommendationsOnProfileChange = async ({
   doc,
@@ -143,28 +140,36 @@ export const Users: CollectionConfig = {
     delete: authenticated,
   },
   fields: [
+// ── Informations personnelles ──────────────────────────────────────
     { name: 'name',    label: 'Nom complet',    type: 'text' },
-    { name: 'pays',    label: 'Pays',           type: 'text' },
-    { name: 'niveau',  label: 'Niveau',         type: 'text' },
-    { name: 'domaine', label: 'Domaine',        type: 'text' },
-
-    // ── Informations personnelles ──────────────────────────────────────
-    { name: 'phone',               label: 'Téléphone',          type: 'text' },
+    { name: 'phone',   label: 'Téléphone',          type: 'text' },
     { name: 'nationality',         label: 'Nationalité',        type: 'text' },
     { name: 'countryOfResidence',  label: 'Pays de résidence',  type: 'text' },
-
+    
     // ── Liens professionnels ───────────────────────────────────────────
     { name: 'linkedin',  label: 'LinkedIn',          type: 'text' },
     { name: 'github',    label: 'GitHub',             type: 'text' },
     { name: 'portfolio', label: 'Portfolio / Site web', type: 'text' },
 
+    // ── Distinctions & prix ────────────────────────────────────────────
+    {
+      name: 'awards',
+      label: 'Distinctions & prix',
+      type: 'array',
+      fields: [
+        { name: 'title',        label: 'Titre du prix / distinction', type: 'text' },
+        { name: 'organization', label: 'Organisation',                type: 'text' },
+        { name: 'year',         label: 'Année',                       type: 'text' },
+        { name: 'description',  label: 'Description',                 type: 'text' },
+      ],
+    },
+  
     // ── Formation ─────────────────────────────────────────────────────
     { name: 'currentLevel',      label: 'Niveau actuel',       type: 'text' },
     { name: 'fieldOfStudy',      label: "Domaine d'études",    type: 'text' },
     { name: 'institution',       label: 'Établissement',       type: 'text' },
     { name: 'gpa',               label: 'Moyenne (sur 20)',    type: 'text' },
     { name: 'graduationYear',    label: 'Année de diplôme',    type: 'text' },
-    { name: 'targetDegree',      label: 'Niveau visé',         type: 'text' },
     { name: 'motivationSummary', label: 'Résumé de motivation', type: 'textarea' },
 
     // ── Historique académique ──────────────────────────────────────────
@@ -178,6 +183,19 @@ export const Users: CollectionConfig = {
         { name: 'field',       label: 'Domaine',       type: 'text' },
         { name: 'year',        label: 'Année',         type: 'text' },
         { name: 'grade',       label: 'Mention / Note', type: 'text' },
+      ],
+    },
+
+     // ── Certifications ─────────────────────────────────────────────────
+    {
+      name: 'certifications',
+      label: 'Certifications & formations courtes',
+      type: 'array',
+      fields: [
+        { name: 'name',       label: 'Certification',          type: 'text' },
+        { name: 'issuer',     label: 'Organisme émetteur',     type: 'text' },
+        { name: 'date',       label: "Date d'obtention",       type: 'text' },
+        { name: 'credential', label: 'ID / Lien vérification', type: 'text' },
       ],
     },
 
@@ -195,6 +213,21 @@ export const Users: CollectionConfig = {
         { name: 'endDate',      label: 'Date de fin',                       type: 'text' },
         { name: 'description',  label: 'Description des missions',          type: 'textarea' },
         { name: 'technologies', label: 'Technologies utilisées',            type: 'text' },
+      ],
+    },
+
+
+     // ── Bénévolat & associations ───────────────────────────────────────
+    {
+      name: 'volunteerWork',
+      label: 'Bénévolat & associations',
+      type: 'array',
+      fields: [
+        { name: 'role',         label: 'Rôle',          type: 'text' },
+        { name: 'organization', label: 'Organisation',  type: 'text' },
+        { name: 'startDate',    label: 'Début',         type: 'text' },
+        { name: 'endDate',      label: 'Fin',           type: 'text' },
+        { name: 'description',  label: 'Description',   type: 'textarea' },
       ],
     },
 
@@ -218,32 +251,7 @@ export const Users: CollectionConfig = {
       ],
     },
 
-    // ── Certifications ─────────────────────────────────────────────────
-    {
-      name: 'certifications',
-      label: 'Certifications & formations courtes',
-      type: 'array',
-      fields: [
-        { name: 'name',       label: 'Certification',          type: 'text' },
-        { name: 'issuer',     label: 'Organisme émetteur',     type: 'text' },
-        { name: 'date',       label: "Date d'obtention",       type: 'text' },
-        { name: 'credential', label: 'ID / Lien vérification', type: 'text' },
-      ],
-    },
-
-    // ── Bénévolat & associations ───────────────────────────────────────
-    {
-      name: 'volunteerWork',
-      label: 'Bénévolat & associations',
-      type: 'array',
-      fields: [
-        { name: 'role',         label: 'Rôle',          type: 'text' },
-        { name: 'organization', label: 'Organisation',  type: 'text' },
-        { name: 'startDate',    label: 'Début',         type: 'text' },
-        { name: 'endDate',      label: 'Fin',           type: 'text' },
-        { name: 'description',  label: 'Description',   type: 'textarea' },
-      ],
-    },
+   
 
     // ── Publications scientifiques ─────────────────────────────────────
     {
@@ -258,18 +266,7 @@ export const Users: CollectionConfig = {
       ],
     },
 
-    // ── Distinctions & prix ────────────────────────────────────────────
-    {
-      name: 'awards',
-      label: 'Distinctions & prix',
-      type: 'array',
-      fields: [
-        { name: 'title',        label: 'Titre du prix / distinction', type: 'text' },
-        { name: 'organization', label: 'Organisation',                type: 'text' },
-        { name: 'year',         label: 'Année',                       type: 'text' },
-        { name: 'description',  label: 'Description',                 type: 'text' },
-      ],
-    },
+    
 
     // ── Langues ───────────────────────────────────────────────────────
     {
@@ -296,6 +293,9 @@ export const Users: CollectionConfig = {
     },
 
     // ── Objectifs ─────────────────────────────────────────────────────
+    { name: 'targetDegree',      label: 'Niveau visé',         type: 'text' },
+
+
     {
       name: 'targetCountries',
       label: 'Pays cibles',
@@ -325,20 +325,7 @@ export const Users: CollectionConfig = {
     { name: 'magicToken',           type: 'text', hidden: true },
     { name: 'magicTokenExpiration', type: 'date', hidden: true },
 
-    // ── Bourses choisies ──────────────────────────────────────────────
-    {
-      name: 'bourses_choisies',
-      label: 'Bourses choisies',
-      type: 'array',
-      fields: [
-        { name: 'nom',      label: 'Nom de la bourse', type: 'text', required: true },
-        { name: 'pays',     label: 'Pays',             type: 'text' },
-        { name: 'url',      label: 'URL officielle',   type: 'text' },
-        { name: 'deadline', label: 'Date limite',      type: 'text' },
-        { name: 'langue',   label: 'Langue',           type: 'text' },
-        { name: 'ajouteLe', label: 'Ajouté le',        type: 'date' },
-      ],
-    },
+   
 
     {
       name: 'avatar',
@@ -488,30 +475,7 @@ export const Users: CollectionConfig = {
       },
     },
 
-    // ── POST /api/users/:id/bourses-choisies ──────────────────────────
-    {
-      path: '/:id/bourses-choisies',
-      method: 'post',
-      handler: async (req: PayloadRequest) => {
-        const id   = req.routeParams?.id as string
-        const body = await req.json?.() || req.body || {}
-        const { nom, pays, url, deadline, langue } = body
-        if (!id || !nom) return NextResponse.json({ error: 'id et nom requis' }, { status: 400 })
-        try {
-          const existing  = await req.payload.findByID({ collection: 'users', id, depth: 0 })
-          const actuelles: any[] = existing.bourses_choisies || []
-          if (actuelles.some((b: any) => b.nom?.toLowerCase() === nom.toLowerCase()))
-            return NextResponse.json({ message: 'Déjà dans votre liste', bourses_choisies: actuelles })
-          const updated = await req.payload.update({
-            collection: 'users', id,
-            data: { bourses_choisies: [...actuelles, { nom, pays: pays||'', url: url||'', deadline: deadline||'', langue: langue||'', ajouteLe: new Date().toISOString() }] },
-          })
-          return NextResponse.json({ message: `"${nom}" ajoutée`, bourses_choisies: updated.bourses_choisies })
-        } catch (err: any) {
-          return NextResponse.json({ error: err.message }, { status: 500 })
-        }
-      },
-    },
+  
 
     // ── PATCH /api/users/:id/progression ──────────────────────────────
     {
@@ -558,25 +522,7 @@ export const Users: CollectionConfig = {
       },
     },
 
-    // ── DELETE /api/users/:id/bourses-choisies/:nom ───────────────────
-    {
-      path: '/:id/bourses-choisies/:nom',
-      method: 'delete',
-      handler: async (req: PayloadRequest) => {
-        const id  = req.routeParams?.id  as string
-        const nom = req.routeParams?.nom as string
-        try {
-          const existing = await req.payload.findByID({ collection: 'users', id, depth: 0 })
-          const filtrees = (existing.bourses_choisies || []).filter(
-            (b: any) => b.nom?.toLowerCase() !== decodeURIComponent(nom).toLowerCase()
-          )
-          await req.payload.update({ collection: 'users', id, data: { bourses_choisies: filtrees } })
-          return NextResponse.json({ message: 'Supprimée', bourses_choisies: filtrees })
-        } catch (err: any) {
-          return NextResponse.json({ error: err.message }, { status: 500 })
-        }
-      },
-    },
+   
   ],
 }
 

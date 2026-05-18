@@ -5,7 +5,8 @@ import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import BourseDrawer from '../components/Boursedrawer';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
-import Matchdraweria from '../components/Matchdraweria';
+import LoginModal from '@/components/LoginModal';
+
 const handleAskAI = (bourse) => {
   console.log('🔍 handleAskAI - Bourse:', bourse);
   console.log('🔍 User:', user);
@@ -319,9 +320,7 @@ const [applyLoading, setApplyLoading] = useState(false);
   >
     {applyLoading ? '⏳' : (applied ? '✓' : '+')} {applied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
   </button>
-          <button onClick={(e) => { e.stopPropagation(); onMatch(bourse); }} style={{ ...actionButton(c, 'primary'), background: c.accent, color: '#fff' }}>
-            Match IA
-          </button>
+         
         </div>
       </div>
 
@@ -347,103 +346,7 @@ const actionButton = (c, variant) => ({
   ...(variant === 'gradient' && { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff' }),
 });
 
-/* =============== LOGIN MODAL (sans émoji) =============== */
-function LoginModal({ onClose, lang, c }) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [errMsg, setErrMsg] = useState('');
 
-  const send = async () => {
-    if (!email || !email.includes('@')) { setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); return; }
-    setStatus('sending');
-    try {
-      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
-    }
-  };
-
-  const modalStyles = {
-    overlay:  { position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    backdrop: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' },
-    box:      { position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
-    head:     { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' },
-    closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' },
-    body:     { padding: '24px' },
-    btn:      { width: '100%', padding: '12px', fontFamily: c.fSans, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '0.05em' },
-    spinner:  { width: 32, height: 32, border: `2px solid ${c.rule}`, borderTopColor: c.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' },
-  };
-
-  return (
-    <div style={modalStyles.overlay}>
-      <div style={{ ...modalStyles.box, borderTop: `3px solid ${c.accent}`, background: c.surface }}>
-        <div style={{ ...modalStyles.head, background: c.paper2, borderBottom: `1px solid ${c.rule}` }}>
-          <span style={{ fontSize: 20 }}>🔐</span>
-          <span style={{ fontFamily: c.fSerif, fontWeight: 700, fontSize: 18, color: c.ink }}>
-            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
-          </span>
-          <button style={modalStyles.closeBtn} onClick={onClose}>✕</button>
-        </div>
-        <div style={modalStyles.body}>
-          {status === 'idle' && (
-            <>
-              <p style={{ fontFamily: c.fSans, fontSize: 13, color: c.ink2, marginBottom: 24, lineHeight: 1.5 }}>
-                {lang === 'fr' ? 'Entrez votre email pour recevoir un lien de connexion magique.' : 'Enter your email to receive a magic login link.'}
-              </p>
-              <input
-                type="email"
-                placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
-                value={email}
-                autoFocus
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && send()}
-                style={{
-                  width: '100%', padding: '12px', fontFamily: c.fSans, fontSize: 14,
-                  border: `1px solid ${c.rule}`, background: c.paper, color: c.ink,
-                  outline: 'none', marginBottom: 8
-                }}
-              />
-              {errMsg && <div style={{ color: c.danger, fontSize: 12, marginTop: 4 }}>{errMsg}</div>}
-              <button onClick={send} style={{ ...modalStyles.btn, background: c.accent, color: c.paper, marginTop: 16 }}>
-                ✉️ Envoyer le lien
-              </button>
-            </>
-          )}
-          {status === 'sending' && (
-            <div style={{ textAlign: 'center', padding: 32 }}>
-              <div style={modalStyles.spinner} />
-              <p style={{ color: c.ink2, marginTop: 16 }}>{lang === 'fr' ? 'Envoi...' : 'Sending...'}</p>
-            </div>
-          )}
-          {status === 'success' && (
-            <div style={{ textAlign: 'center', padding: 24 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
-              <div style={{ fontFamily: c.fSerif, fontSize: 18, fontWeight: 700, color: '#2e6b3e', marginBottom: 8 }}>
-                Lien envoyé !
-              </div>
-              <p style={{ fontSize: 13, color: c.ink2 }} dangerouslySetInnerHTML={{
-                __html: lang === 'fr' ? 'Vérifiez votre boîte mail (et les spams).<br/>Cliquez sur le lien pour vous connecter.' : 'Check your inbox (and spam).<br/>Click the link to sign in.'
-              }} />
-              <button onClick={onClose} style={{ ...modalStyles.btn, background: '#2e6b3e', marginTop: 24 }}>✓ Fermer</button>
-            </div>
-          )}
-          {status === 'error' && (
-            <div style={{ textAlign: 'center', padding: 24 }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-              <p style={{ color: c.danger }}>{errMsg}</p>
-              <button onClick={() => { setStatus('idle'); setErrMsg(''); }} style={{ ...modalStyles.btn, background: c.accent, marginTop: 16 }}>
-                Réessayer
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div style={modalStyles.backdrop} onClick={onClose} />
-    </div>
-  );
-}
 
 /* =============== BARRE DE CONTEXTE (sans émojis, chiffres mis en valeur) =============== */
 function SmartContextBar({ filteredBourses, user, c, lang }) {
@@ -1021,8 +924,7 @@ const handleAskAI = (bourse) => {
         onApply={handleApply}
         user={user}
       />
-      {matchBourse && <Matchdraweria bourse={matchBourse} user={user} onBack={() => setMatchBourse(null)} />}
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} c={c} />}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} c={c} />}
 
       <style>{`

@@ -15,7 +15,6 @@ import Roadmap from './collections/Roadmap';
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import Feedbacks from './collections/Feedbacks'
-import Match from './collections/Match'
 import Recommendations from './collections/recommendations';
 
 const filename = fileURLToPath(import.meta.url)
@@ -47,7 +46,7 @@ export default buildConfig({
     },
   }),
 
-  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks, Match , Recommendations],
+  collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks , Recommendations],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   

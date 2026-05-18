@@ -6,6 +6,10 @@ import { useTheme } from '../components/Navbar';
 import axios from 'axios';
 import { buildPreviewHTML, downloadCVPDF, downloadLMPDF } from './pdfGenerator';
 import Workspaceimport from './Workspaceimport';
+import LoginModal from '@/components/LoginModal';
+import RestrictedAccessCard from '@/components/RestrictedAccessCard';
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  N8N WEBHOOK
@@ -387,7 +391,7 @@ export default function CVPage({ user, setView }) {
   const [loadingStep,    setLoadingStep]    = useState('');
   const [activeTab,      setActiveTab]      = useState('cv');
   const [workspaceMode,  setWorkspaceMode]  = useState(null); // 'generate' | 'import'
-
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const workspaceRef = useRef(null);
   const step2Ref     = useRef(null);
   const step3Ref     = useRef(null);
@@ -428,53 +432,17 @@ export default function CVPage({ user, setView }) {
     s.pays?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
- if (!user) return (
-  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg }}>
-    <div style={{
-      background: C.bgCard,
-      border: `1px solid ${C.border}`,
-      borderRadius: 0,
-      padding: '56px 48px',
-      maxWidth: 380,
-      width: '100%',
-      textAlign: 'center',
-      boxShadow: 'none',
-    }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>📄</div>
-      <h3 style={{
-        fontFamily: C.fSerif,
-        fontSize: 22,
-        fontWeight: 700,
-        color: C.ink,
-        margin: '16px 0 8px',
-      }}>
-        {lang === 'fr' ? 'Accès restreint' : 'Restricted access'}
-      </h3>
-      <p style={{
-        color: C.ink2,
-        fontSize: 13,
-        lineHeight: 1.6,
-        margin: '0 0 24px',
-      }}>
-        {lang === 'fr' ? 'Connectez-vous pour accéder à cette page.' : 'Sign in to access this page.'}
-      </p>
-      <button
-        style={{
-          padding: '12px 32px',
-          background: C.accent,
-          color: C.surface,
-          border: 'none',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          borderRadius: 0,
-        }}
-        onClick={() => setShowLoginModal(true)}
-      >
-        {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-      </button>
-    </div>
-  </div>
+
+
+if (!user) return (
+      <>
+        <RestrictedAccessCard
+  pageName={lang === 'fr' ? 'CV & Lettre de motivation' : 'CV & Cover Letter'}
+  icon="📄"
+  onLoginClick={() => setShowLoginModal(true)}
+/>
+    {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
+  </>
 );
 
   return (
