@@ -231,7 +231,7 @@ useEffect(() => {
     favorite: lang === 'fr' ? '☆ Ajouter aux favoris' : '☆ Add to favorites',
     favorited: lang === 'fr' ? '★ Favori' : '★ Favorited',
     askAI: lang === 'fr' ? "🤖 Demander à l'IA" : '🤖 Ask AI',
-    matchAnalysis: lang === 'fr' ? 'Analyse IA complète du match' : 'Complete AI match analysis',
+  
     lockedTitle: lang === 'fr' ? 'Contenu réservé' : 'Content reserved',
     lockedDesc: lang === 'fr' ? 'Connectez-vous pour voir les détails complets de cette bourse,\nvotre score de compatibilité et postuler directement.' : 'Sign in to see full scholarship details,\nyour compatibility score and apply directly.',
     signIn: lang === 'fr' ? '🔐 Se connecter' : '🔐 Sign in',
@@ -482,14 +482,7 @@ useEffect(() => {
             </button>
           </div>
 
-          <button
-            onClick={() => setShowMatch(true)}
-            style={{ width: '100%', padding: '10px', background: c.paper, border: `1px solid ${c.ruleSoft}`, color: c.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: c.fMono, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-          >
-            <span>🤖</span>
-            <span>{t.matchAnalysis} — {pct}%</span>
-            <span style={{ marginLeft: 'auto', color: c.ink3 }}>→</span>
-          </button>
+          
         </div>
       </div>
 

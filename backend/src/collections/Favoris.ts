@@ -7,7 +7,10 @@ export const Favoris: CollectionConfig = {
     useAsTitle: 'userEmail',
     description: 'Bourses favorites par étudiant',
   },
-  access: { read: anyone, create: authenticated, update: authenticated, delete: authenticated },
+  access: { read:   () => true,
+  update: () => true,
+  create: () => true,
+  delete: () => true, },
   fields: [
     {
       name: 'user',
