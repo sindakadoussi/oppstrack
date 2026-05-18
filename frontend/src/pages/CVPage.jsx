@@ -367,7 +367,158 @@ function WorkspaceGenerate({ content, setContent, docType, lang, C }) {
 }
 
 
+/* =============== LOGIN MODAL =============== */
+function LoginModal({ onClose, lang, C }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('sending'); // 'sending' | 'success' | 'error'
+  const [errMsg, setErrMsg] = useState('');
 
+  const send = async () => {
+    if (!email || !email.includes('@')) { 
+      setErrMsg(lang === 'fr' ? 'Email invalide' : 'Invalid email'); 
+      return; 
+    }
+    setStatus('sending');
+    try {
+      await axiosInstance.post('/api/users/request-magic-link', { email: email.trim().toLowerCase() });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrMsg(err.response?.data?.message || (lang === 'fr' ? 'Erreur serveur' : 'Server error'));
+    }
+  };
+
+  const modalStyles = {
+    overlay:  { position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    backdrop: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' },
+    box:      { position: 'relative', zIndex: 2001, width: 400, maxWidth: '92vw', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
+    head:     { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: C.bgSecondary, borderBottom: `1px solid ${C.border}` },
+    closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' },
+    body:     { padding: '24px', background: C.bgCard },
+    btn:      { width: '100%', padding: '12px', fontFamily: C.fSans, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s', borderRadius: 6 },
+    spinner:  { width: 32, height: 32, border: `2px solid ${C.borderLight}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' },
+  };
+
+  return (
+    <div style={modalStyles.overlay}>
+      <div style={{ ...modalStyles.box, borderTop: `3px solid ${C.accent}` }}>
+        {/* Header */}
+        <div style={modalStyles.head}>
+          <span style={{ fontSize: 20 }}>🔐</span>
+          <span style={{ fontFamily: C.fSerif, fontWeight: 700, fontSize: 18, color: C.ink }}>
+            {lang === 'fr' ? 'Connexion à OppsTrack' : 'Sign in to OppsTrack'}
+          </span>
+          <button style={modalStyles.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={modalStyles.body}>
+          
+          {/* Écran input email */}
+          {status !== 'success' && status !== 'error' && (
+            <>
+              <p style={{ fontFamily: C.fSans, fontSize: 13, color: C.ink2, marginBottom: 20, lineHeight: 1.6 }}>
+                {lang === 'fr' 
+                  ? 'Entrez votre email pour recevoir un lien de connexion magique.'
+                  : 'Enter your email to receive a magic login link.'}
+              </p>
+              
+              <div style={{ marginBottom: 16 }}>
+                <input
+                  type="email"
+                  placeholder={lang === 'fr' ? 'votre@email.com' : 'your@email.com'}
+                  value={email}
+                  autoFocus
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && send()}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontFamily: C.fSans,
+                    fontSize: 14,
+                    border: `1px solid ${C.borderLight}`,
+                    background: C.bgSecondary,
+                    color: C.ink,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    borderRadius: 6,
+                    transition: 'border 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = C.accent}
+                  onBlur={e => e.target.style.borderColor = C.borderLight}
+                />
+              </div>
+
+              {errMsg && (
+                <div style={{ color: C.danger, fontSize: 12, marginBottom: 16, padding: '8px 12px', background: C.bgSecondary, borderRadius: 6, borderLeft: `3px solid ${C.danger}` }}>
+                  {errMsg}
+                </div>
+              )}
+
+              <button
+                onClick={send}
+                disabled={!email.includes('@')}
+                style={{
+                  ...modalStyles.btn,
+                  background: email.includes('@') ? C.accent : C.borderLight,
+                  color: email.includes('@') ? '#fff' : C.ink3,
+                  cursor: email.includes('@') ? 'pointer' : 'not-allowed',
+                }}
+              >
+                ✉️ {lang === 'fr' ? 'Envoyer le lien magique' : 'Send magic link'}
+              </button>
+            </>
+          )}
+
+          {/* Écran succès */}
+          {status === 'success' && (
+            <div style={{ textAlign: 'center', padding: 24 }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>✉️</div>
+              <div style={{ fontFamily: C.fSerif, fontSize: 20, fontWeight: 700, color: '#2e6b3e', marginBottom: 12 }}>
+                {lang === 'fr' ? 'Lien envoyé !' : 'Link sent!'}
+              </div>
+              <p style={{ fontSize: 13, color: C.ink2, marginBottom: 24, lineHeight: 1.6 }}>
+                {lang === 'fr' 
+                  ? 'Vérifiez votre boîte mail (et les spams). Cliquez sur le lien pour vous connecter.'
+                  : 'Check your inbox (and spam folder). Click the link to sign in.'}
+              </p>
+              <button
+                onClick={onClose}
+                style={{
+                  ...modalStyles.btn,
+                  background: '#2e6b3e',
+                  color: '#fff',
+                }}
+              >
+                ✓ {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+          )}
+
+          {/* Écran erreur */}
+          {status === 'error' && (
+            <div style={{ textAlign: 'center', padding: 24 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+              <p style={{ color: C.danger, fontFamily: C.fSans, marginBottom: 20 }}>{errMsg}</p>
+              <button
+                onClick={() => { setStatus('sending'); setErrMsg(''); setEmail(''); }}
+                style={{
+                  ...modalStyles.btn,
+                  background: C.accent,
+                  color: '#fff',
+                }}
+              >
+                {lang === 'fr' ? 'Réessayer' : 'Try again'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={modalStyles.backdrop} onClick={onClose} />
+    </div>
+  );
+}
 // ═══════════════════════════════════════════════════════════════════════════
 //  MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -387,7 +538,7 @@ export default function CVPage({ user, setView }) {
   const [loadingStep,    setLoadingStep]    = useState('');
   const [activeTab,      setActiveTab]      = useState('cv');
   const [workspaceMode,  setWorkspaceMode]  = useState(null); // 'generate' | 'import'
-
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const workspaceRef = useRef(null);
   const step2Ref     = useRef(null);
   const step3Ref     = useRef(null);
@@ -428,53 +579,68 @@ export default function CVPage({ user, setView }) {
     s.pays?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
- if (!user) return (
-  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg }}>
-    <div style={{
-      background: C.bgCard,
-      border: `1px solid ${C.border}`,
-      borderRadius: 0,
-      padding: '56px 48px',
-      maxWidth: 380,
-      width: '100%',
-      textAlign: 'center',
-      boxShadow: 'none',
-    }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>📄</div>
-      <h3 style={{
-        fontFamily: C.fSerif,
-        fontSize: 22,
-        fontWeight: 700,
-        color: C.ink,
-        margin: '16px 0 8px',
+
+
+if (!user) return (
+  <>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg }}>
+      <div style={{
+        background: C.bgCard,
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: '56px 48px',
+        maxWidth: 380,
+        width: '100%',
+        textAlign: 'center',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
       }}>
-        {lang === 'fr' ? 'Accès restreint' : 'Restricted access'}
-      </h3>
-      <p style={{
-        color: C.ink2,
-        fontSize: 13,
-        lineHeight: 1.6,
-        margin: '0 0 24px',
-      }}>
-        {lang === 'fr' ? 'Connectez-vous pour accéder à cette page.' : 'Sign in to access this page.'}
-      </p>
-      <button
-        style={{
-          padding: '12px 32px',
-          background: C.accent,
-          color: C.surface,
-          border: 'none',
+        <div style={{ fontSize: 52, marginBottom: 16 }}>📄</div>
+        <h3 style={{
+          fontFamily: C.fSerif,
+          fontSize: 22,
+          fontWeight: 700,
+          color: C.ink,
+          margin: '16px 0 8px',
+        }}>
+          {lang === 'fr' ? 'Accès restreint' : 'Restricted access'}
+        </h3>
+        <p style={{
+          color: C.ink2,
           fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          borderRadius: 0,
-        }}
-        onClick={() => setShowLoginModal(true)}
-      >
-        {lang === 'fr' ? 'Se connecter' : 'Sign in'}
-      </button>
+          lineHeight: 1.6,
+          margin: '0 0 24px',
+        }}>
+          {lang === 'fr' ? 'Connectez-vous pour accéder à cette page.' : 'Sign in to access this page.'}
+        </p>
+        <button
+          style={{
+            padding: '12px 32px',
+            background: C.accent,
+            color: '#fff',
+            border: 'none',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderRadius: 6,
+            transition: 'all 0.2s',
+            boxShadow: `0 4px 12px ${C.accent}44`,
+          }}
+          onClick={() => setShowLoginModal(true)}
+          onMouseEnter={e => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = `0 6px 16px ${C.accent}55`;
+          }}
+          onMouseLeave={e => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = `0 4px 12px ${C.accent}44`;
+          }}
+        >
+          {lang === 'fr' ? 'Se connecter' : 'Sign in'}
+        </button>
+      </div>
     </div>
-  </div>
+    {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} C={C} />}
+  </>
 );
 
   return (

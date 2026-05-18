@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axiosInstance from '@/config/axiosInstance';
 import BourseDrawer from '../components/Boursedrawer';
-import Matchdraweria from '../components/Matchdraweria';
+import MatchDrawerIA from '../components/Matchdraweria';
 import { API_ROUTES, WEBHOOK_ROUTES } from '@/config/routes';
 import { useT } from '../i18n';
 import { useTheme } from '../components/Navbar';
@@ -370,55 +370,23 @@ function MatchAnalysisPanel({ bourse, user, onClose, onSave, onApply, isStarred,
 /* ═══════════════════════════════════════════════════════════════════
    SCHOLARSHIP CARD — Version améliorée avec indicateurs détaillés
 ═══════════════════════════════════════════════════════════════════ */
-function ScholarshipCard({ bourse, index, onCardClick, onMatchClick, onSave, onApply, isStarred, isApplied, c, lang }) {
-    const [applyLoading, setApplyLoading] = useState(false);
+function ScholarshipCard({ 
+  bourse, 
+  index, 
+  onCardClick,      // Ouvre BourseDrawer
+  onExplainClick,   // Ouvre MatchDrawerIA
+  onSave, 
+  onApply, 
+  isStarred, 
+  isApplied, 
+  c, 
+  lang 
+}) {
+  const [applyLoading, setApplyLoading] = useState(false);
   const formatDate = (date) => date ? new Date(date).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') : null;
   const animationDelay = `${index * 0.05}s`;
- 
-  const hasMatchScore = bourse.matchScore !== undefined;
-  const col = hasMatchScore ? scoreColor(bourse.matchScore, c) : c.ink4;
 
-  // Calcul de la probabilité (étoiles)
-  const getProbabilityStars = (score) => {
-    if (!score) return { stars: '☆☆☆☆☆', label: 'Non évaluée' };
-    if (score >= 85) return { stars: '★★★★★', label: lang === 'fr' ? 'Très élevée' : 'Very high' };
-    if (score >= 70) return { stars: '★★★★☆', label: lang === 'fr' ? 'Élevée' : 'High' };
-    if (score >= 55) return { stars: '★★★☆☆', label: lang === 'fr' ? 'Moyenne' : 'Medium' };
-    if (score >= 40) return { stars: '★★☆☆☆', label: lang === 'fr' ? 'Faible' : 'Low' };
-    return { stars: '★☆☆☆☆', label: lang === 'fr' ? 'Très faible' : 'Very low' };
-  };
-
-  const probability = getProbabilityStars(bourse.matchScore);
-
-  // Drapeau par pays
-  const getCountryFlag = (countryCode) => {
-    const flags = {
-      'france': '🇫🇷', 'usa': '🇺🇸', 'canada': '🇨🇦', 'uk': '🇬🇧', 'germany': '🇩🇪',
-      'australia': '🇦🇺', 'netherlands': '🇳🇱', 'switzerland': '🇨🇭', 'belgium': '🇧🇪',
-      'italy': '🇮🇹', 'spain': '🇪🇸', 'japan': '🇯🇵', 'china': '🇨🇳', 'india': '🇮🇳'
-    };
-    return flags[countryCode?.toLowerCase()] || '🌍';
-  };
-
-  // Données mockées pour la démo — À remplacer par les vraies données de l'API
-  const strengths = bourse.pointsForts || [
-    'Pays cible dans votre profil',
-    `${bourse.niveau || 'Master'} accepté`,
-    'Votre GPA dépasse le minimum requis',
-    'Expériences renforcent votre dossier'
-  ];
- 
-  const profileStrengths = bourse.profileAtouts || [
-    'GPA dans le top 20% des candidats',
-    'Projets alignés avec priorités'
-  ];
- 
-  const warnings = bourse.avertissements || [
-    `Très compétitive (${Math.floor(Math.random() * 15 + 5)}% d'acceptation)`,
-    'Déposer dossier 2 mois avant la deadline'
-  ];
-
-  // ----- Détermination du statut -----
+  // Détermination du statut
   const getStatus = () => {
     if (bourse.statut === 'expiree') {
       return { label: lang === 'fr' ? 'Expirée' : 'Expired', color: c.danger, intensity: 'solid' };
@@ -443,12 +411,28 @@ function ScholarshipCard({ bourse, index, onCardClick, onMatchClick, onSave, onA
   };
   const status = getStatus();
 
+  // Style des boutons d'action
+  const actionButton = (c, variant) => ({
+    padding: '6px 14px',
+    fontSize: 11,
+    fontWeight: 600,
+    fontFamily: c.fMono,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+    border: 'none',
+    borderRadius: 0,
+    transition: 'all 0.2s ease',
+  });
+
   return (
     <article
       onClick={() => onCardClick(bourse)}
       style={{
-        display: 'block',
-        padding: '20px',
+        display: 'flex',
+        gap: 24,
+        alignItems: 'flex-start',
+        padding: '24px 20px',
         marginBottom: 16,
         borderBottom: `1px solid ${c.ruleSoft}`,
         cursor: 'pointer',
@@ -470,159 +454,214 @@ function ScholarshipCard({ bourse, index, onCardClick, onMatchClick, onSave, onA
         e.currentTarget.style.borderLeft = '0px solid transparent';
       }}
     >
-      {/* En-tête : Drapeau + Nom + Score */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 28 }}>{getCountryFlag(bourse.pays)}</span>
-        <h3 style={{ fontFamily: c.fSerif, fontSize: 20, fontWeight: 700, margin: 0, color: c.ink, letterSpacing: '-0.01em', flex: 1 }}>
-          {bourse.nom}
-        </h3>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {bourse.dateLimite && (
-            <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
-              📅 {formatDate(bourse.dateLimite)}
-            </span>
-          )}
-          <span style={{
-            fontFamily: c.fMono,
-            fontSize: 10,
-            fontWeight: 600,
-            padding: '2px 8px',
-            borderRadius: 20,
-            background: status.intensity === 'solid' ? status.color : `${status.color}20`,
-            color: status.intensity === 'solid' ? '#fff' : status.color,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
+      {/* Contenu principal */}
+      <div style={{ flex: 1 }}>
+        {/* Ligne titre + deadline + statut */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'baseline', 
+          flexWrap: 'wrap', 
+          marginBottom: 12 
+        }}>
+          <h3 style={{ 
+            fontFamily: c.fSerif, 
+            fontSize: 20, 
+            fontWeight: 700, 
+            margin: 0, 
+            color: c.ink, 
+            letterSpacing: '-0.01em' 
           }}>
-            {status.label}
-          </span>
-        </div>
-      </div>
-
-      {/* Score et probabilité */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-       
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16, letterSpacing: 2, color: c.warning }}>
-            {probability.stars}
-          </span>
-          <span style={{ fontSize: 12, color: c.ink2 }}>
-            {lang === 'fr' ? 'Probabilité' : 'Probability'} : {probability.label}
-          </span>
-        </div>
-      </div>
-
-      {/* ✅ Pourquoi cette bourse ? */}
-      {(strengths.length > 0 || bourse.raisons?.length > 0) && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 14, color: c.success }}>✅</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: c.success, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {lang === 'fr' ? 'Pourquoi cette bourse ?' : 'Why this scholarship?'}
+            {bourse.nom}
+          </h3>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            {bourse.dateLimite && (
+              <span style={{ fontFamily: c.fMono, fontSize: 11, color: c.ink3 }}>
+                <strong>{lang === 'fr' ? 'Date limite' : 'Deadline'}</strong> {formatDate(bourse.dateLimite)}
+              </span>
+            )}
+            <span style={{
+              fontFamily: c.fMono,
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 20,
+              background: status.intensity === 'solid' ? status.color : `${status.color}20`,
+              color: status.intensity === 'solid' ? '#fff' : status.color,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              {status.label}
             </span>
           </div>
-          <ul style={{ margin: 0, paddingLeft: 24 }}>
-            {(bourse.raisons?.length > 0 ? bourse.raisons : strengths).slice(0, 4).map((raison, i) => (
-              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
-                • {raison}
-              </li>
-            ))}
-          </ul>
         </div>
-      )}
 
-      {/* 💡 Points forts de votre profil */}
-      {profileStrengths.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 14, color: c.accent }}>💡</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: c.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {lang === 'fr' ? 'Points forts de votre profil' : 'Your profile strengths'}
-            </span>
+        {/* Grille des métadonnées (pays, niveau) */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+          gap: '8px 16px', 
+          marginBottom: 8 
+        }}>
+          {bourse.pays && (
+            <div style={{ 
+              fontSize: 13, 
+              color: c.ink2, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6 
+            }}>
+              <span style={{ fontSize: 14 }}>📍</span> 
+              <strong>{lang === 'fr' ? 'Pays' : 'Country'}</strong> {tCountry(bourse.pays, lang)}
+            </div>
+          )}
+          {bourse.niveau && (
+            <div style={{ 
+              fontSize: 13, 
+              color: c.ink2, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6 
+            }}>
+              <span style={{ fontSize: 14 }}>🎓</span> 
+              <strong>{lang === 'fr' ? 'Niveau' : 'Level'}</strong> {tLevel(bourse.niveau, lang)}
+            </div>
+          )}
+        </div>
+
+        {/* Domaine */}
+        {bourse.domaine && (
+          <div style={{ 
+            marginBottom: 12, 
+            fontSize: 13, 
+            color: c.ink2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 6 
+          }}>
+            <span style={{ fontSize: 14 }}>📚</span> 
+            <strong>{lang === 'fr' ? 'Domaine' : 'Field'}</strong> {bourse.domaine}
           </div>
-          <ul style={{ margin: 0, paddingLeft: 24 }}>
-            {profileStrengths.slice(0, 2).map((strength, i) => (
-              <li key={i} style={{ fontSize: 12, color: c.ink2, marginBottom: 4, lineHeight: 1.5 }}>
-                • {strength}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      {/* ⚠️ À savoir / Avertissements */}
-      {warnings.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 14, color: c.warning }}>⚠️</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: c.warning, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {lang === 'fr' ? 'À savoir' : 'Note'}
-            </span>
+        {/* Financement */}
+        {bourse.financement && (
+          <div style={{ 
+            marginBottom: 16, 
+            fontSize: 13, 
+            color: c.ink2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 6 
+          }}>
+            <span style={{ fontSize: 14 }}>💰</span> 
+            <strong>{lang === 'fr' ? 'Financement' : 'Funding'}</strong> {tFunding(bourse.financement, lang)}
           </div>
-          <ul style={{ margin: 0, paddingLeft: 24 }}>
-            {warnings.slice(0, 2).map((warning, i) => (
-              <li key={i} style={{ fontSize: 12, color: c.ink3, marginBottom: 4, lineHeight: 1.5 }}>
-                • {warning}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      {/* Boutons d'action (inchangés) */}
-      <div style={{
-        display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8,
-        opacity: 0,
-        transition: 'opacity 0.2s ease 0.1s',
-      }} className="card-actions">
-        <button
-          onClick={(e) => { e.stopPropagation(); onSave(bourse, isStarred); }}
-          style={{
-            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-            border: `1px solid ${c.rule}`, borderRadius: 0, transition: 'all 0.2s ease',
-            background: isStarred ? c.accent : 'transparent',
-            color: isStarred ? c.paper : c.ink3
-          }}
-        >
-          {isStarred ? '★' : '☆'} Favori
-        </button>
-        <button
-          onClick={async (e) => {
-            e.stopPropagation();
-            if (isApplied || applyLoading) return;
-            setApplyLoading(true);
-            await onApply(bourse);
-            setApplyLoading(false);
-          }}
-          style={{
-            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-            background: isApplied ? '#2e6b3e' : c.accent,
-            color: '#fff',
-            opacity: applyLoading ? 0.6 : 1
-          }}
-          disabled={isApplied || applyLoading}
-        >
-          {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onMatchClick(bourse); }}
-          style={{
-            padding: '6px 14px', fontSize: 11, fontWeight: 600, fontFamily: c.fMono,
-            letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
-            border: 'none', borderRadius: 0, transition: 'all 0.2s ease',
-            background: c.accent, color: '#fff'
-          }}
-        >
-          Match IA
-        </button>
+        {/* Description courte */}
+        {bourse.description && (
+          <p style={{ 
+            fontFamily: c.fSans, 
+            fontSize: 13, 
+            color: c.ink2, 
+            lineHeight: 1.5, 
+            margin: '0 0 16px 0', 
+            display: '-webkit-box', 
+            WebkitLineClamp: 2, 
+            WebkitBoxOrient: 'vertical', 
+            overflow: 'hidden' 
+          }}>
+            {bourse.description.length > 150 
+              ? `${bourse.description.substring(0, 150)}...` 
+              : bourse.description}
+          </p>
+        )}
+
+        {/* Boutons d'action */}
+        <div style={{
+          display: 'flex', 
+          gap: 12, 
+          flexWrap: 'wrap',
+          opacity: 0,
+          transition: 'opacity 0.2s ease 0.1s',
+        }} className="card-actions">
+          
+          {/* Bouton IA (ouvre BourseDrawer - même comportement que clic sur card) */}
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              onCardClick(bourse); 
+            }} 
+            style={{ 
+              ...actionButton(c, 'ghost'), 
+              border: `1px solid ${c.rule}`, 
+              background: 'transparent', 
+              color: c.accent 
+            }}
+          >
+            IA
+          </button>
+
+          {/* Bouton Favori */}
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              onSave(bourse, isStarred); 
+            }} 
+            style={{ 
+              ...actionButton(c, 'ghost'), 
+              background: isStarred ? c.accent : 'transparent', 
+              color: isStarred ? c.paper : c.ink3, 
+              border: `1px solid ${c.rule}` 
+            }}
+          >
+            {isStarred ? '★' : '☆'} Favori
+          </button>
+
+          {/* Bouton Postuler */}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (isApplied || applyLoading) return;
+              setApplyLoading(true);
+              await onApply(bourse);
+              setApplyLoading(false);
+            }}
+            style={{
+              ...actionButton(c, isApplied ? 'success' : 'primary'),
+              background: isApplied ? '#2e6b3e' : c.accent,
+              color: '#fff',
+              opacity: applyLoading ? 0.6 : 1,
+              cursor: (isApplied || applyLoading) ? 'default' : 'pointer'
+            }}
+            disabled={isApplied || applyLoading}
+          >
+            {applyLoading ? '⏳' : (isApplied ? '✓' : '+')} {isApplied ? (lang === 'fr' ? 'Ajoutée' : 'Added') : (lang === 'fr' ? 'Postuler' : 'Apply')}
+          </button>
+
+          {/* Bouton Match IA (ouvre MatchDrawerIA) */}
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              onExplainClick(bourse); 
+            }} 
+            style={{ 
+              ...actionButton(c, 'primary'), 
+              background: c.accent, 
+              color: '#fff' 
+            }}
+          >
+            Analse détaillée
+          </button>
+        </div>
       </div>
 
       <style>{`
         article:hover .card-actions {
           opacity: 1 !important;
         }
+
         @keyframes cardAppear {
           to { opacity: 1; transform: translateY(0); }
         }
@@ -656,8 +695,33 @@ export default function RecommandationsPage({
   const [activeFilter, setActiveFilter] = useState('perso');
   const [showLoginModal, setShowLoginModal] = useState(false);
   // Dans la section des états (vers ligne ~340)
-const [selectedBourse, setSelectedBourse] = useState(null);   // drawer général (BourseDrawer)
-const [matchAIBourse, setMatchAIBourse] = useState(null);     // drawer IA (MatchAnalysisPanel)
+const [selectedBourse, setSelectedBourse] = useState(null); 
+const [fullBourseData, setFullBourseData] = useState(null);
+const [explainBourse, setExplainBourse] = useState(null);
+// ✅ NOUVEAUX ÉTATS pour détecter les changements
+const [previousRecommendationCount, setPreviousRecommendationCount] = useState(0);
+const [showNewRecommendationsAlert, setShowNewRecommendationsAlert] = useState(false);
+
+const handleOpenBourse = async (bourse) => {
+  setSelectedBourse(bourse); // Ouvre le drawer immédiatement avec les données partielles
+  
+  // Fetch les données complètes en arrière-plan
+  try {
+    const id = bourse.bourseId || bourse.id;
+    if (!id) {
+      setFullBourseData(bourse);
+      return;
+    }
+    
+    const { data } = await axiosInstance.get(`/api/bourses/${id}`, {
+      params: { depth: 2 }
+    });
+    setFullBourseData(data); // Remplace par les données complètes
+  } catch (err) {
+    console.error('Erreur fetch bourse complète', err);
+    setFullBourseData(bourse); // Fallback
+  }
+};
   //const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 8;
   const autoLoadTriggered = useRef(false);
@@ -820,55 +884,141 @@ const loadSavedRecommendations = useCallback(async () => {
 }, [user?.id]);
 
   // ── 3. useEffect d'auto-chargement (APRÈS les fonctions) ──
-  useEffect(() => {
-    if (!user?.id || autoLoadTriggered.current) return;
-    autoLoadTriggered.current = true;
-    setPhase('generating');
-    loadSavedRecommendations();
-  }, [user?.id, loadSavedRecommendations]);
+  // ── 3. useEffect d'auto-chargement + détection des changements ──
+useEffect(() => {
+  if (!user?.id || autoLoadTriggered.current) return;
+  autoLoadTriggered.current = true;
+  setPhase('generating');
+  loadSavedRecommendations();
+}, [user?.id, loadSavedRecommendations]);
 
+// ✅ NOUVEAU : Détecter si les recommandations ont changé
+useEffect(() => {
+  if (phase === 'results' && allScholarships.length > 0) {
+    // Première fois : mémoriser le nombre
+    if (previousRecommendationCount === 0) {
+      setPreviousRecommendationCount(allScholarships.length);
+    } 
+    // Les recommandations ont changé
+    else if (allScholarships.length !== previousRecommendationCount) {
+      setShowNewRecommendationsAlert(true);
+      setPreviousRecommendationCount(allScholarships.length);
+      
+      // Masquer l'alerte après 6 secondes
+      const timer = setTimeout(() => {
+        setShowNewRecommendationsAlert(false);
+      }, 6000);
+      
+      return () => clearTimeout(timer);
+    }
+  }
+}, [allScholarships.length, phase, previousRecommendationCount]);
   // ── Favoris ──
-  const handleStar = async (bourse, isStarred) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id) return;
-    try {
-      const { data } = await axiosInstance.get('/api/favoris', { params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } });
-      const doc = data.docs?.[0];
-      if (isStarred) {
-        if (!doc?.id) return;
-        await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: (doc.bourses || []).filter(b => b.nom?.trim().toLowerCase() !== nomKey) });
-        setStarredNoms(prev => { const s = new Set(prev); s.delete(nomKey); onStarChange?.(s.size); return s; });
+const handleStar = async (bourse, isStarred) => {
+  const nomKey = (bourse.nom || bourse.titre)?.trim().toLowerCase();  // ✅ FIX
+  if (!user?.id) return;
+  
+  try {
+    const { data } = await axiosInstance.get('/api/favoris', { 
+      params: { 'where[user][equals]': user.id, limit: 1, depth: 0 } 
+    });
+    const doc = data.docs?.[0];
+    
+    if (isStarred) {
+      // Retirer des favoris
+      if (!doc?.id) return;
+      await axiosInstance.patch(`/api/favoris/${doc.id}`, { 
+        bourses: (doc.bourses || []).filter(b => 
+          (b.nom || b.titre)?.trim().toLowerCase() !== nomKey  // ✅ FIX
+        ) 
+      });
+      setStarredNoms(prev => { 
+        const s = new Set(prev); 
+        s.delete(nomKey); 
+        onStarChange?.(s.size); 
+        return s; 
+      });
+    } else {
+      // Ajouter aux favoris
+      const nb = { 
+        nom: bourse.nom || bourse.titre,  // ✅ FIX
+        pays: bourse.pays || '', 
+        lienOfficiel: bourse.lienOfficiel || bourse.lien || '',  // ✅ FIX
+        financement: bourse.financement || '', 
+        dateLimite: bourse.dateLimite || bourse.deadline || null,  // ✅ FIX
+        ajouteLe: new Date().toISOString() 
+      };
+      
+      if (doc?.id) {
+        await axiosInstance.patch(`/api/favoris/${doc.id}`, { 
+          bourses: [...(doc.bourses || []), nb] 
+        });
       } else {
-        const nb = { nom: bourse.nom, pays: bourse.pays || '', lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '', dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString() };
-        if (doc?.id) await axiosInstance.patch(`/api/favoris/${doc.id}`, { bourses: [...(doc.bourses || []), nb] });
-        else await axiosInstance.post('/api/favoris', { user: user.id, userEmail: user.email || '', bourses: [nb] });
-        setStarredNoms(prev => { const s = new Set([...prev, nomKey]); onStarChange?.(s.size); return s; });
+        await axiosInstance.post('/api/favoris', { 
+          user: user.id, 
+          userEmail: user.email || '', 
+          bourses: [nb] 
+        });
       }
-      window.dispatchEvent(new CustomEvent('favoris-updated'));
-    } catch (e) { console.error('[handleStar]', e); }
-  };
-
+      
+      setStarredNoms(prev => { 
+        const s = new Set([...prev, nomKey]); 
+        onStarChange?.(s.size); 
+        return s; 
+      });
+    }
+    
+    window.dispatchEvent(new CustomEvent('favoris-updated'));
+  } catch (e) { 
+    console.error('[handleStar]', e); 
+  }
+};
   // ── Postuler ──
-  const handleApply = async (bourse) => {
-    const nomKey = bourse.nom?.trim().toLowerCase();
-    if (!user?.id || appliedNoms.has(nomKey)) return;
-    try {
-      const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
-        userId: user.id, userEmail: user.email || '', nom: bourse.nom, pays: bourse.pays || '',
-        lienOfficiel: bourse.lienOfficiel || '', financement: bourse.financement || '',
-        dateLimite: bourse.dateLimite || null, ajouteLe: new Date().toISOString(), statut: 'en_cours', etapeCourante: 0,
-      });
-      await axiosInstance.post(WEBHOOK_ROUTES.generateRoadmap, {
+const handleApply = async (bourse) => {
+  const nomKey = (bourse.nom || bourse.titre)?.trim().toLowerCase();
+  if (!user?.id || appliedNoms.has(nomKey)) return;
+  
+  try {
+    const res = await axiosInstance.post(API_ROUTES.roadmap.create, {
+      userId: user.id, 
+      userEmail: user.email || '', 
+      nom: bourse.nom || bourse.titre,
+      pays: bourse.pays || '',
+      lienOfficiel: bourse.lienOfficiel || bourse.lien || '',
+      financement: bourse.financement || '',
+      dateLimite: bourse.dateLimite || bourse.deadline || null,
+      ajouteLe: new Date().toISOString(), 
+      statut: 'en_cours', 
+      etapeCourante: 0,
+    });
+    
+    // ✅ CORRECTION : Utilise fetch au lieu d'axios + bonne URL
+    await fetch(`${WEBHOOK_BASE}/webhook/generate-roadmap-steps`, {  
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         roadmapId: res.data.doc.id,
-        user: { id: user.id, email: user.email, niveau: user.niveau, domaine: user.domaine },
-        bourse: { nom: bourse.nom, pays: bourse.pays, lien: bourse.lienOfficiel },
-      });
-      setAppliedNoms(prev => new Set([...prev, nomKey]));
-      window.dispatchEvent(new CustomEvent('roadmap-updated'));
-      setTimeout(() => setView?.('roadmap'), 1000);
-    } catch (e) { console.error('[handleApply]', e); }
-  };
-
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          niveau: user.niveau, 
+          domaine: user.domaine 
+        },
+        bourse: { 
+          nom: bourse.nom || bourse.titre,
+          pays: bourse.pays, 
+          lien: bourse.lienOfficiel || bourse.lien
+        },
+      }),
+    });
+    
+    setAppliedNoms(prev => new Set([...prev, nomKey]));
+    window.dispatchEvent(new CustomEvent('roadmap-updated'));
+    setTimeout(() => setView?.('roadmap'), 1000);
+  } catch (e) { 
+    console.error('[handleApply]', e); 
+  }
+};
   //useEffect(() => { setCurrentPage(1); }, [activeFilter]);
   useEffect(() => { if (activeFilter !== 'test') setSearchQuery(''); }, [activeFilter]);
 
@@ -886,7 +1036,7 @@ const filtered = useMemo(() => {
     const d30 = new Date(Date.now() + 30 * 86400000);
     r = r.filter(s => s.dateLimite && new Date(s.dateLimite) <= d30 && new Date(s.dateLimite) >= new Date());
   } else if (activeFilter === 'perso') {
-    r = r.filter(s => !s.matchScore || s.matchScore >= 40);
+   
   } else if (activeFilter === 'test') {
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
@@ -948,7 +1098,25 @@ const hasTargetCountries = user.targetCountries && user.targetCountries.length >
 const targetCountriesLower = hasTargetCountries
   ? user.targetCountries.map(tc => tc.country?.toLowerCase().trim()).filter(Boolean)
   : [];
-
+// ✅ Charger les favoris au démarrage
+useEffect(() => {
+  const loadStarred = async () => {
+    if (!user?.id) return;
+    try {
+      const { data } = await axiosInstance.get('/api/favoris', {
+        params: { 'where[user][equals]': user.id, limit: 1, depth: 0 }
+      });
+      const favoris = data.docs?.[0]?.bourses || [];
+      const names = new Set(
+        favoris.map(b => (b.nom || b.titre)?.trim().toLowerCase()).filter(Boolean)
+      );
+      setStarredNoms(names);
+    } catch (e) {
+      console.error('[loadStarred]', e);
+    }
+  };
+  loadStarred();
+}, [user?.id]);
 const targetScholarships = hasTargetCountries
   ? filtered.filter(s => targetCountriesLower.includes(s.pays?.toLowerCase().trim()))
   : [];
@@ -1028,9 +1196,128 @@ const otherScholarships = hasTargetCountries
         @keyframes cardIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
         @keyframes spin{to{transform:rotate(360deg);}}
         @keyframes slideInRight{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
         @keyframes pulse{0%,100%{transform:scale(0.8);opacity:0.5;}50%{transform:scale(1.1);opacity:1;}}
       `}</style>
 
+        {/* ✅ ALERTE : Nouvelles recommandations reçues */}
+{showNewRecommendationsAlert && (
+  <div
+    style={{
+      position: 'fixed',
+      top: 80,
+      right: 32,
+      maxWidth: 420,
+      zIndex: 2000,
+      animation: 'slideInRight 0.4s ease-out',
+      pointerEvents: 'auto',
+    }}
+  >
+    <div
+      style={{
+        background: c.surface,
+        border: `1px solid ${c.success}`,
+        borderLeft: `4px solid ${c.success}`,
+        borderRadius: 8,
+        padding: '20px 24px',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 16,
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: `${c.success}20`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 24,
+          flexShrink: 0,
+          animation: 'pulse 2s infinite',
+        }}
+      >
+        ✨
+      </div>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: c.ink,
+            marginBottom: 6,
+            fontFamily: c.fSerif,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {lang === 'fr'
+            ? '🎉 Nouvelles recommandations disponibles !'
+            : '🎉 New recommendations available!'}
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: c.ink2,
+            lineHeight: 1.5,
+            fontFamily: c.fSans,
+          }}
+        >
+          {lang === 'fr'
+            ? `Vous avez mis à jour votre profil. Nous avons généré ${allScholarships.length} recommandations adaptées à vos nouveaux critères.`
+            : `You updated your profile. We generated ${allScholarships.length} recommendations tailored to your new criteria.`}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            marginTop: 14,
+          }}
+        >
+          <button
+            onClick={() => setShowNewRecommendationsAlert(false)}
+            style={{
+              padding: '7px 16px',
+              background: c.success,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: c.fMono,
+              cursor: 'pointer',
+              transition: c.tr,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.85';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
+            {lang === 'fr' ? 'Voir' : 'View'}
+          </button>
+          <button
+            onClick={() => setShowNewRecommendationsAlert(false)}
+            style={{
+              padding: '7px 12px',
+              background: 'transparent',
+              color: c.ink3,
+              border: 'none',
+              fontSize: 12,
+              cursor: 'pointer',
+              fontFamily: c.fMono,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* ── Hero ── */}
            <section style={{
         background: c.paper2,
@@ -1068,40 +1355,11 @@ const otherScholarships = hasTargetCountries
             maxWidth: 620, margin: '0 0 28px', lineHeight: 1.6,
           }}>
             {lang === 'fr'
-              ? `${stats.total} opportunités analysées par notre IA — ${stats.high} excellents matchs, ${stats.medium} avec un bon potentiel.`
-              : `${stats.total} opportunities analyzed by AI — ${stats.high} great fits, ${stats.medium} with good potential.`}
+              ? `${stats.total} opportunités analysées par notre IA,`
+              : `${stats.total} opportunities analyzed by AI .`}
           </p>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => {
-                autoLoadTriggered.current = false;
-                setPhase('generating');
-                setGenerateStep(0);
-                setError(null);
-                generateNewRecommendations();
-              }}
-              style={{
-                padding: '12px 24px',
-                background: c.ink,
-                color: c.paper,
-                border: 'none',
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                fontFamily: c.fSans,
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                transition: c.tr,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = c.accent; }}
-              onMouseLeave={e => { e.currentTarget.style.background = c.ink; }}
-            >
-              ↺ {lang === 'fr' ? 'Actualiser l\'analyse' : 'Refresh analysis'}
-            </button>
-            <span style={{ fontSize: 12, color: c.ink3, fontFamily: c.fMono, letterSpacing: '0.06em' }}>
-              {lang === 'fr' ? 'Dernière analyse : aujourd\'hui' : 'Last analysis: today'}
-            </span>
-          </div>
+          
         </div>
       </section>
 
@@ -1236,6 +1494,311 @@ const otherScholarships = hasTargetCountries
         </div>
       </div>
 
+{/* ✅ NOUVELLE SECTION : CONFIANCE & TRANSPARENCE */}
+{activeFilter === 'perso' && allScholarships.length > 0 && (
+  <div style={{
+    maxWidth: 1100,
+    margin: '60px auto 0',
+    padding: '0 32px',
+  }}>
+    <div style={{
+      background: c.surface,
+      border: `1px solid ${c.rule}`,
+      borderRadius: 12,
+      padding: '28px 32px',
+      marginBottom: 48,
+      animation: 'fadeIn 0.6s ease 0.1s backwards',
+    }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 24,
+      }}>
+        {/* Colonne 1: Analyse réelle */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.success}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.success,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Analyse vérifiée' : 'Verified Analysis'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Chaque recommandation est générée automatiquement en comparant votre profil réel avec les critères objectifs de chaque bourse.'
+                : 'Each recommendation is generated automatically by comparing your real profile with each scholarship\'s objective criteria.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Colonne 2: Critères objectifs */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.accent}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.accent,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="1"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Critères objectifs' : 'Objective Criteria'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Domaine, niveau, GPA, nationalité, pays ciblés, expériences et compétences – aucune sélection aléatoire.'
+                : 'Field, level, GPA, nationality, target countries, experience and skills – no random selection.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Colonne 3: Matching intelligent */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.warning}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.warning,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Matching intelligent' : 'Smart Matching'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Un système de scoring structuré (0-120 pts) classe chaque bourse selon sa pertinence réelle pour vous.'
+                : 'A structured scoring system (0-120 pts) ranks each scholarship by its real relevance to you.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Colonne 4: Transparence */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.accent}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.accent,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Transparence totale' : 'Full Transparency'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Consultez le score détaillé et les raisons du matching pour chaque bourse – aucune logique cachée.'
+                : 'Check the detailed score and matching reasons for each scholarship – no hidden logic.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Colonne 5: Opportunités réalistes */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.success}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.success,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Opportunités réalistes' : 'Realistic Opportunities'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Nous sélectionnons les bourses où vos chances d\'éligibilité sont réelles – pas d\'espoirs infondés.'
+                : 'We select scholarships where your eligibility chances are real – no false hope.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Colonne 6: Support continu */}
+        <div style={{
+          display: 'flex',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: `${c.accent}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            color: c.accent,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{
+              fontFamily: c.fSerif,
+              fontSize: 13,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 6px',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+            }}>
+              {lang === 'fr' ? 'Analyse personnalisée' : 'Personalized Insights'}
+            </h4>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 12,
+              color: c.ink2,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {lang === 'fr'
+                ? 'Cliquez sur une bourse pour une analyse détaillée IA expliquant pourquoi elle vous correspond.'
+                : 'Click any scholarship for AI-powered analysis explaining why it matches you.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* ── Content ── */}
      
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px 80px' }}>
@@ -1281,104 +1844,205 @@ const otherScholarships = hasTargetCountries
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
               {/* SECTION 1: Target Countries */}
-              {hasTargetCountries && targetScholarships.length > 0 && (
-                <div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    marginBottom: 24, paddingBottom: 16,
-                    borderBottom: `2px solid ${c.accent}`,
-                  }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: '50%',
-                      background: `${c.accent}20`, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      fontSize: 22, flexShrink: 0,
-                    }}>📍</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: c.accent, fontFamily: c.fMono, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
-                        ◆ {lang === 'fr' ? 'Priorité' : 'Priority'}
-                      </div>
-                      <h2 style={{ fontFamily: c.fSerif, fontSize: 24, fontWeight: 700, color: c.ink, margin: 0, letterSpacing: '-0.01em' }}>
-                        {lang === 'fr' ? 'Bourses dans vos pays cibles' : 'Scholarships in your target countries'}
-                      </h2>
-                    </div>
-                    <div style={{
-                      padding: '6px 14px', background: c.accent, color: '#fff',
-                      fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
-                    }}>
-                      {targetScholarships.length}
-                    </div>
-                  </div>
+             {/* SECTION 1: Target Countries */}
+{hasTargetCountries && (
+  <>
+    {targetScholarships.length > 0 ? (
+      // ✅ Cas 1 : Bourses trouvées dans pays cibles
+      <div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14,
+          marginBottom: 24, paddingBottom: 16,
+          borderBottom: `2px solid ${c.accent}`,
+        }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: `${c.accent}20`, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, flexShrink: 0,
+          }}>📍</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: 10, 
+              color: c.accent, 
+              fontFamily: c.fMono, 
+              fontWeight: 700, 
+              letterSpacing: '0.12em', 
+              textTransform: 'uppercase', 
+              marginBottom: 4 
+            }}>
+            
+            </div>
+            <h2 style={{ 
+              fontFamily: c.fSerif, 
+              fontSize: 24, 
+              fontWeight: 700, 
+              color: c.ink, 
+              margin: 0, 
+              letterSpacing: '-0.01em' 
+            }}>
+              {lang === 'fr' 
+                ? 'Bourses dans vos pays cibles — Excellentes chances de réussite' 
+                : 'Scholarships in your target countries — Excellent success rate'}
+            </h2>
+          </div>
+          <div style={{
+            padding: '6px 14px', 
+            background: c.accent, 
+            color: '#fff',
+            fontFamily: c.fMono, 
+            fontSize: 13, 
+            fontWeight: 700,
+          }}>
+            {targetScholarships.length}
+          </div>
+        </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {targetScholarships.map((bourse, i) => (
-                      <ScholarshipCard
-                        key={bourse.id}
-                        bourse={bourse}
-                        index={i}
-                         onCardClick={setSelectedBourse}     // drawer général
-  onMatchClick={setMatchAIBourse} 
-                        onSave={handleStar}
-                        onApply={handleApply}
-                        isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                        isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                        c={c}
-                        lang={lang}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {targetScholarships.map((bourse, i) => (
+            <ScholarshipCard
+              key={bourse.id}
+              bourse={bourse}
+              index={i}
+              onCardClick={handleOpenBourse}
+              onExplainClick={setExplainBourse}
+              onSave={handleStar}
+              onApply={handleApply}
+              isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+              isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+              c={c}
+              lang={lang}
+            />
+          ))}
+        </div>
+      </div>
+    ) : (
+      // ✅ Cas 2 : Aucune bourse dans pays cibles
+      <div style={{ 
+        marginBottom: 40,
+        padding: '32px 28px',
+        background: `linear-gradient(135deg, ${c.accent}08, ${c.accent}03)`,
+        border: `1px solid ${c.accent}30`,
+        borderLeft: `4px solid ${c.accent}`,
+        borderRadius: 8,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: `${c.accent}20`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 28,
+            flexShrink: 0,
+          }}>
+            💡
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{
+              fontFamily: c.fSerif,
+              fontSize: 20,
+              fontWeight: 700,
+              color: c.ink,
+              margin: '0 0 12px',
+              letterSpacing: '-0.01em',
+            }}>
+              {lang === 'fr' 
+                ? 'Aucune bourse disponible dans vos pays cibles actuellement' 
+                : 'No scholarships available in your target countries currently'}
+            </h3>
+            <p style={{
+              fontFamily: c.fSans,
+              fontSize: 14,
+              color: c.ink2,
+              lineHeight: 1.7,
+              margin: '0 0 16px',
+            }}>
+              {lang === 'fr'
+                ? `Nous n'avons pas trouvé de bourses correspondant à votre profil dans ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. Cependant, nous avons identifié ${otherScholarships.length} opportunité${otherScholarships.length > 1 ? 's' : ''} dans d'autres pays où vous avez d'excellentes chances de réussite.`
+                : `We haven't found scholarships matching your profile in ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. However, we've identified ${otherScholarships.length} opportunit${otherScholarships.length > 1 ? 'ies' : 'y'} in other countries where you have excellent chances of success.`}
+            </p>
+            
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+)}
 
               {/* SECTION 2: Other countries */}
-              {otherScholarships.length > 0 && (
-                <div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    marginBottom: 24, paddingBottom: 16,
-                    borderBottom: `1px solid ${c.rule}`,
-                  }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: '50%',
-                      background: c.paper2, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      fontSize: 22, flexShrink: 0,
-                    }}>🌍</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: c.ink3, fontFamily: c.fMono, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
-                        ◇ {lang === 'fr' ? 'Exploration' : 'Discovery'}
-                      </div>
-                      <h2 style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, margin: 0, letterSpacing: '-0.01em' }}>
-                        {lang === 'fr' ? 'Autres opportunités internationales' : 'Other international opportunities'}
-                      </h2>
-                    </div>
-                    <div style={{
-                      padding: '6px 14px', background: c.paper2, color: c.ink3,
-                      fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
-                      border: `1px solid ${c.rule}`,
-                    }}>
-                      {otherScholarships.length}
-                    </div>
-                  </div>
+{otherScholarships.length > 0 && (
+  <div data-section="other-scholarships">  {/* ✅ Ajout de l'attribut pour le scroll */}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      marginBottom: 24, paddingBottom: 16,
+      borderBottom: `1px solid ${c.rule}`,
+    }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: '50%',
+        background: c.paper2, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        fontSize: 22, flexShrink: 0,
+      }}>🌍</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ 
+          fontSize: 10, 
+          color: c.ink3, 
+          fontFamily: c.fMono, 
+          fontWeight: 700, 
+          letterSpacing: '0.12em', 
+          textTransform: 'uppercase', 
+          marginBottom: 4 
+        }}>
+          
+        </div>
+        <h2 style={{ 
+          fontFamily: c.fSerif, 
+          fontSize: 22, 
+          fontWeight: 700, 
+          color: c.ink, 
+          margin: 0, 
+          letterSpacing: '-0.01em' 
+        }}>
+          {lang === 'fr' 
+            ? 'Autres bourses internationales — Bonnes chances de réussite' 
+            : 'Other international scholarships — Good success rate'}
+        </h2>
+      </div>
+      <div style={{
+        padding: '6px 14px', 
+        background: c.paper2, 
+        color: c.ink3,
+        fontFamily: c.fMono, 
+        fontSize: 13, 
+        fontWeight: 700,
+        border: `1px solid ${c.rule}`,
+      }}>
+        {otherScholarships.length}
+      </div>
+    </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {otherScholarships.map((bourse, i) => (
-                      <ScholarshipCard
-                        key={bourse.id}
-                        bourse={bourse}
-                        index={hasTargetCountries ? i + targetScholarships.length : i}
-                        onAnalyze={setAnalysisBourse}
-                        onSave={handleStar}
-                        onApply={handleApply}
-                        isStarred={starredNoms.has(bourse.nom?.trim().toLowerCase())}
-                        isApplied={appliedNoms.has(bourse.nom?.trim().toLowerCase())}
-                        c={c}
-                        lang={lang}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {otherScholarships.map((bourse, i) => (
+        <ScholarshipCard
+          key={bourse.id}
+          bourse={bourse}
+          index={hasTargetCountries ? i + targetScholarships.length : i}
+          onCardClick={setSelectedBourse}
+          onExplainClick={setExplainBourse}
+          onSave={handleStar}
+          onApply={handleApply}
+          isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+          isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+          c={c}
+          lang={lang}
+        />
+      ))}
+    </div>
+  </div>
+)}
             </div>
           )}
         </div>
@@ -1386,32 +2050,29 @@ const otherScholarships = hasTargetCountries
 
 
       {/* ── Drawers ── */}
-{/* Drawer IA (analyse détaillée) */}
-{matchAIBourse && (
-  <MatchAnalysisPanel
-    bourse={matchAIBourse}
-    user={user}
-    onClose={() => setMatchAIBourse(null)}
-    onSave={handleStar}
-    onApply={handleApply}
-    isStarred={starredNoms.has(matchAIBourse.nom?.trim().toLowerCase())}
-    isApplied={appliedNoms.has(matchAIBourse.nom?.trim().toLowerCase())}
-    c={c}
-    lang={lang}
-  />
-)}
-
-{/* Drawer général (fiche bourse) */}
+{/* ✅ Drawer 1 : Fiche complète de la bourse */}
 {selectedBourse && (
   <BourseDrawer
-    bourse={selectedBourse}
+    bourse={fullBourseData || selectedBourse}  // ✅ Données complètes si dispo
     user={user}
-    onClose={() => setSelectedBourse(null)}
-    onAskAI={(b) => console.log('Ask AI:', b.nom)}
+    onClose={() => {
+      setSelectedBourse(null);
+      setFullBourseData(null); // Reset
+    }}
+    onAskAI={setExplainBourse}
     starred={starredNoms.has(selectedBourse.nom?.trim().toLowerCase())}
     onStar={handleStar}
     applied={appliedNoms.has(selectedBourse.nom?.trim().toLowerCase())}
     onApply={handleApply}
+  />
+)}
+
+{/* ✅ Drawer 2 : Analyse IA personnalisée */}
+{explainBourse && (
+  <MatchDrawerIA
+    bourse={explainBourse}
+    user={user}
+    onBack={() => setExplainBourse(null)}
   />
 )}
     </main>
