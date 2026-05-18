@@ -1571,9 +1571,12 @@ function EntretienSession({ bourse, user, conversationId, onFinish }) {
 /* ── PAGE PRINCIPALE ── */
 export default function EntretienPage({ user, bourses=[], conversationId, setView, handleQuickReply }) {
   const { lang } = useT();
+    const { theme } = useTheme();
   const [showLogin, setShowLogin] = useState(false);
   const [selected, setSelected]  = useState(null);
   const [appliedBourses, setAppliedBourses] = useState([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  
 
   // ✅ CHARGER LES BOURSES POSTULÉES
   useEffect(() => {
@@ -1592,7 +1595,7 @@ export default function EntretienPage({ user, bourses=[], conversationId, setVie
   icon="🎤"
   onLoginClick={() => setShowLoginModal(true)}
 />
-  {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+  {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} lang={lang} theme={theme} />}
 </>
   );
 
