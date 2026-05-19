@@ -1,5 +1,5 @@
 # To use this Dockerfile, you have to set `output: 'standalone'` in your next.config.mjs file.
-FROM node:22.17.0-bookworm-slim AS base
+FROM node:22.17.0-alpine AS base
 
 # 1. Install dependencies stage
 FROM base AS deps
