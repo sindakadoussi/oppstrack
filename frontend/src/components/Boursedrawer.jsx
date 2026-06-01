@@ -231,18 +231,7 @@ useEffect(() => {
   <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: c.ink3 }}>✕</button>
 </div>
           <h2 style={{ fontFamily: c.fSerif, fontSize: '1.2rem', fontWeight: 700, color: c.ink, marginBottom: 8 }}>{bourse.nom}</h2>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span style={tagLight(c)}>{countryFlag(bourse.pays)} {tCountry(bourse.pays, lang)}</span>
-            {bourse.niveau && <span style={tagLight(c)}>🎓 {tLevel(bourse.niveau, lang)}</span>}
-            <span style={{ ...tagLight(c), background: c.accent + '20', color: c.accent, borderColor: c.accent + '40' }}>
-              💰 {tFunding(bourse.financement, lang) || (lang === 'fr' ? '100% financée' : '100% funded')}
-            </span>
-            {pct !== null && (
-              <span onClick={() => setShowMatch(true)} style={{ ...tagLight(c), background: c.paper2, border: `1px solid ${c.ruleSoft}`, fontWeight: 600, cursor: 'pointer', color: getScoreColor(pct) }}>
-                🎯 {pct}% {t.match}
-              </span>
-            )}
-          </div>
+          
         </div>
 
         {/* Deadline (alerte) */}
@@ -269,7 +258,8 @@ useEffect(() => {
             </div>
           )}
 
-          {bourse.eligibilite?.niveauRequis && (
+         {/* 
+ {bourse.eligibilite?.niveauRequis && (
             <div style={infoRowStyle(c)}>
               <span style={{ fontSize: 16, marginRight: 10, color: c.accent }}>🎓</span>
               <div>
@@ -277,7 +267,7 @@ useEffect(() => {
                 <div style={{ fontSize: 13, color: c.ink, fontWeight: 500 }}>{tLevel(bourse.eligibilite.niveauRequis, lang)}</div>
               </div>
             </div>
-          )}
+          )}*/}
 
            {bourse.eligibilite && (
     <div style={{ marginBottom: 20 }}>

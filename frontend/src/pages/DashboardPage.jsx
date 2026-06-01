@@ -232,11 +232,31 @@ function GlobalStats({ bourses, deadlines, lang, c }) {
   const urgentCount = deadlines.filter(d => { const diff = Math.round((d.deadline - new Date()) / 86400000); return diff >= 0 && diff <= 7; }).length;
   const countries = Object.keys(Object.fromEntries((bourses || []).filter(b => b.pays).map(b => [b.pays, 1]))).length;
   const stats = [
-    { label: lang === 'fr' ? 'Bourses actives' : 'Active', value: total, sub: `${countries} pays`, color: c.accent },
-    { label: lang === 'fr' ? 'Fully funded' : 'Fully funded', value: `${total > 0 ? Math.round(fullyFunded / total * 100) : 0}%`, sub: lang === 'fr' ? 'financement complet' : 'full coverage', color: c.green },
-    { label: lang === 'fr' ? 'Urgentes (7j)' : 'Urgent (7d)', value: urgentCount, sub: lang === 'fr' ? 'à prioriser' : 'to prioritize', color: urgentCount > 0 ? c.danger : c.ink2 },
-    { label: lang === 'fr' ? 'Pays couverts' : 'Countries', value: countries, sub: lang === 'fr' ? 'destinations' : 'destinations', color: c.purple },
-  ];
+  { 
+    label: lang === 'fr' ? 'Bourses actives' : 'Active scholarships', 
+    value: total, 
+    sub: `${countries} ${lang === 'fr' ? 'pays' : 'countries'}`, 
+    color: c.accent 
+  },
+  { 
+    label: lang === 'fr' ? 'Financement complet' : 'Fully funded', 
+    value: `${total > 0 ? Math.round(fullyFunded / total * 100) : 0}%`, 
+    sub: lang === 'fr' ? 'couverture complète' : 'full coverage', 
+    color: c.green 
+  },
+  { 
+    label: lang === 'fr' ? 'Urgentes (7j)' : 'Urgent (7d)', 
+    value: urgentCount, 
+    sub: lang === 'fr' ? 'à prioriser' : 'to prioritize', 
+    color: urgentCount > 0 ? c.danger : c.ink2 
+  },
+  { 
+    label: lang === 'fr' ? 'Pays couverts' : 'Countries covered', 
+    value: countries, 
+    sub: lang === 'fr' ? 'destinations' : 'destinations', 
+    color: c.purple 
+  },
+];
   const cardStyle = { background:c.surface, border:`1px solid ${c.rule}`, borderRadius:16, padding:'24px', boxShadow:'0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04)' };
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
@@ -582,8 +602,8 @@ export default function DashboardPage({
     margin: '0 0 12px',
   }}>
     {lang === 'fr'
-      ? <>Bonjour, <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>
-      : <>Hello, <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>}
+      ? <>Bonjour <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>
+      : <>Hello <em style={{ color: c.accent, fontStyle: 'italic' }}>{user.name || user.email?.split('@')[0]}</em>.</>}
   </h1>
   <p style={{ fontFamily: c.fSans, fontSize: 16, color: c.ink2, margin: '0 auto 20px', maxWidth: 600 }}>
     {lang === 'fr'
@@ -608,7 +628,8 @@ export default function DashboardPage({
         {/* ROW 2: CALENDAR + URGENT DEADLINES */}
         <div style={{ display:'grid', gridTemplateColumns:'1.35fr 1fr', gap:16, marginBottom:20 }} className="ds">
           <div style={cardStyle}>
-            <SectionHeader num="01" title={lang==='fr'?'Calendrier':'Calendar'} sub={`${deadlines.length} deadline${deadlines.length!==1?'s':''}`} action={lang==='fr'?'Voir tout':'View all'} onAction={()=>setView('roadmap')} c={c}/>
+            <SectionHeader num="01"   title={lang==='fr' ? 'Calendrier des dates limites' : 'Upcoming Deadlines'} 
+ sub={`${deadlines.length} deadline${deadlines.length!==1?'s':''}`} action={lang==='fr'?'Voir tout':'View all'} onAction={()=>setView('roadmap')} c={c}/>
             {deadlines.length===0 ? <div style={{ textAlign:'center', padding:'32px 0', color:c.ink2 }}><div style={{ fontSize:32, marginBottom:10 }}>📭</div><div style={{ fontSize:13, marginBottom:16 }}>{lang==='fr'?'Aucune bourse avec deadline':'No scholarships with deadlines'}</div><button style={{ padding:'8px 16px', background:c.accent, color:c.surface, border:'none', fontSize:12, fontWeight:600, cursor:'pointer' }} onClick={()=>setView('bourses')}>{lang==='fr'?'Explorer les bourses':'Explore'}</button></div> : <Calendrier deadlines={deadlines} onSelectBourse={b => { const full = (bourses || []).find(x => x.nom?.trim().toLowerCase() === b.nom?.trim().toLowerCase()); setDrawerBourse(full || b); }} lang={lang} c={c}/>}
           </div>
           <div style={cardStyle}>
@@ -639,13 +660,13 @@ export default function DashboardPage({
 
         {/* ROW 4: TRENDING + LEVEL DISTRIBUTION */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }} className="ds">
-          <div style={cardStyle}><SectionHeader num="04" title={lang==='fr'?'Trending Scholarships':'Trending Scholarships'} sub={lang==='fr'?'Cette semaine':'This week'} c={c}/><TrendingScholarships lang={lang} setView={setView} c={c}/></div>
+          <div style={cardStyle}><SectionHeader num="04" title={lang==='fr'?'Bourses populaires':'Trending Scholarships'} sub={lang==='fr'?'Cette semaine':'This week'} c={c}/><TrendingScholarships lang={lang} setView={setView} c={c}/></div>
           <div style={cardStyle}><SectionHeader num="05" title={lang==='fr'?'Distribution par niveau':'Distribution by level'} sub={lang==='fr'?'Licence · Master · PhD · Postdoc':'Bachelor · Master · PhD · Postdoc'} c={c}/><LevelDistribution bourses={bourses} lang={lang} c={c}/></div>
         </div>
 
         {/* ROW 5: AI INSIGHTS (full width) */}
         <div style={{ ...cardStyle, marginBottom:20 }} className="ds">
-          <SectionHeader num="06" title={lang==='fr'?'AI Insights':'AI Insights'} sub={lang==='fr'?'Analyse automatique de votre profil et des opportunités':'Automated analysis of your profile and opportunities'} c={c}/>
+          <SectionHeader num="06" title={lang==='fr'?'Insights IA':'AI Insights'} sub={lang==='fr'?'Analyse automatique de votre profil et des opportunités':'Automated analysis of your profile and opportunities'} c={c}/>
           <AIInsights lang={lang} bourses={bourses} deadlines={deadlines} scholarshipCounts={scholarshipCounts} c={c}/>
         </div>
 

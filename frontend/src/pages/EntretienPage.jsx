@@ -173,10 +173,10 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
   }, [lang, parsed.rawText]);
 
   const TABS = [
-    { id: 'summary',   labelFr: '📊 Résumé',  labelEn: '📊 Summary'  },
-    { id: 'strengths', labelFr: '✅ Analyse',  labelEn: '✅ Analysis'  },
-    { id: 'advice',    labelFr: '💡 Conseils', labelEn: '💡 Tips'      },
-    { id: 'details',   labelFr: '📝 Détails',  labelEn: '📝 Details'   },
+    { id: 'summary',   labelFr: ' Résumé',  labelEn: ' Summary'  },
+    { id: 'strengths', labelFr: ' Analyse',  labelEn: ' Analysis'  },
+    { id: 'advice',    labelFr: ' Conseils', labelEn: ' Tips'      },
+    { id: 'details',   labelFr: ' Détails',  labelEn: ' Details'   },
   ];
 
   return (
@@ -316,9 +316,9 @@ function EntretienDetail({ entretien, onBack, parseEntretien, getScoreColor, for
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[
-                { icon: '⏱️', labelFr: 'Durée totale', labelEn: 'Total duration', val: parsed.questionMetrics?.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—' },
-                { icon: '📝', labelFr: 'Questions', labelEn: 'Questions', val: parsed.questionMetrics?.length || '8' },
-                { icon: '🎯', labelFr: 'Score', labelEn: 'Score', val: parsed.score !== null ? `${parsed.score}/100` : '—' },
+                {  labelFr: 'Durée totale', labelEn: 'Total duration', val: parsed.questionMetrics?.length > 0 ? `${Math.floor(parsed.questionMetrics.length * 1.5)}:00` : '—' },
+                {  labelFr: 'Questions', labelEn: 'Questions', val: parsed.questionMetrics?.length || '8' },
+                {  labelFr: 'Score', labelEn: 'Score', val: parsed.score !== null ? `${parsed.score}/100` : '—' },
               ].map(s => (
                 <div key={s.labelFr} style={{ 
                   background: dk ? '#1d1c16' : '#fff', 
@@ -623,7 +623,7 @@ function HistoriquePanel({ userId, onClose }) {
       <div className="ep-hist-drawer" style={{ background: dk ? '#1a1912' : '#ffffff' }}>
         <div className="ep-hist-head" style={{ borderBottom: `1px solid ${dk ? '#2b2a22' : '#e5e5e5'}` }}>
           <div>
-            <div className="ep-hist-title" style={{ color: dk ? '#f2efe7' : '#141414' }}>
+            <div className="ep-hist-title" style={{ color: dk ? '#f2efe7' : '#fffff' }}>
               📋 {lang === 'fr' ? 'Historique des entretiens' : 'Interview history'}
             </div>
             <div className="ep-hist-sub" style={{ color: dk ? '#a19f96' : '#6b6b6b' }}>
