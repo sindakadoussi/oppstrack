@@ -1,27 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react(),
-    {
-      name: 'api-proxy',
-      configureServer(server) {
-        const target = 'http://localhost:3000';
-
-        server.middlewares.use('/api', createProxyMiddleware({
-          target,
-          changeOrigin: true,
-        }));
-
-        server.middlewares.use('/webhook', createProxyMiddleware({
-          target: 'http://localhost:5678',
-          changeOrigin: true,
-        }));
-      }
-    }
-  ],
+  plugins: [react()],
 
   resolve: {
     alias: {
