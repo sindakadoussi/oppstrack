@@ -59,7 +59,7 @@ export default buildConfig({
   },
 
   db: mongooseAdapter({
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL || '',
   }),
 
   sharp,
