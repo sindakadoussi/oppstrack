@@ -369,7 +369,7 @@ export const Users: CollectionConfig = {
           const token      = crypto.randomBytes(32).toString('hex')
           const expiration = new Date(Date.now() + 15 * 60 * 1000).toISOString()
           await req.payload.update({ collection: 'users', id: userId, data: { magicToken: token, magicTokenExpiration: expiration } })
-          const baseUrl  = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5173'
+          const baseUrl  = process.env.NEXT_PUBLIC_APP_URL
           const magicUrl = `${baseUrl}/verify?email=${encodeURIComponent(email)}&token=${token}`
           try {
             await req.payload.sendEmail({
