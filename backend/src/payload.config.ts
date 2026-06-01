@@ -50,7 +50,8 @@ export default buildConfig({
 
   collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks , Recommendations],
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET,
+  secret: process.env.PAYLOAD_SECRET || '',
+
   
 
   typescript: {
