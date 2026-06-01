@@ -21,8 +21,10 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
-  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
-  csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000'],
+  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
+    'https://n8n.pfe26.leemawebtech.com', ],
+  csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
+    'https://n8n.pfe26.leemawebtech.com', ],
   admin: {
     user: Users.slug,
     importMap: {
@@ -48,7 +50,7 @@ export default buildConfig({
 
   collections: [Users, Media, Messages, Bourses, candidature, Entretiens, Favoris, Roadmap, Feedbacks , Recommendations],
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: process.env.PAYLOAD_SECRET,
   
 
   typescript: {
@@ -56,7 +58,7 @@ export default buildConfig({
   },
 
   db: mongooseAdapter({
-    url: process.env.DATABASE_URI || process.env.DATABASE_URL || '',
+    url: process.env.DATABASE_URL,
   }),
 
   sharp,
