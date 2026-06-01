@@ -10,7 +10,7 @@ const Feedbacks: CollectionConfig = {
   },
   access: {
     read:   anyone,
-    create: authenticated,
+  create: () => true,  // ← Temporaire!
     update: authenticated,
     delete: authenticated,
   },

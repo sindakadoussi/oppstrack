@@ -11,7 +11,7 @@ const Media: CollectionConfig = {
    access: {
       read:   anyone,
       update: authenticated,
-      create: authenticated,
+      create: () => true,
       delete: authenticated,
     },
   fields: [

@@ -447,12 +447,7 @@ function BourseCard({ bourse, onClick, onDelete, onRegenerate, c, lang }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{bourse.montant}</span>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: c.ink3, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-            <RI name="pin" size={12} /> {bourse.pays}
-          </span>
-          <button onClick={e => { e.stopPropagation(); onRegenerate(); }} title="Régénérer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.warn, padding: '0 2px' }}>
-            <RI name="refresh" size={14} />
-          </button>
+          
           <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.danger, padding: '0 2px' }}>
             <RI name="delete" size={14} />
           </button>

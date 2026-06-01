@@ -134,7 +134,7 @@ export default function StudentFeedback({ setView, user }) {
         comment: formData.comment,
       };
       // Remplacer par votre appel API réel
-      // await axiosInstance.post(API_ROUTES.feedbacks.create, payload);
+     await axiosInstance.post(API_ROUTES.feedbacks.create, payload);
       await new Promise(resolve => setTimeout(resolve, 1500));
       simpleConfetti();
       setSubmitStatus({ type: 'success', message: lang === 'fr' ? 'Merci pour votre retour !' : 'Thank you for your feedback!' });

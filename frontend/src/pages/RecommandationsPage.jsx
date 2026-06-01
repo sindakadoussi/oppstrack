@@ -1043,10 +1043,15 @@ const filtered = useMemo(() => {
 
 
 // ✅ SÉPARATION PAR PAYS CIBLE
-const hasTargetCountries = user && user.targetCountries && user.targetCountries.length > 0;  // ✅ Ajouter `user &&`
-const targetCountriesLower = hasTargetCountries && user
-  ? user.targetCountries.map(tc => tc.country?.toLowerCase().trim()).filter(Boolean)
+// ✅ Calculer d'abord la liste filtrée
+const targetCountriesLower = Array.isArray(user?.targetCountries)
+  ? user.targetCountries
+      .map(tc => tc.country?.toLowerCase().trim())
+      .filter(Boolean)
   : [];
+
+// ✅ Ensuite hasTargetCountries se base sur la liste réelle
+const hasTargetCountries = targetCountriesLower.length > 0;
 // ✅ Charger les favoris au démarrage
 useEffect(() => {
   const loadStarred = async () => {

@@ -577,46 +577,37 @@ function SuggestionGroups({ onSelect, lang }) {
     {
       title: lang === 'fr' ? '🎯 Trouver des bourses' : '🎯 Find scholarships',
       items: [
-        { emoji: '🎯', text: lang === 'fr' ? 'Trouve-moi des bourses adaptées à mon profil' : 'Find scholarships matching my profile' },
-        { emoji: '⚡', text: lang === 'fr' ? 'Quelles bourses sont encore ouvertes maintenant ?' : 'Which scholarships are still open?' },
-        { emoji: '💰', text: lang === 'fr' ? 'Bourses 100% financées pour moi' : '100% funded scholarships for me' },
-        { emoji: '🌍', text: lang === 'fr' ? 'Quelles bourses à l\'étranger me correspondent ?' : 'Which international scholarships suit me?' },
-        { emoji: '🇫🇷', text: lang === 'fr' ? 'Quelles bourses en France sont accessibles pour moi ?' : 'Which scholarships in France are accessible to me?' },
+        { text: lang === 'fr' ? 'Trouve-moi des bourses adaptées à mon profil' : 'Find scholarships matching my profile' },
+        {  text: lang === 'fr' ? 'Quelles bourses sont encore ouvertes maintenant ?' : 'Which scholarships are still open?' },
+        { text: lang === 'fr' ? 'Quelles bourses en France sont accessibles pour moi ?' : 'Which scholarships in France are accessible to me?' },
       ],
     },
     {
       title: lang === 'fr' ? '📊 Analyse intelligente' : '📊 Smart Analysis',
       items: [
-        { emoji: '📊', text: lang === 'fr' ? 'Quelle est ma probabilité d\'être accepté ?' : 'What is my probability of being accepted?' },
-        { emoji: '🔍', text: lang === 'fr' ? 'Analyse mon profil et dis-moi mes chances' : 'Analyze my profile and tell me my chances' },
-        { emoji: '⚠️', text: lang === 'fr' ? 'Qu\'est-ce qui bloque ma candidature ?' : 'What is blocking my application?' },
-        { emoji: '🧠', text: lang === 'fr' ? 'Quelle stratégie dois-je suivre ?' : 'What strategy should I follow?' },
+        { text: lang === 'fr' ? 'Quelle est ma probabilité d\'être accepté ?' : 'What is my probability of being accepted?' },
+        {  text: lang === 'fr' ? 'Analyse mon profil et dis-moi mes chances' : 'Analyze my profile and tell me my chances' },
+        {  text: lang === 'fr' ? 'Qu\'est-ce qui bloque ma candidature ?' : 'What is blocking my application?' },
+        {  text: lang === 'fr' ? 'Quelle stratégie dois-je suivre ?' : 'What strategy should I follow?' },
       ],
     },
     {
       title: lang === 'fr' ? '🚀 Action rapide' : '🚀 Quick Action',
       items: [
-        { emoji: '🚀', text: lang === 'fr' ? 'Aide-moi à postuler à une bourse' : 'Help me apply for a scholarship' },
-        { emoji: '📝', text: lang === 'fr' ? 'Rédige ma lettre de motivation' : 'Write my motivation letter' },
-        { emoji: '📄', text: lang === 'fr' ? 'Améliore mon CV' : 'Improve my CV' },
-        { emoji: '🎙️', text: lang === 'fr' ? 'Simule un entretien de bourse' : 'Simulate a scholarship interview' },
+        { text: lang === 'fr' ? 'Aide-moi à postuler à une bourse' : 'Help me apply for a scholarship' },
+        { text: lang === 'fr' ? 'Rédige ma lettre de motivation' : 'Write my motivation letter' },
+        {text: lang === 'fr' ? 'Améliore mon CV' : 'Improve my CV' },
+        {  text: lang === 'fr' ? 'Simule un entretien de bourse' : 'Simulate a scholarship interview' },
       ],
     },
-    {
-      title: lang === 'fr' ? '⏰ Urgence' : '⏰ Urgent',
-      items: [
-        { emoji: '⏰', text: lang === 'fr' ? 'Quelles bourses ferment cette semaine ?' : 'Which scholarships close this week?' },
-        { emoji: '🔥', text: lang === 'fr' ? 'Donne-moi les bourses les plus urgentes' : 'Give me the most urgent scholarships' },
-        { emoji: '📅', text: lang === 'fr' ? 'Quelles deadlines approchent ?' : 'Which deadlines are approaching?' },
-      ],
-    },
+    
     {
       title: lang === 'fr' ? '🎓 Explorer par destination' : '🎓 Explore by destination',
       items: [
-        { emoji: '🎓', text: lang === 'fr' ? 'Je veux étudier en Europe' : 'I want to study in Europe' },
-        { emoji: '🌎', text: lang === 'fr' ? 'Je veux étudier au Canada' : 'I want to study in Canada' },
-        { emoji: '🇬🇧', text: lang === 'fr' ? 'Je veux étudier au Royaume-Uni' : 'I want to study in the UK' },
-        { emoji: '🇩🇪', text: lang === 'fr' ? 'Je veux étudier en Allemagne' : 'I want to study in Germany' },
+        {  text: lang === 'fr' ? 'Je veux étudier en Europe' : 'I want to study in Europe' },
+        {  text: lang === 'fr' ? 'Je veux étudier au Canada' : 'I want to study in Canada' },
+        { text: lang === 'fr' ? 'Je veux étudier au Royaume-Uni' : 'I want to study in the UK' },
+        {text: lang === 'fr' ? 'Je veux étudier en Allemagne' : 'I want to study in Germany' },
       ],
     },
   ];
