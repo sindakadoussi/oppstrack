@@ -6,37 +6,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [
     react(),
-    {
-      name: 'api-proxy',
-      configureServer(server) {
-        // Local dev API middleware: add dev-only routes before proxying
-        server.middlewares.use((req, res, next) => {
-          if (!req.url) return next();
-
-          // simple GET example: /api/local/hello
-          if (req.method === 'GET' && req.url === '/api/local/hello') {
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ message: 'Hello from Vite dev API' }));
-            return;
-          }
-
-          // passthrough to next middleware (proxy or other handlers)
-          next();
-        });
-
-        const target = 'http://localhost:3000';
-
-        server.middlewares.use('/api', createProxyMiddleware({
-          target,
-          changeOrigin: true,
-        }));
-
-        server.middlewares.use('/webhook', createProxyMiddleware({
-          target: 'http://localhost:5678',
-          changeOrigin: true,
-        }));
-      },
-    },
+   
   ],
 
   resolve: {

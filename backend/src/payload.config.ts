@@ -21,10 +21,10 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
-  // cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
-  //   'https://n8n.pfe26.leemawebtech.com', ],
-  // csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
-  //   'https://n8n.pfe26.leemawebtech.com', ],
+  cors: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
+    'https://n8n.pfe26.leemawebtech.com', ],
+ csrf: ['http://localhost:5173', 'http://localhost:5678', 'http://localhost:3000', 'https://frontend.oppstrack.pfe26.leemawebtech.com',
+  'https://n8n.pfe26.leemawebtech.com', ],
   admin: {
     user: Users.slug,
     importMap: {
