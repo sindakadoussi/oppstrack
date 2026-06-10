@@ -47,7 +47,7 @@ export default function Footer({ setView }) {
   hf: "Ressources",
   items: [
     { fr: "Guides", en: "Guides", action: "guides" },
-    { fr: "FAQ", en: "FAQ", action: "faq" },
+    { fr: "FAQ", en: "FAQ", action: "FAQ" },
     { fr: "Blog", en: "Blog", action: "blog" },
   ],
 },

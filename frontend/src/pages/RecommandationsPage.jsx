@@ -565,9 +565,7 @@ function ScholarshipCard({
               color: isStarred ? c.paper : c.ink3, 
               border: `1px solid ${c.rule}` 
             }}
-          >
-            {isStarred ? '★' : '☆'} Favori
-          </button>
+         >{isStarred?'★':'☆'} Favori</button>
 
           {/* Bouton Postuler */}
           <button
@@ -1762,16 +1760,44 @@ const otherScholarships = hasTargetCountries
             </div>
           )}
 
-          {filtered.length === 0 ? (
+          {activeFilter === 'test' ? (
+            filtered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '100px 20px', animation: 'fadeIn 0.4s ease' }}>
+                <div style={{ fontSize: 64, marginBottom: 20, opacity: 0.4 }}>🔍</div>
+                <div style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 12 }}>
+                  {lang === 'fr' ? 'Aucun résultat' : 'No results'}
+                </div>
+                <p style={{ color: c.ink3, fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto' }}>
+                  {lang === 'fr' ? "Commencez à taper le nom d'une bourse ou d'un pays." : 'Start typing a scholarship name or country.'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {filtered.map((bourse, i) => (
+                  <ScholarshipCard
+                    key={bourse.id || bourse._id || i}
+                    bourse={bourse}
+                    index={i}
+                    onCardClick={handleOpenBourse}
+                    onExplainClick={setExplainBourse}
+                    onSave={handleStar}
+                    onApply={handleApply}
+                    isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                    isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                    c={c}
+                    lang={lang}
+                  />
+                ))}
+              </div>
+            )
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '100px 20px', animation: 'fadeIn 0.4s ease' }}>
               <div style={{ fontSize: 64, marginBottom: 20, opacity: 0.4 }}>◇</div>
               <div style={{ fontFamily: c.fSerif, fontSize: 22, fontWeight: 700, color: c.ink, marginBottom: 12, letterSpacing: '-0.01em' }}>
                 {lang === 'fr' ? 'Aucun résultat' : 'No results'}
               </div>
               <p style={{ color: c.ink3, fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto 24px' }}>
-                {activeFilter === 'test'
-                  ? (lang === 'fr' ? 'Commencez à taper le nom d\'une bourse ou d\'un pays.' : 'Start typing a scholarship name or country.')
-                  : (lang === 'fr' ? 'Essayez de changer les filtres ou complétez votre profil pour de meilleurs résultats.' : 'Try changing filters or complete your profile.')}
+                {lang === 'fr' ? 'Essayez de changer les filtres ou complétez votre profil pour de meilleurs résultats.' : 'Try changing filters or complete your profile.'}
               </p>
               {(filterDeadline !== 'all' || filterCountry !== 'all') && (
                 <button
@@ -1791,206 +1817,148 @@ const otherScholarships = hasTargetCountries
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-              {/* SECTION 1: Target Countries */}
-             {/* SECTION 1: Target Countries */}
-{hasTargetCountries && (
-  <>
-    {targetScholarships.length > 0 ? (
-      // ✅ Cas 1 : Bourses trouvées dans pays cibles
-      <div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          marginBottom: 24, paddingBottom: 16,
-          borderBottom: `2px solid ${c.accent}`,
-        }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%',
-            background: `${c.accent}20`, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, flexShrink: 0,
-          }}>📍</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ 
-              fontSize: 10, 
-              color: c.accent, 
-              fontFamily: c.fMono, 
-              fontWeight: 700, 
-              letterSpacing: '0.12em', 
-              textTransform: 'uppercase', 
-              marginBottom: 4 
-            }}>
-            
-            </div>
-            <h2 style={{ 
-              fontFamily: c.fSerif, 
-              fontSize: 24, 
-              fontWeight: 700, 
-              color: c.ink, 
-              margin: 0, 
-              letterSpacing: '-0.01em' 
-            }}>
-              {lang === 'fr' 
-                ? 'Bourses dans vos pays cibles — Excellentes chances de réussite' 
-                : 'Scholarships in your target countries — Excellent success rate'}
-            </h2>
-          </div>
-          <div style={{
-            padding: '6px 14px', 
-            background: c.accent, 
-            color: '#fff',
-            fontFamily: c.fMono, 
-            fontSize: 13, 
-            fontWeight: 700,
-          }}>
-            {targetScholarships.length}
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {targetScholarships.map((bourse, i) => (
-            <ScholarshipCard
-              key={bourse.id}
-              bourse={bourse}
-              index={i}
-              onCardClick={handleOpenBourse}
-              onExplainClick={setExplainBourse}
-              onSave={handleStar}
-              onApply={handleApply}
-              isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
-              isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
-              c={c}
-              lang={lang}
-            />
-          ))}
-        </div>
-      </div>
-    ) : (
-      // ✅ Cas 2 : Aucune bourse dans pays cibles
-      <div style={{ 
-        marginBottom: 40,
-        padding: '32px 28px',
-        background: `linear-gradient(135deg, ${c.accent}08, ${c.accent}03)`,
-        border: `1px solid ${c.accent}30`,
-        borderLeft: `4px solid ${c.accent}`,
-        borderRadius: 8,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
-          <div style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: `${c.accent}20`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 28,
-            flexShrink: 0,
-          }}>
-            💡
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{
-              fontFamily: c.fSerif,
-              fontSize: 20,
-              fontWeight: 700,
-              color: c.ink,
-              margin: '0 0 12px',
-              letterSpacing: '-0.01em',
-            }}>
-              {lang === 'fr' 
-                ? 'Aucune bourse disponible dans vos pays cibles actuellement' 
-                : 'No scholarships available in your target countries currently'}
-            </h3>
-            <p style={{
-              fontFamily: c.fSans,
-              fontSize: 14,
-              color: c.ink2,
-              lineHeight: 1.7,
-              margin: '0 0 16px',
-            }}>
-              {lang === 'fr'
-                ? `Nous n'avons pas trouvé de bourses correspondant à votre profil dans ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. Cependant, nous avons identifié ${otherScholarships.length} opportunité${otherScholarships.length > 1 ? 's' : ''} dans d'autres pays où vous avez d'excellentes chances de réussite.`
-                : `We haven't found scholarships matching your profile in ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. However, we've identified ${otherScholarships.length} opportunit${otherScholarships.length > 1 ? 'ies' : 'y'} in other countries where you have excellent chances of success.`}
-            </p>
-            
-          </div>
-        </div>
-      </div>
-    )}
-  </>
-)}
+              {/* SECTION 1: Target Countries */}
+              {hasTargetCountries && (
+                <>
+                  {targetScholarships.length > 0 ? (
+                    <div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        marginBottom: 24, paddingBottom: 16,
+                        borderBottom: `2px solid ${c.accent}`,
+                      }}>
+                        <div style={{
+                          width: 48, height: 48, borderRadius: '50%',
+                          background: `${c.accent}20`, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: 22, flexShrink: 0,
+                        }}>📍</div>
+                        <div style={{ flex: 1 }}>
+                          <h2 style={{
+                            fontFamily: c.fSerif, fontSize: 24, fontWeight: 700,
+                            color: c.ink, margin: 0, letterSpacing: '-0.01em',
+                          }}>
+                            {lang === 'fr'
+                              ? 'Bourses dans vos pays cibles — Excellentes chances de réussite'
+                              : 'Scholarships in your target countries — Excellent success rate'}
+                          </h2>
+                        </div>
+                        <div style={{
+                          padding: '6px 14px', background: c.accent, color: '#fff',
+                          fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
+                        }}>
+                          {targetScholarships.length}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {targetScholarships.map((bourse, i) => (
+                          <ScholarshipCard
+                            key={bourse.id}
+                            bourse={bourse}
+                            index={i}
+                            onCardClick={handleOpenBourse}
+                            onExplainClick={setExplainBourse}
+                            onSave={handleStar}
+                            onApply={handleApply}
+                            isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                            isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                            c={c}
+                            lang={lang}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      marginBottom: 40, padding: '32px 28px',
+                      background: `linear-gradient(135deg, ${c.accent}08, ${c.accent}03)`,
+                      border: `1px solid ${c.accent}30`,
+                      borderLeft: `4px solid ${c.accent}`, borderRadius: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+                        <div style={{
+                          width: 56, height: 56, borderRadius: '50%',
+                          background: `${c.accent}20`, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: 28, flexShrink: 0,
+                        }}>💡</div>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{
+                            fontFamily: c.fSerif, fontSize: 20, fontWeight: 700,
+                            color: c.ink, margin: '0 0 12px', letterSpacing: '-0.01em',
+                          }}>
+                            {lang === 'fr'
+                              ? 'Aucune bourse disponible dans vos pays cibles actuellement'
+                              : 'No scholarships available in your target countries currently'}
+                          </h3>
+                          <p style={{
+                            fontFamily: c.fSans, fontSize: 14, color: c.ink2,
+                            lineHeight: 1.7, margin: '0 0 16px',
+                          }}>
+                            {lang === 'fr'
+                              ? `Nous n'avons pas trouvé de bourses correspondant à votre profil dans ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. Cependant, nous avons identifié ${otherScholarships.length} opportunité${otherScholarships.length > 1 ? 's' : ''} dans d'autres pays où vous avez d'excellentes chances de réussite.`
+                              : `We haven't found scholarships matching your profile in ${user.targetCountries?.map(tc => tCountry(tc.country, lang)).join(', ')}. However, we've identified ${otherScholarships.length} opportunit${otherScholarships.length > 1 ? 'ies' : 'y'} in other countries where you have excellent chances of success.`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* SECTION 2: Other countries */}
-{otherScholarships.length > 0 && (
-  <div data-section="other-scholarships">  {/* ✅ Ajout de l'attribut pour le scroll */}
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      marginBottom: 24, paddingBottom: 16,
-      borderBottom: `1px solid ${c.rule}`,
-    }}>
-      <div style={{
-        width: 48, height: 48, borderRadius: '50%',
-        background: c.paper2, display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        fontSize: 22, flexShrink: 0,
-      }}>🌍</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ 
-          fontSize: 10, 
-          color: c.ink3, 
-          fontFamily: c.fMono, 
-          fontWeight: 700, 
-          letterSpacing: '0.12em', 
-          textTransform: 'uppercase', 
-          marginBottom: 4 
-        }}>
-          
-        </div>
-        <h2 style={{ 
-          fontFamily: c.fSerif, 
-          fontSize: 22, 
-          fontWeight: 700, 
-          color: c.ink, 
-          margin: 0, 
-          letterSpacing: '-0.01em' 
-        }}>
-          {lang === 'fr' 
-            ? 'Autres bourses internationales — Bonnes chances de réussite' 
-            : 'Other international scholarships — Good success rate'}
-        </h2>
-      </div>
-      <div style={{
-        padding: '6px 14px', 
-        background: c.paper2, 
-        color: c.ink3,
-        fontFamily: c.fMono, 
-        fontSize: 13, 
-        fontWeight: 700,
-        border: `1px solid ${c.rule}`,
-      }}>
-        {otherScholarships.length}
-      </div>
-    </div>
+              {otherScholarships.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    marginBottom: 24, paddingBottom: 16,
+                    borderBottom: `1px solid ${c.rule}`,
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      background: c.paper2, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, flexShrink: 0,
+                    }}>🌍</div>
+                    <div style={{ flex: 1 }}>
+                      <h2 style={{
+                        fontFamily: c.fSerif, fontSize: 22, fontWeight: 700,
+                        color: c.ink, margin: 0, letterSpacing: '-0.01em',
+                      }}>
+                        {lang === 'fr'
+                          ? 'Autres bourses internationales — Bonnes chances de réussite'
+                          : 'Other international scholarships — Good success rate'}
+                      </h2>
+                    </div>
+                    <div style={{
+                      padding: '6px 14px', background: c.paper2, color: c.ink3,
+                      fontFamily: c.fMono, fontSize: 13, fontWeight: 700,
+                      border: `1px solid ${c.rule}`,
+                    }}>
+                      {otherScholarships.length}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {otherScholarships.map((bourse, i) => (
+                      <ScholarshipCard
+                        key={bourse.id}
+                        bourse={bourse}
+                        index={hasTargetCountries ? i + targetScholarships.length : i}
+                        onCardClick={handleOpenBourse}
+                        onExplainClick={setExplainBourse}
+                        onSave={handleStar}
+                        onApply={handleApply}
+                        isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                        isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
+                        c={c}
+                        lang={lang}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {otherScholarships.map((bourse, i) => (
-        <ScholarshipCard
-          key={bourse.id}
-          bourse={bourse}
-          index={hasTargetCountries ? i + targetScholarships.length : i}
-          onCardClick={setSelectedBourse}
-          onExplainClick={setExplainBourse}
-          onSave={handleStar}
-          onApply={handleApply}
-          isStarred={starredNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
-          isApplied={appliedNoms.has((bourse.nom || bourse.titre)?.trim().toLowerCase())}
-          c={c}
-          lang={lang}
-        />
-      ))}
-    </div>
-  </div>
-)}
             </div>
           )}
         </div>

@@ -74,16 +74,15 @@ const [stats, setStats] = useState({
     
     // Équipe
     teamTitle: lang === 'fr' ? 'Notre équipe' : 'Our team',
-    sendaName: 'Senda Kadoussi',
+    sendaName: 'Senda Kaddoussi',
     imenName: 'Imen Abidi',
     role: lang === 'fr' ? 'Étudiante en Business Intelligence' : 'Business Intelligence Student',
-    sendaBio: lang === 'fr'
-      ? 'Passionnée par l\'analyse de données et l\'IA, en charge du matching intelligent des bourses.'
-      : 'Passionate about data analysis and AI, in charge of intelligent scholarship matching.',
-    imenBio: lang === 'fr'
-      ? 'Spécialiste en visualisation de données et développement front-end, elle conçoit l\'expérience utilisateur d\'OppsTrack.'
-      : 'Specialist in data visualization and front-end development, she designs OppsTrack\'s user experience.',
-    
+      sendaBio: lang === 'fr'
+  ? 'Passionnée par le développement full-stack, l’intelligence artificielle et les technologies innovantes. Elle contribue à la conception, au développement backend et à l’intégration des fonctionnalités IA de la plateforme OppsTrack.'
+  : 'Passionate about full-stack development, artificial intelligence, and emerging technologies. She contributes to backend development, system architecture, and AI integration within OppsTrack.',
+  imenBio: lang === 'fr'
+  ? 'Passionnée par le développement full-stack, l’intelligence artificielle et les technologies numériques. Elle participe à la conception de l’interface utilisateur, au développement frontend et à l’amélioration continue de l’expérience utilisateur.'
+  : 'Passionate about full-stack development, artificial intelligence, and digital technologies. She contributes to frontend development, user interface design, and continuous user experience enhancement.',
     // Pourquoi nous choisir
     whyTitle: lang === 'fr' ? 'Ce qui nous différencie' : 'What makes us different',
     why1Title: lang === 'fr' ? 'Intelligence artificielle' : 'Artificial intelligence',
@@ -305,7 +304,7 @@ useEffect(() => {
 
   // Images
   const sendaImage = '/senda.jpg';
-  const imenImage = '/imen.jpg';
+  const imenImage = '/imenImage.jpeg';
   const [imgErrorSenda, setImgErrorSenda] = useState(false);
   const [imgErrorImen, setImgErrorImen] = useState(false);
 
@@ -509,7 +508,7 @@ useEffect(() => {
             {/* Senda */}
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                width: 120, height: 120, margin: '0 auto 20px',
+                width: 180, height: 180, margin: '0 auto 20px',
                 borderRadius: '50%', overflow: 'hidden',
                 background: `linear-gradient(135deg, ${c.accent}20, ${c.paper2})`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -533,7 +532,7 @@ useEffect(() => {
             {/* Imen */}
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                width: 120, height: 120, margin: '0 auto 20px',
+                width: 180, height: 180, margin: '0 auto 20px',
                 borderRadius: '50%', overflow: 'hidden',
                 background: `linear-gradient(135deg, ${c.accent}20, ${c.paper2})`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
