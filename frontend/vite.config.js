@@ -1,13 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [
-    react(),
-   
-  ],
+  plugins: [react()],
 
   resolve: {
     alias: {
@@ -20,22 +16,14 @@ export default defineConfig({
 
     proxy: {
       '/api': {
-        target:
-          process.env.VITE_API_URL ||
-          'http://localhost:3000',
-
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
-
         secure: false,
       },
 
       '/webhook': {
-        target:
-          process.env.VITE_WEBHOOK_URL ||
-          'http://localhost:5678',
-
+        target: process.env.VITE_WEBHOOK_URL || 'http://localhost:5678',
         changeOrigin: true,
-
         secure: false,
       },
     },
@@ -44,12 +32,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       onwarn(warning, warn) {
-        if (
-          warning.code === 'MODULE_LEVEL_DIRECTIVE'
-        ) {
-          return;
-        }
-
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
         warn(warning);
       },
     },
